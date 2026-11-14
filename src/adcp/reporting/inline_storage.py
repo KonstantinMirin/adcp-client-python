@@ -45,6 +45,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 import re
 from collections.abc import Awaitable, Callable, Coroutine
 from dataclasses import dataclass
@@ -53,12 +54,16 @@ from typing import TYPE_CHECKING, Any, Generic, Literal, ParamSpec, TypeVar
 
 from anyio import CancelScope, current_effective_deadline
 
+from adcp._redaction import refused_at
 from adcp.reporting.inline_source import SealedSlice
 from adcp.reporting.source import (
     SOURCE_BATCH_MANIFEST_MAX_BYTES_V1,
     SourceBatchManifestReferenceV1,
     parse_verified_source_batch_manifest_v1,
 )
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     pass
@@ -150,7 +155,10 @@ def _redact(method: Callable[P, Awaitable[T]]) -> Callable[P, Coroutine[Any, Any
                 return _Failed(error.code)
             except asyncio.CancelledError:
                 return _Failed(None)
-            except Exception:
+            except Exception as error:
+                # The driver's own exception may not reach our public error -- the comment
+                # above is that rule -- so the FAULT is named here instead.
+                logger.debug("inline storage refused: %s", refused_at(error))
                 return _Failed("RESOURCE_UNAVAILABLE")
 
         operation = asyncio.create_task(run())

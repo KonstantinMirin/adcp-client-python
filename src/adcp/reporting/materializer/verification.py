@@ -489,7 +489,8 @@ class ReportingDestinationIO:
             session = self.resolver.resolve(prepared.request, phase=phase, context=context)
         except asyncio.CancelledError:
             canceled = True
-        except Exception:
+        except Exception as raised:
+            logger.debug("destination session refused: %s", refused_at(raised))
             problem = True
         if canceled:
             raise asyncio.CancelledError

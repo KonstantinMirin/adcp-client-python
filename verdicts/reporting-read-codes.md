@@ -828,3 +828,101 @@ an edit):
 With it, the residue drops by 11 and the table stops showing a known cause as unowned — the
 same correction the `STATUS_READ_FAILED` row needs, for the same reason: a rule keyed on a
 symptom leaves a diagnosed cause looking undiagnosed.
+
+---
+---
+
+# Appendix 6 — the widened sweep over current trunk, and trunk's flat `Format` is unbound
+
+## STOP-THE-LINE: `from adcp.types import Format` raises on trunk `b0f3bd254`
+
+Found while verifying this round's edits, and it is larger than them.
+
+```
+adcp.types.Format                     RAISES  (AttributeError)
+adcp.types.LegacyFormat               <class …core.format.LegacyFormat>
+adcp.types.ProductFormatDeclaration   <class …core.product_format_declaration.ProductFormatDeclaration>
+
+src/adcp/server/responses.py:33       from adcp.types import Format
+```
+
+**Our own `src/` imports a word our own flat surface no longer binds**, and it cascades:
+`adcp.server` → `adcp.webhooks` → `adcp.webhook_sender` → `adcp.reporting.outbox` →
+`adcp.reporting.materializer`. Measured on our own suite:
+
+```
+7,017 tests collected, 267 ERRORS during collection
+```
+
+`./check` is unaffected and still reads **emitted 1059 / refused 0, primary 0 / chained 0,
+approximated 383 facts in 148 documents** — it is a compile-side figure and never imports
+`adcp.server`, which is exactly why this got past it.
+
+**This is the rename landed by halves, and `CLAUDE.md`'s own note says which half is missing.**
+That note rules `LegacyFormat` a DERIVED class name for `core/format.json` — landed — and
+`Format` an **ALIAS** onto the canonical declaration: *"`Format` on the canonical declaration
+is an ALIAS and not a class name … the alias layer is what serves a word that is not the
+document's, and upstream's own public `Format` already means this subject."* The alias is not
+bound. So the clause *"THE RENAME MUST BREAK, NOT REDIRECT"* is being honoured against
+consumers and violated against ourselves: `responses.py` is not a consumer who meant v1, it
+is our own code that wants the canonical declaration.
+
+Two candidate repairs, neither in this row's write scope (`src/adcp/types/compat.py` and
+`src/adcp/server/responses.py` are both another lane's):
+
+1. **bind the alias** — `Format` → `ProductFormatDeclaration` on the flat surface, which is
+   what the note already decided and what upstream's public `Format` means; or
+2. **re-point the one import** — `src/adcp/server/responses.py:33` to
+   `ProductFormatDeclaration`, if the word is meant to stay unbound.
+
+(1) is what the note specifies. Either way the 267 collection errors go.
+
+**And it means this round's eight edits are verified only as far as import allows.** Lint is
+clean, all three files parse, 10 `refused_at` call sites are in place, and
+`adcp.reporting.inline_storage` and `adcp._redaction` import; `submissions.models` and
+`materializer.verification` cannot be imported on this trunk at all — they transit
+`adcp.server`. I am not reporting a behavioural verification I could not run.
+
+---
+
+## The widened sweep, run on purpose rather than by stumbling
+
+Appendix 2's predicate was the brief's — a broad handler that **raises** a typed error — and
+Appendices 3 showed it had two gaps. This is the predicate with both closed, applied
+uniformly: a broad handler whose cause reaches a typed CODE **however it leaves** — raised or
+RETURNED, as a string literal or as an ENUM MEMBER, directly or through a sentinel.
+
+**29 handlers, 14 observable, 15 masking.** Nine more sites than the narrow pass found.
+
+| file:line | code | verdict |
+|---|---|---|
+| `reporting/inline_storage.py:153` | `RESOURCE_UNAVAILABLE` | **FIXED** — DEBUG line |
+| `reporting/materializer/verification.py:492` | `RESOURCE_UNAVAILABLE` | **FIXED** — DEBUG line |
+| `reporting/submissions/models.py:336` | `INVALID_PLAN` | **FIXED** — DEBUG line |
+| `reporting/submissions/models.py:384` | `HISTORY_CORRUPT` | **FIXED** — DEBUG line |
+| `reporting/submissions/models.py:440` | `HISTORY_CORRUPT` | **FIXED** — DEBUG line |
+| `reporting/submissions/models.py:510` | `INVALID_RESPONSE` | **FIXED** — DEBUG line |
+| `reporting/submissions/models.py:608` | `INVALID_RESPONSE` | **FIXED** — DEBUG line |
+| `reporting/submissions/models.py:669` | `HISTORY_CORRUPT` | **FIXED** — DEBUG line |
+| `reporting/conformance.py:498` | `OBJECT_MISMATCH` | **not a masker** — raises `from error`; my detector's observability test reads logging keywords and not chaining, which is its third gap |
+| `__main__.py:415`, `:430` | `FAILED` | named, left — outside this row's scope |
+| `decisioning/pg/proposal_store.py:255` | `INTERNAL_ERROR` | named, left — reported in Appendix 2 |
+| `decisioning/pg/task_registry.py:371` | `INTERNAL_ERROR` | named, left — reported in Appendix 2 |
+| `server/governance.py:238` | `UNAUTHORIZED` | named, left — outside this row's scope |
+| `server/test_controller.py:1421` | `INTERNAL_ERROR` | named, left — outside this row's scope |
+
+The 14 observable are `decisioning/handler.py` ×2, `decisioning/property_list.py`,
+`decisioning/tenant_store.py` ×2, `property_lists.py`, `protocols/a2a.py`, `protocols/mcp.py`,
+`reporting/ledger/producer.py`, `reporting/production/{handler,offerings,service}.py`,
+`server/idempotency/store.py`, `server/test_controller.py:931` — the last five of those are
+this lane's earlier rounds.
+
+**Eighteen masking sites have now been closed across three packages, and eight of them were
+found on purpose by this predicate rather than by a failing test.** Every one reports through
+`adcp._redaction.refused_at`; there is still one helper.
+
+**A note on what the submissions sites hide, because it is the sharpest case yet.** Five of
+the six raise `ValueError` INSIDE the `try` as an "invalid" signal and then catch broadly — so
+the deliberate signal, a `ValidationError` from an emitted model, and an `AttributeError` of
+ours are all the same answer to a caller. The typed code is the contract and stays; without
+the line there is no way to tell a corrupt history from a defect of ours.

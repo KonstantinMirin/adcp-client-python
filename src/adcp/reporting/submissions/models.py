@@ -9,11 +9,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any, Literal, TypeAlias
 
+from adcp._redaction import refused_at
 from adcp.reporting.canonical_json import canonical_json_utf8_v1
 from adcp.reporting.evidence import consumer_reference, principal_reference
 from adcp.reporting.outbox.identity import canonical_consumer
@@ -25,6 +27,9 @@ from adcp.types import (
     SyncReportingReceiptsRequest,
     SyncReportingReceiptsResponse,
 )
+
+#: Where a swallowed cause is reported; see ``adcp._redaction.refused_at``.
+logger = logging.getLogger(__name__)
 
 ReportingSubmissionReceipt: TypeAlias = ReportingReceipt | ReportingAdjustmentReceipt
 ReceiptKind: TypeAlias = Literal["receipt", "adjustment_receipt"]
@@ -333,7 +338,13 @@ def _prepare_for_version(
             raise ValueError
         result = ReportingReceiptSubmission(scope, f"reporting-submission:{fingerprint}", plan)
         PLANS.put(_plan_key(result), tuple(encoded_requests))
-    except Exception:
+    except Exception as error:
+        # **THE DELIBERATE `ValueError` ABOVE AND A DEFECT OF OURS ARE THE SAME ANSWER
+        # HERE**, which is what makes this family worth naming: the block raises
+        # `ValueError` as an "invalid" signal and this handler also catches a
+        # `ValidationError` from an emitted model, or an `AttributeError` of ours.  The
+        # typed code is the contract; the FAULT is reported.
+        logger.debug("submission plan refused: %s", refused_at(error))
         result = None
     if result is None:
         raise ReportingSubmissionError(ReportingSubmissionCode.INVALID_PLAN)
@@ -381,7 +392,8 @@ def _validated_requests(submission: ReportingReceiptSubmission) -> tuple[bytes, 
             raise ValueError
         result = tuple(canonical_json_utf8_v1(request) for request in plan["requests"])
         PLANS.put(key, result)
-    except Exception:
+    except Exception as error:
+        logger.debug("submission plan replay refused: %s", refused_at(error))
         result = None
     if result is None:
         raise ReportingSubmissionError(ReportingSubmissionCode.HISTORY_CORRUPT)
@@ -437,7 +449,8 @@ def validate_submission(submission: ReportingReceiptSubmission) -> None:
                     raise ValueError
                 CONFIRMATIONS.put(key, ())
         valid = True
-    except Exception:
+    except Exception as error:
+        logger.debug("confirmation history refused: %s", refused_at(error))
         valid = False
     if not valid:
         raise ReportingSubmissionError(ReportingSubmissionCode.HISTORY_CORRUPT)
@@ -507,7 +520,8 @@ def _confirmation(
         if len(result) > MAX_RESPONSE_BYTES:
             raise ValueError
         CONFIRMATIONS.put(_confirmation_key(submission, request, result), ())
-    except Exception:
+    except Exception as error:
+        logger.debug("response normalisation refused: %s", refused_at(error))
         result = None
     if result is None:
         raise ReportingSubmissionError(ReportingSubmissionCode.INVALID_RESPONSE)
@@ -605,7 +619,8 @@ def freeze_response(response: SyncReportingReceiptsResponse) -> bytes:
         encoded = canonical_json_utf8_v1(response.model_dump(mode="json", exclude_none=True))
         if len(encoded) > MAX_RESPONSE_BYTES:
             raise ValueError
-    except Exception:
+    except Exception as error:
+        logger.debug("response detach refused: %s", refused_at(error))
         encoded = None
     if encoded is None:
         raise ReportingSubmissionError(ReportingSubmissionCode.INVALID_RESPONSE)
@@ -666,7 +681,8 @@ def decode_submission(
         ):
             raise ValueError
         result = candidate
-    except Exception:
+    except Exception as error:
+        logger.debug("submission decode refused: %s", refused_at(error))
         result = None
     if result is None:
         raise ReportingSubmissionError(ReportingSubmissionCode.HISTORY_CORRUPT)
