@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
     HostedUrl,
@@ -28,6 +28,12 @@ class AttestationSubject(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/resource_type', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/resource_type', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/namespace', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/namespace', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class AttestationBrandSubject(AttestationSubject):
@@ -55,6 +61,12 @@ class AttestationResourceSubject(AttestationSubject):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-subject.json', pointer='#/oneOf/2')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/resource_type', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/resource_type', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/namespace', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/namespace', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     type: Literal['resource']
     resource_type: Annotated[HostedUrl, Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
     namespace: Annotated[HostedUrl, Field(description='Absolute URI identifying the namespace in which id is unique. This may be an AdCP agent endpoint, a catalog origin, or a domain-specific namespace URI.')]

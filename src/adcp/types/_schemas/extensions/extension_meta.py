@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, PrincipalDeclarationsStateSelectedAsyncAdcpVersion
 
 
@@ -14,6 +14,10 @@ class AdCPExtensionFileSchema(AdCPBaseModel):
     Schema that all extension files must follow. Combines metadata (valid_from, docs_url) with the actual extension data schema. Extensions are auto-discovered from /schemas/extensions/*.json and included in versioned builds based on valid_from/valid_until.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='extensions/extension-meta.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='extensions/extension-meta.json', pointer='#/properties/docs_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='extensions/extension-meta.json', pointer='#/properties/docs_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     schema_: Annotated[Literal['http://json-schema.org/draft-07/schema#'], Field(alias='$schema')]
     title: Annotated[str, Field(description='Human-readable title for the extension')]
     description: Annotated[str, Field(description='Description of what this extension provides')]

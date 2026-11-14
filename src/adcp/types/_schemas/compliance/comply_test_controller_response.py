@@ -42,6 +42,8 @@ class ComplyTestControllerResponse(BranchDispatchMixin, AdCPVersionEnvelope, Pro
     def _branch_combinator(cls) -> str:
         return "oneOf"
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/payload', keyword='maxLength', kind='WIDENED', rung='KEYWORD', fact=65536, attribution='docs/plan/rebuild-plan.md §5 strings/maxLength'),
     )
 
@@ -234,6 +236,8 @@ class RecordedCallsItem(BranchDispatchMixin, AdCPBaseModel):
     def _branch_combinator(cls) -> str:
         return "oneOf"
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/payload', keyword='maxLength', kind='WIDENED', rung='KEYWORD', fact=65536, attribution='docs/plan/rebuild-plan.md §5 strings/maxLength'),
     )
     method: Annotated[Method, Field(description='HTTP method of the outbound call.')]
@@ -298,6 +302,8 @@ class UpstreamTrafficSuccess(ComplyTestControllerResponse):
         ForbiddenGroups((('error',), ('scenarios',), ('previous_state',), ('simulated',), ('forced',), ('audit_observations',))),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/payload', keyword='maxLength', kind='WIDENED', rung='KEYWORD', fact=65536, attribution='docs/plan/rebuild-plan.md §5 strings/maxLength'),
     )
     success: Literal[True]

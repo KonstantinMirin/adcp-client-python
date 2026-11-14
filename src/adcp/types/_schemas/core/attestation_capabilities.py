@@ -59,6 +59,12 @@ class AcceptedIssuersItem(AdCPBaseModel):
         UniqueItems('proof_formats'),
         UniqueItems('credential_origins'),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/claim_types/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/claim_types/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/proof_formats/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/proof_formats/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     issuer: AttestationIssuer
     claim_types: Annotated[list[HostedUrl] | None, Field(description='Optional subset of accepted_claim_types this issuer may assert. Omit to allow any globally accepted claim type for this issuer.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     proof_formats: Annotated[list[HostedUrl] | None, Field(description='Optional subset of accepted_proof_formats allowed for this issuer. Omit to allow any globally accepted proof format for this issuer.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
@@ -75,6 +81,12 @@ class AcceptedVerifiersItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('claim_types'),
         UniqueItems('proof_formats'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_verifiers/items/properties/claim_types/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_verifiers/items/properties/claim_types/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_verifiers/items/properties/proof_formats/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_verifiers/items/properties/proof_formats/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     agent_url: AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl
     claim_types: Annotated[list[HostedUrl] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
@@ -96,6 +108,18 @@ class AttestationCapabilities(AdCPBaseModel):
         UniqueItems('supported_delivery_methods'),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_claim_types/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_claim_types/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_proof_formats/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_proof_formats/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/claim_types/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/claim_types/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/proof_formats/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_issuers/items/properties/proof_formats/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_verifiers/items/properties/claim_types/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_verifiers/items/properties/claim_types/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_verifiers/items/properties/proof_formats/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-capabilities.json', pointer='#/properties/accepted_verifiers/items/properties/proof_formats/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/attestation-capabilities.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'supported_delivery_methods': {'contains': {'const': 'embedded'}}}, 'required': ['supported_delivery_methods']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     accepted_claim_types: Annotated[list[HostedUrl], Field(description='Open claim identifiers the evaluator is prepared to evaluate. Each value is an absolute URI. Absence means the evaluator has not advertised portable-attestation support; an empty list is not permitted.', json_schema_extra={'uniqueItems': True}, min_length=1)]

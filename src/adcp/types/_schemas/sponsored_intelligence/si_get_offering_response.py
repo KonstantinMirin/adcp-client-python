@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpResponse
 
@@ -26,6 +26,12 @@ class SIGetOfferingResponseOffering(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering/properties/image_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering/properties/image_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering/properties/landing_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering/properties/landing_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     offering_id: Annotated[str | None, Field(description='Offering identifier'), OmittedNotNull] = None
     title: Annotated[str | None, Field(description='Offering title'), OmittedNotNull] = None
     summary: Annotated[str | None, Field(description='Brief summary of the offering'), OmittedNotNull] = None
@@ -42,6 +48,12 @@ class MatchingProductsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items/properties/image_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items/properties/image_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     product_id: Annotated[str, Field(description='Product identifier')]
     name: Annotated[str, Field(description='Product name')]
     price: Annotated[str | None, Field(description="Display price (e.g., '$129', '$89.99')"), OmittedNotNull] = None
@@ -60,6 +72,16 @@ class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-get-offering-response.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering/properties/image_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering/properties/image_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering/properties/landing_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/offering/properties/landing_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items/properties/image_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items/properties/image_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-get-offering-response.json', pointer='#/properties/matching_products/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     available: Annotated[StrictBool, Field(description='Whether the offering is currently available')]
     offering_token: Annotated[str | None, Field(description="Token to pass to si_initiate_session for session continuity. Brand stores the full query context server-side (products shown, order, context) so they can resolve references like 'the second one' when the session starts."), OmittedNotNull] = None
     ttl_seconds: Annotated[NonNegativeInt | None, Field(description='How long this offering information is valid (seconds). Host should re-fetch after TTL expires.'), OmittedNotNull] = None

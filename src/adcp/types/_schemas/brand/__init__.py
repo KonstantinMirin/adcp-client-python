@@ -330,6 +330,10 @@ class Logo(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('slots'),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand.json', pointer='#/definitions/logo/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/logo/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     id: Annotated[LogoId | None, Field(description='Stable identifier for this logo entry. Recommended when logo usage rules or mark lockups need to bind to a specific logo asset.'), OmittedNotNull] = None
     url: Annotated[HostedUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation. square: ~1:1, horizontal: wide, vertical: tall, stacked: vertically arranged elements'), OmittedNotNull] = None
@@ -455,6 +459,10 @@ class Asset(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand.json', pointer='#/definitions/asset/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/asset/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     asset_id: Annotated[str, Field(description='Unique identifier')]
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
     url: Annotated[HostedUrl, Field(description='URL to CDN-hosted asset file')]
@@ -524,6 +532,10 @@ class AgenticCheckout(AdCPBaseModel):
     Agentic checkout endpoint configuration
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/product_catalog/properties/agentic_checkout')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand.json', pointer='#/definitions/product_catalog/properties/agentic_checkout/properties/endpoint', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/product_catalog/properties/agentic_checkout/properties/endpoint', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     endpoint: Annotated[HostedUrl, Field(description='Base URL for checkout session API')]
     spec: Annotated[str, Field(description='Checkout API specification identifier. Use a namespaced string to identify the checkout protocol (e.g., vendor-prefixed or custom). Vendor-specific values belong under ext.{vendor}.')]
     supported_payment_providers: Annotated[list[str] | None, Field(description='Payment providers supported by this checkout endpoint'), OmittedNotNull] = None
@@ -537,6 +549,12 @@ class ProductCatalog(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/product_catalog')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand.json', pointer='#/definitions/product_catalog/properties/feed_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/product_catalog/properties/feed_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand.json', pointer='#/definitions/product_catalog/properties/agentic_checkout/properties/endpoint', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/product_catalog/properties/agentic_checkout/properties/endpoint', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     feed_url: Annotated[HostedUrl, Field(description='URL to product catalog feed')]
     feed_format: Annotated[FeedFormat | None, Field(description='Format of the product feed'), OmittedNotNull] = None
     categories: Annotated[list[str] | None, Field(description='Product categories available in the catalog'), OmittedNotNull] = None
@@ -1419,6 +1437,10 @@ class LogoUsageRule(AdCPBaseModel):
         RequiredGroups((('logo_id',), ('logo_url',), ('logo_variant',), ('logo_tags',), ('slots',)), 'anyOf'),
         UniqueItems('slots'),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand.json', pointer='#/definitions/logo_usage_rule/properties/logo_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/logo_usage_rule/properties/logo_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     logo_url: Annotated[HostedUrl | None, Field(description='Specific logo asset URL this rule applies to. Omit when the rule applies by variant or tags.'), OmittedNotNull] = None
     logo_id: Annotated[LogoId | None, Field(description='Stable `logos[].id` this rule applies to. Prefer this over logo_url when the rule targets a specific logo entry.'), OmittedNotNull] = None
     logo_variant: Annotated[LogoVariant | None, Field(description='Logo variant this rule applies to.'), OmittedNotNull] = None
@@ -1610,6 +1632,10 @@ class AssetLibrary(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/asset_library')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand.json', pointer='#/definitions/asset_library/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/asset_library/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     name: Annotated[str, Field(description='Display name of the asset library')]
     type: Annotated[AssetLibraryType | None, Field(description='Type of asset library'), OmittedNotNull] = None
     url: Annotated[HostedUrl, Field(description='URL to the asset library (for human access)')]
@@ -1674,6 +1700,10 @@ class CollectionsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand/properties/collections/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand.json', pointer='#/definitions/brand/properties/collections/items/properties/seller_agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/brand/properties/collections/items/properties/seller_agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     collection_id: Annotated[str | None, Field(description="Collection identifier as used in the seller's get_products responses"), OmittedNotNull] = None
     name: Annotated[str, Field(description='Human-readable collection name')]
     role: Annotated[TalentRole | None, Field(description="This person's role on the collection"), OmittedNotNull] = None
@@ -1688,6 +1718,14 @@ class Brand(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/brand')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand.json', pointer='#/definitions/brand/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/brand/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand.json', pointer='#/definitions/brand/properties/privacy_policy_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/brand/properties/privacy_policy_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand.json', pointer='#/definitions/brand/properties/collections/items/properties/seller_agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand.json', pointer='#/definitions/brand/properties/collections/items/properties/seller_agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     id: Annotated[BrandId, Field(description='Brand identifier within the house. House chooses this ID.')]
     url: Annotated[HostedUrl | None, Field(description='Primary brand URL for context and asset discovery'), OmittedNotNull] = None
     identity_relying_parties: Annotated[list[IdentityRelyingParty] | None, Field(description='Verified-identity relying parties scoped to this brand/property, for attestation provenance in TMP Identity Match. Use when a brand or property runs its own relying_party_id (per-property pseudonyms); entity-wide relying parties live on the house object. See specs/tmp-verified-identity-attestation.md.'), OmittedNotNull] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 
@@ -30,6 +30,10 @@ class PrivacyPolicyAcknowledged(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-identity.json', pointer='#/properties/privacy_policy_acknowledged')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-identity.json', pointer='#/properties/privacy_policy_acknowledged/properties/brand_policy_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-identity.json', pointer='#/properties/privacy_policy_acknowledged/properties/brand_policy_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     brand_policy_url: Annotated[HostedUrl | None, Field(description="URL to brand's privacy policy"), OmittedNotNull] = None
     brand_policy_version: Annotated[str | None, Field(description='Version of policy acknowledged'), OmittedNotNull] = None
 
@@ -72,6 +76,10 @@ class SIIdentity(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-identity.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-identity.json', pointer='#/properties/privacy_policy_acknowledged/properties/brand_policy_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-identity.json', pointer='#/properties/privacy_policy_acknowledged/properties/brand_policy_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     consent_granted: Annotated[StrictBool, Field(description='Whether user consented to share identity')]
     consent_timestamp: Annotated[AwareDatetime | None, Field(description='When consent was granted (ISO 8601)'), OmittedNotNull] = None
     consent_scope: Annotated[list[ConsentScopeItem] | None, Field(description='What data was consented to share'), OmittedNotNull] = None

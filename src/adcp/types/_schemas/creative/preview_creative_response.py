@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse
 
@@ -33,6 +33,12 @@ class PreviewCreativeResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protocol
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/0/properties/interactive_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/0/properties/interactive_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class PreviewCreativeSingleResponsePreviewsItemInput(AdCPBaseModel):
@@ -60,6 +66,10 @@ class PreviewCreativeSingleResponse(PreviewCreativeResponse):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/0')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/0/properties/interactive_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/0/properties/interactive_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     response_type: Annotated[Literal['single'], Field(description='Discriminator indicating this is a single preview response')]
     previews: Annotated[list[PreviewCreativeSingleResponsePreviewsItem], Field(description='Array of preview variants. Each preview corresponds to an input set from the request. If no inputs were provided, returns a single default preview.', min_length=1)]
     quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this response. This field MUST be present when the corresponding request supplied `quality`, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier, allowing buyers to detect a downgrade before approval.'), OmittedNotNull] = None
@@ -88,6 +98,10 @@ class Response(AdCPBaseModel):
     Preview data for successful requests
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     previews: Annotated[list[ResponsePreviewsItem], Field(description='Array of preview variants for this creative', min_length=1)]
     interactive_url: Annotated[HostedUrl | None, OmittedNotNull] = None
     expires_at: Annotated[AwareDatetime | None, Field(description="When the preview URLs expire. **Optional** — omit for non-expiring preview URLs. See the single-preview branch's `expires_at` description for the full convention."), OmittedNotNull] = None
@@ -101,6 +115,10 @@ class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     success: Annotated[StrictBool, Field(description='Whether this preview request succeeded')]
     creative_id: Annotated[str, Field(description='ID of the creative this result corresponds to. Enables correlation when processing batch results.')]
     quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this successful batch result. This field MUST be present when the effective item request supplied `quality`, whether directly or through the batch-level default, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier.'), OmittedNotNull] = None
@@ -132,6 +150,10 @@ class PreviewCreativeBatchResponse(PreviewCreativeResponse):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/1')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     response_type: Annotated[Literal['batch'], Field(description='Discriminator indicating this is a batch preview response')]
     results: Annotated[list[ResultsItem], Field(description='Array of preview results corresponding to each request in the same order. results[0] is the result for requests[0], results[1] for requests[1], etc. Order is guaranteed even when some requests fail. Each result contains either a successful preview response or an error.', min_length=1)]
     context: Annotated[ContextObject | None, OmittedNotNull] = None

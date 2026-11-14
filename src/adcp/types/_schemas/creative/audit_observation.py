@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin0Max1, HostedUrl
 
 from ..core.ext import ExtensionObject
@@ -65,6 +65,12 @@ class Details(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/audit-observation.json', pointer='#/properties/details')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/audit-observation.json', pointer='#/properties/details/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/audit-observation.json', pointer='#/properties/details/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='creative/audit-observation.json', pointer='#/properties/details/properties/substituted_for', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/audit-observation.json', pointer='#/properties/details/properties/substituted_for', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: Annotated[HostedUrl, Field(description='Governance agent URL that produced the observation.')]
     feature_id: Annotated[str | None, Field(description='Feature or policy check that produced the observation.'), OmittedNotNull] = None
     claimed_value: Annotated[ClaimedValue, Field(description='Compact object of claimed provenance values that triggered the observation.')]
@@ -81,6 +87,12 @@ class CreativeAuditObservation(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/audit-observation.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/audit-observation.json', pointer='#/properties/details/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/audit-observation.json', pointer='#/properties/details/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='creative/audit-observation.json', pointer='#/properties/details/properties/substituted_for', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/audit-observation.json', pointer='#/properties/details/properties/substituted_for', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     code: Annotated[Code, Field(description='Machine-readable observation code. `OVERSIGHT_DISCLOSURE_CARVEOUT_CLAIMED` means provenance declares `human_oversight` as `edited` or `directed` while also declaring `disclosure.required: false`; the verifier is surfacing the carve-out claim for audit, not adjudicating it.')]
     severity: Annotated[Severity, Field(description='Routing severity. `audit-worthy` means the observation should be retained and may be routed to human or downstream audit review, but it is not a protocol rejection signal.')]
     recovery: Annotated[Recovery, Field(description='Caller recovery category for audit observations, distinct from the canonical error-code recovery enum. `informational` means the creative can continue through the normal flow; the observation is audit context rather than a required correction.')]

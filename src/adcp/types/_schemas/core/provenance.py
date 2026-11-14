@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, HostedUrl, IntMin1
 
@@ -97,6 +97,10 @@ class DeclaredBy(AdCPBaseModel):
     Party declaring this provenance. Identifies who attached the provenance claim, enabling receiving parties to assess trust.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/declared_by')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/provenance.json', pointer='#/properties/declared_by/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/provenance.json', pointer='#/properties/declared_by/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: Annotated[HostedUrl | None, Field(description='URL of the agent or service that declared this provenance'), OmittedNotNull] = None
     role: Annotated[Role, Field(description='Role of the declaring party in the supply chain')]
 
@@ -106,6 +110,10 @@ class C2pa(AdCPBaseModel):
     C2PA sidecar manifest reference. Links to a detached cryptographic provenance manifest for this content. Note: file-level C2PA bindings break when ad servers transcode, resize, or re-encode assets. For pipelines with intermediaries, consider embedded_provenance as the primary provenance mechanism.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/c2pa')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/provenance.json', pointer='#/properties/c2pa/properties/manifest_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/provenance.json', pointer='#/properties/c2pa/properties/manifest_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     manifest_url: Annotated[HostedUrl, Field(description='URL to the C2PA manifest store for this content')]
 
 
@@ -203,6 +211,10 @@ class Result(StrEnum):
 
 class VerificationItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#/properties/verification/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/provenance.json', pointer='#/properties/verification/items/properties/details_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/provenance.json', pointer='#/properties/verification/items/properties/details_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     verified_by: Annotated[str, Field(description="Name of the verification service (e.g., 'DoubleVerify', 'Hive Moderation', 'Reality Defender')")]
     verified_time: Annotated[AwareDatetime | None, Field(description='When the verification was performed (ISO 8601)'), OmittedNotNull] = None
     result: Annotated[Result, Field(description='Verification outcome')]
@@ -215,6 +227,14 @@ class Provenance(AdCPBaseModel):
     Declares how content was produced, whether AI was involved, and what disclosure obligations apply. Attaches to creative manifests, individual assets, or content-standards artifacts. When present at multiple levels, the most specific provenance object replaces the inherited one entirely (no field-level merging). Provenance is a claim by the declaring party — receiving parties should verify claims independently via their own detection tools.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/provenance.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/provenance.json', pointer='#/properties/declared_by/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/provenance.json', pointer='#/properties/declared_by/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/provenance.json', pointer='#/properties/c2pa/properties/manifest_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/provenance.json', pointer='#/properties/c2pa/properties/manifest_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/provenance.json', pointer='#/properties/verification/items/properties/details_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/provenance.json', pointer='#/properties/verification/items/properties/details_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     digital_source_type: Annotated[DigitalSourceType | None, Field(description='IPTC-aligned classification of AI involvement in producing this content'), OmittedNotNull] = None
     synthetic_depiction: Annotated[StrictBool | None, Field(description='Assessed declaration of whether the content synthetically depicts a real or fictional person performing or appearing in a way that was generated or materially manipulated rather than captured as depicted. `true` covers both a fully synthetic performer and material manipulation of a real performer; `false` is an assessed declaration that the content does not contain such a depiction. Absence means the content has not been assessed for synthetic depiction. This field does not claim consent, legality, or independent verification, and receivers MUST NOT derive it solely from `digital_source_type`.'), OmittedNotNull] = None
     ai_tool: Annotated[AiTool | None, Field(description='AI system used to generate or modify this content. Aligns with IPTC 2025.1 AI metadata fields and C2PA claim_generator.'), OmittedNotNull] = None

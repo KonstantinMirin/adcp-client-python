@@ -29,6 +29,8 @@ class Event(AdCPBaseModel):
         ConditionalRequired((Match('event_type', True, ('watch_milestone',)),), require=('custom_data',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/event.json', pointer='#/properties/event_source_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/event.json', pointer='#/properties/event_source_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/event.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'event_type': {'const': 'watch_milestone'}}, 'required': ['event_type']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     event_id: Annotated[StrMinLen1MaxLen256, Field(description='Unique identifier for deduplication (scoped to event_type + event_source_id)')]

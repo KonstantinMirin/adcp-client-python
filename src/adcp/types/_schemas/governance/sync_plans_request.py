@@ -122,6 +122,10 @@ class DelegationsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: Annotated[HostedUrl, Field(description='URL of the delegated agent.')]
     authority: Annotated[DelegationAuthority, Field(description='Authority level granted to this agent.')]
     budget_limit: Annotated[BudgetLimit | None, Field(description="Maximum budget this agent can commit. When omitted, the agent can commit up to the plan's total budget."), OmittedNotNull] = None
@@ -161,6 +165,10 @@ class PlansItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items')
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/approved_sellers/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/approved_sellers/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_categories': {'type': 'array', 'contains': {'enum': ['fair_housing', 'fair_lending', 'fair_employment', 'pharmaceutical_advertising']}}}, 'required': ['policy_categories']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_ids': {'type': 'array', 'contains': {'const': 'eu_ai_act_annex_iii'}}}, 'required': ['policy_ids']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
@@ -195,6 +203,10 @@ class SyncPlansRequest(AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#')
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/approved_sellers/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/approved_sellers/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/delegations/items/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_categories': {'type': 'array', 'contains': {'enum': ['fair_housing', 'fair_lending', 'fair_employment', 'pharmaceutical_advertising']}}}, 'required': ['policy_categories']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'policy_ids': {'type': 'array', 'contains': {'const': 'eu_ai_act_annex_iii'}}}, 'required': ['policy_ids']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )

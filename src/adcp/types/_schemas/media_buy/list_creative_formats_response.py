@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.envelopes import AdcpResponse
@@ -44,7 +44,7 @@ class ListCreativeFormatsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(description="Deprecated recursive discovery projection retained for historical 3.x responses. New buyers query the registry's canonical creative capability index and confirm candidates with get_adcp_capabilities; they do not recursively walk agent-provided lists."), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings (e.g., format availability issues)'), OmittedNotNull] = None
     pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

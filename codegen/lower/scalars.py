@@ -296,6 +296,61 @@ def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
     ):
         selected = FORMAT_TYPES[fmt](node.facts)
         if fmt in URL_FORMATS:
+            # **THE URL TYPE'S OWN BOUNDS ARE A DECIDED NARROWING, AND THIS IS WHERE THEY
+            # ARE DECLARED** (``adcp-client-python-fq8d``; §2 "The two URL types, and the
+            # cap that comes with them").  ``AdCPUrl`` is ``HttpUrl``, whose
+            # ``UrlConstraints(max_length=2083)`` refuses a longer URL at 55 nodes that
+            # state no ``maxLength`` of their own -- and the plan ACCEPTS that in capitals.
+            # An accepted narrowing with no declaration is indistinguishable from a defect:
+            # before this it arrived at the verifier as 218 ``model_refused_admitted``
+            # pairs, and was twice reported to the owner as a decision he had not taken.
+            #
+            # **DECLARED ONLY WHERE THE DOCUMENT DOES NOT ALREADY SAY IT, which is what
+            # keeps the declaration true.**  Two of the 57 state ``maxLength: 2048`` --
+            # TIGHTER than the type's -- so at those the type narrows nothing and a
+            # declaration would be ``unproved``: a declaration about nothing, which §2
+            # calls "an allowlist wearing a measurement".
+            #
+            # ``fact`` is the constraint the ANNOTATION adds and not one the document
+            # states, which is the opposite of a widening's ``fact`` and is why
+            # :data:`adcp.types._base.NARROWED` says so at the kind.
+            # Imported HERE and not at module scope, which is this module's existing
+            # rule for this name (see the other call site): ``codegen.lower.approximate``
+            # imports ``codegen.ir`` and the lower modules import each other, so a
+            # module-level import makes a cycle the compiler cannot resolve.
+            from codegen.lower import approximate
+
+            added = constraints_module.narrowed_by_url_type(selected)
+            for keyword, value in sorted(added.items()):
+                # **"ALREADY SAID IT" IS A COMPARISON, ONLY A BOUND HAS ONE, AND THE
+                # COMPARISON RUNS THE WAY THE BOUND DOES.**  Two of the 57 AdCP addresses
+                # state ``maxLength: 2048`` -- TIGHTER than the type's -- so there the type
+                # narrows nothing and a declaration would be ``unproved``: a declaration
+                # about nothing, which §2 calls "an allowlist wearing a measurement".
+                #
+                # ``maxLength`` is an UPPER bound and ``minLength`` a LOWER one, so
+                # "already at least as tight" is ``stated <= value`` for one and
+                # ``stated >= value`` for the other.  One direction for both declared a
+                # document stating ``minLength: 5`` as narrowed by a type whose own floor
+                # is 1 -- the type is LOOSER there, and the declaration claimed a
+                # narrowing the annotation does not make.
+                #
+                # ``format``'s fact is a mapping of what the type refuses
+                # (``host_required``, ``allowed_schemes``) and no document states that, so
+                # there is nothing to compare and the declaration always stands.
+                stated = node.facts.get(keyword)
+                if isinstance(stated, int | float) and isinstance(value, int | float):
+                    tighter = stated <= value if keyword.startswith("max") else stated >= value
+                    if tighter:
+                        continue
+                approximate.declare(
+                    mod,
+                    node.pointer,
+                    keyword,
+                    node.position,
+                    {keyword: value},
+                    kind=ir.NARROWED,
+                )
             return ir.Decided(ir.TypeRef(selected, validators=bound))
         return ir.Decided(ir.TypeRef(selected, validators=bound), constraints)
     # **A FORMAT BESIDE A CONSTRAINT IS ONE SHAPE, AND THE NAMED TYPE STATES ALL OF IT.**

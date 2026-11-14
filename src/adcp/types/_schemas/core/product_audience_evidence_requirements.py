@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, FloatMin0Max1, HostedUrl
 
@@ -96,6 +96,10 @@ class ProductAudienceEvidenceRequirements(AdCPBaseModel):
         UniqueItems('accepted_attestation_issuers'),
         UniqueItems('accepted_attestation_claim_types'),
         ConditionalRequired((Match('independent_attestation_required', True, (True,)),), require=('accepted_attestation_issuers',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_claim_types/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_claim_types/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     requirement_mode: RequirementMode
     evidence_presence: EvidencePresence

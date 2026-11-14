@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 
@@ -20,6 +20,10 @@ class Destination(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/destination.json', pointer='#/oneOf/1/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/destination.json', pointer='#/oneOf/1/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class DestinationPlatform(Destination):
@@ -37,6 +41,10 @@ class DestinationAgent(Destination):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/destination.json', pointer='#/oneOf/1')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/destination.json', pointer='#/oneOf/1/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/destination.json', pointer='#/oneOf/1/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     type: Annotated[Literal['agent'], Field(description='Discriminator indicating this is an agent URL-based deployment')]
     agent_url: Annotated[HostedUrl, Field(description='URL identifying the deployment agent (for sales agents, etc.)')]
     account: Annotated[str | None, Field(description='Optional account identifier on the agent'), OmittedNotNull] = None

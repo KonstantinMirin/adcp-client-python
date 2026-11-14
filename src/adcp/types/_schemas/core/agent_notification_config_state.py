@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import NotValue, Rule, UniqueItems
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, HostedUrl
 
@@ -32,6 +32,10 @@ class AgentNotificationConfigState(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-notification-config-state.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('event_types'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/agent-notification-config-state.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/agent-notification-config-state.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     url: HostedUrl

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HostedUrl, StrMaxLen2000
 
@@ -32,6 +32,10 @@ class JurisdictionsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-modeling-disclosure.json', pointer='#/properties/jurisdictions/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-modeling-disclosure.json', pointer='#/properties/jurisdictions/items/properties/disclosure_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-modeling-disclosure.json', pointer='#/properties/jurisdictions/items/properties/disclosure_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     country: Annotated[CountryCode, Field(description='ISO 3166-1 alpha-2 country code.')]
     region: Annotated[str | None, Field(description='Provider-defined sub-national region code or name when the obligation is regional. No global canonical format is implied.'), OmittedNotNull] = None
     regulation: Annotated[str, Field(description='Provider-supplied regulation identifier for the disclosure obligation.')]
@@ -50,6 +54,10 @@ class SignalModelingDisclosure(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-modeling-disclosure.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('required', True, (True,)),), require=('jurisdictions',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-modeling-disclosure.json', pointer='#/properties/jurisdictions/items/properties/disclosure_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-modeling-disclosure.json', pointer='#/properties/jurisdictions/items/properties/disclosure_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     required: Annotated[StrictBool, Field(description="The provider's claim that a modeling or AI-use disclosure is required for this signal in at least one applicable jurisdiction. This is a declared compliance signal, not a protocol-level legal determination.")]
     jurisdictions: Annotated[list[JurisdictionsItem] | None, Field(description='Jurisdictions where a modeling or AI-use disclosure applies.', min_length=1), OmittedNotNull] = None

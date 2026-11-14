@@ -52,6 +52,8 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
         ConditionalRequired((Match('demographic_predicate', True, None),), require=('restricted_attributes',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-definition-enrichment.json', pointer='#/properties/criteria_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-definition-enrichment.json', pointer='#/properties/criteria_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/signal-definition-enrichment.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['demographic_predicate']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     restricted_attributes: Annotated[list[RestrictedAttribute] | None, Field(description='Restricted attribute categories this signal touches.', min_length=1), OmittedNotNull] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMin1Max5, FloatMinNeg90Max90, FloatMinNeg180Max180, HostedUrl
 
 from .country_code import CountryCode
@@ -55,6 +55,12 @@ class DestinationItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/destination-item.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/destination-item.json', pointer='#/properties/image_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/destination-item.json', pointer='#/properties/image_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/destination-item.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/destination-item.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     destination_id: Annotated[str, Field(description='Unique identifier for this destination.')]
     name: Annotated[str, Field(description="Destination name (e.g., 'Barcelona', 'Bali', 'Swiss Alps').")]
     description: Annotated[str | None, Field(description='Destination description highlighting attractions and appeal.'), OmittedNotNull] = None

@@ -87,6 +87,10 @@ class Taxonomy(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-definition.json', pointer='#/properties/taxonomy')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-definition.json', pointer='#/properties/taxonomy/properties/ref', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-definition.json', pointer='#/properties/taxonomy/properties/ref', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     ref: Annotated[HostedUrl, Field(description='URI identifying the taxonomy or taxonomy documentation.')]
     version: Annotated[str | None, Field(description='Version identifier for the taxonomy when the taxonomy has versioned definitions.'), OmittedNotNull] = None
     segtax: Annotated[IntMin1 | None, Field(description='OpenRTB segtax code when the taxonomy maps to an OpenRTB segment taxonomy.'), OmittedNotNull] = None
@@ -397,6 +401,10 @@ class SignalDefinition(AdCPBaseModel):
         ConditionalRequired((Match('demographic_predicate', True, None),), require=('restricted_attributes',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-definition.json', pointer='#/properties/taxonomy/properties/ref', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-definition.json', pointer='#/properties/taxonomy/properties/ref', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/signal-definition.json', pointer='#/properties/criteria_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-definition.json', pointer='#/properties/criteria_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/signal-definition.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'value_type': {'const': 'categorical'}}, 'required': ['value_type', 'taxonomy']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/signal-definition.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'data_sources': {'type': 'array', 'contains': {'enum': ['offline_survey', 'public_record_census', 'public_record_voter_file', 'public_record_other', 'offline_transaction']}}}, 'required': ['data_sources']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/signal-definition.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['demographic_predicate']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),

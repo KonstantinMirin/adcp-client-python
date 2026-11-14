@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 
@@ -17,6 +17,10 @@ class CreativeRejectedDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/creative-rejected.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='error-details/creative-rejected.json', pointer='#/properties/policy_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='error-details/creative-rejected.json', pointer='#/properties/policy_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     policy_id: Annotated[str | None, Field(description='Identifier for the violated policy'), OmittedNotNull] = None
     policy_url: Annotated[HostedUrl | None, Field(description='URL where the full policy can be reviewed'), OmittedNotNull] = None
     reasons: Annotated[list[str] | None, Field(description='Specific reasons the creative was rejected'), OmittedNotNull] = None

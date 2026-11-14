@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, TypeAdapter
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
@@ -42,8 +42,8 @@ class Responsive(AdCPBaseModel):
     Indicates which dimensions are responsive/fluid
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/renders/items/properties/dimensions/properties/responsive')
-    width: bool
-    height: bool
+    width: StrictBool
+    height: StrictBool
 
 
 class Dimensions(AdCPBaseModel):
@@ -71,7 +71,7 @@ class RendersItem(BranchDispatchMixin, AdCPBaseModel):
     def _branch_combinator(cls) -> str:
         return "oneOf"
     role: Annotated[str, Field(description="Semantic role of this rendered piece (e.g., 'primary', 'companion', 'mobile_variant')")]
-    parameters_from_format_id: Annotated[bool | None, Field(description='When true, parameters for this render (dimensions and/or duration) are specified in the format_id. Used for template formats that accept parameters. Mutually exclusive with specifying dimensions object explicitly.'), OmittedNotNull] = None
+    parameters_from_format_id: Annotated[StrictBool | None, Field(description='When true, parameters for this render (dimensions and/or duration) are specified in the format_id. Used for template formats that accept parameters. Mutually exclusive with specifying dimensions object explicitly.'), OmittedNotNull] = None
     dimensions: Annotated[Dimensions | None, Field(description='Dimensions for this rendered piece. Defaults to pixels when unit is absent.'), OmittedNotNull] = None
 
 
@@ -114,7 +114,7 @@ class BaseIndividualAsset(AdCPBaseModel):
     item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
     asset_id: Annotated[str, Field(description='Unique identifier for this asset. Creative manifests MUST use this exact value as the key in the assets object.')]
     asset_role: Annotated[str | None, Field(description="Descriptive label for this asset's purpose (e.g., 'hero_image', 'logo', 'third_party_tracking'). For documentation and UI display only — manifests key assets by asset_id, not asset_role."), OmittedNotNull] = None
-    required: Annotated[bool, Field(description='Whether this asset is required (true) or optional (false). Required assets must be provided for a valid creative. Optional assets enhance the creative but are not mandatory.')]
+    required: Annotated[StrictBool, Field(description='Whether this asset is required (true) or optional (false). Required assets must be provided for a valid creative. Optional assets enhance the creative but are not mandatory.')]
     overlays: Annotated[list[Overlay] | None, Field(description="Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., video player controls, publisher logos). Creative agents should avoid placing critical content (CTAs, logos, key copy) within overlay bounds."), OmittedNotNull] = None
     asset_group_id: Annotated[str | None, Field(description="Optional canonical asset_group_id this slot fills, drawn from /schemas/core/asset-group-vocabulary.json. Lets buyers and migration tools resolve v1 author-invented slot names (e.g., `click_url`) to canonical names (e.g., `landing_page_url`). Validators MAY soft-warn when a v1 slot's asset_id is a known alias but no asset_group_id is declared."), OmittedNotNull] = None
     asset_type: Any
@@ -341,7 +341,7 @@ class BaseGroupAsset(AdCPBaseModel):
     asset_id: Annotated[str, Field(description='Identifier for this asset within the group')]
     asset_role: Annotated[str | None, Field(description="Descriptive label for this asset's purpose. For documentation and UI display only — manifests key assets by asset_id, not asset_role."), OmittedNotNull] = None
     asset_group_id: Annotated[str | None, Field(description='Optional canonical asset_group_id this slot fills, drawn from /schemas/core/asset-group-vocabulary.json. Same semantics as on baseIndividualAsset — lets buyers and migration tools resolve v1 author-invented slot names to canonical names.'), OmittedNotNull] = None
-    required: Annotated[bool, Field(description='Whether this asset is required within each repetition of the group')]
+    required: Annotated[StrictBool, Field(description='Whether this asset is required within each repetition of the group')]
     overlays: Annotated[list[Overlay] | None, Field(description="Publisher-controlled elements rendered on top of buyer content at this asset's position (e.g., carousel navigation arrows, slide indicators). Creative agents should avoid placing critical content within overlay bounds."), OmittedNotNull] = None
     asset_type: Any
 
@@ -534,7 +534,7 @@ class RepeatableGroupAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1')
     item_type: Annotated[Literal['repeatable_group'], Field(description='Discriminator indicating this is a repeatable asset group')]
     asset_group_id: Annotated[str, Field(description="Identifier for this asset group (e.g., 'product', 'slide', 'card')")]
-    required: Annotated[bool, Field(description='Whether this asset group is required. If true, at least min_count repetitions must be provided.')]
+    required: Annotated[StrictBool, Field(description='Whether this asset group is required. If true, at least min_count repetitions must be provided.')]
     min_count: Annotated[NonNegativeInt, Field(description='Minimum number of repetitions required (if group is required) or allowed (if optional)')]
     max_count: Annotated[IntMin1, Field(description='Maximum number of repetitions allowed')]
     selection_mode: Annotated[SelectionMode | None, Field(description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).", json_schema_extra={'default': 'sequential'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('sequential'))
@@ -559,7 +559,7 @@ class Accessibility(AdCPBaseModel):
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/accessibility')
     wcag_level: Annotated[WCAGLevel, Field(description='WCAG conformance level that this format achieves. For format-rendered creatives, the format guarantees this level. For opaque creatives, the format requires assets that self-certify to this level.')]
-    requires_accessible_assets: Annotated[bool | None, Field(description='When true, all assets with x-accessibility fields must include those fields. For inspectable assets (image, video, audio), this means providing accessibility metadata like alt_text or captions. For opaque assets (HTML, JavaScript), this means providing self-declared accessibility properties.'), OmittedNotNull] = None
+    requires_accessible_assets: Annotated[StrictBool | None, Field(description='When true, all assets with x-accessibility fields must include those fields. For inspectable assets (image, video, audio), this means providing accessibility metadata like alt_text or captions. For opaque assets (HTML, JavaScript), this means providing self-declared accessibility properties.'), OmittedNotNull] = None
 
 
 class DisclosureCapabilitiesItem(AdCPBaseModel):
@@ -601,6 +601,8 @@ class LegacyFormat(AdCPBaseModel):
         ConditionalRequired((Match('canonical_parameters', True, None),), require=('canonical',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/format.json', pointer='#/properties/example_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/format.json', pointer='#/properties/example_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/format.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['canonical_parameters']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     format_id: Annotated[FormatReferenceStructuredObject, Field(description="This format's own identifier — a structured object {agent_url, id}, not a string. See /schemas/core/format-id.json for the full shape.")]

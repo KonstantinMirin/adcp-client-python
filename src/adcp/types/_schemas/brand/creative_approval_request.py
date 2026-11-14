@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types._base import Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ..core.context import ContextObject
@@ -23,6 +23,10 @@ class CreativeApprovalRequest(AdCPVersionEnvelope):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/creative-approval-request.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/creative-approval-request.json', pointer='#/properties/creative_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-request.json', pointer='#/properties/creative_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     rights_id: Annotated[str, Field(description='Rights grant this creative was produced under')]
     creative_id: Annotated[str | None, Field(description='Buyer-assigned creative identifier. Equivalent to OpenRTB crid. Used to track approval status across resubmissions.'), OmittedNotNull] = None
     creative_url: Annotated[HostedUrl, Field(description='URL where the creative asset can be retrieved for review')]

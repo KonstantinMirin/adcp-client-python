@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import DictMinProperties1, HostedUrl
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -63,6 +63,10 @@ class LogosItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     url: Annotated[HostedUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation'), OmittedNotNull] = None
     background: Annotated[Background | None, Field(description='Background compatibility'), OmittedNotNull] = None
@@ -90,6 +94,10 @@ class SearchBrandResult(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/search-brands-response.json', pointer='#/definitions/SearchBrandResult/properties/logos/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     brand_id: Annotated[str, Field(description='Brand identifier. Pass to get_brand_identity or get_rights for the next step.')]
     house: Annotated[ObjDomainName | None, Field(description='The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.'), OmittedNotNull] = None
     relationship_trust: Annotated[RelationshipTrust | None, Field(description="Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution."), OmittedNotNull] = None

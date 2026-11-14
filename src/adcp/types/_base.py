@@ -395,12 +395,19 @@ WIDENED, UNDERDETERMINED = "WIDENED", "UNDERDETERMINED"
 #: exists.
 #:
 #: **IT IS NOT AN EXEMPTION AND IT IS NOT A RATCHET.**  A ``NARROWED`` declaration carries
-#: the same four things every other kind does -- the document, the pointer, the keyword
-#: whose value is refused, and the ``fact`` in the document's own spelling -- so the
-#: verifier can still check that the narrowing is REAL (a declaration about nothing is
-#: ``unproved``, exactly as for a widening) and a reader can still find the document's
-#: statement and read it.  What it changes is only that the verdict says "declared"
-#: instead of "failed".
+#: the document, the pointer and the keyword, so the verifier can still check that the
+#: narrowing is REAL -- a declaration about nothing is ``unproved``, exactly as for a
+#: widening -- and a reader can still find the node and read it.  What it changes is only
+#: that the verdict says "declared" instead of "failed".
+#:
+#: **AND ``fact`` MEANS THE OPPOSITE OF WHAT IT MEANS FOR A WIDENING, which has to be said
+#: because the field's own docstring says the other thing.**  For a ``WIDENED`` declaration
+#: ``fact`` is what the DOCUMENT states and the annotation dropped, so section 8 can look
+#: for it in the document and find it.  A narrowing drops nothing: the annotation ADDS a
+#: constraint the document does not state, so there is no document statement to quote and
+#: ``fact`` is the constraint the ANNOTATION adds, in the keyword's own spelling --
+#: ``{"maxLength": 2083}`` for ``AdCPUrl``'s cap.  Looking for THAT in the document and
+#: failing to find it is what makes the declaration true rather than false.
 #:
 #: **AND READING 1 IS NOT WEAKENED BY IT.**  Reading 1 is that a class accepts exactly
 #: what its document accepts; a narrowing BREAKS it, and declaring one does not mend it.

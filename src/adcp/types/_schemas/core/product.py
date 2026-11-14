@@ -201,6 +201,10 @@ class ProvidersItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('identity_match', True, (True,)),), require=('agent_url', 'countries', 'uid_types'), forbid=()),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/product.json', pointer='#/properties/trusted_match/properties/providers/items/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/product.json', pointer='#/properties/trusted_match/properties/providers/items/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: Annotated[HostedUrl, Field(description="Provider's agent URL from the registry. Canonical identifier for this TMP provider.")]
     context_match: Annotated[StrictBool | None, Field(description='Whether this provider handles context match for this product.'), OmittedNotNull] = False
     identity_match: Annotated[StrictBool | None, Field(description='Whether this provider handles identity match for this product.'), OmittedNotNull] = False
@@ -216,6 +220,10 @@ class TrustedMatch(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product.json', pointer='#/properties/trusted_match')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/product.json', pointer='#/properties/trusted_match/properties/providers/items/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/product.json', pointer='#/properties/trusted_match/properties/providers/items/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     context_match: Annotated[StrictBool, Field(description="Whether this product supports Context Match requests. When true, the publisher's TMP router will send context match requests to registered providers for this product's inventory.")]
     identity_match: Annotated[StrictBool | None, Field(description="Whether this product supports Identity Match requests. When true, the publisher's TMP router will send identity match requests to evaluate user eligibility."), OmittedNotNull] = False
     response_types: Annotated[list[TMPResponseType] | None, Field(description='What the publisher can accept back from context match.', json_schema_extra={'default': ['activation']}, min_length=1), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(list[TMPResponseType]).validate_python(['activation']))
@@ -273,6 +281,8 @@ class Product(AdCPBaseModel):
         ConditionalRequired((Match('targeting_resolution', True, None),), require=('is_custom', 'expires_at'), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/product.json', pointer='#/properties/trusted_match/properties/providers/items/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/product.json', pointer='#/properties/trusted_match/properties/providers/items/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/product.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['signal_targeting_options']}, {'required': ['signal_targeting_rules']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/product.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'execution_requirements': {'contains': {'properties': {'kind': {'const': 'event_source'}}, 'required': ['kind']}}}, 'required': ['execution_requirements']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/product.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'execution_requirements': {'contains': {'properties': {'kind': {'const': 'catalog'}}, 'required': ['kind']}}}, 'required': ['execution_requirements']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),

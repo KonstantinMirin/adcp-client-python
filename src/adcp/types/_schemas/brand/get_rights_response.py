@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max1, HostedUrl
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -35,6 +35,10 @@ class GetRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelo
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class ExclusivityStatus(AdCPBaseModel):
@@ -54,6 +58,10 @@ class PreviewAssetsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     url: HostedUrl
     usage: Annotated[str | None, OmittedNotNull] = None
 
@@ -63,6 +71,10 @@ class RightsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     rights_id: Annotated[str, Field(description='Identifier for this rights offering. Referenced in acquire_rights.')]
     brand_id: Annotated[str, Field(description="Brand identifier from the agent's roster")]
     name: Annotated[str, Field(description='Display name of the rights subject')]
@@ -97,6 +109,10 @@ class GetRightsSuccess(GetRightsResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-rights-response.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-rights-response.json', pointer='#/oneOf/0/properties/rights/items/properties/preview_assets/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     rights: Annotated[list[RightsItem], Field(description='Matching rights with pricing options, ranked by relevance')]
     excluded: Annotated[list[ExcludedItem] | None, Field(description='Results that matched but were filtered out, with reasons'), OmittedNotNull] = None

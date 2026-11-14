@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 
@@ -17,6 +17,10 @@ class AccountSetupRequiredDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/account-setup-required.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='error-details/account-setup-required.json', pointer='#/properties/setup_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='error-details/account-setup-required.json', pointer='#/properties/setup_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     setup_url: Annotated[HostedUrl | None, Field(description='URL where account setup can be completed'), OmittedNotNull] = None
     setup_steps: Annotated[list[str] | None, Field(description='Steps remaining before the account is ready'), OmittedNotNull] = None
 

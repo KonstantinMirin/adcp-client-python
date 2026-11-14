@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, StrMaxLen255, StrMaxLen500, TermsTotalBudgetCurrency
 
 
@@ -59,6 +59,12 @@ class InsertionOrder(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/insertion-order.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/insertion-order.json', pointer='#/properties/terms_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/insertion-order.json', pointer='#/properties/terms_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/insertion-order.json', pointer='#/properties/signing_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/insertion-order.json', pointer='#/properties/signing_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     io_id: Annotated[StrMaxLen255, Field(description='Unique identifier for this insertion order. Referenced by io_acceptance on create_media_buy.')]
     terms: Annotated[Terms | None, Field(description='Summary fields echoed from the committed proposal for agent verification. Buyer agents use these to confirm the IO matches what was negotiated before a human signs. These are read-only summaries, not negotiation surfaces — deal terms live on products and packages.'), OmittedNotNull] = None
     terms_url: Annotated[HostedUrl | None, Field(description='URL to a human-readable document containing the full insertion order terms'), OmittedNotNull] = None

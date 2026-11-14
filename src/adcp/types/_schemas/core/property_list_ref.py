@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, StrMinLen1
 
 
@@ -17,6 +17,10 @@ class PropertyListReference(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/property-list-ref.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/property-list-ref.json', pointer='#/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/property-list-ref.json', pointer='#/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: Annotated[HostedUrl, Field(description='URL of the agent managing the property list')]
     list_id: Annotated[StrMinLen1, Field(description='Identifier for the property list within the agent')]
     auth_token: Annotated[str | None, Field(description='JWT or other authorization token for accessing the list. Optional if the list is public or caller has implicit access.'), OmittedNotNull] = None

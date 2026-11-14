@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types._base import Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpRequest
 
@@ -27,6 +27,10 @@ class UpdatePropertyListRequest(AdCPVersionEnvelope, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/update-property-list-request.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='property/update-property-list-request.json', pointer='#/properties/webhook_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='property/update-property-list-request.json', pointer='#/properties/webhook_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     list_id: Annotated[str, Field(description='ID of the property list to update')]
     account: Annotated[AccountReference | None, Field(description='Account that owns the list. Required when the authenticated agent has access to multiple accounts; optional otherwise.'), OmittedNotNull] = None
     name: Annotated[str | None, Field(description='New name for the list'), OmittedNotNull] = None

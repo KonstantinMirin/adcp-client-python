@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictInt
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, IntMin1, SchemaIntegral
 
 from ..core.account_ref import AccountReference
@@ -22,6 +22,10 @@ class CollectionList(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/collection-list.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='collection/collection-list.json', pointer='#/properties/webhook_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='collection/collection-list.json', pointer='#/properties/webhook_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     list_id: Annotated[str, Field(description='Unique identifier for this collection list')]
     name: Annotated[str, Field(description='Human-readable name for the list')]
     description: Annotated[str | None, Field(description="Description of the list's purpose"), OmittedNotNull] = None

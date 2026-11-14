@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from .catchment import Catchment
@@ -24,6 +24,10 @@ class StoreItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/store-item.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/store-item.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/store-item.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     store_id: Annotated[str, Field(description='Unique identifier for this store. Used to reference specific stores in targeting, inventory feeds, and creative templates.')]
     name: Annotated[str, Field(description="Human-readable store name (e.g., 'Amsterdam Flagship', 'Brooklyn Heights').")]
     location: Annotated[ObjLatLng, Field(description='Geographic coordinates of the store.')]

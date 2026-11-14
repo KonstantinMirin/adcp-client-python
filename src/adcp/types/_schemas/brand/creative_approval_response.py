@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import FailedResponse
@@ -31,6 +31,16 @@ class CreativeApprovalResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/0/properties/creative_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/0/properties/creative_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/1/properties/creative_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/1/properties/creative_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/2/properties/creative_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/2/properties/creative_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/2/properties/status_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/2/properties/status_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class CreativeApproved(CreativeApprovalResponse):
@@ -40,6 +50,10 @@ class CreativeApproved(CreativeApprovalResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/creative-approval-response.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/0/properties/creative_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/0/properties/creative_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     approval_status: Annotated[Literal['approved'], Field(description='Creative has been approved for distribution. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization (#4878).')]
     rights_id: str
@@ -59,6 +73,10 @@ class CreativeRejected(CreativeApprovalResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/1/properties/creative_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/1/properties/creative_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     approval_status: Annotated[Literal['rejected'], Field(description='Creative was rejected')]
     rights_id: str
     creative_id: Annotated[str | None, Field(description="Echo of the buyer's creative identifier"), OmittedNotNull] = None
@@ -76,6 +94,12 @@ class CreativePendingReview(CreativeApprovalResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/creative-approval-response.json', pointer='#/oneOf/2')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/2/properties/creative_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/2/properties/creative_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/2/properties/status_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/creative-approval-response.json', pointer='#/oneOf/2/properties/status_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     approval_status: Annotated[Literal['pending_review'], Field(description='Creative is queued for review')]
     rights_id: str

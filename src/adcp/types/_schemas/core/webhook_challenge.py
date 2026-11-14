@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, AgentWebhookChallengeChallenge, HostedUrl
 
@@ -23,6 +23,10 @@ class WebhookChallenge(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/webhook-challenge.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('event_types'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/webhook-challenge.json', pointer='#/properties/seller_agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/webhook-challenge.json', pointer='#/properties/seller_agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     type: Annotated[Literal['webhook.challenge'], Field(description='Discriminator for endpoint proof-of-control challenges.')]
     challenge: Annotated[AgentWebhookChallengeChallenge, Field(description='Opaque, cryptographically random value that the receiver must echo in the response body. Recommended encoding: base64url without padding.')]

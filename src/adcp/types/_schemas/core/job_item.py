@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from .currency_code import CurrencyCode
@@ -83,6 +83,10 @@ class JobItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/job-item.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/job-item.json', pointer='#/properties/apply_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/job-item.json', pointer='#/properties/apply_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     job_id: Annotated[str, Field(description='Unique identifier for this job posting.')]
     title: Annotated[str, Field(description="Job title (e.g., 'Senior Software Engineer', 'Marketing Manager').")]
     company_name: Annotated[str, Field(description='Hiring company or organization name.')]

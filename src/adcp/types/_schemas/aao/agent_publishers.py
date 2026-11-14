@@ -67,6 +67,10 @@ class AAODirectoryAgentPublishersInverseLookupResponse(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='aao/agent-publishers.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='aao/agent-publishers.json', pointer='#/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='aao/agent-publishers.json', pointer='#/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: Annotated[HostedUrl, Field(description='Canonicalized echo of the agent_url that was looked up. Lowercase host, default port stripped, trailing slash on path component normalized — matches the canonicalization the SDK applies in `verify_agent_authorization`.')]
     directory_indexed_at: Annotated[AwareDatetime | None, Field(description="When the directory last completed a refresh of any publisher in this result. Provenance anchor for the consumer's own cache. NULL on empty pages — there's no per-publisher anchor to report; consumers SHOULD treat a null value as 'no freshness assertion for this response' and not advance their own cache freshness.")]
     publishers: Annotated[list[PublisherEntry], Field(description='Publishers whose adagents.json authorizes this agent. Empty array is a valid response (the directory has indexed this agent but no current authorizations resolve).')]

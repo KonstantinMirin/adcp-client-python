@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, StrMinLen1MaxLen500
 
 from .agent_encryption_key import AgentEncryptionKey
@@ -17,6 +17,10 @@ class AuthorizedAgentBaseFields(AdCPBaseModel):
     Fields shared by every variant of `authorized_agents[*]` in adagents.json, regardless of authorization_type. Variants `allOf` this base and add their discriminator-specific fields. Centralized to prevent drift across all authorization-type variants.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/authorized-agent-base.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/authorized-agent-base.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/authorized-agent-base.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     url: Annotated[HostedUrl, Field(description="The authorized agent's protocol endpoint URL: the exact agent URL buyers are given and send AdCP requests to, including the path (e.g., `https://agent.example.com/mcp`). A bare origin matches only an agent served at the root. An agent reachable at more than one agent URL (for example, separate MCP and A2A endpoints) needs one entry per URL. Callers comparing this URL against a registry (sales-agent list, signal-provider registry, TMP provider lookup, etc.) MUST canonicalize both sides per the AdCP URL canonicalization rules, not byte-equality — two URLs that differ only in case, default port, or percent-encoding of unreserved characters are the same agent. See docs/reference/url-canonicalization.")]
     authorized_for: Annotated[StrMinLen1MaxLen500, Field(description='Human-readable description of what this agent is authorized to do — what it sells (for sales/property agents) or what data it provides (for signal agents). The variant the entry uses (`property_ids`, `signal_tags`, etc.) tells consumers which inflection applies; this field carries the operator-supplied label.')]
     signing_keys: Annotated[list[AgentSigningKey] | None, Field(description='Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.', min_length=1), OmittedNotNull] = None

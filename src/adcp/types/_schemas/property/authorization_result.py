@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 
@@ -42,6 +42,10 @@ class AuthorizationResult(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/authorization-result.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='property/authorization-result.json', pointer='#/properties/sales_agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='property/authorization-result.json', pointer='#/properties/sales_agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     status: Annotated[Status, Field(description='Authorization status: authorized (agent in adagents.json), unauthorized (agent not in adagents.json), unknown (could not fetch or parse adagents.json)')]
     publisher_domain: Annotated[str | None, Field(description='The publisher domain where adagents.json was checked'), OmittedNotNull] = None
     sales_agent_url: Annotated[HostedUrl | None, Field(description='The sales agent URL that was validated'), OmittedNotNull] = None

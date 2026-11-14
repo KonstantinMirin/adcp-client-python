@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from .activation_key import ActivationKey
@@ -22,6 +22,10 @@ class Deployment(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/deployment.json', pointer='#/oneOf/1/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/deployment.json', pointer='#/oneOf/1/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class DeploymentPlatform(Deployment):
@@ -43,6 +47,10 @@ class DeploymentAgent(Deployment):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/deployment.json', pointer='#/oneOf/1')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/deployment.json', pointer='#/oneOf/1/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/deployment.json', pointer='#/oneOf/1/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     type: Annotated[Literal['agent'], Field(description='Discriminator indicating this is an agent URL-based deployment')]
     agent_url: Annotated[HostedUrl, Field(description='URL identifying the deployment agent')]
     account: Annotated[str | None, Field(description='Account identifier if applicable'), OmittedNotNull] = None

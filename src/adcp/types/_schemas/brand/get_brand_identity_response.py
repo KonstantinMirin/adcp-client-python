@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, StrictFloat, StrictInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, Rule
 from adcp.types.constraints import (
     BrandDiscoveryColorValue,
@@ -46,6 +46,12 @@ class GetBrandIdentityResponse(BranchDispatchMixin, AdCPVersionEnvelope, Protoco
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class ObjDomainName(AdCPBaseModel):
@@ -65,6 +71,10 @@ class LogosItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     url: Annotated[HostedUrl, Field(description='URL to the logo asset')]
     orientation: Annotated[LogoOrientation | None, Field(description='Logo aspect ratio orientation'), OmittedNotNull] = None
     background: Annotated[Background | None, Field(description='Background compatibility'), OmittedNotNull] = None
@@ -153,6 +163,10 @@ class AssetsItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     asset_id: Annotated[str, Field(description='Unique identifier')]
     asset_type: Annotated[AssetContentType, Field(description='Type of asset content')]
     url: Annotated[HostedUrl, Field(description='URL to CDN-hosted asset file')]
@@ -188,6 +202,12 @@ class GetBrandIdentitySuccess(GetBrandIdentityResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/logos/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/get-brand-identity-response.json', pointer='#/oneOf/0/properties/assets/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     brand_id: Annotated[str, Field(description='Brand identifier')]
     house: Annotated[ObjDomainName, Field(description='The house (corporate entity) this brand belongs to. Always returned regardless of authorization level.')]

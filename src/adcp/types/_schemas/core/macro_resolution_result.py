@@ -51,6 +51,8 @@ class MacroResolutionResult(AdCPBaseModel):
         ConditionalRequired((Match('status', True, ('preserved_for_downstream',)),), require=(), forbid=('performed_by',)),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/macro-resolution-result.json', pointer='#/properties/dialect_namespace', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/macro-resolution-result.json', pointer='#/properties/dialect_namespace', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'enum': ['iab_vast', 'iab_daast']}, 'operation': {'const': 'resolve_value'}}, 'required': ['dialect', 'operation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/5', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'adcp'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/macro-resolution-result.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dialect': {'const': 'unknown'}}, 'required': ['dialect']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),

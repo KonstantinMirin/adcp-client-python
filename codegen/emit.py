@@ -140,6 +140,7 @@ from codegen.lower import enum as lower_enum
 from codegen.lower import envelope as lower_envelope
 from codegen.lower import message as lower_message
 from codegen.lower import names as lower_names
+from adcp.types._base import NARROWED
 from codegen.refusal import BuildFailure, Kind, Refusal
 from codegen.schema import parse as schema
 
@@ -2871,6 +2872,23 @@ def emit(
         # property of the COMPILER (§2) and so is a raise and not a refusal.  Measured
         # over the 1,054 portable documents: 0.
         for one in settled:
+            # **A NARROWED DECLARATION NAMES A KEYWORD THE DOCUMENT DOES NOT STATE, and
+            # that is what it IS** (:data:`adcp.types._base.NARROWED`).  The rule above is
+            # a widening's: a widening drops a fact the document states, so the stating
+            # pointer must state it or no obligation can discharge the declaration.  A
+            # narrowing drops nothing -- the ANNOTATION adds a constraint the document is
+            # silent about -- so requiring the document to state it would make the kind
+            # undeclarable, which is the gap ``adcp-client-python-fq8d`` records and the
+            # reason 218 pairs reported an accepted decision as a failure.
+            #
+            # **AND THE OBLIGATION IS THE OTHER DIRECTION, so the identity still holds.**
+            # ``check_admits`` discharges a NARROWED declaration by finding a value the
+            # document ADMITS and the class REFUSES on that keyword's cause; a declaration
+            # at a node where the annotation adds nothing finds no such value and reports
+            # ``unproved`` -- the same fate as a widening nothing can discharge.  So the
+            # identity is unchanged and only which side must state the keyword differs.
+            if one.kind == NARROWED:
+                continue
             why = stated_where_declared(one, doc)
             if why is not None:
                 raise BuildFailure(

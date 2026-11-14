@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AdCPVersionEnvelopeAdcpVersion,
     ContextSignalsEmbeddingDims,
@@ -127,6 +127,12 @@ class ContextMatchRequest(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/context-match-request.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='trusted-match/context-match-request.json', pointer='#/properties/$schema', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='trusted-match/context-match-request.json', pointer='#/properties/$schema', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='trusted-match/context-match-request.json', pointer='#/properties/seller_agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='trusted-match/context-match-request.json', pointer='#/properties/seller_agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     schema_: Annotated[HostedUrl | None, Field(alias='$schema', description='Optional schema URI for validation. Ignored at runtime.'), OmittedNotNull] = None
     adcp_version: Annotated[AdCPVersionEnvelopeAdcpVersion | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin. Inlined here (rather than via core/version-envelope.json allOf) so this schema can keep `additionalProperties: false` — the privacy boundary on this endpoint is contract-bearing.'), OmittedNotNull] = None
     adcp_major_version: Annotated[IntMin1Max99 | None, Field(description='DEPRECATED in favor of adcp_version. Removed in 4.0. Inlined alongside adcp_version to preserve strict-mode on this endpoint.'), OmittedNotNull] = None

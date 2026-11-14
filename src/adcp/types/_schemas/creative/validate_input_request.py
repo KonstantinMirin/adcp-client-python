@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HostedUrl
 from adcp.types.envelopes import AdcpRequest
 
@@ -22,6 +22,10 @@ class TargetsItem(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2/properties/id', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2/properties/id', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class CanonicalFormatTarget(TargetsItem):
@@ -38,6 +42,10 @@ class ProductTarget(TargetsItem):
 
 class ThirdPartyFormatTarget(TargetsItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2/properties/id', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2/properties/id', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     kind: Literal['third_party_format']
     id: Annotated[HostedUrl, Field(description='URI-form format identifier referencing a third-party format definition (e.g., `https://creativevendor.example/formats/image_300x250@sha256:...`). Validators fetch the definition (digest-pinned, cached) and validate the manifest against it.')]
 
@@ -62,6 +70,10 @@ class ValidateInputRequest(AdCPBaseModel, AdcpRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-request.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2/properties/id', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2/properties/id', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     account: Annotated[AccountReference | None, Field(description='Optional account scope for seller-specific product validation. Required by sellers that route product declarations by buyer account.'), OmittedNotNull] = None
     brand: Annotated[BrandReference | None, Field(description='Optional brand scope when account is omitted or the seller keys sandbox validation by brand identity.'), OmittedNotNull] = None
     manifest: Annotated[CreativeManifest, Field(description='Creative manifest to validate.')]

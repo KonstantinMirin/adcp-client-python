@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max1, HostedUrl
 
@@ -48,6 +48,10 @@ class AudienceEvidenceRequirements(AdCPBaseModel):
         UniqueItems('accepted_attestation_issuers'),
         UniqueItems('accepted_attestation_claim_types'),
         ConditionalRequired((Match('independent_attestation_required', True, (True,)),), require=('accepted_attestation_issuers',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_claim_types/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_claim_types/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     requirement_mode: Annotated[RequirementMode, Field(description='required excludes products whose published evidence violates the constraints; preferred only affects ranking and explanation. When this policy affects inclusion or ranking, the seller MUST return the exact matching audience_evidence_selections even if get_products.fields omitted that field.')]
     evidence_presence: Annotated[EvidencePresence, Field(description='required applies the mode to evidence presence itself. when_available applies constraints only when a product publishes evidence: with requirement_mode required, a product with no evidence remains eligible but a product with evidence must have an admissible item; with preferred, presence and admissibility only affect ranking.')]

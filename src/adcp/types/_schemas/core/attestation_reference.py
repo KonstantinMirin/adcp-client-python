@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, RequiredGroups, Rule
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
@@ -51,6 +51,10 @@ class EmbeddedCredential(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/embedded_credential')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-reference.json', pointer='#/properties/embedded_credential/properties/format', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-reference.json', pointer='#/properties/embedded_credential/properties/format', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     format: Annotated[HostedUrl, Field(description='Open, absolute URI identifying the credential/proof format. AdCP does not impose a universal issuer payload schema.')]
     value: Annotated[dict[str, Any] | StrMinLen1, Field(description='Credential encoded as a JSON object or a compact string, according to format.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -93,6 +97,12 @@ class AttestationReference(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('locator',), ('embedded_credential',)), 'anyOf'),
         ConditionalRequired((Match('locator', True, None),Match('embedded_credential', True, None),), require=('content_digest',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-reference.json', pointer='#/properties/claim_type', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-reference.json', pointer='#/properties/claim_type', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-reference.json', pointer='#/properties/embedded_credential/properties/format', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-reference.json', pointer='#/properties/embedded_credential/properties/format', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     issuer: AttestationIssuer
     claim_type: Annotated[HostedUrl, Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.')]

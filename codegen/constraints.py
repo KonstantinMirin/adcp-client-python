@@ -258,6 +258,71 @@ def url_type(node: Mapping[str, Any]) -> str:
     return f"{MODULE}.{URL if pins_https else HIERARCHICAL}"
 
 
+def narrowed_by_url_type(selected: str) -> dict[str, object]:
+    """The bounds the URL type ``selected`` ADDS of its own, which no document states.
+
+    **DERIVED FROM THE TYPE AND NEVER LISTED HERE**, which is what keeps the declaration
+    true across a pydantic bump: the answer is read off the type's own published JSON
+    schema, so if ``UrlConstraints``' default cap moves, the declaration moves with it.  A
+    list would go stale silently and the declaration would then say the wrong number while
+    still reading as declared.
+
+    Measured on pydantic 2.13.5: ``AdCPUrl`` publishes ``maxLength: 2083`` and
+    ``minLength: 1``; ``HostedUrl`` publishes ``minLength: 1``.  Those are the two facts
+    ``codegen/narrowings.py`` records as "the registered part" of the registry it replaced,
+    and the cap is the one ``docs/plan/rebuild-plan.md`` §2 accepts in capitals.
+
+    ``format`` is NOT returned.  A URL type does narrow the string it admits -- it refuses
+    ``mailto:`` at a bare ``format: uri`` node and normalises the host -- but ``format`` is
+    a keyword the DOCUMENT states at these nodes, so a declaration naming it would read as
+    a widening's ``fact`` (a document statement the annotation dropped) when it is the
+    opposite.  The scheme and the normalisation are decided in §2 by the choice of type and
+    belong to that decision, not to a per-node bound.
+    """
+    import typing
+
+    from pydantic import TypeAdapter
+    from pydantic.networks import UrlConstraints
+
+    from adcp.types import constraints as emitted
+
+    name = selected.rsplit(".", 1)[-1]
+    chosen = getattr(emitted, name)
+    published = TypeAdapter(chosen).json_schema()
+    added: dict[str, object] = {
+        keyword: published[keyword]
+        for keyword in ("maxLength", "minLength")
+        if keyword in published
+    }
+    # **AND THE TWO NARROWINGS THAT DO NOT RENDER, which is why reading the published
+    # schema alone was not enough.**  ``UrlConstraints``' ``host_required`` and
+    # ``allowed_schemes`` refuse strings the document admits and appear in NO JSON Schema
+    # keyword, so a reader comparing our schema to the bundle cannot see them and the
+    # first version of this function missed both.
+    #
+    # Measured: 790 pairs reported ``model_refused_admitted`` on ``url_parsing`` with the
+    # witness ``"urn:ietf:rfc:3986"`` -- a valid URI under ``format: uri``, with no host,
+    # which ``HostedUrl`` refuses with "empty host".  The refusal is CORRECT and decided:
+    # §2's table defines ``HostedUrl`` as ``host_required=True``.  Declared under
+    # ``format``, which is the keyword the document states at these nodes and the one
+    # ``harness._NARROWED_CAUSES`` maps to ``url_parsing``, ``url_scheme`` and
+    # ``url_syntax_violation``.
+    for piece in typing.get_args(chosen):
+        if not isinstance(piece, UrlConstraints):
+            continue
+        refuses = {
+            key: value
+            for key, value in (
+                ("host_required", piece.host_required),
+                ("allowed_schemes", piece.allowed_schemes),
+            )
+            if value
+        }
+        if refuses:
+            added["format"] = refuses
+    return added
+
+
 def expressed_by_url_type(node: Mapping[str, Any]) -> frozenset[str]:
     """Which of ``node``'s own constraint keywords the URL type :func:`url_type` picks
     ALREADY STATES.

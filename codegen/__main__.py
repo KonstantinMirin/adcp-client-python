@@ -52,7 +52,7 @@ import sys
 import time
 from pathlib import Path
 
-from adcp.types._base import KINDS, SchemaRef, schema_at
+from adcp.types._base import KINDS, NARROWED, SchemaRef, schema_at
 from codegen import bundle, catalogue, harness, keywords, patch, refusal
 from codegen.emit import PACKAGE, TREE, emit, write
 from codegen.verify import witness
@@ -416,10 +416,21 @@ def main(argv: list[str] | None = None) -> int:
     # step's exit condition.
     declared = [a for one in out.approximations.values() for a in one]
     for a in declared:
+        # **THE SENTENCE RUNS THE WAY THE KIND DOES**, which is the whole of why
+        # :data:`adcp.types._base.NARROWED` carries a comment about its ``fact``: a
+        # widening's fact is the constraint the DOCUMENT states and the annotation drops,
+        # and a narrowing's is the constraint the ANNOTATION adds and the document never
+        # stated.  One sentence for both printed 437 narrowings as "the document says
+        # {'maxLength': 2083}" -- which no AdCP document says anywhere, and a reader
+        # checking that claim against the bundle finds nothing and distrusts the line.
+        said = (
+            f"the annotation adds {a.fact!r} and the document does not state it"
+            if a.kind == NARROWED
+            else f"the document says {a.fact!r} and the annotation does not carry it"
+        )
         print(
-            f"approximated {a.document}{a.pointer} on {a.keyword}: the document says "
-            f"{a.fact!r} and the annotation does not carry it; rung {a.rung} ({a.kind}), "
-            f"{a.attribution}"
+            f"approximated {a.document}{a.pointer} on {a.keyword}: {said}; "
+            f"rung {a.rung} ({a.kind}), {a.attribution}"
         )
     by_kind = collections.Counter(a.kind for a in declared)
     ours = [a for a in declared if a.attribution.startswith(keywords.DOCUMENT)]

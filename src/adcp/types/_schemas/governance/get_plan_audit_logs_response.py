@@ -15,7 +15,7 @@ from pydantic import (
     StrictInt,
 )
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     FloatGt0,
@@ -325,6 +325,12 @@ class EntriesItem(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('runtime_attestations', True, None),), require=('runtime_attestation_binding_digest',), forbid=()),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/caller', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/caller', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/reviewed_by', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/reviewed_by', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     id: Annotated[str, Field(description='Entry identifier.')]
     type: Annotated[EntriesItemType, Field(description='Entry type.')]
     timestamp: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp.')]
@@ -422,6 +428,12 @@ class PlansItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/caller', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/caller', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/reviewed_by', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/reviewed_by', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     plan_id: Annotated[str, Field(description='Plan identifier.')]
     plan_version: Annotated[StrictInt, Field(description='Current plan version.'), SchemaIntegral]
     status: Annotated[PlansItemStatus, Field(description='Plan lifecycle status.')]
@@ -440,6 +452,12 @@ class GetPlanAuditLogsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRespon
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/caller', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/caller', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/reviewed_by', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/reviewed_by', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     plans: Annotated[list[PlansItem], Field(description='Audit data for each requested plan.')]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

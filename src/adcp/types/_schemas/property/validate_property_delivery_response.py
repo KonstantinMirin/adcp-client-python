@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat, StrictInt
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl, SchemaIntegral
 from adcp.types.envelopes import AdcpResponse
 
@@ -44,6 +44,10 @@ class Aggregate(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#/properties/aggregate')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='property/validate-property-delivery-response.json', pointer='#/properties/aggregate/properties/methodology_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='property/validate-property-delivery-response.json', pointer='#/properties/aggregate/properties/methodology_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     score: Annotated[StrictFloat | None, Field(description='Numeric score (0-100 scale typical, but agent-defined)'), OmittedNotNull] = None
     grade: Annotated[str | None, Field(description="Letter grade or category (e.g., 'A+', 'B-', 'Gold', 'Compliant')"), OmittedNotNull] = None
     label: Annotated[str | None, Field(description="Human-readable summary (e.g., '85% compliant', 'High quality')"), OmittedNotNull] = None
@@ -76,6 +80,10 @@ class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, Ad
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/validate-property-delivery-response.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='property/validate-property-delivery-response.json', pointer='#/properties/aggregate/properties/methodology_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='property/validate-property-delivery-response.json', pointer='#/properties/aggregate/properties/methodology_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     compliant: Annotated[StrictBool | None, Field(description='Overall compliance flag for the submitted delivery — true when every record is compliant, false when any record is non_compliant. Derived from summary.non_compliant_records === 0 but surfaced at the root as a convenience signal for buyers. Agents MAY omit this field when the response represents a partial validation (e.g., when include_compliant is false and results only contains non_compliant records); consumers SHOULD fall back to summary counts if compliant is absent.'), OmittedNotNull] = None
     list_id: Annotated[str, Field(description='ID of the property list validated against')]
     summary: Annotated[Summary, Field(description='Aggregate validation statistics')]

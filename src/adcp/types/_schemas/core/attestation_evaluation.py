@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
@@ -61,6 +61,10 @@ class ActionBinding(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('action_id',), ('action_digest',)), 'anyOf'),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-evaluation.json', pointer='#/properties/action_binding/properties/action_type', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-evaluation.json', pointer='#/properties/action_binding/properties/action_type', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     action_type: Annotated[HostedUrl, Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
     action_id: Annotated[StrMinLen1MaxLen1024 | None, Field(description="Stable identifier of the consuming action within the domain consumer's namespace."), OmittedNotNull] = None
     action_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 digest of the domain-defined canonical action preimage.'), OmittedNotNull] = None
@@ -78,6 +82,12 @@ class AttestationEvaluation(AdCPBaseModel):
         UniqueItems('reason_codes'),
         ConditionalRequired((Match('outcome', True, ('verified', 'expired', 'revoked', 'invalid', 'subject_mismatch', 'digest_mismatch')),), require=('credential_digest', 'proof_format'), forbid=()),
         ConditionalRequired((Match('credential_digest', True, None),), require=('proof_format',), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/attestation-evaluation.json', pointer='#/properties/proof_format', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-evaluation.json', pointer='#/properties/proof_format', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/attestation-evaluation.json', pointer='#/properties/action_binding/properties/action_type', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/attestation-evaluation.json', pointer='#/properties/action_binding/properties/action_type', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     reference_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 of the RFC 8785 JSON Canonicalization Scheme encoding of the complete AttestationReference, including embedded_credential when present. This prevents a result for one presentation from being replayed for another.')]
     credential_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of the exact resolved or embedded credential bytes according to proof_format. REQUIRED by the normative contract when outcome is verified, expired, revoked, invalid, subject_mismatch, or digest_mismatch; omitted when no credential bytes were obtained. For dual delivery, this is the resolved credential digest; reference_digest independently binds the embedded bytes.'), OmittedNotNull] = None

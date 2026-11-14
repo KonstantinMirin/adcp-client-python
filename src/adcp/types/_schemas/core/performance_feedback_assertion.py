@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import FloatGt0Lt1, HostedUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen100, StrMinLen1MaxLen255
 
@@ -53,6 +53,10 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         Dependencies('methodology', ('producer',)),
         Dependencies('methodology_version', ('producer',)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/performance-feedback-assertion.json', pointer='#/properties/evidence_ref', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/performance-feedback-assertion.json', pointer='#/properties/evidence_ref', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     media_buy_id: Annotated[StrMinLen1, Field(description="Receiver-scoped media buy identifier. On the provider-to-orchestrator hop this is the orchestrator's measurement-facing identifier; on the orchestrator-to-seller hop it is the seller-assigned media buy identifier.")]
     package_id: Annotated[StrMinLen1 | None, Field(description='Receiver-scoped package identifier when the assertion is package-specific. The orchestrator maps its measurement-facing identifier to seller-local identifiers during fan-out.'), OmittedNotNull] = None

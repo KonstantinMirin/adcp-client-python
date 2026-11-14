@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AfterValidator, ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HostedUrl, IntMin1
 
@@ -25,6 +25,10 @@ class BrandAgent(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items/properties/brand_agent')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items/properties/brand_agent/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items/properties/brand_agent/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     url: Annotated[HostedUrl, Field(description='MCP endpoint URL of the brand agent.')]
     id: Annotated[str, Field(description='Agent identifier.')]
 
@@ -34,6 +38,10 @@ class VoiceSynthesisRefItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items/properties/brand_agent/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items/properties/brand_agent/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     brand_agent: Annotated[BrandAgent, Field(description='Brand agent that exposed the referenced voice_synthesis entry.')]
     voice_id: Annotated[str, Field(description='voice_synthesis.voice_id from the brand agent.')]
     rights_id: Annotated[str | None, Field(description='Optional rights offering or buyer-specific grant identifier associated with this provisioned voice. Brand-side voice_synthesis uses rights_offering_id for the configuration-time offering anchor. This transformer field may carry that offering ID or a grant ID after provisioning; it remains provenance metadata only, not a build_creative rights token.'), OmittedNotNull] = None
@@ -81,6 +89,10 @@ class Transformer(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('output_capability_ids',), ('output_format_ids',)), 'anyOf'),
         UniqueItems('output_capability_ids'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items/properties/brand_agent/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/transformer.json', pointer='#/properties/voice_synthesis_ref/items/properties/brand_agent/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     transformer_id: Annotated[str, Field(description='Stable identifier for this transformer within the agent. Pass to build_creative `transformer_id` to select it.')]
     name: Annotated[str, Field(description="Human-readable transformer name (e.g. 'Voiceover — Isaac', 'Veo 3 text-to-video').")]

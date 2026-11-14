@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ..core.preview_renderer_metadata import PreviewRendererMetadata
@@ -22,6 +22,12 @@ class PreviewRender(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/preview-render.json', pointer='#/oneOf/0/properties/preview_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-render.json', pointer='#/oneOf/0/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='creative/preview-render.json', pointer='#/oneOf/2/properties/preview_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-render.json', pointer='#/oneOf/2/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class PreviewRenderUrlDimensions(AdCPBaseModel):
@@ -52,6 +58,10 @@ class PreviewRenderUrl(PreviewRender):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/0')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/preview-render.json', pointer='#/oneOf/0/properties/preview_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-render.json', pointer='#/oneOf/0/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     render_id: Annotated[str, Field(description='Unique identifier for this rendered piece within the variant')]
     output_format: Annotated[Literal['url'], Field(description='Discriminator indicating preview_url is provided')]
     preview_url: Annotated[HostedUrl, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.')]
@@ -106,6 +116,10 @@ class PreviewRenderBoth(PreviewRender):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/2')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/preview-render.json', pointer='#/oneOf/2/properties/preview_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/preview-render.json', pointer='#/oneOf/2/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     render_id: Annotated[str, Field(description='Unique identifier for this rendered piece within the variant')]
     output_format: Annotated[Literal['both'], Field(description='Discriminator indicating both preview_url and preview_html are provided')]
     preview_url: Annotated[HostedUrl, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.')]

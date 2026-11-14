@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ..enums.right_use import RightUse
@@ -20,6 +20,10 @@ class GenerationCredential(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/generation-credential.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/generation-credential.json', pointer='#/properties/endpoint', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/generation-credential.json', pointer='#/properties/endpoint', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     provider: Annotated[str, Field(description="LLM or generation service provider identifier (e.g., 'midjourney', 'elevenlabs', 'stability')")]
     rights_key: Annotated[str, Field(description='Scoped API key or token for generating rights-cleared content. The provider validates this key at generation time to verify the caller is authorized.')]
     uses: Annotated[list[RightUse], Field(description='Which rights uses this credential covers', min_length=1)]

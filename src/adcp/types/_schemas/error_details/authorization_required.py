@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ..core.downstream_connection_requirement import DownstreamConnectionRequirement
@@ -19,6 +19,10 @@ class AuthorizationRequiredDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/authorization-required.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='error-details/authorization-required.json', pointer='#/properties/authorization_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='error-details/authorization-required.json', pointer='#/properties/authorization_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     required_connections: Annotated[list[DownstreamConnectionRequirement] | None, Field(description='Complete set of downstream connections known to be required for the relevant product, format, or request.'), OmittedNotNull] = None
     missing_connections: Annotated[list[DownstreamConnectionRequirement] | None, Field(description='Subset of downstream connections that blocked the current request. Sellers SHOULD populate this array when the caller needs to route a human through a connections flow. Entries with `status` of `missing`, `pending`, `expired`, or `revoked` MUST include either `provider` or `authorization_url` so the buyer can route the remediation unambiguously.'), OmittedNotNull] = None
     authorization_url: Annotated[HostedUrl | None, Field(description='General recovery URL when there is a single obvious authorization step or when the seller has its own connection-management page.'), OmittedNotNull] = None

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import HostedUrl, StrMinLen1
 
@@ -27,6 +27,10 @@ class GetCreativeFeaturesSuccess(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-features-terminal-success.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/get-creative-features-terminal-success.json', pointer='#/properties/detail_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/get-creative-features-terminal-success.json', pointer='#/properties/detail_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     evaluation_id: Annotated[StrMinLen1 | None, Field(description='Provider-generated identity for this evaluation. Optional in AdCP 3.x and required in AdCP 4.0. Providers SHOULD emit it in 3.x. When present, it MUST be stable across exact response replays and, for async work whose submitted acknowledgement included evaluation_id, MUST be identical to that value. Used for result provenance, consumption and provider-cost reconciliation, and support; it is not an idempotency key or task identity.'), OmittedNotNull] = None
     results: Annotated[list[CreativeFeatureResult], Field(description='Feature values for the evaluated creative')]

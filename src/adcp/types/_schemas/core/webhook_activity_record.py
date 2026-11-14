@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     HostedUrl,
@@ -43,6 +43,10 @@ class WebhookActivityRecord(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/webhook-activity-record.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/webhook-activity-record.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/webhook-activity-record.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     idempotency_key: Annotated[str, Field(description='Equals the `idempotency_key` carried in the webhook payload itself (see docs/building/by-layer/L3/webhooks.mdx § Dedup by `idempotency_key`). Stable across retry attempts of the same logical fire — retries with `attempt` > 1 reuse this key. Buyers correlate this surface with their own endpoint logs via this exact field; the spec deliberately reuses the payload key rather than minting a parallel `delivery_id` so callers do not need a join table. Format is sender-defined; callers MUST treat as opaque.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Optional event-layer identifier copied verbatim from the webhook payload. For fires whose payload carries `notification_id`, sellers SHOULD populate this field on newly recorded attempts and, when populated, MUST copy the payload value without transformation. The field remains optional in AdCP 3.2 so sellers can return retained activity records created before they persisted event identity. Point-in-time delivery-report fires do not define `notification_id` and omit this field. Re-emissions of the same logical event have different `idempotency_key` values but reuse `notification_id`, allowing buyers to distinguish a re-emission from a transport retry. Callers MUST treat the value as opaque.'), OmittedNotNull] = None
     subscriber_id: Annotated[str | None, Field(description='Identifies which registered webhook subscriber received this fire. **Required on records from account-anchored notification channels** (`notification_configs[]` registered via `sync_accounts`) — every subscriber has a `subscriber_id` at registration time, the seller MUST echo it on every fire and every activity record. **Optional on records from per-resource push channels** (`push_notification_config` on a media buy or task) — the calling principal is unambiguous in single-subscriber configurations and the field MAY be omitted; sellers MUST populate it once `reporting_webhook` adopts multi-subscriber (per #3009 in AdCP 4.0). Buyers MUST NOT use absence as a signal that no other subscribers exist; that information is not exposed by this surface.'), OmittedNotNull] = None

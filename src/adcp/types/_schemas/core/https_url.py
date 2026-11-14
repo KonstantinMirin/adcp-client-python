@@ -5,10 +5,16 @@ from typing import Annotated
 
 from pydantic import Field
 
-from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._base import Approximation, SchemaRef, strict_alias
 from adcp.types.constraints import AdCPUrl
 
 __adcp_schema__ = SchemaRef(document='core/https-url.json', pointer='#')
+
+__adcp_approximations__ = (
+        Approximation(document='core/https-url.json', pointer='#', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'allowed_schemes': ['https']}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/https-url.json', pointer='#', keyword='maxLength', kind='NARROWED', rung='KEYWORD', fact={'maxLength': 2083}, attribution='docs/plan/rebuild-plan.md §5 strings/maxLength'),
+        Approximation(document='core/https-url.json', pointer='#', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 HTTPSURL = Annotated[AdCPUrl, Field(description='A URL whose scheme is https. Extracted unchanged from the 46 sites that stated it inline; see adcontextprotocol/adcp#8525. This is the shape adcontextprotocol/adcp#8398 asks the other seven uri patterns to reduce to.')]
 

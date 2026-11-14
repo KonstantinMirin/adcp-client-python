@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import HostedUrl, ZipAssetDigest
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -36,6 +36,10 @@ class AcquireRightsResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEn
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/acquire-rights-response.json', pointer='#/oneOf/0/properties/usage_reporting_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/acquire-rights-response.json', pointer='#/oneOf/0/properties/usage_reporting_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class Disclosure(AdCPBaseModel):
@@ -71,6 +75,10 @@ class AcquireRightsAcquired(AcquireRightsResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/acquire-rights-response.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='brand/acquire-rights-response.json', pointer='#/oneOf/0/properties/usage_reporting_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='brand/acquire-rights-response.json', pointer='#/oneOf/0/properties/usage_reporting_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     rights_id: Annotated[str, Field(description='Rights grant identifier')]
     rights_status: Annotated[Literal['acquired'], Field(description='Rights have been cleared and credentials issued. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization (#4878).')]

@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import (
     AssetsItemContent,
     AssetsItemHeadingLevel,
@@ -112,6 +112,10 @@ class AssetsItemImage(AdCPBaseModel):
     Image asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     type: Literal['image']
     url: Annotated[HostedUrl, Field(description='Image URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
@@ -155,6 +159,12 @@ class AssetsItemVideo(AdCPBaseModel):
     Video asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/thumbnail_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/thumbnail_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     type: Literal['video']
     url: Annotated[HostedUrl, Field(description='Video URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
@@ -186,6 +196,10 @@ class AssetsItemAudio(AdCPBaseModel):
     Audio asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     type: Literal['audio']
     url: Annotated[HostedUrl, Field(description='Audio URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
@@ -204,6 +218,10 @@ class Metadata(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/metadata')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/metadata/properties/canonical', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/metadata/properties/canonical', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     canonical: Annotated[HostedUrl | None, Field(description='Canonical URL'), OmittedNotNull] = None
     author: Annotated[str | None, Field(description='Artifact author name'), OmittedNotNull] = None
     keywords: Annotated[str | None, Field(description='Artifact keywords'), OmittedNotNull] = None
@@ -220,6 +238,10 @@ class Identifiers(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/identifiers')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/identifiers/properties/rss_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/identifiers/properties/rss_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     apple_podcast_id: Annotated[str | None, Field(description='Apple Podcasts ID'), OmittedNotNull] = None
     spotify_collection_id: Annotated[str | None, Field(description='Spotify collection ID'), OmittedNotNull] = None
     podcast_guid: Annotated[str | None, Field(description='Podcast GUID (from RSS feed)'), OmittedNotNull] = None
@@ -235,6 +257,22 @@ class Artifact(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/thumbnail_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/thumbnail_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/metadata/properties/canonical', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/metadata/properties/canonical', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/identifiers/properties/rss_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='content-standards/artifact.json', pointer='#/properties/identifiers/properties/rss_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     property_rid: Annotated[str, Field(description='Stable property identifier from the property catalog. Globally unique across the ecosystem.')]
     artifact_id: Annotated[str, Field(description="Identifier for this artifact within the property. The property owner defines the scheme (e.g., 'article_12345', 'episode_42_segment_3', 'post_abc123').")]
     variant_id: Annotated[str | None, Field(description="Identifies a specific variant of this artifact. Use for A/B tests, translations, or temporal versions. Examples: 'en', 'es-MX', 'v2', 'headline_test_b'. The combination of artifact_id + variant_id must be unique."), OmittedNotNull] = None

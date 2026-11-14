@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import HostedUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen256
 
@@ -26,6 +26,10 @@ class AudienceActivationMethod(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class AdCPAudienceSync(AudienceActivationMethod):
@@ -44,6 +48,10 @@ class ObjAgentUrl(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: Annotated[HostedUrl, Field(description="Buyer agent's registered agent URL. Canonical identifier, mirroring trusted_match.providers[].agent_url.")]
 
 
@@ -55,6 +63,10 @@ class TMPIdentityMatch(AudienceActivationMethod):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/1')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     pattern: Literal['tmp_identity_match']
     buyer_agent: ObjAgentUrl
 

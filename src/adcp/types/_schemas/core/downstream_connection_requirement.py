@@ -65,6 +65,12 @@ class ResourceRef(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref/properties/profile_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref/properties/profile_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref/properties/post_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref/properties/post_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     platform_account_id: Annotated[str | None, Field(description='Provider-native advertiser or business account id, when safe to disclose.'), OmittedNotNull] = None
     identity_id: Annotated[str | None, Field(description='Provider-native creator, page, channel, organization, or profile id, when safe to disclose.'), OmittedNotNull] = None
     handle: Annotated[str | None, Field(description='Provider-native public handle for the owning identity, when available.'), OmittedNotNull] = None
@@ -85,6 +91,12 @@ class DownstreamConnectionRequirement(AdCPBaseModel):
         UniqueItems('required_for'),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref/properties/profile_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref/properties/profile_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref/properties/post_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/resource_ref/properties/post_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/authorization_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/downstream-connection-requirement.json', pointer='#/properties/authorization_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/downstream-connection-requirement.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'enum': ['missing', 'pending', 'expired', 'revoked']}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     provider: Annotated[str | None, Field(description='Stable provider or platform namespace, preferably lowercase. Examples: `social.example`, `shortvideo.example`, or a seller-defined namespace. Omit only when the requirement is provider-agnostic, or when an `authorization_url` fully routes the human to the correct provider-specific connection flow.'), OmittedNotNull] = None

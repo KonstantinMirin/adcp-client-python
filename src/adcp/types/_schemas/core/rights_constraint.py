@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import HostedUrl, IntMin1, StrMinLen1, ZipAssetDigest
 
@@ -25,6 +25,10 @@ class RightsAgent(AdCPBaseModel):
     The agent that granted these rights
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-constraint.json', pointer='#/properties/rights_agent')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/rights-constraint.json', pointer='#/properties/rights_agent/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/rights-constraint.json', pointer='#/properties/rights_agent/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     url: Annotated[HostedUrl, Field(description='MCP endpoint URL of the rights agent')]
     id: Annotated[str, Field(description='Agent identifier')]
 
@@ -102,6 +106,12 @@ class RightsConstraint(AdCPBaseModel):
         UniqueItems('restrictions'),
         UniqueItems('attestation_refs'),
         ConditionalRequired((Match('attestation_refs', True, None),), require=('rights_holder', 'grant_status', 'content_digest'), forbid=()),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/rights-constraint.json', pointer='#/properties/rights_agent/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/rights-constraint.json', pointer='#/properties/rights_agent/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/rights-constraint.json', pointer='#/properties/verification_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/rights-constraint.json', pointer='#/properties/verification_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     rights_id: Annotated[str, Field(description='Rights grant identifier from the acquire_rights response')]
     rights_agent: Annotated[RightsAgent, Field(description='The agent that granted these rights')]

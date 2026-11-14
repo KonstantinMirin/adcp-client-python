@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import GeoForecastDimensionCode, HostedUrl
 
 from ..enums.metro_system import MetroAreaSystem
@@ -46,6 +46,12 @@ class Offering(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/offering.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/offering.json', pointer='#/properties/checkout_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/offering.json', pointer='#/properties/checkout_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/offering.json', pointer='#/properties/landing_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/offering.json', pointer='#/properties/landing_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     offering_id: Annotated[str, Field(description='Unique identifier for this offering. Used by hosts to reference specific offerings in si_get_offering calls.')]
     name: Annotated[str, Field(description="Human-readable offering name (e.g., 'Winter Sale', 'Free Trial', 'Enterprise Platform')")]
     description: Annotated[str | None, Field(description="Description of what's being offered"), OmittedNotNull] = None

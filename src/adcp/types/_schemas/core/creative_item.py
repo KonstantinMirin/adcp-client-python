@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 
@@ -20,6 +20,10 @@ class CreativeItem(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/creative-item.json', pointer='#/oneOf/0/properties/content_uri', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/creative-item.json', pointer='#/oneOf/0/properties/content_uri', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class CreativeItemMedia(CreativeItem):
@@ -27,6 +31,10 @@ class CreativeItemMedia(CreativeItem):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-item.json', pointer='#/oneOf/0')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/creative-item.json', pointer='#/oneOf/0/properties/content_uri', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/creative-item.json', pointer='#/oneOf/0/properties/content_uri', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     asset_kind: Annotated[Literal['media'], Field(description='Discriminator indicating this is a media asset with content_uri')]
     asset_type: Annotated[str, Field(description='Type of asset. Common types: thumbnail_image, product_image, featured_image, logo')]
     asset_id: Annotated[str, Field(description='Unique identifier for the asset within the creative')]

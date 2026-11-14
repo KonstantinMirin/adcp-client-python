@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HostedUrl
 
@@ -23,6 +23,10 @@ class SignalRef(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-ref.json', pointer='#/oneOf/2/properties/signal_source_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-ref.json', pointer='#/oneOf/2/properties/signal_source_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
 
 
 class SignalRefProduct(SignalRef):
@@ -66,6 +70,10 @@ class SignalRefSignalSource(SignalRef):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-ref.json', pointer='#/oneOf/2')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('data_provider_domain',), ('agent_url',), ('source',), ('id',))),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-ref.json', pointer='#/oneOf/2/properties/signal_source_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-ref.json', pointer='#/oneOf/2/properties/signal_source_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     scope: Annotated[Literal['signal_source'], Field(description='Discriminator indicating the signal resolves through the issuing signal source.')]
     signal_source_url: Annotated[HostedUrl, Field(description='URL of the signal source that issues this source-native signal.')]

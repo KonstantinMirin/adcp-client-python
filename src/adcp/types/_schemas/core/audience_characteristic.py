@@ -52,6 +52,9 @@ class AudienceCharacteristic(AdCPBaseModel):
         PresenceGroups((Presence(require=(('value',),), forbid=(('range',),)), Presence(require=(('range',),), forbid=(('value',),))), 'anyOf'),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/audience-characteristic.json', pointer='#/properties/dimension/anyOf/1', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'allowed_schemes': ['https']}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/audience-characteristic.json', pointer='#/properties/dimension/anyOf/1', keyword='maxLength', kind='NARROWED', rung='KEYWORD', fact={'maxLength': 2083}, attribution='docs/plan/rebuild-plan.md §5 strings/maxLength'),
+        Approximation(document='core/audience-characteristic.json', pointer='#/properties/dimension/anyOf/1', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/audience-characteristic.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'dimension': {'const': 'age'}}, 'required': ['dimension']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     dimension: Annotated[Literal['age'] | AdCPUrl, Field(description='Canonical dimension name or HTTPS URI. AdCP 3.2 defines `age`; other values remain provider- or taxonomy-scoped.')]

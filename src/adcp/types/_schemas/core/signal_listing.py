@@ -41,6 +41,8 @@ class SignalListing(AdCPBaseModel):
         ConditionalRequired((Match('demographic_predicate', True, None),), require=('restricted_attributes',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/signal-listing.json', pointer='#/properties/methodology_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/signal-listing.json', pointer='#/properties/methodology_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='core/signal-listing.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'signal_ref': {'type': 'object', 'properties': {'scope': {'const': 'product'}}, 'required': ['scope']}}, 'required': ['signal_ref']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/signal-listing.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['demographic_predicate']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )

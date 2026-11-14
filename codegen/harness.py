@@ -82,7 +82,9 @@ import importlib
 import json
 import pkgutil
 import re
+import sys
 import traceback
+import typing
 from collections import Counter
 from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
@@ -90,6 +92,7 @@ from dataclasses import dataclass, field
 from typing import Any, NamedTuple
 
 import jsonschema
+
 #: **THE REFERENCE RESOLVER AND NOTHING ELSE OF THE LIBRARY.**  The generator is
 #: gone from this module (``adcp-client-python-hzio.5``); what remains is a reader
 #: that follows a ``$ref``, which is not a draw and reaches no strategy.
@@ -2490,6 +2493,18 @@ def _refusal_cause(e: BaseException) -> str:
     return f"{found[0]['type']} at {found[0].get('loc', ())}"
 
 
+def _cause_code(cause: str) -> str:
+    """:func:`_refusal_cause`'s output without its location.
+
+    The cause a row SHOWS is ``"<pydantic type> at <loc>"``, because a reader asking why a
+    class is narrower than its document needs the field as well as the code.  The cause a
+    DECLARATION names is the code alone -- :data:`_NARROWED_CAUSES` maps a document keyword
+    to pydantic's own ``type`` strings and a keyword knows nothing about a loc.  This is the
+    one place the two spellings are reconciled, so neither side has to carry the other's.
+    """
+    return cause.split(" at ", 1)[0]
+
+
 @dataclass
 class AdmitsResult:
     """What the class did with every value its DOCUMENT admits that the witness set states.
@@ -2660,8 +2675,15 @@ def check_admits(
     # and a cause NO declaration names still fails the pair -- so a declaration narrows
     # what is reported and never what is measured.  And the undeclared half is reported
     # FIRST, so a pair with one declared cause and one undeclared one reads as a failure.
-    undeclared = tuple(c for c in res.causes if c not in declared)
-    res.declared_causes = tuple(c for c in res.causes if c in declared)
+    # **A CAUSE CARRIES ITS LOCATION AND A DECLARATION NAMES A CODE, so the comparison is
+    # over the CODE** (:func:`_refusal_cause` builds ``"<type> at <loc>"`` so a reader of
+    # the row knows WHICH field refused).  Compared whole, no declaration ever matched:
+    # ``url_parsing at ('agent_url',)`` is not ``url_parsing``, so all 803 narrowings
+    # reported ``model_refused_admitted`` with the declaration sitting on the class.  The
+    # loc stays in :attr:`rows` where it is read; membership is the code alone, which is
+    # what :data:`_NARROWED_CAUSES` maps a keyword to.
+    undeclared = tuple(c for c in res.causes if _cause_code(c) not in declared)
+    res.declared_causes = tuple(c for c in res.causes if _cause_code(c) in declared)
     if res.refused and undeclared:
         res.outcome = "model_refused_admitted"
         res.detail = (
@@ -4875,6 +4897,163 @@ def composed_declarations(subject: Any) -> tuple[Approximation, ...]:
     return tuple(out)
 
 
+
+
+@functools.cache
+def narrowed_in_subtree(subject: Any) -> tuple[Approximation, ...]:
+    """Every ``NARROWED`` declaration reachable from ``subject`` through a FIELD'S TYPE.
+
+    **MEMOISED, AND THAT IS A PROPERTY OF THE QUESTION AND NOT A BUDGET.**  The answer is a
+    function of the class alone -- the field types a class holds do not change after import
+    -- and the closure is the whole emitted subtree, so 2,609 pairs walking their own
+    closures re-walk the same shared documents thousands of times.  ``core/product.json``'s
+    class is in the closure of most of the media-buy family.  The cache is not a cap: every
+    pair gets the complete walk, once per class rather than once per pair.
+
+    **THE THIRD HOP, and it is the one 532 pairs ride on.**  A declaration's identity is
+    ``(stating document, stating pointer, keyword)`` and "every inlined occurrence resolves
+    to it -- which is a reader's job and not a declaration per occurrence"
+    (``emit.declared_once``).  There are three ways a pair can reach the node that states
+    the fact, and before this only two had a reader:
+
+    * the pair's own node, by :func:`declarations_of` under ``render.declared_at``'s
+      containment rule -- a prefix test on the pointer;
+    * a document INLINED as a base, by :func:`composed_declarations` -- the hop across a
+      document boundary, where a prefix test means nothing;
+    * **a nested class held as a FIELD'S TYPE**, which is neither: ``$ref`` at a property
+      position emits a separate class, so the parent subclasses nothing and the pointers
+      share no space.
+
+    Measured on ``account/get-account-financials-response.json#``: the class refuses
+    ``url_parsing at ('push_notification_config', 'url')``, and the narrowing IS declared --
+    at ``core/push-notification-config.json#/properties/url``, on
+    ``PushNotificationConfig``, which this pair holds as the type of one field.  532 of the
+    545 remaining ``model_refused_admitted`` rows are that shape and that decision.
+
+    **NARROWED ONLY, and the restriction is what keeps it from becoming a blanket.**  A
+    widening's obligation walks the declaration's POINTER from the pair's node
+    (:func:`check_widening`), and a pointer in a nested document's space names no location
+    it can reach -- which is exactly why :func:`composed_declarations`' docstring ends "one
+    set per question".  A narrowing is asked a different question: which pydantic error
+    CODES a decision this project took admits.  That question has no pointer in it, so the
+    subtree is the honest reach -- a refusal at ``('push_notification_config', 'url')``
+    happens INSIDE the class whose declaration this returns.
+    """
+    seen: set[int] = set()
+    out: list[Approximation] = []
+    queue = [subject]
+    while queue:
+        here = queue.pop()
+        if id(here) in seen:
+            continue
+        seen.add(id(here))
+        out += [
+            one
+            for one in composed_declarations(here)
+            if one.kind == NARROWED and one not in out
+        ]
+        fields = getattr(here, "model_fields", None)
+        if not isinstance(fields, Mapping):
+            continue
+        #: The BRANCHES beside the fields, for :func:`composed_declarations`' reason: §4
+        #: makes a union base's instance one of its branches, so a branch's field is a
+        #: field the base's instance has.  ``vars`` and not ``getattr``, because a branch
+        #: inherits the base's tuple -- which contains that branch -- and a walk of it
+        #: through ``getattr`` is a cycle.  The ``seen`` set already closes that, and
+        #: ``vars`` keeps the reach honest rather than merely terminating.
+        queue += [*vars(here).get("_branch_models", ())]
+        for info in fields.values():
+            queue += _model_types(getattr(info, "annotation", None))
+        #: **AND THE FOURTH REACH: A NAMED ALIAS, whose declaration is beside its
+        #: MODULE.**  §5's rule is "with no type selected -> a named alias carries it", and
+        #: :func:`declarations_of` already reads a declaration "off a class or off a
+        #: MODULE" -- so ``core/https-url.json`` emits
+        #: ``HTTPSURL = Annotated[AdCPUrl, Field(...)]`` with its three ``NARROWED`` facts
+        #: beside it, and the 57 pairs whose URL field is typed by that alias reached none
+        #: of them.
+        out += [
+            one
+            for one in _alias_declarations(here)
+            if one.kind == NARROWED and one not in out
+        ]
+    return tuple(out)
+
+
+def _alias_declarations(subject: Any) -> tuple[Approximation, ...]:
+    """The declarations of every alias document this class's MODULE binds.
+
+    **ASKED OF THE MODULE AND NOT OF THE FIELD, because the field no longer knows.**
+    pydantic resolves ``Annotated[AdCPUrl, Field(...)]`` into a bare annotation plus
+    ``FieldInfo.metadata``, so ``model_fields['url'].annotation`` is
+    ``pydantic.networks.HttpUrl`` and identity against ``https_url.HTTPSURL`` is False --
+    measured, and it is why the first reading of this reached 0 declarations on
+    ``brand.json#/definitions/brand_agent``.  The MODULE's namespace still holds the alias
+    object itself, because ``from ..core.https_url import HTTPSURL`` binds it there, so
+    identity is exact one level out.
+
+    **AND THE IMPORT IS THE EVIDENCE.**  An emitted module imports an alias because a field
+    of it is typed by that alias -- the emitter writes no unused import -- so this is the
+    same cross-document hop :func:`composed_declarations` makes for an inlined BASE, made
+    for an inlined SCALAR.  It is not a blanket: only modules this one imports are read,
+    and the cause-code match in :func:`check_admits` is what decides whether any of their
+    facts answers the refusal in hand.
+    """
+    module = sys.modules.get(getattr(subject, "__module__", "") or "")
+    if module is None:
+        return ()
+    index = _alias_index()
+    out: list[Approximation] = []
+    for value in vars(module).values():
+        for one in index.get(id(value), ()):
+            if one not in out:
+                out.append(one)
+    return tuple(out)
+
+
+@functools.cache
+def _alias_index() -> dict[int, tuple[Approximation, ...]]:
+    """``id(exported alias) -> that module's declarations``, over the imported tree.
+
+    Built from :data:`sys.modules` rather than by walking the package, because the grade
+    has already imported every module it grades -- a second walk would import the tree
+    twice and could reach a module this run did not write.  Cached for
+    :func:`narrowed_in_subtree`'s reason: the answer is a function of what is imported, and
+    the grade imports before it grades.
+
+    **A GENERATED MODULE IS RECOGNISED BY WHAT IT CARRIES and not by its name.**  The
+    package the grade imports is bound in front of the committed one (``grade`` prepends
+    ``--tree`` to ``__path__``), so a name prefix would be a second spelling of a path this
+    function does not own.  A module-level ``__adcp_schema__`` beside a module-level
+    ``__adcp_approximations__`` is the emitter's own signature for "this module IS a node",
+    which is the thing being asked about.
+    """
+    index: dict[int, tuple[Approximation, ...]] = {}
+    for module in list(sys.modules.values()):
+        if module is None or getattr(module, "__adcp_schema__", None) is None:
+            continue
+        declared = declarations_of(module)
+        if not declared:
+            continue
+        for exported in getattr(module, "__all__", ()):
+            found = getattr(module, exported, None)
+            if found is not None:
+                index[id(found)] = declared
+    return index
+
+
+def _model_types(annotation: Any) -> list[Any]:
+    """Every pydantic model class an annotation holds, however deeply parametrized.
+
+    ``list[PushNotificationConfig]``, ``dict[str, Thing | None]`` and a bare class all
+    answer with the classes, which is what :func:`narrowed_in_subtree` needs to walk: the
+    field's TYPE is what refuses, and a container is not the thing that refuses.
+    """
+    if isinstance(annotation, type):
+        return [annotation] if hasattr(annotation, "model_fields") else []
+    found: list[Any] = []
+    for piece in typing.get_args(annotation):
+        found += _model_types(piece)
+    return found
 
 
 def _silent_about_extras(node: Any) -> Any:
@@ -7347,9 +7526,16 @@ def _check_pair(
     #: codes pydantic raises for it.  That map is a LOOKUP and not a decision -- its entries
     #: are pydantic's own ``type`` strings -- which is why it lives beside the check while the
     #: DECISION lives in the declaration the emitter wrote.
+    #: :func:`narrowed_in_subtree` is the THIRD hop and subsumes the second -- it calls
+    #: :func:`composed_declarations` at every class it reaches, starting with this one --
+    #: so the pair's own declarations and the inlined documents' arrive through it too.
+    #: ``pair.declared`` stays beside it because it is the containment reading
+    #: (``render.declared_at``), which is a prefix test on a POINTER and not a walk of
+    #: types: a fact stated at ``#/properties/x`` reaches the class at ``#`` that way and
+    #: by no other.
     admits_declared = {
         cause
-        for one in (*pair.declared, *composed_declarations(pair.model))
+        for one in (*pair.declared, *narrowed_in_subtree(pair.model))
         if one.kind == NARROWED
         for cause in _NARROWED_CAUSES.get(one.keyword, ())
     }
@@ -7425,11 +7611,19 @@ def _check_pair(
     #: first**: a declaration can sit at a property one branch of the node's own union
     #: forbids, and :func:`check_widening` says why the base instance is a free choice
     #: among draws the pair has already paid for.
-    if pair.declared:
+    #: **A NARROWED DECLARATION IS NOT THIS CHECK'S BUSINESS, and handing it one reports
+    #: ``unproved_widening`` for a declaration that never claimed a widening.**
+    #: :func:`check_widening` discharges §8's accepts obligation -- it derives a value
+    #: WIDER than the node from the accepted instance and requires the class to admit it.
+    #: A narrowing claims the opposite, so there is no wider value to find and the check
+    #: can only fail.  Its obligation is :func:`check_admits`'s, which is handed the same
+    #: declarations as ``declared`` causes a few lines above.
+    widening_declared = tuple(one for one in pair.declared if one.kind != NARROWED)
+    if widening_declared:
         rep.widening = check_widening(
             drawn_from,
             pair.accept,
-            pair.declared,
+            widening_declared,
             at=pair.ref.pointer if pair.ref is not None else "#",
             #: ``sampled`` for ``rep.undeclared``'s reason: §8's obligation BORROWS the
             #: instance as a base and derives wider values from it, so what it needs is one

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ..core.ext import ExtensionObject
@@ -20,6 +20,10 @@ class DeliveryRecord(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/delivery-record.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='property/delivery-record.json', pointer='#/properties/sales_agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='property/delivery-record.json', pointer='#/properties/sales_agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     identifier: Annotated[Identifier, Field(description='The property identifier where impressions were delivered')]
     impressions: Annotated[NonNegativeInt, Field(description='Number of impressions delivered to this identifier')]
     record_id: Annotated[str | None, Field(description='Optional client-provided ID for correlating results back to source data'), OmittedNotNull] = None

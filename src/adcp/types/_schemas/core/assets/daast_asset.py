@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ...enums.daast_tracking_event import DAASTTrackingEvent
@@ -31,6 +31,10 @@ class DAASTAsset(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/assets/daast-asset.json', pointer='#/properties/transcript_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/assets/daast-asset.json', pointer='#/properties/transcript_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     asset_type: Annotated[Literal['daast'], Field(description='Discriminator identifying this as a DAAST asset. See /schemas/creative/asset-types for the registry.')]
     daast_version: Annotated[DAASTVersion | None, Field(description='DAAST specification version'), OmittedNotNull] = None
     duration_ms: Annotated[NonNegativeInt | None, Field(description='Expected audio duration in milliseconds (if known)'), OmittedNotNull] = None

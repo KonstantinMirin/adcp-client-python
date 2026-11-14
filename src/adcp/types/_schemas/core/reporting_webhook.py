@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import HostedUrl, StrMinLen16
 
@@ -36,6 +36,10 @@ class ReportingWebhook(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-webhook.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('requested_metrics'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/reporting-webhook.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/reporting-webhook.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     url: Annotated[HostedUrl, Field(description='Webhook endpoint URL for reporting notifications')]
     token: Annotated[StrMinLen16 | None, Field(description='Optional client-provided token for webhook validation. Echoed back in webhook payload to validate request authenticity.'), OmittedNotNull] = None

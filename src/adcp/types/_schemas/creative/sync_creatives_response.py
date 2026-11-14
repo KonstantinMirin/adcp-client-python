@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
@@ -38,6 +38,8 @@ class SyncCreativesResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEn
     def _branch_combinator(cls) -> str:
         return "oneOf"
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/preview_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/assignment_errors', keyword='additionalProperties', kind='NARROWED', rung='CONTAINER', fact=True, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
     )
 
@@ -55,6 +57,8 @@ class CreativesItem(AdCPBaseModel):
         ConditionalRequired((Match('localization', True, None),), require=('status',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/preview_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/assignment_errors', keyword='additionalProperties', kind='NARROWED', rung='CONTAINER', fact=True, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
     )
     creative_id: Annotated[str, Field(description='Creative ID from the request')]
@@ -86,11 +90,13 @@ class SyncCreativesSuccess(SyncCreativesResponse):
         ForbiddenGroups((('errors',), ('task_id',), ('warnings',))),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/preview_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='creative/sync-creatives-response.json', pointer='#/oneOf/0/properties/creatives/items/properties/assignment_errors', keyword='additionalProperties', kind='NARROWED', rung='CONTAINER', fact=True, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
     )
-    dry_run: Annotated[bool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
+    dry_run: Annotated[StrictBool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
     creatives: Annotated[list[CreativesItem], Field(description="Results for each creative processed. Items with action='failed' indicate per-item validation/processing failures, not operation-level failures.")]
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

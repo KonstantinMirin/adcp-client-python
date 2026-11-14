@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ...enums.vast_tracking_event import VASTTrackingEvent
@@ -31,6 +31,12 @@ class VASTAsset(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/assets/vast-asset.json', pointer='#/properties/captions_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/assets/vast-asset.json', pointer='#/properties/captions_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/assets/vast-asset.json', pointer='#/properties/audio_description_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/assets/vast-asset.json', pointer='#/properties/audio_description_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     asset_type: Annotated[Literal['vast'], Field(description='Discriminator identifying this as a VAST asset. See /schemas/creative/asset-types for the registry.')]
     vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST version declared by the supplied URL response or inline document. Required by the 3.2 canonical `video_vast` and `audio_vast` manifest paths; optional only on the deprecated named-format compatibility path. Receivers MUST NOT relabel or synthesize a newer version merely because the destination accepts it.'), OmittedNotNull] = None
     macro_declarations: Annotated[list[MacroDeclaration] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1), OmittedNotNull] = None

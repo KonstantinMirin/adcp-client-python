@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HostedUrl
 
 
@@ -17,6 +17,10 @@ class PlacementEvidence(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-evidence.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/placement-evidence.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/placement-evidence.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     url: Annotated[HostedUrl, Field(description='The evidence artifact — photograph, scanned tearsheet, or evidence package')]
     captured_at: Annotated[AwareDatetime | None, Field(description='When the artifact was captured'), OmittedNotNull] = None
     latitude: Annotated[FloatMinNeg90Max90 | None, Field(description='Capture location latitude'), OmittedNotNull] = None

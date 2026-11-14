@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Presence, Rule, UniqueItems
@@ -79,7 +79,7 @@ class LocalizationUnavailable(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/localization_unavailable')
     errors: Annotated[list[Error], Field(min_length=1)]
-    retryable: Annotated[bool, Field(description='Whether a later list_creatives call may recover without buyer mutation.')]
+    retryable: Annotated[StrictBool, Field(description='Whether a later list_creatives call may recover without buyer mutation.')]
 
 
 class ObjType(Indicator):
@@ -155,7 +155,7 @@ class Assignments(AdCPBaseModel):
     assignment_count: Annotated[NonNegativeInt, Field(description='Total number of active package assignments')]
     returned_assignment_count: Annotated[CreativesItemAssignmentsReturnedAssignmentCount | None, Field(description='Number of rows present in assigned_packages for this response.'), OmittedNotNull] = None
     matching_assignment_count: Annotated[NonNegativeInt | None, Field(description='Total active assignments matching filters.indicator_types. MUST be present exactly when assignment_projection was matching. May exceed returned_assignment_count.'), OmittedNotNull] = None
-    assignments_truncated: Annotated[bool | None, Field(description='True exactly when more qualifying assignments exist than were returned under assignment_limit. Qualifying means assignment_count for the all projection and matching_assignment_count for the matching projection. Buyers needing complete state repair through get_media_buys.'), OmittedNotNull] = None
+    assignments_truncated: Annotated[StrictBool | None, Field(description='True exactly when more qualifying assignments exist than were returned under assignment_limit. Qualifying means assignment_count for the all projection and matching_assignment_count for the matching projection. Buyers needing complete state repair through get_media_buys.'), OmittedNotNull] = None
     assigned_packages: Annotated[list[AssignedPackagesItem] | None, Field(description='Bounded package assignment projection. Under assignment_projection: matching, contains only assignments carrying a requested indicator type; otherwise contains active assignments up to assignment_limit. The response ceiling is enforced via verifier_constraints rather than maxItems, so payloads from 3.1 sellers remain schema-valid.'), OmittedNotNull] = None
 
 
@@ -312,7 +312,7 @@ class ListCreativesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     format_summary: Annotated[dict[str, FormatSummaryValue] | None, Field(description='Breakdown of creatives by canonical format kind. Keys SHOULD be `format_kind` values; an implementation may append a stable option suffix when separate product or publisher options must be distinguished.'), OmittedNotNull] = None
     status_summary: Annotated[StatusSummary | None, Field(description='Breakdown of creatives by status'), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors (e.g., invalid filters, account not found)'), OmittedNotNull] = None
-    sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
+    sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

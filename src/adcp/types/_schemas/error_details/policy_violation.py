@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, HostedUrl, StrMinLen1
 
 
@@ -30,6 +30,10 @@ class PolicyViolationDetails(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/policy-violation.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='error-details/policy-violation.json', pointer='#/properties/policy_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='error-details/policy-violation.json', pointer='#/properties/policy_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     origin: Annotated[Origin | None, Field(description='Whose policy produced the rejection. Optional so undisclosed seller policies can return only the typed POLICY_VIOLATION code if even origin would reveal sensitive information.'), OmittedNotNull] = None
     policy_id: Annotated[str | None, Field(description='Shared policy-registry identifier for the violated policy. Use seller_policy_ref instead when the seller is not disclosing a registry policy.'), OmittedNotNull] = None
     seller_policy_ref: Annotated[StrMinLen1 | None, Field(description='Opaque seller-scoped reference that lets support and audit records correlate an undisclosed policy without publishing its rules. This is not a shared policy-registry ID.'), OmittedNotNull] = None

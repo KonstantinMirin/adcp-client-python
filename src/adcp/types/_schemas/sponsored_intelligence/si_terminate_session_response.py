@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpResponse
 
@@ -26,6 +26,10 @@ class AcpHandoff(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/acp_handoff')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/acp_handoff/properties/checkout_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/acp_handoff/properties/checkout_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     checkout_url: Annotated[HostedUrl | None, Field(description="Brand's ACP checkout endpoint. Hosts MUST validate this is HTTPS before opening."), OmittedNotNull] = None
     checkout_token: Annotated[str | None, Field(description='Opaque token for the checkout flow. The host passes this to the checkout endpoint to correlate the SI session with the transaction.'), OmittedNotNull] = None
     payload: Annotated[dict[str, Any] | None, Field(description='Rich checkout context to pass to the ACP endpoint (product details, applied offers, pricing). Alternative to checkout_token for integrations that need structured data.'), OmittedNotNull] = None
@@ -63,6 +67,10 @@ class SITerminateSessionResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResp
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/acp_handoff/properties/checkout_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='sponsored-intelligence/si-terminate-session-response.json', pointer='#/properties/acp_handoff/properties/checkout_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     session_id: Annotated[str, Field(description='Terminated session identifier')]
     terminated: Annotated[StrictBool, Field(description='Whether session was successfully terminated')]
     session_status: Annotated[SISessionStatus | None, Field(description="Resulting session state. 'complete' for handoff_transaction/handoff_complete, 'terminated' for user_exit/session_timeout/host_terminated."), OmittedNotNull] = None

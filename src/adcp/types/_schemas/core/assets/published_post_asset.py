@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import HostedUrl
 
@@ -21,6 +21,10 @@ class IdentityRef(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/published-post-asset.json', pointer='#/properties/identity_ref')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/identity_ref/properties/profile_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/identity_ref/properties/profile_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     handle: Annotated[str | None, Field(description='Human-readable handle or username when available.'), OmittedNotNull] = None
     profile_url: Annotated[HostedUrl | None, Field(description='URL for the authoring profile, page, or channel.'), OmittedNotNull] = None
     platform_identity_id: Annotated[str | None, Field(description='Opaque platform-native identity identifier.'), OmittedNotNull] = None
@@ -52,6 +56,10 @@ class ReferenceAuthorization(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization/properties/authorization_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization/properties/authorization_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     status: Annotated[Status, Field(description='Current seller-observed authorization state. `authorized`: seller can serve the referenced post. `pending`: additional creator/account action is required. `expired` or `revoked`: authorization previously existed but no longer permits serving. `not_required`: the seller can legally and technically serve without a separate identity authorization. `unknown`: seller has not checked or cannot disclose the state.')]
     checked_at: Annotated[AwareDatetime | None, Field(description='When the seller last checked the authorization state.'), OmittedNotNull] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='When the authorization expires, if the platform exposes an expiry.'), OmittedNotNull] = None
@@ -69,6 +77,14 @@ class PublishedPostAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/published-post-asset.json', pointer='#')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('post_url',), ('platform_post_id',)), 'anyOf'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/post_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/post_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/identity_ref/properties/profile_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/identity_ref/properties/profile_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization/properties/authorization_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization/properties/authorization_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     asset_type: Annotated[Literal['published_post'], Field(description='Discriminator identifying this as a published-post reference asset. See /schemas/creative/asset-types for the registry.')]
     post_url: Annotated[HostedUrl | None, Field(description='Canonical URL for the published post. Preferred when the platform exposes a stable public or authenticated URL.'), OmittedNotNull] = None

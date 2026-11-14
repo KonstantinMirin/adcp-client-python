@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import HostedUrl, StrFormatUuid
 
@@ -101,6 +101,14 @@ class RegistryEvent(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/13/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/13/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/14/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/14/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     event_id: Annotated[str, Field(description='Stable logical event identifier and feed cursor. UUID v7 is REQUIRED so consumers can apply events in event_id order without relying on producer clocks.', json_schema_extra={'format': 'uuid'})]
     event_type: Annotated[RegistryEventEventType, Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[EntityType, Field(description='Entity class touched by this event.')]
@@ -415,6 +423,10 @@ class AgentProfilePayload(AdCPBaseModel):
         UniqueItems('markets'),
         UniqueItems('format_kinds'),
     )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/$defs/agentProfilePayload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/$defs/agentProfilePayload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: Annotated[HostedUrl | None, OmittedNotNull] = None
     name: Annotated[str | None, OmittedNotNull] = None
     type: Annotated[AgentProfilePayloadType | None, OmittedNotNull] = None
@@ -462,6 +474,10 @@ class RegistryEventAgentRemovedAgentPayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: HostedUrl
     removed_from_publishers: Annotated[list[DomainName] | None, Field(min_length=1), OmittedNotNull] = None
 
@@ -471,6 +487,10 @@ class RegistryEventAgentRemovedAgent(RegistryEvent):
     agent.removed - an agent no longer appears in any crawled adagents.json authorization graph.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/10')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/10/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     event_type: Annotated[Literal[RegistryEventEventType.AGENT_REMOVED], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentRemovedAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
@@ -561,6 +581,10 @@ class CompliancePayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/compliancePayload')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/$defs/compliancePayload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/$defs/compliancePayload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: HostedUrl
     previous_status: ComplianceStatus
     current_status: ComplianceStatus
@@ -599,6 +623,10 @@ class RegistryEventAgentVerificationEarnedAgentPayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/13/properties/payload')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/13/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/13/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: HostedUrl
     role: AdCPProtocol
     verified_specialisms: Annotated[list[str], Field(min_length=1)]
@@ -611,6 +639,10 @@ class RegistryEventAgentVerificationEarnedAgent(RegistryEvent):
     agent.verification_earned - an agent earned an AAO Verified badge.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/13')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/13/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/13/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     event_type: Annotated[Literal[RegistryEventEventType.AGENT_VERIFICATION_EARNED], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentVerificationEarnedAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
@@ -624,6 +656,10 @@ class RegistryEventAgentVerificationLostAgentPayload(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/14/properties/payload')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/14/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/14/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     agent_url: HostedUrl
     role: AdCPProtocol
     reason: str
@@ -636,6 +672,10 @@ class RegistryEventAgentVerificationLostAgent(RegistryEvent):
     agent.verification_lost - an agent lost an AAO Verified badge.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/14')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/14/properties/payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/oneOf/14/properties/payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     event_type: Annotated[Literal[RegistryEventEventType.AGENT_VERIFICATION_LOST], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal[EntityType.AGENT], Field(description='Entity class touched by this event.')]
     payload: Annotated[RegistryEventAgentVerificationLostAgentPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
@@ -648,6 +688,12 @@ class PublisherAdagentsPayload(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/publisherAdagentsPayload')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('publisher_domain',), ('domain',)), 'anyOf'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/$defs/publisherAdagentsPayload/properties/agents_added/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/$defs/publisherAdagentsPayload/properties/agents_added/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='core/registry-event.json', pointer='#/$defs/publisherAdagentsPayload/properties/agents_removed/items', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/$defs/publisherAdagentsPayload/properties/agents_removed/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     publisher_domain: Annotated[DomainName | None, OmittedNotNull] = None
     domain: Annotated[DomainName | None, Field(description='Legacy alias for publisher_domain retained for early feed examples.'), OmittedNotNull] = None
@@ -735,6 +781,10 @@ class AuthorizationPayload(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/authorizationPayload')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('placement_tags'),
+    )
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='core/registry-event.json', pointer='#/$defs/authorizationPayload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='core/registry-event.json', pointer='#/$defs/authorizationPayload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     id: Annotated[str | None, Field(description='Registry authorization row id when the event is backed by a materialized effective authorization row.', json_schema_extra={'format': 'uuid'}), OmittedNotNull] = None
     agent_url: HostedUrl

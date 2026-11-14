@@ -140,6 +140,10 @@ class CheckGovernanceRequest(AdCPVersionEnvelope, AdcpRequest):
         ConditionalRequired((Match('runtime_attestations', True, None),), require=('purchase_type', 'tool', 'payload'), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='governance/check-governance-request.json', pointer='#/properties/caller', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/check-governance-request.json', pointer='#/properties/caller', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+        Approximation(document='governance/check-governance-request.json', pointer='#/properties/target_agent', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='governance/check-governance-request.json', pointer='#/properties/target_agent', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='governance/check-governance-request.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['proposal']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='governance/check-governance-request.json', pointer='#/allOf/10', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'anyOf': [{'required': ['planned_delivery']}, {'required': ['delivery_metrics']}]}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='governance/check-governance-request.json', pointer='#/allOf/11', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'planned_delivery': {'required': ['total_budget']}}, 'required': ['planned_delivery']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),

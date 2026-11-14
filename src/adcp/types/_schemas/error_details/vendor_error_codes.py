@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ..core.error import Recovery
@@ -19,6 +19,10 @@ class CodesValue(AdCPBaseModel):
 
 class VendorsValue(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vendor-error-codes.json', pointer='#/properties/vendors/additionalProperties')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='error-details/vendor-error-codes.json', pointer='#/properties/vendors/additionalProperties/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='error-details/vendor-error-codes.json', pointer='#/properties/vendors/additionalProperties/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     name: Annotated[str, Field(description='Full vendor name')]
     url: Annotated[HostedUrl | None, Field(description='Vendor website or documentation URL'), OmittedNotNull] = None
     codes: Annotated[dict[str, CodesValue], Field(description='Map of code suffix to description and recovery classification')]
@@ -29,6 +33,10 @@ class VendorErrorCodeRegistry(AdCPBaseModel):
     Registry of vendor-prefixed error codes (X_{VENDOR}_{CODE}). Sellers register their vendor prefix and codes here to prevent collisions. Standard error codes are in error-code.json. To register a new vendor prefix, submit a PR adding your entry to the vendors object.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/vendor-error-codes.json', pointer='#')
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='error-details/vendor-error-codes.json', pointer='#/properties/vendors/additionalProperties/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
+        Approximation(document='error-details/vendor-error-codes.json', pointer='#/properties/vendors/additionalProperties/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
+    )
     vendors: Annotated[dict[str, VendorsValue] | None, Field(description='Map of vendor prefix to vendor metadata and codes'), OmittedNotNull] = None
 
 
