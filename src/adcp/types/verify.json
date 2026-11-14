@@ -4,10 +4,10 @@
   "fail:accepts:witness_refused": 22,
   "fail:admits:model_refused_admitted": 8,
   "fail:undeclared:widened_undeclared": 1,
-  "fail:widening:unproved_widening": 25
+  "fail:widening:unproved_widening": 19
  },
  "graded": 2609,
- "not_pass": 58,
+ "not_pass": 52,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -101,32 +101,6 @@
    "widening": "widening=absent:no_declarations"
   },
   {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "AccountChangeRecordedWebhook",
-   "document": "core/account-change-recorded-webhook.json",
-   "dump": "dump=pass",
-   "note": "#/properties/ext/maxProperties: maxProperties exactly (20) could not be drawn: the constructed value is refused on minProperties; #/properties/ext/maxProperties: maxProperties one step inside (19) could not be drawn: the constructed value is refused on minProperties",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "AccountChange",
-   "document": "core/account-change.json",
-   "dump": "dump=pass",
-   "note": "#/properties/ext/maxProperties: maxProperties exactly (20) could not be drawn: the constructed value is refused on minProperties; #/properties/ext/maxProperties: maxProperties one step inside (19) could not be drawn: the constructed value is refused on minProperties",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
    "accepts": "accepts=fail:witness_refused",
    "admits": "admits=pass",
    "class": "ObjLocation",
@@ -179,19 +153,6 @@
    "widening": "widening=absent:no_declarations"
   },
   {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "CanonicalMediaBuyFeatures",
-   "document": "core/canonical-media-buy-features.json",
-   "dump": "dump=pass",
-   "note": "#/additionalProperties: a key the additionalProperties admits could not be drawn: the constructed value is refused on minProperties",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
    "accepts": "accepts=fail:witness_refused",
    "admits": "admits=absent:no_witness",
    "class": "CreativeRepresentationFormatId",
@@ -241,19 +202,6 @@
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
    "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "MediaBuyFeatures",
-   "document": "core/media-buy-features.json",
-   "dump": "dump=pass",
-   "note": "#/additionalProperties: a key the additionalProperties admits could not be drawn: the constructed value is refused on minProperties",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
    "widening": "widening=fail:unproved_widening"
   },
   {
@@ -701,32 +649,6 @@
   {
    "accepts": "accepts=pass",
    "admits": "admits=pass",
-   "class": "Signals",
-   "document": "protocol/get-adcp-capabilities-response.json",
-   "dump": "dump=pass",
-   "note": "#/properties/signals/properties/features/additionalProperties: a key the additionalProperties admits could not be drawn: the constructed value is refused on minProperties",
-   "pointer": "#/properties/signals",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SignalsFeatures",
-   "document": "protocol/get-adcp-capabilities-response.json",
-   "dump": "dump=pass",
-   "note": "#/properties/signals/properties/features/additionalProperties: a key the additionalProperties admits could not be drawn: the constructed value is refused on minProperties",
-   "pointer": "#/properties/signals/properties/features",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
    "class": "SyncAgentNotificationConfigsRequest",
    "document": "protocol/sync-agent-notification-configs-request.json",
    "dump": "dump=pass",
@@ -764,7 +686,7 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2551,
+ "pass": 2557,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -793,15 +715,15 @@
   },
   "widening": {
    "absent": 2427,
-   "fail": 26,
-   "pass": 156
+   "fail": 20,
+   "pass": 162
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/ee49e7e02a338762e8b6cf3d8d162a93c4dd4d6fe55a17a1c37d08a4bffdf727",
-  "head": "934877d80+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/eeaf113835ac594f47d17ca7461c28e0636e105f1f8b342d56def3ec8d19f389",
+  "head": "305439aca+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 425.3,
- "seconds_per_pair": 0.163
+ "seconds": 426.6,
+ "seconds_per_pair": 0.1635
 }

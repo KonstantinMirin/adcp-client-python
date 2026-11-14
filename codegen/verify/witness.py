@@ -4092,6 +4092,68 @@ def least_instance(
                     None, Source.APPROXIMATED, f"the least instance needs {name!r}: {inner.reason}"
                 )
             placed[name] = inner.value
+        #: **``minProperties`` DEMANDS KEYS THE ``required`` LIST DOES NOT NAME**
+        #: (``adcp-client-python-01p4``).  The loop above places what ``required`` states
+        #: and stops, so a node stating ``minProperties: 20`` and no properties produced
+        #: ``{}`` -- which that node refuses.  Measured as the whole of 25
+        #: ``unproved_widening`` rows: ``check_widening`` derives "exactly at the bound" by
+        #: pinning both ends (``harness.py``'s ``_restricted(node, **{low: bound,
+        #: high: bound})``), so the derived node carries ``minProperties: 20``, and
+        #: ``_draw`` then screens this value against it and reports "the constructed value
+        #: is refused on minProperties".  The row blamed the DECLARATION for a value the
+        #: instrument could not build.
+        #:
+        #: ``Construction._object`` already does this -- synthesised ``k0``, ``k1``, … up to
+        #: the floor, declining first where ``additionalProperties: false`` or an unsolved
+        #: ``patternProperties`` means the keys cannot exist.  This is the same rule in the
+        #: LEAST-instance builder, which is the one ``_draw`` calls, and the two disagreeing
+        #: is why the synthesis existed and never ran for these rows.
+        #:
+        #: Declining rather than inventing where the node forbids the keys: a synthesised
+        #: ``k0`` under ``additionalProperties: false`` is a key the document refuses, and
+        #: ``propertyNames``/``patternProperties`` constrain the NAME, which this builder
+        #: does not solve.  There the honest answer is that no least instance exists, with
+        #: the reason named.
+        floor = max(
+            (
+                one["minProperties"]
+                for one in joined
+                if isinstance(one.get("minProperties"), int)
+            ),
+            default=0,
+        )
+        if len(placed) < floor:
+            extra = next(
+                (
+                    one.get("additionalProperties")
+                    for one in joined
+                    if "additionalProperties" in one
+                ),
+                None,
+            )
+            if extra is False:
+                return Built(
+                    None,
+                    Source.APPROXIMATED,
+                    "minProperties needs a key additionalProperties forbids",
+                )
+            if any("propertyNames" in one or "patternProperties" in one for one in joined):
+                return Built(
+                    None,
+                    Source.APPROXIMATED,
+                    "minProperties needs a key only an unsolved pattern admits",
+                )
+            inner = (
+                least_instance([extra], seen)
+                if isinstance(extra, Mapping)
+                else Built(None, Source.CONSTRUCTED)
+            )
+            if not inner.held:
+                return Built(
+                    None, Source.APPROXIMATED, f"minProperties needs a value: {inner.reason}"
+                )
+            while len(placed) < floor:
+                placed[f"k{len(placed)}"] = inner.value
         return Built(placed, Source.CONSTRUCTED)
     if word == "array":
         least = _bound(joined, "minItems")
