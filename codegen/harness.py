@@ -2519,7 +2519,24 @@ def _refusal_cause(e: BaseException) -> str:
     found = errors()
     if not found or not isinstance(found[0], Mapping) or "type" not in found[0]:
         return type(e).__name__
-    return f"{found[0]['type']} at {found[0].get('loc', ())}"
+    #: **A COMBINATOR'S ROW CARRIES THE BRANCH'S OWN TYPE IN ``ctx``, and that is the
+    #: cause** (``adcp-client-python-vwgs``).  Where the branches of a union share no
+    #: position the refusal IS the combinator's, so ``type`` reads ``oneOf``/``anyOf`` and
+    #: the thing a reader categorises by -- ``url_parsing``, ``missing``,
+    #: ``literal_error`` -- used to exist only inside ``msg``.  13 pairs reported
+    #: ``model_refused_admitted`` with a declaration sitting on the class, because a
+    #: declared cause cannot be matched against a combinator's name.
+    #:
+    #: ``ctx["branch_type"]`` is PYDANTIC'S OWN ``type`` string for the branch's error,
+    #: carried structurally by ``BranchDispatchMixin._each_branchs_reason`` -- so this
+    #: keeps the rule the function's own docstring states ("never a substring of the
+    #: message") rather than bending it.  The combinator's name stays in the row as the
+    #: prefix, because the refusal is still the combinator's and a reader needs to know
+    #: which union refused.
+    ctx = found[0].get("ctx") or {}
+    inner = ctx.get("branch_type") if isinstance(ctx, Mapping) else None
+    kind = f"{found[0]['type']}:{inner}" if isinstance(inner, str) else found[0]["type"]
+    return f"{kind} at {found[0].get('loc', ())}"
 
 
 def _distributed_branch(pair: Any, drawn_from: Any) -> Any:
@@ -2622,7 +2639,10 @@ def _cause_code(cause: str) -> str:
     to pydantic's own ``type`` strings and a keyword knows nothing about a loc.  This is the
     one place the two spellings are reconciled, so neither side has to carry the other's.
     """
-    return cause.split(" at ", 1)[0]
+    code = cause.split(" at ", 1)[0]
+    #: ``oneOf:url_parsing`` -> ``url_parsing``: a combinator's row names the union AND
+    #: the branch's own type (:func:`_refusal_cause`), and a declaration names the latter.
+    return code.split(":", 1)[1] if ":" in code else code
 
 
 @dataclass

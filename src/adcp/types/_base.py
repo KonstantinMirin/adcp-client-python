@@ -2869,7 +2869,39 @@ class BranchDispatchMixin(_MixedInto):
                 out.append(
                     InitErrorDetails(
                         type=PydanticCustomError(
-                            cls._branch_combinator(), "{detail}", {"detail": detail}
+                            cls._branch_combinator(),
+                            "{detail}",
+                            # **THE BRANCH'S OWN ERROR TYPE RIDES IN `ctx`, STRUCTURALLY**
+                            # (`adcp-client-python-vwgs`).  `detail` is prose for a human
+                            # and it was the ONLY thing carried, so every union refusal
+                            # reached a reader as `type == "oneOf"` with the real cause --
+                            # `url_parsing`, `missing`, `literal_error` -- buried in a
+                            # message.  Measured: `AdCPAgentsAuthorization.model_validate(
+                            # {"authoritative_location": "https://"})` raised two errors
+                            # both typed `oneOf`, and the cause (no host) appeared nowhere
+                            # else.
+                            #
+                            # Two readers are unblocked and the IMPORTANT one is the
+                            # consumer: `except` logic over `error["type"]` could not tell
+                            # a bad URL from a missing key, which is backwards for the
+                            # field whose purpose is to be matched on.  The second is the
+                            # verifier -- `harness._refusal_cause`'s rule is "the CAUSE is
+                            # pydantic's own error `type` and never a substring of the
+                            # message", so it could not work around this and should not
+                            # try.  `branch_type` IS that string, carried rather than
+                            # rendered.
+                            #
+                            # The combinator type is UNCHANGED and still right: where the
+                            # branches share no position the refusal genuinely is the
+                            # combinator's (`adcp-client-python-xuh7` fixed the worse
+                            # version, a bare row with "no keyword, no position, no
+                            # sentence", at 29 refusals).  This adds the machine-readable
+                            # half beside the sentence.
+                            {
+                                "detail": detail,
+                                "branch_type": row["type"],
+                                "branch": where[1] if where is not None else str(label),
+                            },
                         ),
                         loc=below,
                         input=row["input"],
