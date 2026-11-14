@@ -2493,6 +2493,75 @@ def _refusal_cause(e: BaseException) -> str:
     return f"{found[0]['type']} at {found[0].get('loc', ())}"
 
 
+def _distributed_branch(pair: Any, drawn_from: Any) -> Any:
+    """The branch of ``drawn_from`` this class's cross-document BASE names, or ``None``.
+
+    **WHICH BRANCH IS ASSERTED BY THE CLASS AND NOT INFERRED FROM THE PAYLOAD.**  §5
+    distributes a reference to a union root into one subclass per branch, so the base in
+    the target document IS the assertion: ``FormatsItemAgentPlacement``'s MRO carries
+    ``core/product-format-declaration.json#/oneOf/3``, and that pointer walked into the
+    resolved union is the branch's own node.  Nothing here reads the witness, so a pair
+    cannot be graded against whichever branch happens to fit.
+
+    **THE TARGET'S ROOT KEYWORDS RIDE WITH THE BRANCH, and the union keyword is the one
+    thing replaced.**  ``core/product-format-declaration.json#`` states
+    ``required: ['format_kind', 'params']`` and ``type: object`` BESIDE its 16-arm
+    ``oneOf``, and those apply to this class as much as to any other branch -- §5's clause
+    is that the branch "takes one of the target's branches as a base", not that it replaces
+    the target.  So the answer is the root with its ``oneOf`` narrowed to the one branch
+    this class asserts.
+
+    **AND IT IS A SUBSTITUTION RATHER THAN A CONJUNCTION, which is a measurement and not a
+    preference.**  The first reading returned the bare branch and the caller wrote
+    ``{"allOf": [resolved union, branch]}``.  That is the more faithful SENTENCE -- it
+    keeps "exactly one branch holds" -- and the construction cannot build for it: 55 pairs
+    moved from ``model_refused_valid`` to ``accepts:witness_refused``, which is the
+    construction's own value being refused by the node it was built for, and ``refuses``
+    went absent at 55 more.  Dropping ``oneOf`` costs nothing HERE because the 16 branches
+    are discriminated by a ``format_kind`` ``const``: no payload satisfies two, so "exactly
+    one" and "this one" admit the same set.  A family whose branches overlap would need the
+    conjunction and would need the construction to handle it; that is
+    ``adcp-client-python-jt6r``'s remaining half and is recorded there rather than assumed
+    away.
+
+    ``None`` -- and the pair keeps the node it had -- for every class that is not a
+    distributed branch: no cross-document base, a base at the target's ROOT rather than at
+    one of its branches, or a pointer the resolved node does not hold.  The last is the
+    fail-safe direction ``drawn_from``'s own comment argues for: a node this cannot narrow
+    is left exactly as the document writes it, and the checks report what they report.
+    """
+    here = getattr(vars(pair.model).get("__adcp_schema__"), "document", None)
+    if here is None or not isinstance(drawn_from, Mapping):
+        return None
+    for base in getattr(pair.model, "__mro__", ())[1:]:
+        ref = vars(base).get("__adcp_schema__")
+        if ref is None or ref.document == here:
+            continue
+        #: **THE BASE MUST BE A NODE INSIDE THIS PAIR'S OWN RESOLVED NODE, and that test
+        #: is the whole of the predicate.**  A cross-document base is COMMON and almost
+        #: never a distribution: nearly every response subclasses
+        #: ``core/protocol-envelope.json#`` and ``core/adcp-version-envelope.json#``.
+        #: Measured when this returned the first cross-document base unconditionally:
+        #: ``witness_refused`` went from 60 to **356** and not-pass from 115 to 383,
+        #: because 296 responses were handed their ENVELOPE's witness and refused it.
+        #: Walking the base's pointer INTO ``drawn_from`` is what distinguishes the two --
+        #: a distribution's base is a branch of the very union this node references, so
+        #: its pointer addresses a node here; an envelope's base is a document this node
+        #: merely conjoins, and its pointer addresses nothing in this node at all.
+        inside = ref.pointer.lstrip("#").strip("/")
+        if not inside:
+            continue
+        try:
+            branch = bundle.node_at(drawn_from, "/" + inside)
+        except Exception:  # noqa: BLE001 -- a pointer the resolved node does not hold
+            continue
+        if not isinstance(branch, Mapping):
+            continue
+        root = {k: v for k, v in drawn_from.items() if k not in ("oneOf", "anyOf")}
+        return ref, {**root, "allOf": [*root.get("allOf", []), branch]}
+    return None
+
+
 def _cause_code(cause: str) -> str:
     """:func:`_refusal_cause`'s output without its location.
 
@@ -7353,6 +7422,30 @@ def _check_pair(
         drawn_from = resolve(pair.schema, store={}, referrer=pair.document)
     except Exception:  # any resolution failure falls back to the node
         drawn_from = pair.schema
+    #: **A DISTRIBUTED BRANCH'S NODE IS A CONJUNCTION, and the pair carried half of it**
+    #: (``adcp-client-python-jt6r``).  §5's DISTRIBUTION clause: where the ``$ref`` target
+    #: is a union ROOT, the node "is a union whose branches each take one of the target's
+    #: branches as a base and add the node's own fields".  The PAIR's pointer is the
+    #: referring node -- ``adagents.json#/oneOf/1/properties/formats/items/allOf/0``, a
+    #: ``$ref`` to the 16-arm ``core/product-format-declaration.json`` -- so ``resolve``
+    #: above answers with the whole union, and the class is ONE branch of it.
+    #:
+    #: Measured before this: ``FormatsItemAgentPlacement`` was offered
+    #: ``{"format_kind": "image", ...}``, refused it, and was reported narrower than its
+    #: document -- while being exactly as wide as its document, because the BASE accepts
+    #: that payload and routes it to the image branch, which is separately graded as
+    #: passing.  **107 rows over 60 classes**, wearing two verdicts:
+    #: ``admits:model_refused_admitted`` at 58 and ``accepts:model_refused_valid`` at 49.
+    #:
+    #: The conjunction is the same rule the admits check already states for itself --
+    #: "``drawn_from`` and not ``pair.schema`` ... so a class an inner node admits and the
+    #: enclosing conjunction refuses is never offered" -- applied one level out: a branch
+    #: an inner node admits and the branch's own base refuses must not be offered either.
+    distributed = _distributed_branch(pair, drawn_from)
+    if distributed is not None:
+        witness_ref, drawn_from = distributed
+    else:
+        witness_ref = pair.ref
     #: **§8's FIXTURE RULE, and it is a change to the DRAW and to nothing else.**  "A
     #: referenced document is graded by its own pair, so at a referring position it is a
     #: fixture and not a draw."  Every position under this node that the BUNDLE spells as a
@@ -7412,16 +7505,24 @@ def _check_pair(
     #: Why there is no set, in the words the row will carry.  A fact about the CONSTRUCTION
     #: and never about a draw, which is the whole of what this check's ``unrun`` now means.
     admits_absent = "no construction was supplied, so there is no witness set"
-    if construction is not None and pair.ref is not None:
-        pointer = witness_pointer(pair.ref.pointer)
+    #: **A DISTRIBUTED BRANCH IS CONSULTED AT ITS BASE'S REF** (``adcp-client-python-jt6r``),
+    #: and ``witness_ref`` is set beside ``drawn_from`` above so the two cannot disagree:
+    #: the pair's own pointer is the REFERRING
+    #: node, whose construction entry is the 16-arm union's, so the witness set offered to
+    #: a branch was the whole union's and the value built for it was the FIRST branch's.
+    #: The base's ref names the branch itself -- ``core/product-format-declaration.json#/oneOf/12``
+    #: -- and is a pointer in the record's own space, because the target document is in
+    #: the bundle and its branches are its nodes.
+    if construction is not None and witness_ref is not None:
+        pointer = witness_pointer(witness_ref.pointer)
         admits_absent = (
-            f"{pair.ref.pointer} is not a pointer in the record's own space"
+            f"{witness_ref.pointer} is not a pointer in the record's own space"
             if pointer is None
             else admits_absent
         )
         if pointer is not None:
             try:
-                answer = construction.applied(pair.ref.document, pointer)
+                answer = construction.applied(witness_ref.document, pointer)
                 built = [answer.value] if answer.held else None
                 rep.witness_absent = "" if answer.held else answer.reason[:300]
             except OverBudget:
@@ -7431,7 +7532,7 @@ def _check_pair(
             try:
                 admitted = tuple(
                     (case.value, case.keyword or "the admitted value", case.label)
-                    for case in construction.admits(pair.ref.document, pointer)
+                    for case in construction.admits(witness_ref.document, pointer)
                 )
                 admits_absent = (
                     "the construction builds no class over this node's subtree"
