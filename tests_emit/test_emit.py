@@ -1614,69 +1614,6 @@ def _grades_a_cause(cause: str, where: str = "") -> None:
     assert ": format " in cause, (where, cause)
 
 
-@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
-@pytest.mark.parametrize("row", graded(), ids=lambda g: f"{g.ref.document}{g.ref.pointer}")
-def test_every_class_passes_all_three_checks(row: Graded) -> None:
-    """N: emitted AND graded green against the schema the class itself names.
-
-    One verdict other than ``pass`` is allowed through, and it is asserted against
-    its own evidence rather than taken on trust: ``no_instrument``, where the
-    accepts check could not DRAW an instance, so the obstruction is ``hypothesis``
-    and not the model -- asserted by requiring each cause to name a shape (a format
-    beside a pattern) and not merely to exist.
-
-    **Parametrised, and the parametrisation is what makes a cut land under ONE pair's
-    name.**  Each item asserts one pair's verdict, so a residue is reported as the pair it
-    belongs to rather than as a list comprehension inside a population total -- which is
-    what ``accepts:over_budget`` needs in order to be a named red.
-
-    **GROUPED ONTO THE PROCESS THAT HOLDS THE PASS, which is a correction of the sentence
-    that stood here.**  It said the parametrisation "is load-bearing for the suite's wall
-    clock ... 1,055 work items that spread across the workers", and that was true while
-    each item paid for its own grade.  It is no longer: :func:`graded_report` is cached and
-    :func:`graded_reports` grades exactly :func:`graded`, which is this parametrize's own
-    argument -- so every item here is a report the same process has already computed, and
-    spreading them spreads not work but a *re-derivation* of work.  Measured at ``-n 4`` on
-    the base of this row: 877.5 s over these 2,584 items, **821.3 s of it in six of them**,
-    all six already graded by the pass.  Grouped, the items are cache reads and the six
-    are paid once.
-    What spreading cost is the other half of the same measurement: the six are pairs whose
-    draw the committed floor does not answer, so wherever they landed they re-paid the
-    whole :data:`PAIR_BUDGET` beside a worker that had already spent it.
-
-    **And BOUNDED, by :data:`PAIR_BUDGET`, which is what makes this file completable in
-    one invocation.**  A pair whose draw does not terminate used to hang the worker it
-    landed on -- ``harness.within`` had exactly one caller and it was not here -- so the
-    item neither finished nor reported anything and the whole run was unobtainable.  A cut
-    is now ``accepts:over_budget`` with this pair's own name in the message, asserted below
-    like any other non-pass verdict: a NAMED RED, not an ``xfail``, not a skip and not an
-    exemption, which is the only honest form a residue can take.
-    """
-    rep = graded_report(row)
-    assert rep.missing_formats == []
-    if rep.accepts.outcome != "strategy_error":
-        assert rep.accepts.outcome == "pass", (rep.accepts.detail, rep.accepts.counterexample)
-        assert rep.graded_instances > 0, "nothing was constructed and dumped back out"
-    assert rep.liveness.outcome in ("pass", "no_payload"), (rep.liveness.outcome, rep.liveness.how)
-    #: **Reading 2's undeclared direction, asserted with its WITNESS and not only its
-    #: outcome** (``adcp-client-python-x63t``).  ``rep.outcome`` already carries
-    #: ``undeclared:widened_undeclared`` below, so this adds no obligation -- it adds the
-    #: VALUE, because a pair reported "wider than its document" and nothing else leaves the
-    #: reader to rebuild the witness before they can act, and §2's whole rule is about
-    #: values.  ``no_witness`` and ``unrun`` are the two answers that say the class was
-    #: never asked; an unreached conditional is a ``pass`` HERE and ``absent`` in the
-    #: table's own cell, which is where the reach is reported.
-    assert rep.undeclared is not None, "the undeclared-widening check did not run"
-    assert rep.undeclared.outcome in ("pass", "no_witness", "unrun"), (
-        rep.undeclared.outcome,
-        [(keyword, candidate) for candidate, keyword, _, _ in rep.undeclared.undeclared[:3]],
-    )
-    if rep.outcome == "no_instrument":
-        assert rep.no_instrument, rep.name
-        for cause in rep.no_instrument:
-            _grades_a_cause(cause)
-    else:
-        assert rep.outcome == "pass", rep.outcome
 
 
 def _declaring_class(model: type, name: str) -> type | None:
@@ -2816,82 +2753,6 @@ def _matching(pattern: str, examples: int = 2) -> list[str]:
     return out
 
 
-@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
-def test_the_harness_result_is_counted_over_the_whole_population() -> None:
-    """One number for the harness, with its denominators, because a per-pair green
-    mark does not add up to one and nobody can sum 1,055 of them by eye.
-
-    **Every figure below was re-measured on this tree after the rebuild and none
-    was carried forward.**  The harness grades one class against one schema now, so
-    three of the old figures no longer exist to re-point: the step-site count, the
-    refuses-check instance total, and the ``no_constraint_to_step`` partition.  What
-    replaces the first two is ``graded_instances``, which counts instances DRAWN,
-    CONSTRUCTED and DUMPED BACK OUT to something the document still admits -- one
-    per pair at the default depth, so it is an equality and not a floor.
-
-    Read off :func:`graded_reports`, which grades the population ONCE for the three
-    tests that need a total.
-    """
-    pairs = {f"{g.ref.document}{g.ref.pointer}": r for g, r in graded_reports()}
-    assert len(pairs) == len(graded_reports()), "two reports under one pair name"
-    reports = list(pairs.values())
-    claimed("graded pairs", pairs)
-    ratchet(
-        "graded pairs",
-        len(reports),
-        at_least=PAIRS_FLOOR,
-        because="an emitting row only ADDS pairs; a drop means a class stopped carrying "
-        "__adcp_schema__ or stopped being emitted, which is never this suite's intent",
-    )
-
-    # THE OUTCOME PARTITION, derived from the NAMED non-pass set rather than from a
-    # second count of it: every pair is ``pass`` or is one of the pairs
-    # ``NON_PASS_PAIRS`` names, the ``pass`` figure is the complement, and a pair
-    # joining or leaving the group reddens with the DOCUMENT named instead of moving
-    # two integers nobody can attribute.
-    by_outcome = collections.Counter(r.outcome for r in reports)
-    assert set(by_outcome) == {"pass"} | set(NON_PASS_PAIRS), dict(by_outcome)
-    assert {k: n for k, n in by_outcome.items() if k != "pass"} == {
-        k: len(v) for k, v in NON_PASS_PAIRS.items()
-    }, dict(by_outcome)
-    assert by_outcome["pass"] == len(reports) - sum(len(v) for v in NON_PASS_PAIRS.values())
-    # One instance per pair at the default depth, so the round-tripped total is the
-    # complement of the groups that round-trip NOTHING -- a pair whose generator could
-    # not draw and a pair whose dump the document refused.
-    #
-    # **DERIVED FROM :data:`ROUND_TRIPS_NOTHING` AND NOT FROM THE WHOLE NON-PASS SET.**
-    # A pair's verdict and its round trip are different questions: only the groups that
-    # round-trip NOTHING come out of the total, and summing over every non-pass group
-    # was green only while the one group was ``no_instrument``.
-    assert sum(r.graded_instances for r in reports) == len(reports) - sum(
-        len(NON_PASS_PAIRS[k]) for k in ROUND_TRIPS_NOTHING
-    )
-
-    # **EVERY DECLARATION'S ATTRIBUTION, over the whole emitted tree.**  Section 2's
-    # attribution "is a choice of two and not a free-text note", and this is where that
-    # bites on the run rather than on an example: every declaration any artifact of the
-    # tree carries, read off the artifact by ``harness.declarations_of``, against
-    # ``codegen.attribution``'s registry and section 2's own ladder.
-    # ``tests/test_approximation.py`` is where each direction of the rule is perturbed.
-    declared = [one for g, _ in graded_reports() for one in pair_of(g).declared]
-    assert harness.unattributed(declared) == [], harness.unattributed(declared)
-    # §8's UNDERDETERMINED equality is NOT here, and that is
-    # ``adcp-client-python-10l.109``'s move: it needs neither a pair nor a draw -- only the
-    # declarations and the documents of record -- so it is graded in seconds by
-    # ``tests/test_the_declared_backlog.py`` instead of behind this test's 2,347 pair
-    # reports.  The *ours* backlog and the artifact-versus-run gap moved with it, for the
-    # same reason and with the same measurement.
-    # The one refused payload per pair, partitioned BY NAME on the fact it broke.  A
-    # partition and not three totals, because which perturbation bites is a property of
-    # the DOCUMENT's own root shape: a pair moving between these groups is a fact worth
-    # reading and a count cannot say which pair moved.
-    how = collections.defaultdict(set)
-    for name, r in pairs.items():
-        how[r.liveness.how.split(" ")[0] or "no_payload"].add(name)
-    partitions(pairs, **how)
-    assert set(how) == {"drops", "replaces", "no_payload"}, sorted(how)
-    for group in how.values():
-        claimed("a liveness perturbation group", group, inside=set(pairs))
 
 
 #: **The format-beside-pattern census over the bundle, and the undrawable population
@@ -3030,132 +2891,8 @@ def test_the_non_pass_pairs_are_named_and_attributed() -> None:
             assert repr(UNDRAWABLE_PATTERN) in why and "Unsatisfiable" in why, named
 
 
-def test_no_instrument_is_the_designed_outcome_for_a_measured_shape() -> None:
-    """``salesagent-j3k2l.10``: the one admitted non-pass outcome, over its POPULATION.
-
-    **The decision.** ``no_instrument`` is the designed outcome for a position whose
-    ``format`` strategy cannot satisfy the ``pattern`` beside it, and what grounds it is
-    the difference between an INSTRUMENT failure and a verdict: the draw produced no
-    instance, so nothing of this pair's evidence is a statement about the class, and
-    reporting it as a model defect would be the generator's reach wearing the model's
-    name.  So the exit is ATTRIBUTED rather than tolerated -- a ``strategy_error`` no
-    measured position of the document explains falls through to
-    ``accepts:strategy_error`` and is a verdict like any other -- and both admitted
-    pairs are named in ``test_the_non_pass_pairs_are_named_and_attributed`` and again
-    below.
-
-    **The alternative was excluded by measurement, not preference.**
-    ``hypothesis_jsonschema``'s ``string_schema`` takes the FORMAT's strategy and
-    applies the pattern as a ``.filter()``, and ``custom_formats`` is keyed on the
-    format alone and never sees the node -- so no supported hook can make a format
-    strategy pattern-aware.  What is left is an upstream change to ``string_schema``,
-    a reimplementation of the library's string generation here, or a ``uri`` strategy
-    whose output pool contains a ``github.com`` value, which is an instrument built
-    from the answer and which the next bundle pinning another host would undo.
-
-    **Four clauses, each over the whole population and each with its denominator.**
-
-    1. THE CENSUS.  73 positions in 47 of 1,054 documents, 8 distinct
-       ``(format, pattern)`` shapes, and the format is ``uri`` at every one.
-    2. THE DRAW.  7 of the 8 shapes draw -- the library's ``uri`` strategy emits
-       ``https://A.COM``, which matches every pattern pinning the scheme or the general
-       host shape -- so 72 of the 73 positions are reachable and ONE is not.  This is
-       the clause that makes the exit a shape and not a label: co-occurrence is
-       overwhelmingly drawable, so a cause naming co-occurrences would admit a
-       ``strategy_error`` from any cause at all.
-    3. THE OBSTRUCTION IS UNCONDITIONAL.  ``source_repository`` is required by
-       ``provenance`` and ``provenance`` by the root, so no instance of either document
-       can omit the position and no number of examples would have reached one.  Were it
-       optional this would be a sampling artifact and the answer would be more draws.
-    **The fourth clause is in ``test_the_non_pass_pairs_are_named_and_attributed``**,
-    because it is over the other population -- the graded REPORTS -- and that test
-    already holds it.  It attributes every admitted ``no_instrument`` pair to the one
-    position measured here, so the two halves of the decision meet at
-    ``UNDRAWABLE_POSITION`` and neither can move alone.
-    """
-    docs = {d: bundle.read(BUNDLE, d) for d in claimed("bundle.portable", bundle.portable(BUNDLE))}
-
-    # 1. THE CENSUS, as the set of positions rather than as its size: how many of them
-    #    the bundle states is a property of the bundle version, and the facts this
-    #    clause exists for are that the set is not empty and that the format is ``uri``
-    #    at every one of them.
-    positions = {
-        (document, pointer): node
-        for document, doc in sorted(docs.items())
-        for pointer, node in harness.format_pattern_positions(doc)
-    }
-    claimed("positions stating format beside pattern", positions)
-    shapes = collections.Counter((node["format"], node["pattern"]) for node in positions.values())
-    claimed("distinct (format, pattern) shapes", shapes)
-    assert {fmt for fmt, _ in shapes} == {"uri"}, sorted(shapes)
-    # Every position lands in exactly one shape, so no position is lost between the two
-    # readings -- the identity the two censuses were a pair of numbers for.
-    assert sum(shapes.values()) == len(positions)
-
-    # 2. THE DRAW, over the SHAPES rather than the positions: what decides drawability
-    #    is the pair of keywords, so the shape is the unit and the positions are its
-    #    multiplicity.  Drawn through the production function.  The undrawable shape is
-    #    NAMED with its pattern and the drawable ones are the complement, which is the
-    #    clause that makes the exit a shape and not a label: co-occurrence is
-    #    overwhelmingly drawable, so a cause naming co-occurrences would admit a
-    #    ``strategy_error`` from any cause at all.
-    cannot: dict[tuple[str, str], tuple[str, ...]] = {}
-    for fmt, pattern in shapes:
-        why = harness.undrawable_formats({"type": "string", "format": fmt, "pattern": pattern})
-        if why:
-            cannot[(fmt, pattern)] = why
-    assert list(cannot) == [("uri", UNDRAWABLE_PATTERN)], sorted(cannot)
-    draws = claimed("shapes that draw", set(shapes) - set(cannot), inside=set(shapes))
-    assert sum(shapes[s] for s in draws) == len(positions) - sum(shapes[s] for s in cannot)
-    assert "Unsatisfiable" in cannot[("uri", UNDRAWABLE_PATTERN)][0]
-    assert [k for k, n in positions.items() if n["pattern"] == UNDRAWABLE_PATTERN] == [
-        UNDRAWABLE_POSITION
-    ]
-
-    # 3. THE OBSTRUCTION IS UNCONDITIONAL: walk the pointer and require the key at
-    #    every step, so an instance that omits the node does not exist.
-    document, pointer = UNDRAWABLE_POSITION
-    node = docs[document]
-    steps = pointer.lstrip("/").split("/")
-    assert steps[::2] == ["properties"] * (len(steps) // 2), pointer
-    for key in steps[1::2]:
-        assert key in node.get("required", []), (pointer, key, node.get("required"))
-        node = node["properties"][key]
-    assert node["format"] == "uri" and node["pattern"] == UNDRAWABLE_PATTERN
 
 
-@pytest.mark.xdist_group(GRADED_REPORTS_GROUP)
-def test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for() -> None:
-    """The liveness check's own denominator, and what it is NOT.
-
-    Section 6 keeps one refused payload per class and routes it through the entry
-    point, so the question this answers is "how many classes' schema halves were
-    shown to be connected, and was any of them silent".  ``no_payload`` is the complement and is enumerated
-    by name in ``test_a_refused_payload_is_derived_for_every_pair_an_instance_was_drawn_for``.
-
-    ``schema_half_not_connected`` is pinned at ZERO rather than tracked, because an
-    acceptance there is not a tolerance: the document refuses this payload and the
-    entry point did not, so either the schema half is not running for that class or
-    its ``__adcp_schema__`` does not resolve to the document it names.
-    """
-    reports = [r for _, r in graded_reports()]
-    by_outcome: dict[str, set[str]] = {}
-    for g, r in graded_reports():
-        by_outcome.setdefault(r.liveness.outcome, set()).add(f"{g.ref.document}{g.ref.pointer}")
-    assert by_outcome.get("schema_half_not_connected", set()) == set(), [
-        (r.name, r.liveness.how, r.liveness.violated) for r in reports
-        if r.liveness.outcome == "schema_half_not_connected"
-    ]
-    # The live outcomes PARTITION the pairs -- no third one, nothing unaccounted -- and
-    # ``no_payload`` is the NAMED set it is enumerated as rather than a count of 2, so
-    # ``pass`` is the complement and neither has a number of its own to re-point.
-    assert set(by_outcome) == {"pass", "no_payload"}, sorted(by_outcome)
-    assert by_outcome["no_payload"] == set(NO_PAYLOAD_PAIRS), sorted(by_outcome["no_payload"])
-    partitions({f"{g.ref.document}{g.ref.pointer}" for g, _ in graded_reports()}, **by_outcome)
-    # The document decided, at every pair: a perturbation nothing bit is never
-    # offered to the class, so every payload that reached one violates a keyword the
-    # document names.
-    assert all(r.liveness.violated for r in reports if r.liveness.outcome == "pass")
 
 
 def _combinator_parents(ref: SchemaRef) -> list[SchemaRef]:
@@ -4472,7 +4209,20 @@ def _an_instance(ref: SchemaRef) -> Any:
     stated = harness.stated_instances(schema)
     if stated:
         return stated[0]
-    return harness.one_instance(schema, {})
+    #: **AND THERE IS NO THIRD RUNG, because the DRAW it reached is gone.**  This was
+    #: ``harness.one_instance(schema, {})`` -- the one seam every derived draw in the
+    #: harness went through -- and that name was deleted with the draw apparatus, so the
+    #: line raised ``AttributeError`` for any caller that reached it.  Nothing does:
+    #: measured over the 454 arms of this tree's emitted union bases, **454 of 454 are
+    #: answered by the construction and every one is ``Source.CONSTRUCTED``**, so neither
+    #: this rung nor the ``examples`` rung above it is reached today.  A position the
+    #: construction answers nothing for raises here instead of drawing, which is the
+    #: finding ``adcp-client-python-hzio.5`` asks for rather than a value invented to
+    #: continue.
+    raise AssertionError(
+        f"{ref.document}{ref.pointer}: the construction answers no value and the node "
+        "states no examples; there is no draw to fall back to"
+    )
 
 
 def test_a_consumers_subclass_of_a_union_base_keeps_its_own_schema() -> None:

@@ -372,7 +372,16 @@ def test_every_reader_of_the_cached_pass_is_grouped_onto_one_worker() -> None:
         f"readers of {CACHED_PASS}",
         {f"{name}::{fn}" for name, fns in live.items() for fn in fns},
     )
-    assert len(readers) >= 6, sorted(readers)
+    #: **A NON-VACUITY FLOOR AND NOT A CENSUS**, which is why it moves when the population
+    #: legitimately does.  It stood at 6 and is 3: three readers of the cached pass were
+    #: deleted as duplicates of ``tests_emit/test_the_verdicts_are_green.py``, which reads
+    #: ``./verify``'s artifact instead of re-grading --
+    #: ``test_every_class_passes_all_three_checks``,
+    #: ``test_the_harness_result_is_counted_over_the_whole_population`` and
+    #: ``test_the_liveness_check_reaches_every_pair_the_document_refuses_anything_for``.
+    #: The clause's own subject is unchanged and still holds: every reader that EXISTS is
+    #: grouped onto one worker, and :func:`claimed` above is what stops it going vacuous.
+    assert len(readers) >= 3, sorted(readers)
     ungrouped = sorted(
         f"{name}::{fn}" for name, fns in live.items() for fn, marked in fns.items() if not marked
     )
