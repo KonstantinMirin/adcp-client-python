@@ -214,6 +214,65 @@ def test_every_word_the_package_advertises_resolves_or_is_declared() -> None:
     )
 
 
+def test_our_own_source_does_not_import_a_word_the_package_refuses() -> None:
+    """A CONSUMER may be refused a word. OUR OWN CODE MAY NOT DEPEND ON ONE.
+
+    **The first check above treats a declared refusal as fine, and for our own source that is
+    too permissive.** A refusal is a decision about what a *consumer* gets told; there is
+    nothing behind the word, so our code importing it has nothing to resolve to and raises
+    exactly as a consumer's would. "Declared" is an answer to "why can't I have this", never
+    a licence for us to ask.
+
+    **Found by a regression this gate had already passed.**
+    `tests/test_mixed_legacy_projection_regression.py` went from passing to
+    `ImportError: cannot import name 'SyncCreativeResult' from 'adcp.types'`, raised from
+    `src/adcp/server/_creative_batch.py:31` inside `__post_init__` --
+    a FUNCTION-scope import, so nothing broke until the object was constructed, and
+    `adcp.types.aliases.__adcp_refused__` declares the word
+    `DOCUMENT-NO-WORD-NO-IDENTITY`. Check 1 saw a declared refusal and passed it. The
+    deferred import is what made it a latent failure rather than an import-time one, which
+    is the worse kind: the package imports, the gate is green, and the error waits for a
+    caller.
+
+    So the rule has a side: refused is fine OUTWARD and never INWARD. Either the word has a
+    subject and should be bound, or our source must name the subject it actually means --
+    which for a `DOCUMENT-NO-WORD-NO-IDENTITY` row is the class the document does identify.
+    """
+    if not _DECLARED:
+        _DECLARED.update(_declarations())
+
+    # **THE SPLIT IS THE READING, because 62 of these work today and 32 do not.**  A word
+    # that is refused AND bound raises nothing when our source imports it -- the row is
+    # simply wrong, which `test_the_refusal_table_and_the_public_surface_agree` reports as
+    # its group (B).  A word that is refused and UNBOUND is a live latent failure.  Counting
+    # them together would read as 94 outages and send someone looking for 62 that are not.
+    live: list[str] = []
+    stale: list[str] = []
+    for (module_name, name), sites in sorted(_demanded().items()):
+        if name not in _DECLARED:
+            continue
+        state, _ = _state(module_name, name)
+        entry = (
+            f"  {module_name}.{name}\n      {_DECLARED[name]}\n"
+            f"      imported at: {', '.join(sites)}"
+        )
+        (stale if state == "resolves" else live).append(entry)
+
+    assert not (live or stale), (
+        f"{len(live) + len(stale)} words this package's own source imports are DECLARED "
+        f"REFUSED by the type surface.\n\n"
+        f"LIVE -- refused AND unbound, so each raises when reached ({len(live)}):\n"
+        + "\n".join(live)
+        + f"\n\nstale -- refused but bound anyway, so the ROW is what is wrong "
+        f"({len(stale)}):\n"
+        + "\n".join(stale)
+        + "\n\nA refusal is what a CONSUMER is told; our own code cannot depend on one. "
+        "Bind the word if it has a subject, or name the subject our source actually means. "
+        "A function-scope import of a refused word is the worst case: the package imports, "
+        "this gate's other checks pass, and the failure waits for a caller."
+    )
+
+
 def test_the_refusal_table_and_the_public_surface_agree() -> None:
     """A word is REFUSED or it is BOUND. Both, or neither, and the surface lies either way.
 
@@ -364,6 +423,7 @@ if __name__ == "__main__":
         test_every_word_our_source_imports_from_adcp_types_resolves_or_is_declared,
         test_every_word_the_package_advertises_resolves_or_is_declared,
         test_every_declared_refusal_cites_a_location_that_exists,
+        test_our_own_source_does_not_import_a_word_the_package_refuses,
         test_the_refusal_table_and_the_public_surface_agree,
     ):
         try:
