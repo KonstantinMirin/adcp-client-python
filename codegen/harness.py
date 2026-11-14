@@ -1436,6 +1436,35 @@ def violated_keywords(schema: dict, instance: Any, *, validator_cls=None) -> lis
     return sorted(set(out))
 
 
+def violated_at(schema: dict, instance: Any, *, validator_cls=None) -> list[str]:
+    """:func:`violated_keywords` with the POSITION in the schema that each one bit at.
+
+    **A KEYWORD NAME DOES NOT IDENTIFY THE NODE, and that is what cost four passes.**
+    ``core/creative-representation.json#/allOf/0`` reported a refusal "on required", and
+    both nodes a reader can reconstruct for that pair -- the resolved manifest root and the
+    distributed substitution -- ACCEPT the value the row prints.  So the schema the check
+    decided with is a third thing, and the row could not say which, because ``required``
+    names a keyword that appears at eleven positions in that node.
+
+    ``absolute_schema_path`` is jsonschema's own answer and costs nothing to read: it is
+    the path from the schema's root to the subschema whose keyword bit, so
+    ``allOf/2/oneOf/0/required`` names the position and the keyword together.  A reader
+    with that string does not have to reconstruct anything.
+
+    Separate from :func:`violated_keywords` rather than replacing it: that function's
+    answer is a SET of keyword names, read across runs by the refuses census, and widening
+    it to paths would renumber a census for a reason that has nothing to do with it.
+    """
+    cls = validator_cls or validator_for(schema)
+    out: list[str] = []
+    for err in _validating(quiet(cls), schema).iter_errors(instance):
+        for e in [err, *err.context] if err.context else [err]:
+            if isinstance(e.validator, str):
+                where = "/".join(str(part) for part in e.absolute_schema_path)
+                out.append(where or e.validator)
+    return sorted(set(out))
+
+
 #: The verifier's descent, by how each keyword holds its subschema.  A keyword is here
 #: only if a document of record can spell it.
 #:
@@ -2533,6 +2562,7 @@ def _distributed_branch(pair: Any, drawn_from: Any) -> Any:
     here = getattr(vars(pair.model).get("__adcp_schema__"), "document", None)
     if here is None or not isinstance(drawn_from, Mapping):
         return None
+    found: list[tuple[Any, Mapping]] = []
     for base in getattr(pair.model, "__mro__", ())[1:]:
         ref = vars(base).get("__adcp_schema__")
         if ref is None or ref.document == here:
@@ -2555,11 +2585,32 @@ def _distributed_branch(pair: Any, drawn_from: Any) -> Any:
             branch = bundle.node_at(drawn_from, "/" + inside)
         except Exception:  # noqa: BLE001 -- a pointer the resolved node does not hold
             continue
-        if not isinstance(branch, Mapping):
-            continue
-        root = {k: v for k, v in drawn_from.items() if k not in ("oneOf", "anyOf")}
-        return ref, {**root, "allOf": [*root.get("allOf", []), branch]}
-    return None
+        if isinstance(branch, Mapping):
+            found.append((ref, branch))
+    #: **A CLASS ASSERTS ONE BRANCH, SO TWO CANDIDATES IS AN ANSWER AND NOT A CHOICE.**
+    #: ``continue``-to-the-next-base is what lets an envelope's base be skipped, and it is
+    #: also what let a WRONG arm be taken: where the class's own arm did not resolve and a
+    #: LATER cross-document base did, the first one that happened to work was returned.
+    #:
+    #: Measured on ``core/creative-representation.json#/allOf/0`` ->
+    #: ``CreativeRepresentationFormatKind``, and it took the schema PATH in the row to see
+    #: it: ``refused {"format_kind": "image", "assets": {}} at allOf/0/required``.  That
+    #: position is the NAMED-format arm, whose ``required`` is ``['format_id']`` -- so the
+    #: canonical-format class was screened against the named-format branch, the one arm its
+    #: value cannot satisfy.  Both arms resolve here, the loop took the first, and a
+    #: keyword name alone ("on required") could never have shown it: ``required`` is stated
+    #: at eleven positions in that node.
+    #:
+    #: So ambiguity is reported by declining to substitute: the pair keeps its own node,
+    #: ``screen`` stays ``resolved``, and the verdict is about the node the document
+    #: writes.  Guessing which of two asserted branches the class meant would be the
+    #: instrument inventing an identity, which is what §8's fixture rule and
+    #: :attr:`Subject.picks` both refuse to do.
+    if len(found) != 1:
+        return None
+    ref, branch = found[0]
+    root = {k: v for k, v in drawn_from.items() if k not in ("oneOf", "anyOf")}
+    return ref, {**root, "allOf": [*root.get("allOf", []), branch]}
 
 
 def _cause_code(cause: str) -> str:
@@ -3344,17 +3395,36 @@ def check_accepts(
     #: ASK.**  A payload the node REFUSES stops the check here with the keywords named,
     #: because a construction the document rejects is the finding.
     if witness:
+        #: **THE VALUE REPORTED IS THE VALUE REFUSED, and it was ``witness[0]``** -- which
+        #: is a different value whenever the construction offers more than one.  Measured
+        #: cost: ``core/creative-representation.json#/allOf/0`` printed
+        #: ``{"format_kind": "image", "assets": {}}`` beside "on required", and that value
+        #: CONFORMS to the node the pair was screened against (``conforms: True``,
+        #: ``violated: []``, reproduced against the emitted record and the substituted
+        #: branch).  So the row paired one value's keywords with another value's text, and
+        #: two full passes were spent reconstructing a node that had never refused
+        #: anything.  It is the same defect the admits note had from the other side -- a
+        #: cause and a witness that do not belong to each other -- and the rule is the one
+        #: ``check_accepts`` already states: what the reader is shown has to be what the
+        #: check decided on.
         refused = [
-            violated_keywords(schema, one, validator_cls=validator_cls)
+            (one, violated_keywords(schema, one, validator_cls=validator_cls))
             for one in witness
             if conforms(schema, one, validator_cls=validator_cls) is False
         ]
         if refused:
             res.outcome = "witness_refused"
+            first, broke = refused[0]
             res.detail = (
                 "the node refuses the value its own keywords construct, on "
-                f"{', '.join(sorted({k for one in refused for k in one}))}"
-                f"; constructed {_dump(witness[0])}"
+                f"{', '.join(sorted({k for _, one in refused for k in one}))}"
+                + (
+                    f" ({len(refused)} of {len(witness)} constructed values refused)"
+                    if len(witness) > 1
+                    else ""
+                )
+                + f"; refused {_dump(first)} at "
+                + ", ".join(violated_at(schema, first, validator_cls=validator_cls)[:4])
             )[:400]
             return res
     else:
