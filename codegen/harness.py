@@ -4962,6 +4962,19 @@ def narrowed_in_subtree(subject: Any) -> tuple[Approximation, ...]:
         #: through ``getattr`` is a cycle.  The ``seen`` set already closes that, and
         #: ``vars`` keeps the reach honest rather than merely terminating.
         queue += [*vars(here).get("_branch_models", ())]
+        #: **AND THE FIFTH REACH: A BRANCH WHOSE BASE IS IN ITS OWN DOCUMENT.**
+        #: :func:`composed_declarations` skips a same-document base on purpose -- "a base
+        #: in another document is an inlined occurrence, and a base in the SAME document is
+        #: not" -- because ``render.declared_at``'s containment rule is supposed to have
+        #: carried the fact already.  Containment carries a fact stated at
+        #: ``#/properties/endpoint`` onto the class at ``#``; it carries it onto the class
+        #: at ``#/anyOf/0`` by no reading at all, because that pointer is not a prefix of
+        #: this one.  Measured on ``trusted-match/provider-registration.json``: the base at
+        #: ``#`` holds both ``endpoint`` narrowings and both ``anyOf`` branches report
+        #: ``url_parsing at ('endpoint',)`` as a failure.  §4 makes a branch's instance an
+        #: instance of the base's node too, so a narrowing the base declares is one the
+        #: branch makes -- and a narrowing has no pointer obligation to violate.
+        queue += [*getattr(here, "__mro__", ())[1:]]
         for info in fields.values():
             queue += _model_types(getattr(info, "annotation", None))
         #: **AND THE FOURTH REACH: A NAMED ALIAS, whose declaration is beside its
@@ -8093,6 +8106,16 @@ def verdict_row(
         #: so a cause written after the value is a cause nothing can read.  Measured on the
         #: first table that carried this column: 345 of 444 rows had their error type cut
         #: off.
+        #: **THE DETAIL GOES AHEAD OF THE WITNESS, for the reason the paragraph above
+        #: states about the cause.**  Since narrowings became declarable, ``detail`` is
+        #: what names the UNDECLARED causes -- the half a reader can act on, because a
+        #: declared one is a decision and needs nothing done.  Written after the witness
+        #: it was cut by the 400-character truncation at every one of the 30 remaining
+        #: rows: the note ended mid-value and the sentence saying WHICH cause was
+        #: undeclared never appeared, so diagnosing a row meant re-grading the pair.  The
+        #: witness is an arbitrary JSON value and is the right thing to lose to the cut.
+        if m.detail and m.outcome != "pass":
+            notes.append(m.detail)
         for witness, kind, how, cause, refusal in m.rows[:1]:
             notes.append(
                 f"narrower than its document [{cause}] on {kind}: {how}; the class "
@@ -8100,8 +8123,6 @@ def verdict_row(
             )
         if m.refused > 1:
             notes.append(f"and {m.refused - 1} more admitted values refused")
-        if m.detail and m.outcome != "pass":
-            notes.append(m.detail)
     if report is not None and report.missing_formats:
         notes.append(f"no strategy for format {', '.join(report.missing_formats)}")
     if report is not None and report.liveness is not None and report.liveness.detail:
