@@ -1,0 +1,26 @@
+# **A MEASUREMENT OF A TREE IS NOT MERGED, IT IS RE-TAKEN.**
+#
+# `src/adcp/types/verdicts.tsv` and `verify.json` are what `./verify` writes: one row per
+# graded pair, with each check's verdict.  They are a function of the tree they graded, so
+# two branches that both regenerate produce two different measurements of two different
+# trees, and git has no business reconciling them line by line -- the result would be a
+# table describing neither.
+#
+# Measured cost of not saying so: the file blocked a rebase in THREE lanes in one session
+# ("CONFLICT (content): Merge conflict in src/adcp/types/verdicts.tsv"), and the correct
+# resolution each time was `git checkout --ours` followed by `./verify`, because either
+# side is equally wrong until the artifact is re-taken against the merged tree.
+#
+# `merge=ours` makes git take the current branch's copy and stop asking.  It is NOT a
+# claim that the copy is right: it is a claim that the question is the wrong one, and the
+# answer is `./verify`.  `tests_emit/test_the_verdicts_are_green.py` asserts the artifact
+# names THIS checkout's head, so a copy carried across a merge reddens rather than passing
+# -- which is what keeps this from being a silent exemption.
+src/adcp/types/verdicts.tsv merge=ours linguist-generated=true
+src/adcp/types/verify.json  merge=ours linguist-generated=true
+
+# The emitted tree itself, for the same reason one layer along: `codegen` writes it from the
+# bundle, so a conflict there is resolved by regenerating and never by choosing lines.  Kept
+# diffable (no `-diff`) because a reader comparing two emissions is exactly the review this
+# project does.
+src/adcp/types/_schemas/** merge=ours
