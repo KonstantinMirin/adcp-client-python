@@ -23,6 +23,17 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from .get_products_targeting_resolution import ProductDiscoveryTargetingResolution
 
 
+class ExtensionsValue(AdCPBaseModel):
+    model_config = ConfigDict(
+        extra='allow',
+    )
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/extensions/patternProperties/^https?:~1~1[^@]+@sha256:[a-f0-9]{64}$')
+    extends: Annotated[str, Field(description='Canonical concept this extension extends (e.g., `tracking`, `cta_vocabulary`, `destinations`, `placement`).')]
+    fields: Annotated[dict[str, Any], Field(description='JSON Schema fragment declaring the additional fields this extension contributes.')]
+    version: Annotated[str | None, Field(description='Semantic version of the extension definition. Distinct from the digest — version is human-readable; digest is the integrity check.'), OmittedNotNull] = None
+    description: Annotated[str | None, OmittedNotNull] = None
+
+
 class RefinementAppliedItemRequestStatus(StrEnum):
     """
     'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled — see notes for details. 'unable': the seller could not fulfill the ask — see notes for why.
@@ -168,12 +179,12 @@ class GetProductsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/get-products-response.json', pointer='#', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unchanged': {'const': True}}, 'required': ['unchanged']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-        Approximation(document='media-buy/get-products-response.json', pointer='#/properties/extensions', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^https?://[^@]+@sha256:[a-f0-9]{64}$': {'type': 'object', 'required': ['extends', 'fields'], 'properties': {'extends': {'type': 'string', 'description': 'Canonical concept this extension extends (e.g., `tracking`, `cta_vocabulary`, `destinations`, `placement`).'}, 'fields': {'type': 'object', 'description': 'JSON Schema fragment declaring the additional fields this extension contributes.'}, 'version': {'type': 'string', 'description': 'Semantic version of the extension definition. Distinct from the digest — version is human-readable; digest is the integrity check.'}, 'description': {'type': 'string'}}, 'additionalProperties': True}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
+        Approximation(document='media-buy/get-products-response.json', pointer='#/properties/extensions', keyword='additionalProperties', kind='NARROWED', rung='CONTAINER', fact=True, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
         Approximation(document='media-buy/get-products-response.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'rejected'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     products: Annotated[list[Product] | None, Field(description='Array of matching products'), OmittedNotNull] = None
     targeting_resolution: Annotated[ProductDiscoveryTargetingResolution | None, Field(description='Request-level confirmation of structured hard targeting inferred from the brief. Sellers MUST include this when their structured interpretation of hard prose materially affects product eligibility, pricing, or forecasting; otherwise inclusion is a best practice. Omitted when no hard targeting was inferred from the brief.'), OmittedNotNull] = None
-    extensions: Annotated[dict[str, Any] | None, Field(description='Bundled platform-extension definitions referenced by any product in `products`. Keyed by `<extension_uri>@<digest>` (e.g., `https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel@sha256:abc...`). When present, lets buyers resolve `platform_extensions` references on product format declarations without a separate fetch. Buyer SDKs cache by URI@digest; subsequent get_products responses MAY omit definitions the buyer already has cached and rely on the digest match. Each value is an extension definition with `extends` (the canonical concept it extends, e.g., `tracking`), `fields` (the schema for additional fields the extension contributes), `version`, and optional `description`.'), OmittedNotNull] = None
+    extensions: Annotated[dict[str, ExtensionsValue] | None, Field(description='Bundled platform-extension definitions referenced by any product in `products`. Keyed by `<extension_uri>@<digest>` (e.g., `https://creative.adcontextprotocol.org/translated/meta/extensions/meta_pixel@sha256:abc...`). When present, lets buyers resolve `platform_extensions` references on product format declarations without a separate fetch. Buyer SDKs cache by URI@digest; subsequent get_products responses MAY omit definitions the buyer already has cached and rely on the digest match. Each value is an extension definition with `extends` (the canonical concept it extends, e.g., `tracking`), `fields` (the schema for additional fields the extension contributes), `version`, and optional `description`.'), OmittedNotNull] = None
     proposals: Annotated[list[Proposal] | None, Field(description='Optional legacy proposed media plans. When the request carries media_buy_frequency_cap, every returned proposal echoes the bound value as proposal.frequency_cap. Buyers may refine or execute a committed proposal by ID.'), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings (e.g., product filtering issues)'), OmittedNotNull] = None
     reason: Annotated[StrMinLen1MaxLen2000 | None, Field(description='Buyer-facing market explanation required only on the GetProductsRejected arm. MAY be sanitized to protect confidential seller rules. Plain text only.'), OmittedNotNull] = None
@@ -194,6 +205,9 @@ class GetProductsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
 
 
 ExcludedBy = ExcludedByValue
+
+
+Extensions = ExtensionsValue
 
 
 RefinementApplied1 = RefinementAppliedItemRequest

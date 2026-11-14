@@ -403,6 +403,7 @@ from .._schemas.media_buy.get_products_response import EstimatedWait as GetProdu
 from .._schemas.media_buy.get_products_response import (
     ExcludedByValue as GetProductsResponseFilterDiagnosticsExcludedByValue,
 )
+from .._schemas.media_buy.get_products_response import ExtensionsValue as GetProductsResponseExtensionsValue
 from .._schemas.media_buy.get_products_response import FilterDiagnostics as GetProductsResponseFilterDiagnostics
 from .._schemas.media_buy.get_products_response import GetProductsResponse as GetProductsResponse
 from .._schemas.media_buy.get_products_response import IncompleteItem as GetProductsResponseIncompleteItem
@@ -954,6 +955,7 @@ __all__ = [
     'GetProductsRequestTimeBudget',
     'GetProductsResponse',
     'GetProductsResponseCacheScope',
+    'GetProductsResponseExtensionsValue',
     'GetProductsResponseFilterDiagnostics',
     'GetProductsResponseFilterDiagnosticsExcludedByValue',
     'GetProductsResponseFilterDiagnosticsSemantics',

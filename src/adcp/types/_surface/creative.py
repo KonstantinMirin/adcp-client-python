@@ -92,6 +92,7 @@ from .._schemas.creative.list_creatives_response import (
 )
 from .._schemas.creative.list_creatives_response import Assignments as ListCreativesResponseCreativesItemAssignments
 from .._schemas.creative.list_creatives_response import CreativesItem as ListCreativesResponseCreativesItem
+from .._schemas.creative.list_creatives_response import FormatSummaryValue as FormatSummaryValue
 from .._schemas.creative.list_creatives_response import Kind as ListCreativesResponseCreativesItemPurgeKind
 from .._schemas.creative.list_creatives_response import ListCreativesResponse as ListCreativesResponse
 from .._schemas.creative.list_creatives_response import (
@@ -170,6 +171,7 @@ from .._schemas.creative.sync_creatives_request import CreativesItemFormatKind a
 from .._schemas.creative.sync_creatives_request import ReplaceAssignment as ReplaceAssignment
 from .._schemas.creative.sync_creatives_request import SyncCreativesRequest as SyncCreativesRequest
 from .._schemas.creative.sync_creatives_request import Unassign as Unassign
+from .._schemas.creative.sync_creatives_response import AssignmentErrorsValue as AssignmentErrorsValue
 from .._schemas.creative.sync_creatives_response import CreativesItem as SyncCreativesSuccessCreativesItem
 from .._schemas.creative.sync_creatives_response import SyncCreativesError as SyncCreativesError
 from .._schemas.creative.sync_creatives_response import SyncCreativesResponse as SyncCreativesResponse
@@ -194,6 +196,7 @@ from .._schemas.creative.video_brief import VideoBrief as VideoBrief
 __all__ = [
     'AdCPAssetTypeRegistry',
     'AssignOrUpdate',
+    'AssignmentErrorsValue',
     'CanonicalFormatTarget',
     'CreativeAssignmentChangedWebhook',
     'CreativeAssignmentChangedWebhookChangeKind',
@@ -213,6 +216,7 @@ __all__ = [
     'CreativeStatusChangedWebhookTransitionFrom',
     'CreativesItemFormatId',
     'CreativesItemFormatKind',
+    'FormatSummaryValue',
     'GetCreativeDeliveryRequest',
     'GetCreativeDeliveryResponse',
     'GetCreativeDeliveryResponseCreativesItem',

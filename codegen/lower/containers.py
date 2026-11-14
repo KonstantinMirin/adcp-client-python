@@ -549,6 +549,29 @@ def mapping(node: nodes.Mapping_, mod: Module) -> ir.Decided | Refusal:
                 "value types differ per branch, which is a rule and not a dict[K, V]",
                 kind=Kind.VERDICT,
             )
+        # **THE EXPRESSION IS READ ONCE, FOR BOTH ARMS.**  It was read only in the
+        # ``additionalProperties: false`` arm below, because the other arm dropped the
+        # pattern entirely; both now lower the pattern's VALUE, so the one entry's key is
+        # the one thing both need and the refusal below guards both.
+        expr = node.pattern
+        if expr is None:
+            # **A crash is not an outcome** (§9), and this is the one place the row met
+            # that rule.  :attr:`nodes.Mapping_.pattern` is the parser's record of the
+            # single entry's key where that key is a STRING and ``None`` where it is not,
+            # so the two fields can disagree -- ``patterns == 1`` with no expression --
+            # and ``bundle.escape_key(None)`` was then a ``TypeError`` naming no
+            # document, pointer or keyword.  A malformed document is a property of the
+            # DOCUMENT (§4's shape-validation rule), so it is a VERDICT.  Population 0,
+            # necessarily: ``json.loads`` gives every object key as a string, so no
+            # bundle document can reach it and nothing moves -- what changes is that the
+            # unreachable arm names a document instead of stopping the run.
+            return Refusal(
+                "patternProperties",
+                pointer,
+                "its one entry's key is not a string, so there is no expression to "
+                "constrain the mapping's key type with",
+                kind=Kind.VERDICT,
+            )
         # ``additionalProperties`` ABSENT is draft-07's ``true``, which is what
         # :attr:`nodes.Base.extra` being ``None`` means (§2: absent and ``true`` are
         # different statements, and this refusal is the one place they say the same).
@@ -598,24 +621,57 @@ def mapping(node: nodes.Mapping_, mod: Module) -> ir.Decided | Refusal:
                     "the key would be widened to str in silence",
                     kind=Kind.DEFERRED,
                 )
-            approximate.declare(
-                mod, pointer, "patternProperties", position, node.patterned
+            # **THE VALUE IS THE TYPE ITS SCHEMA STATES, AND THE RESIDUAL IS A DECLARED
+            # NARROWING.**  What stood here lowered the whole mapping to
+            # ``dict[str, Any]`` and declared the pattern's value typing WIDENED -- the
+            # class then admitting, at every key the pattern matches, a value the
+            # document refuses.  Measured: ``core/creative-manifest.json#/properties/assets``
+            # states a ``oneOf`` over the asset-variant union whose image arm requires
+            # ``width`` and ``height``, ``_refuse_at`` duly refuses an asset carrying
+            # neither, and the class accepted it -- reading 1, in the direction §2 calls
+            # the named failure.
+            #
+            # **WHY THE KEY IS NOT CONSTRAINED, which is the half that looks like the fix
+            # and is not.**  ``dict[Annotated[str, pattern(P)], V]`` is exact where the
+            # document states ``additionalProperties: false`` (the arm below, 5 of the
+            # bundle's 14 sites).  Here it states ``true`` or nothing, and draft-07 is
+            # unambiguous about what that means -- measured under ``Draft7Validator`` on
+            # ``{"patternProperties": {"^x_": {"type": "string"}}, "additionalProperties":
+            # true}``: ``{"x_a": "ok"}`` accepted, ``{"x_a": 1}`` REFUSED, ``{"other":
+            # 123}`` ACCEPTED.  A key the pattern does not match is unconstrained, so a
+            # patterned key type would refuse a key the document admits.  The key stays
+            # ``str``, which is faithful and not widened: a non-``false``
+            # ``additionalProperties`` admits every key already.
+            #
+            # **SO ONE FACT IS STILL NOT EXPRESSED, AND IT IS NARROWED AND NOT WIDENED.**
+            # A dict has ONE value type, and the document states two value sets -- ``V``
+            # for a key matching ``P``, anything for a key that does not.  ``dict[str, V]``
+            # therefore refuses a NON-matching key whose value is not a ``V``, which the
+            # document admits.  That is a narrowing taken on purpose, and §2's record has
+            # the slot for exactly that (:data:`adcp.types._base.NARROWED`): the keyword
+            # whose value is refused is ``additionalProperties``, and the fact is what the
+            # document states there.  The alternative -- keeping ``Any`` so no admitted
+            # value is refused -- buys that by admitting a refused value at EVERY matching
+            # key, which is the trade §2 settles in favour of the stated type.
+            patterned = _value(
+                node.value,
+                f"{pointer}/patternProperties/{bundle.escape_key(expr)}",
+                pointer,
+                mod,
+                keyword="patternProperties",
             )
-            if isinstance(stated_extra, Mapping) and stated_extra:
-                # A TYPED ``additionalProperties`` beside the pattern types the keys the
-                # pattern does NOT match, so ``dict[str, Any]`` drops that value typing
-                # too, and ``harness.check_widening`` puts each declaration to a draw of
-                # its own.  Population
-                # 0 over this bundle -- every patterned node states ``true``, ``false`` or
-                # nothing -- and declared rather than refused because the rung is the same
-                # one: the mapping is already ``dict[str, Any]``.
-                approximate.declare(
-                    mod, pointer, "additionalProperties", position, stated_extra
-                )
+            if isinstance(patterned, Refusal):
+                return patterned
+            approximate.declare(
+                mod,
+                pointer,
+                "additionalProperties",
+                position,
+                stated_extra,
+                kind=ir.NARROWED,
+            )
             return ir.Decided(
-                ir.TypeRef(
-                    container="dict", of=(ir.TypeRef("typing.Any"),), key=ir.TypeRef("str")
-                ),
+                ir.TypeRef(container="dict", of=(patterned,), key=ir.TypeRef("str")),
                 bounds,
             )
         if "propertyNames" in node.declares:
@@ -649,25 +705,6 @@ def mapping(node: nodes.Mapping_, mod: Module) -> ir.Decided | Refusal:
         # a draw places at such a node is a key the pattern matches holding a value of the
         # stated type, so the value schema and the key expression are each GRADED rather
         # than excused.
-        expr = node.pattern
-        if expr is None:
-            # **A crash is not an outcome** (§9), and this is the one place the row met
-            # that rule.  :attr:`nodes.Mapping_.pattern` is the parser's record of the
-            # single entry's key where that key is a STRING and ``None`` where it is not,
-            # so the two fields can disagree -- ``patterns == 1`` with no expression --
-            # and ``bundle.escape_key(None)`` was then a ``TypeError`` naming no
-            # document, pointer or keyword.  A malformed document is a property of the
-            # DOCUMENT (§4's shape-validation rule), so it is a VERDICT.  Population 0,
-            # necessarily: ``json.loads`` gives every object key as a string, so no
-            # bundle document can reach it and nothing moves -- what changes is that the
-            # unreachable arm names a document instead of stopping the run.
-            return Refusal(
-                "patternProperties",
-                pointer,
-                "its one entry's key is not a string, so there is no expression to "
-                "constrain the mapping's key type with",
-                kind=Kind.VERDICT,
-            )
         # ``bundle.escape_key``: §11 puts a pointer segment speller in the SOURCE
         # layer, and §14 step 5 moved it there out of ``compiler.py``.  The ONE
         # pointer this module spells, and the parser §4 declares is what retires it --

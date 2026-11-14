@@ -2,16 +2,21 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Any, ClassVar
+from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Presence, Rule, UniqueItems
-from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, CreativesItemAssignmentsReturnedAssignmentCount
+from adcp.types.constraints import (
+    AccountAuthorizationAllowedTasksItem,
+    CreativesItemAssignmentsReturnedAssignmentCount,
+    NonEmptyList,
+)
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.account import Account
+from ..core.assets.asset_union import AssetVariant
 from ..core.canonical_format_kind import CanonicalFormatKind
 from ..core.context import ContextObject
 from ..core.creative_approval_scope import ScopedCreativeApproval
@@ -207,7 +212,7 @@ class CreativesItem(BranchDispatchMixin, AdCPBaseModel):
         ConditionalRequired((Match('rights_attestation_evaluations', True, None),), require=('rights',), forbid=()),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assets', keyword='additionalProperties', kind='NARROWED', rung='CONTAINER', fact=True, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['indicators_evaluated_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'approval_status': {'const': 'partially_approved'}}, 'required': ['approval_status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['approval_scopes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
@@ -223,7 +228,7 @@ class CreativesItem(BranchDispatchMixin, AdCPBaseModel):
     status: Annotated[CreativeStatus, Field(description='Current approval status of the creative')]
     created_date: Annotated[AwareDatetime, Field(description='When the creative was created')]
     updated_date: Annotated[AwareDatetime, Field(description='When the creative was last modified')]
-    assets: Annotated[dict[str, Any] | None, Field(description='Assets for this creative, keyed by asset_id. Each slot value is either a single asset object or an array of asset objects (for slots with `min`/`max > 1`). Each asset value carries an `asset_type` discriminator that selects the matching asset schema.'), OmittedNotNull] = None
+    assets: Annotated[dict[str, AssetVariant | NonEmptyList[AssetVariant]] | None, Field(description='Assets for this creative, keyed by asset_id. Each slot value is either a single asset object or an array of asset objects (for slots with `min`/`max > 1`). Each asset value carries an `asset_type` discriminator that selects the matching asset schema.'), OmittedNotNull] = None
     component_assets: Annotated[dict[AccountAuthorizationAllowedTasksItem, CreativeAssets] | None, Field(description='Preserved component-addressed asset maps for `coordinated_placements`, keyed by coordinated component ID.'), OmittedNotNull] = None
     localization: Annotated[CreativeLocalizationReadback | None, Field(description='Authoritative exact materialized locale-variant state. Present for localized creatives when complete. The enclosing creative status is the single review lifecycle for all variants.'), OmittedNotNull] = None
     localization_unavailable: Annotated[LocalizationUnavailable | None, Field(description='Per-creative fail-closed state returned instead of localization when the seller knows the creative is localized but cannot construct complete exact readback. The creative remains in this page and counts toward query_summary.returned and pagination; buyers may continue using the base creative fields but MUST NOT infer locale eligibility.'), OmittedNotNull] = None
@@ -268,6 +273,9 @@ CreativesItem._branch_models = (ListedCreativeNamedFormatReference, ListedCreati
 CreativesItem.model_rebuild(force=True)
 
 
+FormatSummaryValue = Annotated[NonNegativeInt, Field(description='Number of creatives with this format')]
+
+
 class StatusSummary(AdCPBaseModel):
     """
     Breakdown of creatives by status
@@ -292,16 +300,16 @@ class ListCreativesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#')
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assets', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-z0-9_]+$': {'oneOf': [{'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/assets/asset-union.json'}, {'type': 'array', 'items': {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/assets/asset-union.json'}, 'minItems': 1}]}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assets', keyword='additionalProperties', kind='NARROWED', rung='CONTAINER', fact=True, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['indicators_evaluated_scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'approval_status': {'const': 'partially_approved'}}, 'required': ['approval_status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['approval_scopes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/format_summary', keyword='patternProperties', kind='WIDENED', rung='CONTAINER', fact={'^[a-zA-Z0-9_-]+$': {'type': 'integer', 'description': 'Number of creatives with this format', 'minimum': 0}}, attribution='docs/plan/rebuild-plan.md §5 objects/patternProperties'),
+        Approximation(document='creative/list-creatives-response.json', pointer='#/properties/format_summary', keyword='additionalProperties', kind='NARROWED', rung='CONTAINER', fact=True, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
     )
     query_summary: Annotated[QuerySummary, Field(description='Summary of the query that was executed')]
     pagination: PaginationResponse
     creatives: Annotated[list[CreativesItem], Field(description='Array of creative assets matching the query')]
-    format_summary: Annotated[dict[str, Any] | None, Field(description='Breakdown of creatives by canonical format kind. Keys SHOULD be `format_kind` values; an implementation may append a stable option suffix when separate product or publisher options must be distinguished.'), OmittedNotNull] = None
+    format_summary: Annotated[dict[str, FormatSummaryValue] | None, Field(description='Breakdown of creatives by canonical format kind. Keys SHOULD be `format_kind` values; an implementation may append a stable option suffix when separate product or publisher options must be distinguished.'), OmittedNotNull] = None
     status_summary: Annotated[StatusSummary | None, Field(description='Breakdown of creatives by status'), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors (e.g., invalid filters, account not found)'), OmittedNotNull] = None
     sandbox: Annotated[bool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None

@@ -771,6 +771,7 @@ from .._schemas.media_buy.get_products_request import Refine1 as Refine1
 from .._schemas.media_buy.get_products_request import Refine2 as Refine2
 from .._schemas.media_buy.get_products_request import Refine3 as Refine3
 from .._schemas.media_buy.get_products_response import ExcludedBy as ExcludedBy
+from .._schemas.media_buy.get_products_response import Extensions as Extensions
 from .._schemas.media_buy.get_products_response import RefinementApplied1 as RefinementApplied1
 from .._schemas.media_buy.get_products_response import RefinementApplied2 as RefinementApplied2
 from .._schemas.media_buy.get_products_response import RefinementApplied3 as RefinementApplied3
@@ -3086,6 +3087,7 @@ from .core import WholesaleFeedWebhook as WholesaleFeedWebhook
 from .core import XEntityTypes as XEntityTypes
 from .core import ZipAsset as ZipAsset
 from .creative import AdCPAssetTypeRegistry as AdCPAssetTypeRegistry
+from .creative import AssignmentErrorsValue as AssignmentErrorsValue
 from .creative import AssignOrUpdate as AssignOrUpdate
 from .creative import CanonicalFormatTarget as CanonicalFormatTarget
 from .creative import CreativeAssignmentChangedWebhook as CreativeAssignmentChangedWebhook
@@ -3108,6 +3110,7 @@ from .creative import CreativesItemFormatKind as CreativesItemFormatKind
 from .creative import CreativeStatusChangedWebhook as CreativeStatusChangedWebhook
 from .creative import CreativeStatusChangedWebhookTransition as CreativeStatusChangedWebhookTransition
 from .creative import CreativeStatusChangedWebhookTransitionFrom as CreativeStatusChangedWebhookTransitionFrom
+from .creative import FormatSummaryValue as FormatSummaryValue
 from .creative import GetCreativeDeliveryRequest as GetCreativeDeliveryRequest
 from .creative import GetCreativeDeliveryResponse as GetCreativeDeliveryResponse
 from .creative import GetCreativeDeliveryResponseCreativesItem as GetCreativeDeliveryResponseCreativesItem
@@ -4076,6 +4079,7 @@ from .media_buy import GetProductsRequestRefineItemProposalAction as GetProducts
 from .media_buy import GetProductsRequestTimeBudget as GetProductsRequestTimeBudget
 from .media_buy import GetProductsResponse as GetProductsResponse
 from .media_buy import GetProductsResponseCacheScope as GetProductsResponseCacheScope
+from .media_buy import GetProductsResponseExtensionsValue as GetProductsResponseExtensionsValue
 from .media_buy import GetProductsResponseFilterDiagnostics as GetProductsResponseFilterDiagnostics
 from .media_buy import (
     GetProductsResponseFilterDiagnosticsExcludedByValue as GetProductsResponseFilterDiagnosticsExcludedByValue,
@@ -5236,6 +5240,7 @@ __all__ = [
     'AssignOrUpdate',
     'AssignedPackage',
     'Assignment',
+    'AssignmentErrorsValue',
     'AssignmentOperations1',
     'AssignmentOperations2',
     'AssignmentOperations3',
@@ -6367,6 +6372,7 @@ __all__ = [
     'ExplicitPackagesWithSellerOptimizedAllocation',
     'ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation',
     'ExtensionObject',
+    'Extensions',
     'ExtensionsSupportedItem',
     'Facet',
     'FailedLookup',
@@ -6424,6 +6430,7 @@ __all__ = [
     'FormatOptions',
     'FormatOptionsItemFormatOptionId',
     'FormatReferenceStructuredObject',
+    'FormatSummaryValue',
     'FormatsItemAgentPlacement',
     'FormatsItemAudioDaast',
     'FormatsItemAudioHosted',
@@ -6731,6 +6738,7 @@ __all__ = [
     'GetProductsRequestTimeBudget',
     'GetProductsResponse',
     'GetProductsResponseCacheScope',
+    'GetProductsResponseExtensionsValue',
     'GetProductsResponseFilterDiagnostics',
     'GetProductsResponseFilterDiagnosticsExcludedByValue',
     'GetProductsResponseFilterDiagnosticsSemantics',
