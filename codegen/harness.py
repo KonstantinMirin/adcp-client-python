@@ -6340,6 +6340,22 @@ class PairReport:
     #: on every pair the construction answered, and empty when no construction was supplied
     #: at all, because "nobody asked" is not a fact about the document.
     witness_absent: str = ""
+    #: **WHICH OF THE THREE NODES THE CHECKS SCREENED AGAINST, because three are reachable
+    #: at one line and the verdict never said which answered** (``adcp-client-python-01p4``).
+    #: ``check_pair`` derives ``drawn_from`` as the pair's node RESOLVED, or the node
+    #: unresolved where resolution raised -- ``resolve(pair.schema, store={})`` with an
+    #: empty store cannot inline an absolute external ``$ref``, and the fail-safe "leaves
+    #: the node exactly as the document writes it" -- or the DISTRIBUTED branch's
+    #: substitution.  Those admit different sets, so a row reporting a refusal without
+    #: naming the node is a row whose finding cannot be reproduced.
+    #:
+    #: Measured cost of not carrying it: ``core/creative-representation.json#/allOf/0``
+    #: reported "the node refuses the value its own keywords construct, on required", and
+    #: rebuilding that node by hand ACCEPTED the same value (``conforms: True``,
+    #: ``violated: []``) -- because the node in play was the unresolved ``$ref`` and not the
+    #: one the reader would reconstruct.  One word in the row is the difference between a
+    #: finding and a wrong turn.
+    screen: str = ""
     #: How many §8 FIXTURES were pinned at a referring position of this pair's node
     #: (:class:`Fixtures`).  Reported for ``AcceptsResult.replayed``'s reason: the draw
     #: varied this class's own payload and took each referenced document's value as given,
@@ -7418,10 +7434,19 @@ def _check_pair(
     #: the node exactly as the document writes it, the draw raises there rather than
     #: widening anything silently, and the pair reports what the checks say instead of
     #: passing blind.
+    screen = "resolved"
     try:
         drawn_from = resolve(pair.schema, store={}, referrer=pair.document)
     except Exception:  # any resolution failure falls back to the node
-        drawn_from = pair.schema
+        drawn_from, screen = pair.schema, "unresolved"
+    #: **AND A NODE THAT IS STILL A BARE ``$ref`` DID NOT RESOLVE, whatever the call
+    #: returned.**  ``resolve`` raising is one of the two ways the fail-safe is taken and
+    #: it is not the common one: measured, the pairs whose node is an absolute external
+    #: reference come back with the ``$ref`` intact and no exception, so a reader of
+    #: ``screen`` would be told "resolved" about a node holding one keyword.  The test is
+    #: the ANSWER and not the call -- which is this module's rule everywhere else.
+    if isinstance(drawn_from, Mapping) and "$ref" in drawn_from:
+        screen = "unresolved"
     #: **A DISTRIBUTED BRANCH'S NODE IS A CONJUNCTION, and the pair carried half of it**
     #: (``adcp-client-python-jt6r``).  §5's DISTRIBUTION clause: where the ``$ref`` target
     #: is a union ROOT, the node "is a union whose branches each take one of the target's
@@ -7444,8 +7469,10 @@ def _check_pair(
     distributed = _distributed_branch(pair, drawn_from)
     if distributed is not None:
         witness_ref, drawn_from = distributed
+        screen = "distributed"
     else:
         witness_ref = pair.ref
+    rep.screen = screen
     #: **§8's FIXTURE RULE, and it is a change to the DRAW and to nothing else.**  "A
     #: referenced document is graded by its own pair, so at a referring position it is a
     #: fixture and not a draw."  Every position under this node that the BUNDLE spells as a
@@ -8224,6 +8251,14 @@ def verdict_row(
             )
         if m.refused > 1:
             notes.append(f"and {m.refused - 1} more admitted values refused")
+    #: **THE SCREEN, FIRST OF ALL, because every sentence after it is about that node.**
+    #: ``unresolved`` is not a footnote: it says the node in play holds one keyword and
+    #: that a reader reconstructing it from the document will reconstruct a DIFFERENT
+    #: node -- which is how ``core/creative-representation.json#/allOf/0`` cost a wrong
+    #: turn.  Three characters of prefix in front of a 400-character cell, against
+    #: re-grading a pair to find out which of three nodes answered.
+    if report is not None and report.screen and report.screen != "resolved":
+        notes.insert(0, f"screened against the {report.screen} node")
     if report is not None and report.missing_formats:
         notes.append(f"no strategy for format {', '.join(report.missing_formats)}")
     if report is not None and report.liveness is not None and report.liveness.detail:
