@@ -1794,7 +1794,7 @@ def _wire_dump(value: Any) -> Any:
     refused by a keyword elsewhere in the same document -- ``core/notification-config.json#``
     dumps ``product_payload_view: "legacy"`` and ``active: true`` from a payload carrying
     neither and the root's ``contains`` refuses the result;
-    ``media-buy/get-media-buy-delivery-request.json#`` dumps two ``false``\ s into a ``not``.
+    ``media-buy/get-media-buy-delivery-request.json#`` dumps two ``false`` s into a ``not``.
     **The other 4 are a ``null`` the marker correctly does not strike**, at
     ``media-buy/get-reporting-status-response.json``'s ``data_through``, whose own
     declaration is ``type: ["string", "null"]`` -- the node's conditional refuses it and no

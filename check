@@ -56,6 +56,22 @@ ROOT = Path(__file__).resolve().parent
 SUITE = next(d for d in (ROOT / "tests_emit", ROOT / "tests") if (d / "compiled.py").is_file())
 sys.path.insert(0, str(SUITE))
 
+#: **THIS CHECKOUT'S OWN ``src`` GOES FIRST, OR THE RUN EMITS AGAINST ANOTHER CHECKOUT'S
+#: RUNTIME** -- the same line ``./verify`` carries, for the same measured reason.
+#:
+#: The worktree venvs hold EDITABLE installs and an editable ``.pth`` names an absolute
+#: path, the one the install was made from.  Measured in ``wt-keyless`` on 2026-11-14:
+#: ``adcp`` resolved to ``/srv/ws/adcp-client-python/src`` -- the SHARED checkout --
+#: ``adcp_emit`` to ``/srv/ws/.adcp-scratch/wt-subjects/src``, and only ``codegen`` to this
+#: worktree, because cwd wins.  So a lane's ``./check`` read the COMPILER from the lane and
+#: the SDK's hand-written half -- ``adcp.types._base``'s markers, ``BranchDispatchMixin``,
+#: the rule classes the emitted modules import -- from trunk.
+#:
+#: That is worse here than in the verifier: this command WRITES the tree, so an emission
+#: whose markers come from another checkout produces modules that import names this
+#: checkout may not have.  The three numbers would still print.
+sys.path.insert(0, str(ROOT / "src"))
+
 from codegen import patch  # noqa: E402  (the sys.path line above is what makes it resolve)
 
 #: **The bundle a run reads**: the published one with the build's patch sets applied.  One
