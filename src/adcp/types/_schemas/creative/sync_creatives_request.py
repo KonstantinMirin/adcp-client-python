@@ -5,7 +5,14 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    OmittedNotNull,
+    OmittedWhenNone,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, StrMinLen1
 from adcp.types.envelopes import AdcpRequest
@@ -41,7 +48,7 @@ class CreativesItem(BranchDispatchMixin, AdCPBaseModel):
         ConditionalRequired((Match('representation_selection', True, None),), require=(), forbid=('localization',)),
     )
     revision_id: Annotated[CreativeRevisionID | None, Field(description='Optional buyer-assigned identity for this exact input-content state. Buyers may send it to any 3.2 peer; creative.supports_revisions gates reliance on immutability, echo, readback, and delivery correlation, not whether the open request shape may carry the field. Within a supporting seller, a revision_id is immutable under one creative_id: reusing it with different canonical revision content MUST fail with CREATIVE_REVISION_CONTENT_MISMATCH. Metadata and assignment fields excluded from revision content may change without minting a new revision.'), OmittedNotNull] = None
-    localization: Annotated[CreativeLocalization | None, Field(description='Sync-only materialized-localization mutation. The top-level assets are the source variant; optional locale_fallbacks declare buyer-approved language-family substitutions, and default_locale_variant_id selects the final serving fallback. An object transactionally replaces the source assets and complete locale set, omission preserves existing localization only when the top-level source assets are unchanged, and null removes localization. This field never requests translation or generation. Receivers MUST advertise get_adcp_capabilities creative.localization before accepting it.')] = None
+    localization: Annotated[CreativeLocalization | None, Field(description='Sync-only materialized-localization mutation. The top-level assets are the source variant; optional locale_fallbacks declare buyer-approved language-family substitutions, and default_locale_variant_id selects the final serving fallback. An object transactionally replaces the source assets and complete locale set, omission preserves existing localization only when the top-level source assets are unchanged, and null removes localization. This field never requests translation or generation. Receivers MUST advertise get_adcp_capabilities creative.localization before accepting it.'), OmittedWhenNone] = None
 
 
 class CreativesItemFormatId(CreativesItem, V1CreativeNamedFormatReference):

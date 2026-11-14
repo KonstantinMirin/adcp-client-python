@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     ConsultationContext,
@@ -61,7 +61,7 @@ class ConditionsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-response.json', pointer='#/properties/conditions/items')
     field: Annotated[str, Field(description='Dot-path rooted at the complete check_governance request arguments (for example payload.total_budget.amount or proposed_commitment.amount). Conditions are not valid for committed execution checks.')]
-    required_value: Annotated[Any | None, Field(description='The value the field must have for approval. When present, the condition is machine-actionable. When absent, the condition is advisory.')] = None
+    required_value: Annotated[Any | None, Field(description='The value the field must have for approval. When present, the condition is machine-actionable. When absent, the condition is advisory.'), OmittedWhenNone] = None
     reason: Annotated[str, Field(description='Why this condition is required.')]
 
 

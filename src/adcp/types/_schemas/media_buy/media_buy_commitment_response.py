@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
 
@@ -91,7 +91,7 @@ class CommittedMediaBuy(MediaBuyCommitmentResponse):
     name: Annotated[MediaBuyName | None, Field(description='Persisted human-readable MediaBuy name for trafficking UI display and operational communication. The seller MUST echo a buyer-supplied request name unchanged; when the seller seeded a new MediaBuy name from an already-valid proposal.name, it MUST return that value unchanged here. Existing named MediaBuys return the stored value on amendment or cancellation commitments. This operational metadata is outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.'), OmittedNotNull] = None
     revision: IntMin1
     media_buy_status: Annotated[MediaBuyStatus | None, OmittedNotNull] = None
-    confirmed_at: AwareDatetime | None = None
+    confirmed_at: Annotated[AwareDatetime | None, OmittedWhenNone] = None
     accepted_proposal: AcceptedProposal
     purchase_bindings: Annotated[list[PurchaseBindingsItem], Field(description='Execution identities assigned to the immutable purchases. purchase_index is the zero-based position in accepted_proposal.commercial_terms.purchases and disambiguates repeated product IDs.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     available_actions: Annotated[list[CanonicalMediaBuyAction], Field(json_schema_extra={'uniqueItems': True})]

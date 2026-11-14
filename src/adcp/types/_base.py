@@ -616,6 +616,29 @@ class _AbsenceIsOmission:
 OmittedNotNull: Final[FieldInfo] = FieldInfo(exclude_if=_is_absent)
 OmittedNotNull.metadata.append(_AbsenceIsOmission())
 
+#: :data:`OmittedNotNull`'s SERIALISATION half alone, for an optional property whose
+#: document DOES admit ``null``.
+#:
+#: **§2's dump row and its one exception, which is where the two halves come apart.**  The
+#: rule is "the dump omits ``None`` UNLESS the document requires the property": serialisation
+#: keys on ``required`` alone, and validation still keys on nullability
+#: (``codegen.ir.admits_null``).  A property that is optional AND nullable therefore owes the
+#: first and not the second -- it accepts an explicit JSON ``null`` on input, because its
+#: document does, and omits a ``None`` on output, because its document does not require it.
+#: :data:`OmittedNotNull` cannot serve that position: its ``_AbsenceIsOmission`` metadata
+#: strikes the null arm and would refuse an input the document admits.
+#:
+#: **WHAT THIS REPLACES is a blanket, and the blanket is what broke the rule.**
+#: ``AdCPBaseModel.model_dump`` defaulted ``exclude_none=True``, which drops a ``None`` by
+#: MODEL and not by FIELD -- so a REQUIRED property had no way to keep one, and eight pairs
+#: dumped a payload their own document refuses on ``required``:
+#: ``OptionsItem({"value": None})`` dumped ``{}`` against ``required: ["value"]``.  With the
+#: omission on the field, requiredness decides, which is what the rule says.
+OmittedWhenNone: Final[FieldInfo] = FieldInfo(exclude_if=_is_absent)
+
+#: The serialisation-only marker's own name, for :data:`OMITTED_NOT_NULL`'s reason.
+OMITTED_WHEN_NONE = "OmittedWhenNone"
+
 #: **The marker's own name, for the emitter that writes it into an annotation**, declared
 #: here for the reason :data:`APPROXIMATIONS` is: the artifact carries the word, one writer
 #: spells it and one reader asks for it, and a ``FieldInfo``'s ``repr`` is not a

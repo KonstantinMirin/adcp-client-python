@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import ZipAssetDigest
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -64,7 +64,7 @@ class UpdateRightsSuccess(UpdateRightsResponse):
     generation_credentials: Annotated[list[GenerationCredential], Field(description='Re-issued credentials reflecting updated terms (new expiration dates, adjusted caps)')]
     rights_constraint: Annotated[UpdateRightsSuccessRightsConstraint, Field(description='Updated rights constraint for re-embedding in creative manifests')]
     paused: Annotated[StrictBool | None, Field(description='Whether the grant is currently paused. Included when the update changes pause state.'), OmittedNotNull] = None
-    implementation_date: Annotated[AwareDatetime | None, Field(description='When changes take effect (null if pending approval from rights holder)')] = None
+    implementation_date: Annotated[AwareDatetime | None, Field(description='When changes take effect (null if pending approval from rights holder)'), OmittedWhenNone] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

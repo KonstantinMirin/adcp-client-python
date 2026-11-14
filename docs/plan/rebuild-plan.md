@@ -242,6 +242,7 @@ decision nobody can find is a decision that gets rediscovered as a bug.
 | the decision | where it is stated | what a consumer sees |
 | --- | --- | --- |
 | **A Python `None` is ABSENCE; a JSON `null` is a value.** | [§2 `None` is absence and `null` is a value](#none-is-absence-and-null-is-a-value) | `Model(field=None)` and `model_validate({"field": None})` read as *not supplied*; `model_validate_json('{"field":null}')` is refused; the dump omits the key. |
+| **The dump omits `None` UNLESS the document requires the property.** | [§2 `None` is absence](#none-is-absence-and-null-is-a-value) → "the dump row has one exception" | a required property keeps its `null` on the wire, because a required key cannot be absent; an optional one is omitted whatever its type admits. Serialisation keys on `required`, validation still keys on nullability. |
 | **There are exactly two URL types, and `AdCPUrl`'s 2,083-character cap is ACCEPTED.** | [§2 The two URL types](#the-two-url-types-and-the-cap-that-comes-with-them) | an AdCP address is `https`-only and capped at 2,083 characters; every other `format: uri` node is `AnyUrl` with a host required; both normalise the host and give an empty path a `/`. |
 | **`extra` follows the schema and nothing else.** | [§2 `extra` follows the schema](#extra-follows-the-schema-and-nothing-else) | `additionalProperties: false` → `forbid`; `true` → `allow`, so an undeclared key round-trips. An application narrowing this is the application's decision. |
 | **Constraints bind to the type, not the field.** | [§2 Constraints bind to the type](#constraints-bind-to-the-type-not-the-field) | a constraint appears as a named annotation reused across every node that states it. |
@@ -252,6 +253,7 @@ decision nobody can find is a decision that gets rediscovered as a bug.
 | **`Format` names the canonical declaration; `LegacyFormat` names the v1 definition.** | `CLAUDE.md` → Formats | code that said `Format` and meant the v1 breaks at validation rather than silently retargeting. |
 | **One class per SUBJECT, not per position.** | [§4 What becomes what](#what-becomes-what) | several of upstream's names resolve to one class of ours, and `isinstance` holds across all of them. |
 | **A positional index is a declared placeholder, not a name.** | [§4](#a-positional-index-is-a-declared-placeholder-not-a-name--and-not-a-licence-either) | no public name carries `Branch<N>`. |
+| **A branch's property keeps `Any` where the branch states no type.** | [§2 A branch's property keeps `Any`](#a-branchs-property-keeps-any-where-the-branch-states-no-type) | a branch constraining a property without typing it admits every JSON value, `None` included, where the ancestor's type is narrower; the rule the branch DOES state is still enforced, `strict_validate` still refuses, and `__adcp_approximations__` names `type`. |
 
 **THREE OF THESE ARE NOT STATED IN THIS FILE, and that is a defect of the index rather than of the
 decision**: the pinned default lives in a verdict, and the two format rules live in `CLAUDE.md`.
@@ -437,6 +439,38 @@ redeclaration that changes the TYPE is a build failure.
 *Why intersection.* `allOf` means every conjunct holds. A union of their constraints would accept
 payloads a conjunct refuses, making the model looser than its document.
 
+### A branch's property keeps `Any` where the branch states no type
+
+**A BRANCH THAT CONSTRAINS A PROPERTY WITHOUT TYPING IT LOWERS TO `Any`, AND THE ANCESTOR'S TYPE IS
+NOT INTERSECTED INTO IT. THIS IS ACCEPTED, AND IT IS A WIDENING, SO IT IS DECLARED.**
+
+The shape, measured at `core/postal-country-system.json`'s branch stating
+`country: {"not": {"enum": ["US", "GB", …]}}`, whose class is `PostalCountrySystemCountrySystem`:
+
+| | |
+| --- | --- |
+| the branch states | `country: {"not": {"enum": [11 codes]}}` — a constraint and no `type` |
+| the root states | `properties.country = {"type": "string", "pattern": "^[A-Z]{2}$"}` |
+| the class carries | `country: Any`, with `AfterValidator(NotValue(excluded=(…)))` |
+
+So the `not` is EXPRESSED — §2's "where a rule hangs" puts it on the value's own annotated type —
+and `'US'` is refused while `'ZZ'` is accepted, both correct. What is wider than the document is
+`None`: `reading-a-document.md` rule 1 says a property's requiredness is its own node's AND every
+ancestor's, and the same holds of its TYPE, so the conjunction here is `string` and the class admits
+every JSON value.
+
+**WHY IT IS KEPT.** Intersecting an ancestor's type into a branch's untyped property is a change to
+the LOWERING at every branch in the bundle, to move five pairs — and the value a consumer loses by
+it is `None` at a property whose own branch says nothing about type. `strict_validate` refuses that
+payload either way, which is what a widening means here: the model half is wider than the document
+and the document half still answers for it.
+
+**AND BECAUSE IT IS KEPT IT IS `WIDENED`, which is the whole of the obligation.** An accepted
+widening with no `Approximation` is indistinguishable from a defect — that is what this section's
+index row exists to say, and what the `None` and URL rows above cost when it was not said. The
+declaration names `type` with the ancestor's own fact, so a reader of the class sees which keyword
+was dropped and where it was stated.
+
 ### `None` is absence and `null` is a value
 
 **A JSON SCHEMA PROPERTY OUTSIDE `required` WHOSE TYPE DOES NOT ADMIT `null` PERMITS EXACTLY ONE
@@ -458,6 +492,36 @@ the tree, undeclared.
 
 `ADCP_STRICT_VALIDATION` makes the Python route refuse as well, for a suite that wants to catch a
 caller spelling absence as an explicit `None`.
+
+**AND THE DUMP ROW HAS ONE EXCEPTION: A REQUIRED PROPERTY KEEPS ITS `null`.** The rule above is
+"`None` is never written"; the addition is *unless the document REQUIRES the property*. A required
+key cannot be absent — that is what `required` means — so omitting it produces a payload the
+document refuses, and the omission turns a value the caller supplied into a missing key on the wire.
+
+Measured before the addition, on three of the eight pairs it reddened:
+
+| class | in | out | lost |
+| --- | --- | --- | --- |
+| `OptionsItem` | `{"value": null}` | `{}` | `value`, `required: ["value"]` |
+| `WarningsItem` | `{"rule": "", "field": null}` | `{"rule": ""}` | `field`, `required: ["rule", "field"]` |
+| `ReplaceTargetingValue` | `{"operation": "replace", "path": "/", "applied": null, "reason": "a"}` | `{"operation": "replace", "path": "/", "reason": "a"}` | `applied` |
+
+**SO THE MARKER KEYS ON REQUIREDNESS AND THE VALIDATION HALF STILL KEYS ON NULLABILITY**, which is
+the one place the two halves of `OmittedNotNull` come apart:
+
+* **serialisation** — omit `None` at every property the document does NOT require, whatever its type
+  admits. Keyed on `required` alone.
+* **validation** — refuse an explicit JSON `null` only where the document's `type` refuses one
+  (`codegen.ir.admits_null`). Unchanged.
+
+An optional property whose document ADMITS `null` therefore takes the serialisation half without the
+validation half: it accepts an explicit `null` on input, because the document does, and still omits
+a `None` on output, because the document does not require it.
+
+`AdCPBaseModel.model_dump`'s blanket `exclude_none=True` default is what broke this: it drops a
+`None` by MODEL and not by FIELD, so a required property had no way to keep one. The field-level
+marker is the whole mechanism, and `model_dump_as_received` already named the same defect from the
+digest side (#1613 — *"an explicit `null` the schema admits is dropped by `exclude_none`"*).
 
 **WHY A PYTHON `None` IS NOT A JSON `null`, which is the whole of the reading.** A JSON document
 carrying `null` is a payload the document refuses, and it is refused. A Python `None` is the

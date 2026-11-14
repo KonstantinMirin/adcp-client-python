@@ -6,7 +6,15 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    OmittedWhenNone,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
@@ -221,7 +229,7 @@ class VariantsItem(AdCPBaseModel):
     recipe_hash: Annotated[str | None, Field(description='Optional agent-computed, opaque, agent-scoped identity for the build-determining inputs that produced this variant leaf. Stable for identical inputs as defined by the agent, and comparable only within the same agent. Multiple leaves from the same best-of-N recipe SHOULD carry the same value so clients can group alternative outputs by their shared source recipe. ETag-style semantics: the protocol defines the field and contract, not the hash algorithm or canonical input set. Identifies generative-input identity, not output equality, legal/disclosure equivalence, or the build-to-delivery join.'), OmittedNotNull] = None
     parent_build_variant_id: Annotated[str | None, Field(description="When this variant was produced by refining a prior build (request `refine_from_build_variant_id`), the source leaf's `build_variant_id` — establishing refinement lineage (a leaf may itself be refined, forming a chain). Absent for first-generation builds. AI-derivative attribution rides the manifest's existing `provenance`; this field carries only the lineage edge."), OmittedNotNull] = None
     creative_manifest: Annotated[CreativeManifest, Field(description='The generated creative for this variant. Carries its own format_id.')]
-    variant_axis_value: Annotated[Any | None, Field(description='The value of the variant axis that produced this variant (e.g. the voice id, theme name, or config value). Lets the buyer correlate the variant to its A/B cell.')] = None
+    variant_axis_value: Annotated[Any | None, Field(description='The value of the variant axis that produced this variant (e.g. the voice id, theme name, or config value). Lets the buyer correlate the variant to its A/B cell.'), OmittedWhenNone] = None
     recommended: Annotated[StrictBool | None, Field(description="Set when keep_mode was keep_one/keep_some — flags the agent's recommended pick(s). Advisory."), OmittedNotNull] = None
     rank: Annotated[IntMin1 | None, Field(description="Agent's ranking of this variant (1 = best) when it scored alternatives (best-of-N). Advisory."), OmittedNotNull] = None
     eval: Annotated[Eval | None, Field(description="Optional per-leaf evaluation block populated when the request supplied an `evaluator` and the agent advertises creative.supports_evaluator. Experimental (x-status: experimental) — part of the evaluator surface; sellers populating it MUST list `creative.evaluator` in experimental_features. The rank-side of the get_creative_features feature oracle: it carries the creative-feature values this leaf was scored on, which is what the gate-then-rank pipeline (evaluator.feature_requirement[] gate → evaluator.rank_by ordering) and `recommended`/`rank` are computed over. `eval.features[]` is `creative/creative-feature-result.json[]` — the same shape get_creative_features.results[] returns; the wrapper is open (additionalProperties:true) while each feature item is closed. A leaf's eval is a feature measurement, not a pass/fail verdict (a verdict is a categorical string feature value gated via feature_requirement.allowed_values). Leaves the agent dropped via the gate are not present; this block appears only on returned (recommended/billed) leaves. Advisory; does not change what is produced or billed."), OmittedNotNull] = None
@@ -317,7 +325,7 @@ class PerLeafItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/3/properties/estimate/properties/per_leaf/items')
     catalog_item_ref: Annotated[dict[str, Any] | None, OmittedNotNull] = None
-    variant_axis_value: Any | None = None
+    variant_axis_value: Annotated[Any | None, OmittedWhenNone] = None
     pricing_option_id: Annotated[str | None, OmittedNotNull] = None
     cost_low: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     cost_high: Annotated[NonNegativeFloat | None, OmittedNotNull] = None

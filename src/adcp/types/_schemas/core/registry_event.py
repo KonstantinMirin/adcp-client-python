@@ -6,7 +6,15 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    OmittedWhenNone,
+    SchemaRef,
+)
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import HostedUrl, StrFormatUuid
 
@@ -295,9 +303,9 @@ class CollectionPayload(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/collectionPayload')
     collection_rid: Annotated[str | None, Field(json_schema_extra={'format': 'uuid'}), OmittedNotNull] = None
     publisher_domain: Annotated[DomainName | None, OmittedNotNull] = None
-    collection_id: Annotated[str | None, Field(description='Publisher-local collection_id from the authoritative adagents.json.')] = None
-    name: str | None = None
-    kind: CollectionKind | None = None
+    collection_id: Annotated[str | None, Field(description='Publisher-local collection_id from the authoritative adagents.json.'), OmittedWhenNone] = None
+    name: Annotated[str | None, OmittedWhenNone] = None
+    kind: Annotated[CollectionKind | None, OmittedWhenNone] = None
     source: Annotated[PropertySource | None, OmittedNotNull] = None
     status: Annotated[Status | None, OmittedNotNull] = None
     identifiers: Annotated[list[CollectionIdentifier] | None, Field(description='Distribution identifiers that alias this collection across platforms.'), OmittedNotNull] = None
@@ -434,7 +442,7 @@ class AgentProfilePayload(AdCPBaseModel):
     property_types: Annotated[StringArray | None, OmittedNotNull] = None
     markets: Annotated[list[CountryCode] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     categories: Annotated[StringArray | None, OmittedNotNull] = None
-    category_taxonomy: str | None = None
+    category_taxonomy: Annotated[str | None, OmittedWhenNone] = None
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Named-format profile projection. Use canonical `format_kinds` and `format_option_refs`.'), OmittedNotNull] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     tags: Annotated[StringArray | None, OmittedNotNull] = None
@@ -588,7 +596,7 @@ class CompliancePayload(AdCPBaseModel):
     agent_url: HostedUrl
     previous_status: ComplianceStatus
     current_status: ComplianceStatus
-    headline: str | None = None
+    headline: Annotated[str | None, OmittedWhenNone] = None
     tracks: Annotated[dict[str, TracksValue], Field(description='Map of compliance track id to track status.')]
     storyboards_passing: NonNegativeInt
     storyboards_total: NonNegativeInt
@@ -708,7 +716,7 @@ class PublisherAdagentsPayload(AdCPBaseModel):
     placement_count: Annotated[NonNegativeInt | None, Field(description='Number of top-level placements[] declarations after this revision.'), OmittedNotNull] = None
     changed_fields: Annotated[ChangedFields | None, OmittedNotNull] = None
     discovery_method: Annotated[str | None, OmittedNotNull] = None
-    manager_domain: str | None = None
+    manager_domain: Annotated[str | None, OmittedWhenNone] = None
     source: Annotated[str | None, OmittedNotNull] = None
 
 
@@ -791,13 +799,13 @@ class AuthorizationPayload(AdCPBaseModel):
     agent_url_canonical: Annotated[str | None, Field(description='Registry-canonicalized form of agent_url for equality checks.'), OmittedNotNull] = None
     publisher_domain: DomainName
     authorization_type: Annotated[AuthorizationType | None, Field(description='When present, identifies the adagents.json authorization variant represented by this payload.'), OmittedNotNull] = None
-    authorized_for: str | None = None
+    authorized_for: Annotated[str | None, OmittedWhenNone] = None
     property_ids: Annotated[list[PropertyID] | None, Field(min_length=1), OmittedNotNull] = None
     property_tags: Annotated[list[PropertyTag] | None, Field(min_length=1), OmittedNotNull] = None
     properties: Annotated[list[Property] | None, Field(min_length=1), OmittedNotNull] = None
     publisher_properties: Annotated[list[PublisherPropertySelector] | None, Field(min_length=1), OmittedNotNull] = None
-    property_rid: Annotated[StrFormatUuid | None, Field(description='Catalog property_rid for materialized per-property authorization rows. Null for publisher-wide rows.')] = None
-    property_id_slug: Annotated[str | None, Field(description='Publisher-local property id for materialized per-property authorization rows.')] = None
+    property_rid: Annotated[StrFormatUuid | None, Field(description='Catalog property_rid for materialized per-property authorization rows. Null for publisher-wide rows.'), OmittedWhenNone] = None
+    property_id_slug: Annotated[str | None, Field(description='Publisher-local property id for materialized per-property authorization rows.'), OmittedWhenNone] = None
     placement_ids: Annotated[list[str] | None, Field(min_length=1), OmittedNotNull] = None
     placement_tags: Annotated[list[str] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     collections: Annotated[list[CollectionSelector] | None, Field(description='Collection constraints from authorized_agents[*].collections. When set, the event does NOT authorize the property unqualified — consumers building a local authorization index MUST scope the grant to these selectors and fail closed when a query carries no collection scope. A selector without collection_ids is a bulk grant for all collections declared at that publisher_domain.', min_length=1), OmittedNotNull] = None
@@ -809,12 +817,12 @@ class AuthorizationPayload(AdCPBaseModel):
     effective_until: Annotated[AwareDatetime | None, OmittedNotNull] = None
     evidence: Annotated[Evidence | None, OmittedNotNull] = None
     disputed: Annotated[StrictBool | None, OmittedNotNull] = None
-    created_by: str | None = None
-    expires_at: AwareDatetime | None = None
-    created_at: AwareDatetime | None = None
-    updated_at: AwareDatetime | None = None
+    created_by: Annotated[str | None, OmittedWhenNone] = None
+    expires_at: Annotated[AwareDatetime | None, OmittedWhenNone] = None
+    created_at: Annotated[AwareDatetime | None, OmittedWhenNone] = None
+    updated_at: Annotated[AwareDatetime | None, OmittedWhenNone] = None
     override_applied: Annotated[StrictBool | None, OmittedNotNull] = None
-    override_reason: str | None = None
+    override_reason: Annotated[str | None, OmittedWhenNone] = None
 
 
 class RegistryEventAuthorizationGrantedAuthorization(RegistryEvent):

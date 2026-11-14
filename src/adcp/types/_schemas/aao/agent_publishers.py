@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import HostedUrl, StrDomainName
 
@@ -50,7 +50,7 @@ class PublisherEntry(AdCPBaseModel):
     )
     publisher_domain: Annotated[DomainName, Field(description='Publisher whose adagents.json authorizes the agent.')]
     discovery_method: Annotated[DiscoveryMethod, Field(description="How the directory discovered this authorization. `direct`: agent listed in publisher's own /.well-known/adagents.json. `authoritative_location`: publisher's /.well-known/adagents.json declared `authoritative_location` pointing to a manager file that lists the agent. `adagents_authoritative`: discovered via the manager file (publisher-declared in the manager's own properties[]). `ads_txt_managerdomain`: discovered via the publisher's ads.txt `MANAGERDOMAIN=` directive pointing to the manager file. The last three paths converge on the same manager file but have different trust profiles — the `managerdomain` path is the weakest because the manager file's `publisher_domain` anchor (the `managerdomain` fallback safety rule) is the only positive cross-check.")]
-    manager_domain: Annotated[StrDomainName | None, Field(description='Domain of the manager file that authorizes this publisher → agent edge. Required when `discovery_method` is `authoritative_location`, `adagents_authoritative`, or `ads_txt_managerdomain`. Null or absent when `discovery_method` is `direct`.')] = None
+    manager_domain: Annotated[StrDomainName | None, Field(description='Domain of the manager file that authorizes this publisher → agent edge. Required when `discovery_method` is `authoritative_location`, `adagents_authoritative`, or `ads_txt_managerdomain`. Null or absent when `discovery_method` is `direct`.'), OmittedWhenNone] = None
     properties_authorized: Annotated[NonNegativeInt, Field(description="Count of properties under THIS `publisher_domain` only that the agent's selectors resolve to. Never a network-wide count. The directory computes this by applying the publisher's `adagents.json` selector predicates against the publisher's own properties (federated) OR against the parent file's inline properties carrying matching `publisher_domain` (inline, per adcp#4825 resolution rule).")]
     properties_total: Annotated[NonNegativeInt, Field(description="Count of properties under THIS `publisher_domain` only — total inventory the publisher's file declares. Never a network-wide count. On managed-network-shape parent files (per adcp#4825 inline resolution), this is the count of inline `properties[]` entries whose `publisher_domain` field matches this row's domain.")]
     property_ids: Annotated[list[str] | None, Field(description="Canonical list of `property_id`s under THIS `publisher_domain` that the agent's selectors resolve to. Present iff the request included `?include=properties`; absent otherwise. The set is the same population `properties_authorized` counts, surfaced as IDs so consumers can run full set-diff against a federated fetch (count-equality is not set-equality — a publisher rotating N properties leaves the count unchanged but the set entirely different). Per-publisher scope; never network-wide. Order is unspecified; consumers should treat as a set."), OmittedNotNull] = None
@@ -74,7 +74,7 @@ class AAODirectoryAgentPublishersInverseLookupResponse(AdCPBaseModel):
     agent_url: Annotated[HostedUrl, Field(description='Canonicalized echo of the agent_url that was looked up. Lowercase host, default port stripped, trailing slash on path component normalized — matches the canonicalization the SDK applies in `verify_agent_authorization`.')]
     directory_indexed_at: Annotated[AwareDatetime | None, Field(description="When the directory last completed a refresh of any publisher in this result. Provenance anchor for the consumer's own cache. NULL on empty pages — there's no per-publisher anchor to report; consumers SHOULD treat a null value as 'no freshness assertion for this response' and not advance their own cache freshness.")]
     publishers: Annotated[list[PublisherEntry], Field(description='Publishers whose adagents.json authorizes this agent. Empty array is a valid response (the directory has indexed this agent but no current authorizations resolve).')]
-    next_cursor: Annotated[str | None, Field(description="Opaque pagination cursor. Absent or null on the terminal page. Stable across the directory's refresh cycle for the lifetime of the cursor.")] = None
+    next_cursor: Annotated[str | None, Field(description="Opaque pagination cursor. Absent or null on the terminal page. Stable across the directory's refresh cycle for the lifetime of the cursor."), OmittedWhenNone] = None
 
 
 AaoDirectoryAgentPublishersInverseLookupResponse = AAODirectoryAgentPublishersInverseLookupResponse

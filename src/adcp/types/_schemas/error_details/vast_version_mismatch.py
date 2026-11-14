@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -57,7 +57,7 @@ class VASTVersionMismatchDetails(BranchDispatchMixin, AdCPBaseModel):
     )
     mismatch_reason: Annotated[MismatchReason | None, Field(description='Machine-readable modern mismatch branch.'), OmittedNotNull] = None
     asset_vast_version: Annotated[VASTVersion | None, OmittedNotNull] = None
-    observed_document_vast_version: Annotated[StrMinLen1 | None, Field(description='Raw version observed on the inspected VAST document whose root is being validated. `null` means the required version attribute was missing. This field is intentionally not limited to the governed supported-version enum so diagnostics can report future or invalid document values.')] = None
+    observed_document_vast_version: Annotated[StrMinLen1 | None, Field(description='Raw version observed on the inspected VAST document whose root is being validated. `null` means the required version attribute was missing. This field is intentionally not limited to the governed supported-version enum so diagnostics can report future or invalid document values.'), OmittedWhenNone] = None
     document_role: Annotated[DocumentRole | None, Field(description='Role of the inspected document. Only the submitted document is required to equal the asset declaration; wrapper and terminal documents are checked against the applicable acceptance sets.'), OmittedNotNull] = None
     product_vast_versions: Annotated[list[VASTVersion] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     seller_vast_versions: Annotated[list[VASTVersion] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None

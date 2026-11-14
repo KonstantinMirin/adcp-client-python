@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
-from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types._base import OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, RequiredGroups, Rule
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMinLen1, StrMinLen1MaxLen500, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
@@ -50,12 +50,12 @@ class ControlMediaBuyRequest(AdCPVersionEnvelope, AdcpRequest):
     canceled: Annotated[Literal[True] | None, Field(description='Exercise an already-accepted unilateral cancellation right. A cancellation requiring seller agreement is requested by refining the accepted proposal.'), OmittedNotNull] = None
     cancellation_reason: Annotated[StrMinLen1MaxLen500 | None, OmittedNotNull] = None
     total_budget: Annotated[Money | None, OmittedNotNull] = None
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Replace the hard aggregate daily cap; null removes it. Numeric changes apply immediately with current-cap-day spend counted and do not redistribute purchase caps.')] = None
-    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Replace the shared MediaBuy frequency cap; null removes it. The change applies immediately without resetting counters: qualifying prior exposures still count in the resulting active window. Sellers MUST reject the complete mutation with UNSUPPORTED_FEATURE, before any change, if the cap is outside declared constraints or any active package cannot participate in the resulting shared counter, and MUST NOT clamp it. Requires update_media_buy_frequency_cap in available_actions.')] = None
-    budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Replace the shared IANA cap-day timezone override; null restores the default selected by budget_capping.timezone_basis (Account.timezone or fixed_timezone). A timezone change begins at the next boundary under the previously effective timezone.')] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Replace the hard aggregate daily cap; null removes it. Numeric changes apply immediately with current-cap-day spend counted and do not redistribute purchase caps.'), OmittedWhenNone] = None
+    frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Replace the shared MediaBuy frequency cap; null removes it. The change applies immediately without resetting counters: qualifying prior exposures still count in the resulting active window. Sellers MUST reject the complete mutation with UNSUPPORTED_FEATURE, before any change, if the cap is outside declared constraints or any active package cannot participate in the resulting shared counter, and MUST NOT clamp it. Requires update_media_buy_frequency_cap in available_actions.'), OmittedWhenNone] = None
+    budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Replace the shared IANA cap-day timezone override; null restores the default selected by budget_capping.timezone_basis (Account.timezone or fixed_timezone). A timezone change begins at the next boundary under the previously effective timezone.'), OmittedWhenNone] = None
     budget_allocation: Annotated[CanonicalBudgetAllocation | None, OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Replace aggregate media-buy pacing. In seller-optimized allocation, a seller declaring media_buy.features.seller_optimized_budget MUST accept omission and `even`; it MAY reject `asap` or `front_loaded` with UNSUPPORTED_FEATURE (error.field `pacing`) before any provider mutation and MUST NOT silently coerce them to `even`. Fixed-allocation semantics are unchanged.'), OmittedNotNull] = None
-    bidding: BiddingPolicy | None = None
+    bidding: Annotated[BiddingPolicy | None, OmittedWhenNone] = None
     packages: Annotated[list[PackageControl] | None, Field(description='Operational patches keyed by package_id. Each package_id MUST appear at most once; sellers reject duplicate IDs atomically.', min_length=1), OmittedNotNull] = None
     reporting_webhook: Annotated[ReportingWebhook | None, OmittedNotNull] = None
     governance_context: Annotated[StrMinLen1MaxLen4096 | None, OmittedNotNull] = None

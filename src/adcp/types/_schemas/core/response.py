@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, OmittedWhenNone, SchemaRef
 
 
 class ProtocolResponse(AdCPBaseModel):
@@ -18,7 +18,7 @@ class ProtocolResponse(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/response.json', pointer='#')
     message: Annotated[str, Field(description='Human-readable summary')]
     context_id: Annotated[str | None, Field(description='Transport-managed conversation identifier. Maps to native contextId on A2A; compatibility metadata only on MCP and not a continuation or authorization mechanism.'), OmittedNotNull] = None
-    data: Annotated[Any | None, Field(description='AdCP task-specific response data (see individual task response schemas)')] = None
+    data: Annotated[Any | None, Field(description='AdCP task-specific response data (see individual task response schemas)'), OmittedWhenNone] = None
 
 
 __all__ = ["ProtocolResponse"]

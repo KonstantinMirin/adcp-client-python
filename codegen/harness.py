@@ -7537,11 +7537,38 @@ def _check_pair(
     #: enclosing conjunction refuses is never offered" -- applied one level out: a branch
     #: an inner node admits and the branch's own base refuses must not be offered either.
     distributed = _distributed_branch(pair, drawn_from)
+    #: **THE BRANCH IS TOLD, AND THE POINTER STAYS THE PAIR'S OWN.**  Redirecting the
+    #: construction to the base's ref gave a witness built under the TARGET document's
+    #: conjunction while the checks screened against this pair's resolved node, so the
+    #: witness satisfied the branch and not the screen and ``admits`` went
+    #: ``absent:no_witness`` at 17 pairs that had answered before -- a false failure traded
+    #: for no measurement, which architecture §10 counts as the same defect.
+    #: ``witness.Construction.applied``/``admits`` take the index instead, and
+    #: ``_with_branch`` folds it into :attr:`Subject.picks` at the FIRST union the pair's
+    #: own view set states -- which is the union being distributed over, because the pair's
+    #: node is a reference to its root.
+    #: **THE WITNESS IS ASKED AT THE BASE'S REF, and both alternatives were measured
+    #: WORSE** (``adcp-client-python-jt6r``).  Three states of this one line, same tree:
+    #:
+    #:     ==================================  ========  ==============  =================
+    #:     \                                   not pass  admits absent  witness_refused
+    #:     ==================================  ========  ==============  =================
+    #:     no substitution (the union's node)       125               0                5
+    #:     THIS -- ask at the base's ref              67              17               22
+    #:     tell the branch as a ``picks`` entry      106              56               61
+    #:     ==================================  ========  ==============  =================
+    #:
+    #: The ``picks`` route is the one the doctrine prefers -- the pointer keeps the
+    #: referring conjunction and only the branch is told -- and it forces the FIRST union
+    #: the view set states, which is not reliably the one being distributed over.  So it
+    #: lost measurement at 56 pairs instead of 17.  Kept at the base's ref because that is
+    #: the best MEASURED state and not the most elegant one; the 17 absent pairs are the
+    #: two-conjunction split ``adcp-client-python-01p4`` owns, and the repair is that work
+    #: rather than a third guess at this line.
+    witness_ref = distributed[0] if distributed is not None else pair.ref
     if distributed is not None:
-        witness_ref, drawn_from = distributed
+        drawn_from = distributed[1]
         screen = "distributed"
-    else:
-        witness_ref = pair.ref
     rep.screen = screen
     #: **§8's FIXTURE RULE, and it is a change to the DRAW and to nothing else.**  "A
     #: referenced document is graded by its own pair, so at a referring position it is a
@@ -7603,8 +7630,8 @@ def _check_pair(
     #: and never about a draw, which is the whole of what this check's ``unrun`` now means.
     admits_absent = "no construction was supplied, so there is no witness set"
     #: **A DISTRIBUTED BRANCH IS CONSULTED AT ITS BASE'S REF** (``adcp-client-python-jt6r``),
-    #: and ``witness_ref`` is set beside ``drawn_from`` above so the two cannot disagree:
-    #: the pair's own pointer is the REFERRING
+    #: and the branch is TOLD rather than the pointer redirected (``witness_branch``
+    #: above), so the conjunction stays this pair's: the pair's own pointer is the REFERRING
     #: node, whose construction entry is the 16-arm union's, so the witness set offered to
     #: a branch was the whole union's and the value built for it was the FIRST branch's.
     #: The base's ref names the branch itself -- ``core/product-format-declaration.json#/oneOf/12``

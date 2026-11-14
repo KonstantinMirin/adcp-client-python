@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types.constraints import HostedUrl, PrincipalDeclarationsStateSelectedAsyncAdcpVersion
 
 
@@ -27,7 +27,7 @@ class AdCPExtensionFileSchema(AdCPBaseModel):
     type: Annotated[Literal['object'], Field(description='Extensions must be objects (data within ext.{namespace})')]
     properties: Annotated[dict[str, Any], Field(description='Schema properties defining the structure of ext.{namespace} data')]
     required: Annotated[list[str] | None, Field(description='Required properties within the extension data'), OmittedNotNull] = None
-    additionalProperties: Annotated[Any | None, Field(description='Whether additional properties are allowed in the extension data')] = None
+    additionalProperties: Annotated[Any | None, Field(description='Whether additional properties are allowed in the extension data'), OmittedWhenNone] = None
     id: Annotated[Any, Field(alias='$id')]
 
 

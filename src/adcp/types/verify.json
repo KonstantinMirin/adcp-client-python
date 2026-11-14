@@ -1,14 +1,13 @@
 {
  "causes": {
-  "fail:accepts:model_dropped_a_fact": 8,
   "fail:accepts:model_refused_valid": 2,
   "fail:accepts:witness_refused": 22,
-  "fail:admits:model_refused_admitted": 16,
-  "fail:undeclared:widened_undeclared": 5,
+  "fail:admits:model_refused_admitted": 18,
+  "fail:undeclared:widened_undeclared": 1,
   "fail:widening:unproved_widening": 24
  },
  "graded": 2609,
- "not_pass": 77,
+ "not_pass": 67,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -324,45 +323,6 @@
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SignalForecastDimension",
-   "document": "core/forecast-dimension-signal.json",
-   "dump": "dump=pass",
-   "note": "undeclared widening on properties: the class admitted {\"kind\": \"signal\", \"presence\": \"present\", \"signal_ref\": {\"scope\": \"product\", \"signal_id\": \"a\"}, \"signal_value\": null} which the document refuses on type; the instance is outside the region {\"properties\": {\"presence\": {\"const\": \"absent\"}}, \"required\": [\"presence\"]} selects and the node states no else, so no arm is in force and no value was offer",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=fail:widened_undeclared",
-   "verdict": "verdict=fail:undeclared:widened_undeclared",
-   "widening": "widening=pass"
-  },
-  {
-   "accepts": "accepts=absent:stopped_at_the_dump",
-   "admits": "admits=pass",
-   "class": "BaseGroupAsset",
-   "document": "core/format.json",
-   "dump": "dump=fail:model_dropped_a_fact",
-   "note": "the document refuses the dump on required; dumped {\"asset_id\": \"\", \"required\": true} from {\"asset_id\": \"\", \"asset_type\": null, \"required\": true}; counterexample {\"asset_id\": \"\", \"asset_type\": null, \"required\": true}",
-   "pointer": "#/$defs/baseGroupAsset",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_dropped_a_fact",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=absent:stopped_at_the_dump",
-   "admits": "admits=pass",
-   "class": "BaseIndividualAsset",
-   "document": "core/format.json",
-   "dump": "dump=fail:model_dropped_a_fact",
-   "note": "the document refuses the dump on required; dumped {\"item_type\": \"individual\", \"asset_id\": \"\", \"required\": true} from {\"item_type\": \"individual\", \"asset_id\": \"\", \"asset_type\": null, \"required\": true}; counterexample {\"item_type\": \"individual\", \"asset_id\": \"\", \"asset_type\": null, \"required\": true}",
-   "pointer": "#/$defs/baseIndividualAsset",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_dropped_a_fact",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
    "class": "Annotated",
    "document": "core/localized-creative-asset.json",
@@ -544,58 +504,6 @@
    "widening": "widening=absent:no_declarations"
   },
   {
-   "accepts": "accepts=absent:stopped_at_the_dump",
-   "admits": "admits=pass",
-   "class": "ProductTargetingResolution",
-   "document": "core/product-targeting-resolution.json",
-   "dump": "dump=fail:model_dropped_a_fact",
-   "note": "the document refuses the dump on const, enum, oneOf, required; dumped {\"modifications\": [{\"operation\": \"replace\", \"path\": \"/\", \"reason\": \"a\"}]} from {\"modifications\": [{\"operation\": \"replace\", \"path\": \"/\", \"applied\": null, \"reason\": \"a\"}]}; counterexample {\"modifications\": [{\"operation\": \"replace\", \"path\": \"/\", \"applied\": null, \"reason\": \"a\"}]}",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_dropped_a_fact",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=absent:stopped_at_the_dump",
-   "admits": "admits=pass",
-   "class": "TargetingModification",
-   "document": "core/targeting-modification.json",
-   "dump": "dump=fail:model_dropped_a_fact",
-   "note": "the document refuses the dump on const, enum, oneOf, required; dumped {\"operation\": \"replace\", \"path\": \"/\", \"reason\": \"a\"} from {\"operation\": \"replace\", \"path\": \"/\", \"applied\": null, \"reason\": \"a\"}; counterexample {\"operation\": \"replace\", \"path\": \"/\", \"applied\": null, \"reason\": \"a\"}",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_dropped_a_fact",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=absent:stopped_at_the_dump",
-   "admits": "admits=pass",
-   "class": "ReplaceTargetingValue",
-   "document": "core/targeting-modification.json",
-   "dump": "dump=fail:model_dropped_a_fact",
-   "note": "the document refuses the dump on required; dumped {\"operation\": \"replace\", \"path\": \"/\", \"reason\": \"a\"} from {\"operation\": \"replace\", \"path\": \"/\", \"applied\": null, \"reason\": \"a\"}; counterexample {\"operation\": \"replace\", \"path\": \"/\", \"applied\": null, \"reason\": \"a\"}",
-   "pointer": "#/oneOf/0",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_dropped_a_fact",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=absent:stopped_at_the_dump",
-   "admits": "admits=pass",
-   "class": "OptionsItem",
-   "document": "core/transformer-param.json",
-   "dump": "dump=fail:model_dropped_a_fact",
-   "note": "the document refuses the dump on required; dumped {} from {\"value\": null}; counterexample {\"value\": null}",
-   "pointer": "#/properties/options/items",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_dropped_a_fact",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
    "accepts": "accepts=fail:witness_refused",
    "admits": "admits=absent:no_witness",
    "class": "VendorPricingOptionCpm",
@@ -672,32 +580,6 @@
    "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:widening:unproved_widening",
    "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=absent:stopped_at_the_dump",
-   "admits": "admits=pass",
-   "class": "WarningsItem",
-   "document": "creative/validate-input-result.json",
-   "dump": "dump=fail:model_dropped_a_fact",
-   "note": "the document refuses the dump on required; dumped {\"rule\": \"\"} from {\"rule\": \"\", \"field\": null}; counterexample {\"rule\": \"\", \"field\": null}",
-   "pointer": "#/properties/warnings/items",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_dropped_a_fact",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=absent:stopped_at_the_dump",
-   "admits": "admits=pass",
-   "class": "AdCPExtensionFileSchema",
-   "document": "extensions/extension-meta.json",
-   "dump": "dump=fail:model_dropped_a_fact",
-   "note": "the document refuses the dump on required; dumped {\"$schema\": \"http://json-schema.org/draft-07/schema#\", \"title\": \"\", \"description\": \"\", \"valid_from\": \"0.0\", \"type\": \"object\", \"properties\": {}} from {\"$schema\": \"http://json-schema.org/draft-07/schema#\", \"$id\": null, \"title\": \"\", \"description\": \"\", \"valid_from\": \"0.0\", \"type\": \"object\", \"properties\": {}}; counterexample {\"$schema\": \"http://json-sch",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_dropped_a_fact",
-   "widening": "widening=absent:no_declarations"
   },
   {
    "accepts": "accepts=pass",
@@ -792,6 +674,19 @@
   },
   {
    "accepts": "accepts=pass",
+   "admits": "admits=fail:model_refused_admitted",
+   "class": "ControlMediaBuyRequest",
+   "document": "media-buy/control-media-buy-request.json",
+   "dump": "dump=pass",
+   "note": "the class is NARROWER than its document: it refused 7 of 870 values the document admits, on anyOf at ('packages', 0) (and on url_parsing at ('packages', 0, 'targeting_overlay', 'collection_list', 'agent_url'), url_parsing at ('packages', 0, 'targeting_overlay', 'collection_list_exclude', 'agent_url'), url_parsing at ('packages', 0, 'targeting_overlay', 'property_list', 'agent_url'), url_parsing at",
+   "pointer": "#",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=absent:2_of_2_conditionals_unreached",
+   "verdict": "verdict=fail:admits:model_refused_admitted",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=pass",
    "admits": "admits=pass",
    "class": "CreateMediaBuyRequest",
    "document": "media-buy/create-media-buy-request.json",
@@ -844,41 +739,15 @@
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "FailedLookup",
-   "document": "media-buy/get-reporting-status-response.json",
+   "admits": "admits=fail:model_refused_admitted",
+   "class": "PackageControl",
+   "document": "media-buy/package-control.json",
    "dump": "dump=pass",
-   "note": "undeclared widening on properties: the class admitted {\"data_through\": null, \"errors\": [{\"code\": \"NOT_FOUND\", \"message\": \"Reporting status resource is unavailable.\"}], \"failure_kind\": \"lookup_unavailable\", \"status\": \"failed\", \"view\": \"summary\"} which the document refuses on additionalProperties, const, oneOf; the instance is outside the region {\"properties\": {\"health\": {\"const\": \"complete\"}}, \"req",
-   "pointer": "#/oneOf/1",
+   "note": "the class is NARROWER than its document: it refused 5 of 744 values the document admits, on anyOf at () (and on url_parsing at ('targeting_overlay', 'collection_list', 'agent_url'), url_parsing at ('targeting_overlay', 'collection_list_exclude', 'agent_url'), url_parsing at ('targeting_overlay', 'property_list', 'agent_url'), url_parsing at ('targeting_overlay', 'property_list_exclude', 'agent_url",
+   "pointer": "#",
    "refuses": "refuses=pass",
-   "undeclared": "undeclared=fail:widened_undeclared",
-   "verdict": "verdict=fail:undeclared:widened_undeclared",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "UnavailableLookup",
-   "document": "media-buy/get-reporting-status-response.json",
-   "dump": "dump=pass",
-   "note": "undeclared widening on properties: the class admitted {\"data_through\": null, \"errors\": [{\"code\": \"NOT_FOUND\", \"message\": \"Reporting status resource is unavailable.\"}], \"failure_kind\": \"lookup_unavailable\", \"status\": \"failed\", \"view\": \"summary\"} which the document refuses on additionalProperties; the instance is outside the region {\"properties\": {\"health\": {\"const\": \"complete\"}}, \"required\": [\"heal",
-   "pointer": "#/oneOf/1/oneOf/0",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=fail:widened_undeclared",
-   "verdict": "verdict=fail:undeclared:widened_undeclared",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "OperationalFailure",
-   "document": "media-buy/get-reporting-status-response.json",
-   "dump": "dump=pass",
-   "note": "undeclared widening on properties: the class admitted {\"data_through\": null, \"errors\": [{\"code\": \"a\", \"message\": \"\"}], \"failure_kind\": \"operational\", \"status\": \"failed\", \"view\": \"summary\"} which the document refuses on additionalProperties; the instance is outside the region {\"properties\": {\"health\": {\"const\": \"complete\"}}, \"required\": [\"health\"]} selects and the node states no else, so no arm is",
-   "pointer": "#/oneOf/1/oneOf/1",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=fail:widened_undeclared",
-   "verdict": "verdict=fail:undeclared:widened_undeclared",
+   "undeclared": "undeclared=absent:3_of_3_conditionals_unreached",
+   "verdict": "verdict=fail:admits:model_refused_admitted",
    "widening": "widening=absent:no_declarations"
   },
   {
@@ -1012,22 +881,22 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2532,
+ "pass": 2542,
  "per_check": {
   "accepts": {
-   "absent": 8,
+   "absent": 0,
    "fail": 24,
-   "pass": 2577
+   "pass": 2585
   },
   "admits": {
    "absent": 17,
-   "fail": 18,
-   "pass": 2574
+   "fail": 20,
+   "pass": 2572
   },
   "dump": {
    "absent": 24,
-   "fail": 8,
-   "pass": 2577
+   "fail": 0,
+   "pass": 2585
   },
   "refuses": {
    "absent": 28,
@@ -1035,8 +904,8 @@
    "pass": 2581
   },
   "undeclared": {
-   "absent": 383,
-   "fail": 5,
+   "absent": 387,
+   "fail": 1,
    "pass": 2221
   },
   "widening": {
@@ -1046,10 +915,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/9a54ebcfb832a124d381316d3fd287ba4b11c854c3959482d247ef11c608993b",
-  "head": "985d5b986+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/1e91bd3ed7a7c224ac905fe60df18f28b6a71d8ab30d22a1b49852d41e78aae0",
+  "head": "3be36e763+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 429.6,
- "seconds_per_pair": 0.1647
+ "seconds": 425.6,
+ "seconds_per_pair": 0.1631
 }

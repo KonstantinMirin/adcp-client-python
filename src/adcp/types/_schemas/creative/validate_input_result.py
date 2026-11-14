@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..core.macro_resolution_result import MacroResolutionResult
@@ -53,8 +53,8 @@ class ViolationsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-result.json', pointer='#/properties/violations/items')
     rule: Annotated[str, Field(description="Rule name (e.g., 'duration_ms_range', 'aspect_ratio', 'max_file_size_kb').")]
-    expected: Annotated[Any | None, Field(description="Expected value or range (e.g., '28000-32000', '9:16', 200).")] = None
-    predicted: Annotated[Any | None, Field(description="Platform's pre-flight estimate for this field (NOT the actual output — there is no protocol state for orphaned out-of-spec artifacts). For TTS, this might be the predicted audio duration from text-length analysis. Helps the buyer fix the input before committing to a build.")] = None
+    expected: Annotated[Any | None, Field(description="Expected value or range (e.g., '28000-32000', '9:16', 200)."), OmittedWhenNone] = None
+    predicted: Annotated[Any | None, Field(description="Platform's pre-flight estimate for this field (NOT the actual output — there is no protocol state for orphaned out-of-spec artifacts). For TTS, this might be the predicted audio duration from text-length analysis. Helps the buyer fix the input before committing to a build."), OmittedWhenNone] = None
     field: Annotated[str, Field(description="Path to the violating field (e.g., 'assets.video_main.duration_ms').")]
     retry_with: Annotated[dict[str, Any] | None, Field(description='Optional advisory adjustment hint. Platforms MAY suggest a corrected input shape; buyers MUST treat this as advisory, not authoritative.'), OmittedNotNull] = None
 
@@ -65,8 +65,8 @@ class WarningsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-result.json', pointer='#/properties/warnings/items')
     rule: str
-    expected: Any | None = None
-    predicted: Any | None = None
+    expected: Annotated[Any | None, OmittedWhenNone] = None
+    predicted: Annotated[Any | None, OmittedWhenNone] = None
     field: Any
 
 

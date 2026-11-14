@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import IntMin1
 
@@ -74,7 +74,7 @@ class TransformerParam(AdCPBaseModel):
     maximum: Annotated[StrictFloat | None, Field(description='Inclusive upper bound. Present when `value_source` is `range`.'), OmittedNotNull] = None
     options: Annotated[list[OptionsItem] | None, Field(description="Account-scoped legal values for an `enumerable` param. Populated ONLY when this param's `field` was named in the list_transformers `expand_params` request — otherwise omitted (the buyer enumerates on demand). Brief-filtered and paginated; use `options_cursor` for the next page."), OmittedNotNull] = None
     options_cursor: Annotated[str | None, Field(description="Opaque pagination cursor for this param's `options[]`. Present when more option values are available than were returned. Pass back to list_transformers (scoped to this transformer + field) to fetch the next page."), OmittedNotNull] = None
-    default: Annotated[Any | None, Field(description='The value applied when the buyer omits this field from `config`. Type matches `type`.')] = None
+    default: Annotated[Any | None, Field(description='The value applied when the buyer omits this field from `config`. Type matches `type`.'), OmittedWhenNone] = None
     required: Annotated[StrictBool | None, Field(description='Whether the buyer MUST supply this field in `config`. When false and no `default` is declared, the agent chooses.'), OmittedNotNull] = False
     description: Annotated[str | None, Field(description='Human-readable explanation of what this knob does.'), OmittedNotNull] = None
 

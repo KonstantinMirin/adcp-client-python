@@ -505,6 +505,11 @@ def _constructed_default(decided: ir.Field) -> PythonCode | None:
 #: there renames nothing here.
 OMITTED_NOT_NULL = (ir.BASE_MODULE, adcp_base.OMITTED_NOT_NULL)
 
+#: :data:`adcp.types._base.OmittedWhenNone`, the SERIALISATION half alone -- §2's dump row
+#: for an optional property whose document ADMITS ``null``.  Held the same way and for the
+#: same reason as :data:`OMITTED_NOT_NULL`.
+OMITTED_WHEN_NONE = (ir.BASE_MODULE, adcp_base.OMITTED_WHEN_NONE)
+
 
 class _OptionalMember(DataModelField):
     """A field whose ``Annotated`` carries one more item than the model layer puts there.
@@ -527,6 +532,12 @@ class _OptionalMember(DataModelField):
     #: Whether this field takes the marker: ``codegen.ir.admits_null`` read at
     #: :func:`_field`, which is the one place the decision is made.
     omits_null: bool = False
+
+    #: Whether this field takes the SERIALISATION half alone: optional, and its document
+    #: admits ``null``.  §2's dump row keys the omission on ``required`` and the refusal on
+    #: nullability, so the two flags are exclusive by construction and :func:`_field` is the
+    #: one place either is decided.
+    omits_none: bool = False
 
     #: **Whether this position's own type is a bare ``integer``**, read at :func:`_field`
     #: off the decided type for ``omits_null``'s reason -- one place decides.
@@ -559,6 +570,7 @@ class _OptionalMember(DataModelField):
             for part, carried in (
                 (field_call, bool(field_call)),
                 (OMITTED_NOT_NULL[1], self.omits_null),
+                (OMITTED_WHEN_NONE[1], self.omits_none),
                 (ir.SCHEMA_INTEGRAL, self.integral),
             )
             if carried
@@ -571,7 +583,11 @@ class _OptionalMember(DataModelField):
     #: the marker, which is why this does not read ``use_annotated`` alone.
     @property
     def _marks(self) -> bool:
-        return (self.omits_null or self.integral) and not self.is_class_var and self.use_annotated
+        return (
+            (self.omits_null or self.omits_none or self.integral)
+            and not self.is_class_var
+            and self.use_annotated
+        )
 
     @property
     def annotated(self) -> str | None:
@@ -625,6 +641,11 @@ class _OptionalMember(DataModelField):
             *(
                 (Import(from_=OMITTED_NOT_NULL[0], import_=OMITTED_NOT_NULL[1]),)
                 if self.omits_null
+                else ()
+            ),
+            *(
+                (Import(from_=OMITTED_WHEN_NONE[0], import_=OMITTED_WHEN_NONE[1]),)
+                if self.omits_none
                 else ()
             ),
             # The narrowing marker is ours and lives beside the carriers it belongs to
@@ -748,6 +769,12 @@ def _field(decided: ir.Field) -> DataModelField:
         # and every ``null`` it ever took.  The reading is wrong only in the direction
         # that loses a refusal, which is that function's own argument.
         omits_null=not decided.required and not ir.admits_null(decided.type),
+        # **§2's dump row, whose key is ``required`` ALONE.**  "The dump omits ``None``
+        # unless the document requires the property" -- so an optional property whose
+        # document ADMITS ``null`` owes the serialisation half without the validation half,
+        # and this is that position.  Exclusive with ``omits_null`` by construction: the two
+        # partition the optional fields on ``ir.admits_null``.
+        omits_none=not decided.required and ir.admits_null(decided.type),
         # **§5's ``type`` row for ``integer``, asked of the position's OWN type.**  A node
         # whose type is the bare builtin takes the narrowing here; a node whose type is a
         # constrained ALIAS takes it on the alias's own line instead -- `alias()` renders

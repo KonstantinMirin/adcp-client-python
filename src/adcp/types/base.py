@@ -855,8 +855,22 @@ class AdCPBaseModel(BaseModel):
         # nesting depth), this removes the parent-side ``model_dump`` boilerplate that
         # adopters previously needed to write per response type. See
         # docs/extending-types.md.
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
+        # **THE `None` OMISSION IS THE FIELD'S AND NOT THE MODEL'S** (§2 "`None` is
+        # absence and `null` is a value", the dump row's one exception).
+        # `exclude_none=True` here dropped a `None` by MODEL, so a property the document
+        # REQUIRES had no way to keep one -- and eight pairs dumped a payload their own
+        # document refuses on `required`: `OptionsItem({"value": None})` dumped `{}`
+        # against `required: ["value"]`, `WarningsItem` lost `field`,
+        # `ReplaceTargetingValue` lost `applied`.  A required key cannot be absent, which
+        # is what `required` means, so omitting it turns a value the caller supplied into a
+        # missing key on the wire.
+        #
+        # The rule is carried per FIELD, where requiredness is known:
+        # `adcp.types._base.OmittedNotNull` on an optional property whose document refuses
+        # `null`, and `OmittedWhenNone` -- the serialisation half alone -- on an optional
+        # property whose document admits one.  A required property carries neither and
+        # keeps its `null`.  `model_dump_as_received` named this same defect from the digest
+        # side (#1613): "an explicit null the schema admits is dropped by exclude_none".
         if "serialize_as_any" not in kwargs:
             kwargs["serialize_as_any"] = True
         try:
@@ -902,8 +916,7 @@ class AdCPBaseModel(BaseModel):
         return self.model_dump(**kwargs)
 
     def model_dump_json(self, **kwargs: Any) -> str:
-        if "exclude_none" not in kwargs:
-            kwargs["exclude_none"] = True
+        # §2's dump row, by FIELD and not by model -- see `model_dump` above.
         if "serialize_as_any" not in kwargs:
             kwargs["serialize_as_any"] = True
         try:

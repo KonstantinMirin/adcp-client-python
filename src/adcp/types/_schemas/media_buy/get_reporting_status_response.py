@@ -5,7 +5,14 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    OmittedNotNull,
+    OmittedWhenNone,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen1MaxLen64, StrMinLen1MaxLen255, StrMinLen1MaxLen2048
 from adcp.types.envelopes import AdcpResponse
@@ -121,7 +128,7 @@ class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
     scope: Annotated[Scope | None, Field(description='Exact denominator evaluated for summary or periods health. complete is valid only when scope_closed is true.'), OmittedNotNull] = None
     health: Annotated[ReportingHealth | None, OmittedNotNull] = None
     coverage: Annotated[ReportingCoverage | None, Field(description='Aggregated effective coverage for the exact selected scope. This remains independent of reporting health and finality so a fresh covered subset cannot look like complete campaign reporting.'), OmittedNotNull] = None
-    data_through: Annotated[AwareDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.')] = None
+    data_through: Annotated[AwareDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.'), OmittedWhenNone] = None
     next_expected_at: Annotated[AwareDatetime | None, Field(description='Next obligation due time for an open scope. In a complete summary (view: summary, health: complete), the nearest future period start, strictly after ledger_as_of, across all active committed configuration generations in scope.delivery_config_generations. Sellers MUST populate it when such a scheduled period exists outside the closed evaluated scope, and omit it when none exists. This complete-scope projection applies only to summary responses. It is derived from the configuration schedule and does not represent an open obligation in the evaluated scope; its presence does not indicate that the scope is still open. Projecting it MUST NOT create, expose, lease, count, or alter an obligation whose period has not closed, or change obligation_counts, scope, or coverage. Obligation expected_at remains period.end plus schedule.delivery_sla; get_media_buy_delivery.next_expected_at remains the next webhook notification time.'), OmittedNotNull] = None
     obligation_counts: Annotated[ObligationCounts | None, OmittedNotNull] = None
     issues: Annotated[list[ReportingStatusIssue] | None, OmittedNotNull] = None

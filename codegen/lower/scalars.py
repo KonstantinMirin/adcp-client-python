@@ -639,6 +639,25 @@ def typeless(node: nodes.Typeless, mod: Module) -> ir.Decided | Refusal:
     # fact plainly -- there is nothing upstream to file.
     for keyword, fact in node.facts.items():
         approximate.declare(mod, node.pointer, keyword, node.position, fact)
+    # **THE ANCESTOR'S TYPE IS NOT DECLARED HERE, AND THE REASON IS WHAT ``applied``
+    # MEANS** (``adcp-client-python-s4bd``; §2 "A branch's property keeps ``Any``").  §2
+    # accepts that widening and §2's own rule is that an accepted widening is DECLARED, so
+    # a declaration belongs somewhere -- and it is not this site.  Measured: a
+    # ``declare(... "type", {"type": node.applied})`` written here fired **0 times** over
+    # all 1,059 portable documents, leaving ``approximated`` at 813 exactly.
+    #
+    # :attr:`nodes.Base.applied` is "the OTHER fact an enclosing node states about the SAME
+    # instance: the ``type`` word" -- ``parse.py``'s own sentence, for "a ``type: object``
+    # beside ``oneOf`` is a union whose branches inherit the applied word".  The widening
+    # §2 accepts is a different relation: ``core/postal-country-system.json``'s branch
+    # states ``properties.country`` and the ROOT states ``properties.country`` too, and
+    # those are the same INSTANCE reached by two sibling PATHS, not an enclosing node and
+    # the instance it encloses.  ``applied`` does not carry it, correctly.
+    #
+    # So the declaration needs a reader this site does not have: what every position
+    # applying to THIS property says about it.  That is the same two-conjunction problem
+    # ``adcp-client-python-01p4`` is about in the verifier, one layer over in the lowering,
+    # and it is recorded rather than approximated with a fact that is not the document's.
     # §4's typeless row, with §5's ``not`` row on it where the document states one: a
     # typeless node is ``Any``, and ``Annotated[Any, AfterValidator(NotValue(…)))]`` is
     # ``Any`` minus the values the document excludes, which is the document's own reading

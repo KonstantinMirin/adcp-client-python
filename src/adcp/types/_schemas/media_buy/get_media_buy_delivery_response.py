@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     DemographicReportingCapabilityAgeIntervalsItemDemographic,
@@ -99,7 +99,7 @@ class AggregatedTotals(AdCPBaseModel):
     roas: Annotated[NonNegativeFloat | None, Field(description='Aggregate return on ad spend across all media buys (total conversion_value / total spend)'), OmittedNotNull] = None
     new_to_brand_rate: Annotated[FloatMin0Max1 | None, Field(description='Fraction of total conversions across all media buys from first-time brand buyers (weighted by conversion volume, not a simple average of per-buy rates)'), OmittedNotNull] = None
     cost_per_acquisition: Annotated[NonNegativeFloat | None, Field(description='Aggregate cost per conversion across all media buys (total spend / total conversions)'), OmittedNotNull] = None
-    completion_rate: Annotated[FloatMin0Max1 | None, Field(description='Aggregate completion rate across all media buys (weighted by impressions, not a simple average of per-buy rates). Null indicates the metric is not applicable to the aggregated buys (e.g. all non-video inventory).')] = None
+    completion_rate: Annotated[FloatMin0Max1 | None, Field(description='Aggregate completion rate across all media buys (weighted by impressions, not a simple average of per-buy rates). Null indicates the metric is not applicable to the aggregated buys (e.g. all non-video inventory).'), OmittedWhenNone] = None
     reach: Annotated[NonNegativeFloat | None, Field(description='Reach across all media buys. Only present when all media buys share the same reach_unit. Omitted when reach units are heterogeneous — use per-buy reach values instead. The optional reach_aggregation field declares whether this value is deduplicated across buys or is a sum of constituent reach values.'), OmittedNotNull] = None
     reach_aggregation: Annotated[ReachAggregation | None, Field(description='How reach was combined across the media buys in this aggregate. When omitted, legacy reach semantics are unknown and consumers MUST NOT use reach as the denominator for frequency.'), OmittedNotNull] = None
     reach_unit: Annotated[ReachUnit | None, Field(description='Unit of measurement for reach. Only present when all aggregated media buys use the same reach_unit.'), OmittedNotNull] = None

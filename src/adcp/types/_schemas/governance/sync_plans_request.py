@@ -5,7 +5,14 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    OmittedNotNull,
+    OmittedWhenNone,
+    SchemaRef,
+)
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import FloatMin0Max100, HostedUrl, IntMin1, StrMaxLen2000
 from adcp.types.envelopes import AdcpRequest
@@ -188,7 +195,7 @@ class PlansItem(AdCPBaseModel):
     min_audience_size: Annotated[IntMin1 | None, Field(description='Minimum audience segment size. Prevents micro-targeting by ensuring segments meet a k-anonymity threshold. Applies to the estimated combined (intersection) audience when multiple criteria are used, not just individual criterion sizes. The governance agent validates this by querying published signal metadata or seller-reported segment sizes. When segment size data is unavailable, the governance agent SHOULD produce a finding with reduced confidence rather than silently passing.'), OmittedNotNull] = None
     human_review_required: Annotated[StrictBool | None, Field(description='When true, the governance agent MUST escalate any action on this plan for human review before execution — regardless of budget. Required by regulations that prohibit solely automated decisions affecting data subjects (GDPR Art 22, EU AI Act Annex III): credit, insurance pricing, recruitment, housing allocation. Governance agents MUST set this to true automatically when any resolved policy or policy_category has requires_human_review: true. Distinct from budget.reallocation_threshold, which only governs budget reallocation autonomy — human_review_required covers decisions affecting individuals (targeting, creative, delivery).'), OmittedNotNull] = False
     custom_policies: Annotated[list[PolicyEntry] | None, Field(description='Bespoke policies specific to this campaign, using the same shape as registry entries. Each policy has a policy_id, enforcement (must|should), and natural-language policy text. Governance findings reference policy_id to identify which policy triggered. For quick authoring, omit version/name/category — servers default them.'), OmittedNotNull] = None
-    approved_sellers: Annotated[list[HostedUrl] | None, Field(description='List of approved seller agent URLs. null means any seller.')] = None
+    approved_sellers: Annotated[list[HostedUrl] | None, Field(description='List of approved seller agent URLs. null means any seller.'), OmittedWhenNone] = None
     delegations: Annotated[list[DelegationsItem] | None, Field(description="Agents authorized to execute against this plan. Each delegation scopes an agent's authority by budget, markets, and expiration. The governance agent validates that the requesting agent matches a delegation before approving actions."), OmittedNotNull] = None
     portfolio: Annotated[Portfolio | None, Field(description='Portfolio-level governance constraints. When present, this plan acts as a portfolio plan that governs member plans. Portfolio plans define cross-brand constraints that no individual brand plan can override.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

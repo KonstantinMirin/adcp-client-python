@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedWhenNone, SchemaRef
 from adcp.types.constraints import NonEmptyList
 
 from .collection_list_ref import CollectionListReference
@@ -55,43 +55,43 @@ class TargetingOverlayInput(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-input.json', pointer='#')
-    geo_countries: GeoCountries | None = None
-    geo_countries_exclude: GeoCountriesExclude | None = None
-    geo_regions: GeoRegions | None = None
-    geo_regions_exclude: GeoRegionsExclude | None = None
-    geo_metros: Annotated[NonEmptyList[GeoMetro] | None, Field(description='Restrict delivery to specific metro areas. Each entry specifies the classification system and target values. Seller must declare supported systems in get_adcp_capabilities.')] = None
-    geo_metros_exclude: GeoMetrosExclude | None = None
-    geo_postal_areas: GeoPostalAreas | None = None
-    geo_postal_areas_exclude: GeoPostalAreasExclude | None = None
-    geo_places: GeoPlaces | None = None
-    geo_places_exclude: GeoPlacesExclude | None = None
-    daypart_targets: DaypartTargets | None = None
-    axe_include_segment: AxeIncludeSegment | None = None
-    axe_exclude_segment: AxeExcludeSegment | None = None
-    audience_include: AudienceInclude | None = None
-    audience_exclude: AudienceExclude | None = None
-    signal_targeting_groups: PackageSignalTargetingGroups | None = None
-    signal_targeting: Annotated[NonEmptyList[SignalTargeting] | None, Field(description='DEPRECATED. Use signal_targeting_groups for package-level signal targeting. Legacy flat signal_targeting remains accepted during the SignalRef migration window but cannot express grouped include/exclude composition or product-scoped pricing.')] = None
-    demographics: DemographicTargetingIntent | None = None
-    frequency_cap: FrequencyCap | None = None
-    property_list: PropertyListReference | None = None
-    property_list_exclude: PropertyListReference | None = None
-    collection_list: CollectionListReference | None = None
-    collection_list_exclude: CollectionListReference | None = None
-    placement_selection: PlacementSelection | None = None
-    collection_selection: CollectionSelection | None = None
-    age_restriction: AgeRestriction | None = None
-    device_platform: TargetingOverlayDevicePlatform | None = None
-    device_platform_exclude: DevicePlatformExclude | None = None
-    device_type: TargetingOverlayDeviceType | None = None
-    device_type_exclude: DeviceTypeExclude | None = None
-    browser: Browser | None = None
-    browser_exclude: BrowserExclude | None = None
-    store_catchments: StoreCatchments | None = None
-    geo_proximity: TargetingOverlayGeoProximity | None = None
-    language: Annotated[NonEmptyList[LanguageTag] | None, Field(description="Restrict to users with specific language preferences using canonical BCP 47 language ranges. Each buyer range is evaluated against a user's language-preference tag with RFC 4647 section 3.3.1 Basic Filtering: 'fr' matches 'fr', 'fr-CA', and 'fr-FR', while 'fr-CA' matches 'fr-CA' and more-specific descendants but not 'fr' or 'fr-FR'. Values use OR logic.")] = None
-    keyword_targets: Annotated[NonEmptyList[KeywordTarget] | None, Field(description='Keyword targeting for search and retail media platforms. Restricts delivery to queries matching the specified keywords. Each keyword is identified by the tuple (keyword, match_type) — the same keyword string with different match types are distinct targets. Sellers SHOULD reject duplicate (keyword, match_type) pairs within a single request. Seller must declare support in get_adcp_capabilities.')] = None
-    negative_keywords: Annotated[NonEmptyList[NegativeKeyword] | None, Field(description='Keywords to exclude from delivery. Queries matching these keywords will not trigger the ad. Each negative keyword is identified by the tuple (keyword, match_type). Seller must declare support in get_adcp_capabilities.')] = None
+    geo_countries: Annotated[GeoCountries | None, OmittedWhenNone] = None
+    geo_countries_exclude: Annotated[GeoCountriesExclude | None, OmittedWhenNone] = None
+    geo_regions: Annotated[GeoRegions | None, OmittedWhenNone] = None
+    geo_regions_exclude: Annotated[GeoRegionsExclude | None, OmittedWhenNone] = None
+    geo_metros: Annotated[NonEmptyList[GeoMetro] | None, Field(description='Restrict delivery to specific metro areas. Each entry specifies the classification system and target values. Seller must declare supported systems in get_adcp_capabilities.'), OmittedWhenNone] = None
+    geo_metros_exclude: Annotated[GeoMetrosExclude | None, OmittedWhenNone] = None
+    geo_postal_areas: Annotated[GeoPostalAreas | None, OmittedWhenNone] = None
+    geo_postal_areas_exclude: Annotated[GeoPostalAreasExclude | None, OmittedWhenNone] = None
+    geo_places: Annotated[GeoPlaces | None, OmittedWhenNone] = None
+    geo_places_exclude: Annotated[GeoPlacesExclude | None, OmittedWhenNone] = None
+    daypart_targets: Annotated[DaypartTargets | None, OmittedWhenNone] = None
+    axe_include_segment: Annotated[AxeIncludeSegment | None, OmittedWhenNone] = None
+    axe_exclude_segment: Annotated[AxeExcludeSegment | None, OmittedWhenNone] = None
+    audience_include: Annotated[AudienceInclude | None, OmittedWhenNone] = None
+    audience_exclude: Annotated[AudienceExclude | None, OmittedWhenNone] = None
+    signal_targeting_groups: Annotated[PackageSignalTargetingGroups | None, OmittedWhenNone] = None
+    signal_targeting: Annotated[NonEmptyList[SignalTargeting] | None, Field(description='DEPRECATED. Use signal_targeting_groups for package-level signal targeting. Legacy flat signal_targeting remains accepted during the SignalRef migration window but cannot express grouped include/exclude composition or product-scoped pricing.'), OmittedWhenNone] = None
+    demographics: Annotated[DemographicTargetingIntent | None, OmittedWhenNone] = None
+    frequency_cap: Annotated[FrequencyCap | None, OmittedWhenNone] = None
+    property_list: Annotated[PropertyListReference | None, OmittedWhenNone] = None
+    property_list_exclude: Annotated[PropertyListReference | None, OmittedWhenNone] = None
+    collection_list: Annotated[CollectionListReference | None, OmittedWhenNone] = None
+    collection_list_exclude: Annotated[CollectionListReference | None, OmittedWhenNone] = None
+    placement_selection: Annotated[PlacementSelection | None, OmittedWhenNone] = None
+    collection_selection: Annotated[CollectionSelection | None, OmittedWhenNone] = None
+    age_restriction: Annotated[AgeRestriction | None, OmittedWhenNone] = None
+    device_platform: Annotated[TargetingOverlayDevicePlatform | None, OmittedWhenNone] = None
+    device_platform_exclude: Annotated[DevicePlatformExclude | None, OmittedWhenNone] = None
+    device_type: Annotated[TargetingOverlayDeviceType | None, OmittedWhenNone] = None
+    device_type_exclude: Annotated[DeviceTypeExclude | None, OmittedWhenNone] = None
+    browser: Annotated[Browser | None, OmittedWhenNone] = None
+    browser_exclude: Annotated[BrowserExclude | None, OmittedWhenNone] = None
+    store_catchments: Annotated[StoreCatchments | None, OmittedWhenNone] = None
+    geo_proximity: Annotated[TargetingOverlayGeoProximity | None, OmittedWhenNone] = None
+    language: Annotated[NonEmptyList[LanguageTag] | None, Field(description="Restrict to users with specific language preferences using canonical BCP 47 language ranges. Each buyer range is evaluated against a user's language-preference tag with RFC 4647 section 3.3.1 Basic Filtering: 'fr' matches 'fr', 'fr-CA', and 'fr-FR', while 'fr-CA' matches 'fr-CA' and more-specific descendants but not 'fr' or 'fr-FR'. Values use OR logic."), OmittedWhenNone] = None
+    keyword_targets: Annotated[NonEmptyList[KeywordTarget] | None, Field(description='Keyword targeting for search and retail media platforms. Restricts delivery to queries matching the specified keywords. Each keyword is identified by the tuple (keyword, match_type) — the same keyword string with different match types are distinct targets. Sellers SHOULD reject duplicate (keyword, match_type) pairs within a single request. Seller must declare support in get_adcp_capabilities.'), OmittedWhenNone] = None
+    negative_keywords: Annotated[NonEmptyList[NegativeKeyword] | None, Field(description='Keywords to exclude from delivery. Queries matching these keywords will not trigger the ad. Each negative keyword is identified by the tuple (keyword, match_type). Seller must declare support in get_adcp_capabilities.'), OmittedWhenNone] = None
 
 
 __all__ = ["TargetingOverlayInput"]

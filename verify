@@ -50,6 +50,27 @@ ROOT = Path(__file__).resolve().parent
 SUITE = next(d for d in (ROOT / "tests_emit", ROOT / "tests") if (d / "compiled.py").is_file())
 sys.path.insert(0, str(SUITE))
 
+#: **THIS CHECKOUT'S OWN ``src`` GOES FIRST, OR THE RUN GRADES ANOTHER CHECKOUT'S SDK.**
+#:
+#: The worktree venvs carry EDITABLE installs, and an editable ``.pth`` names an absolute
+#: path -- the one the install was made from.  Measured in ``wt-keyless`` on 2026-11-14:
+#:
+#:     adcp       -> /srv/ws/adcp-client-python/src          (the SHARED checkout)
+#:     adcp_emit  -> /srv/ws/.adcp-scratch/wt-subjects/src   (a third checkout)
+#:     codegen    -> /srv/ws/wt-keyless/codegen              (this one, because cwd wins)
+#:
+#: So a bare ``./verify`` in a lane read the VERIFIER from the lane and the SDK's
+#: hand-written half -- ``adcp.types._base``, ``adcp.types.base``, the markers, the
+#: dispatch -- from trunk.  It surfaced as ``AttributeError: module 'adcp.types._base' has
+#: no attribute 'OMITTED_WHEN_NONE'`` on a name this worktree had just added, which is the
+#: benign way for it to surface; the dangerous way is a lane measuring its own emission
+#: against somebody else's runtime and reporting the number as its own.
+#:
+#: ``grade`` already binds ``--tree`` in front of ``adcp.types._schemas.__path__`` and
+#: ``--package`` in front of ``adcp.types.__path__`` for exactly this reason, one layer in.
+#: This is the same rule for the package those paths hang off.
+sys.path.insert(0, str(ROOT / "src"))
+
 from codegen import patch  # noqa: E402  (the sys.path line above is what makes it resolve)
 
 #: The bundle a run reads: the published one with the build's patch sets applied.  One
