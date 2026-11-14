@@ -926,3 +926,71 @@ the six raise `ValueError` INSIDE the `try` as an "invalid" signal and then catc
 the deliberate signal, a `ValidationError` from an emitted model, and an `AttributeError` of
 ours are all the same answer to a caller. The typed code is the contract and stays; without
 the line there is no way to tell a corrupt history from a defect of ours.
+
+---
+---
+
+# Appendix 7 — the baselines, verified; and why I am not quoting a comparison this round
+
+## The baselines, by chunk count
+
+```
+/srv/ws/dropin-upstream   chunks=4     upstream's own tree
+/srv/ws/dropin-fast       chunks=4     ours, trunk 0d3554d02
+/srv/ws/dropin-trunk      chunks=4     ours, trunk 480e6ed58
+/srv/ws/dropin-trunk2     chunks=0     EMPTY
+```
+
+My previous appendix reported that `--since /srv/ws/dropin-trunk2` could not be read and gave
+the wrong reason — I said the run had not finished writing. It had never started. The
+instrument's own message was right and my gloss on it was not; the correction is the owner's
+and it is recorded here because the gloss is in Appendix 5.
+
+## And `dropin-fast` is a baseline from a HEALTHY trunk while this branch sits on a broken one
+
+Appendix 6 reported that `from adcp.types import Format` raises on `b0f3bd254`. **Bisected
+across the two trunk points that matter:**
+
+```
+0d3554d02   (what dropin-fast graded)   adcp.types.Format  ->  resolves, class Format
+b0f3bd254   (current trunk, this branch) adcp.types.Format  ->  RAISES
+```
+
+So the breakage landed in trunk BETWEEN the baseline and here. A run of this branch compared
+`--since /srv/ws/dropin-fast` would attribute **trunk's 267 collection errors to me**, and the
+headline would read as a catastrophic regression from a change that is eight `logger.debug`
+lines.
+
+**That is the same misattribution the instrument was taught to refuse, arriving from a third
+direction.** It is not two divergent lanes and it is not a changed collected set: it is a
+baseline graded on a trunk that worked against a branch on a trunk that does not. The
+ancestry check passes — `0d3554d02` IS an ancestor of `b0f3bd254` — so nothing in the tooling
+would warn. The REGRESSED/FIXED split is computed from node ids and would be honest about
+WHICH tests moved, and every one of them would still be trunk's.
+
+**So I am not quoting a comparison, and no run was taken.** `./check` holds at **emitted 1059
+/ refused 0, primary 0 / chained 0, approximated 383 facts in 148 documents**, which is the
+one figure that is valid here because it never imports `adcp.server`.
+
+`survey reconcile --upstream … --ours …` would close its accounting and still be measuring
+trunk's import failure rather than this change, so it is not quoted either.
+
+## What unblocks it
+
+One of the two repairs named in Appendix 6, both in other lanes' files:
+
+1. bind the alias `Format` → `ProductFormatDeclaration` on the flat surface, which
+   `CLAUDE.md`'s note already decided — *"`Format` on the canonical declaration is an ALIAS
+   and not a class name"*; or
+2. re-point `src/adcp/server/responses.py:33` to `ProductFormatDeclaration`.
+
+With either in place this branch is measurable against `dropin-fast` in one 3.6-minute run,
+and the expected result is 0 in every direction — eight DEBUG lines move no outcome, as the
+previous round's certified zero already showed for the ten before them.
+
+## Housekeeping, so nobody loses work to it
+
+Bisecting required checking out `src/adcp` at an older commit in this worktree; it is
+restored to `HEAD` and `git status` is clean, verified, with `./check` re-run to confirm the
+emitted tree is coherent. **There is one stash entry in this repository and it is NOT mine** —
+`stash@{0}: WIP on claude/keyless-branch-admitted` — left untouched.
