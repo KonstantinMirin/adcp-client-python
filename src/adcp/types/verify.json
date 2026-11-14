@@ -7,7 +7,7 @@
   "fail:undeclared:widened_undeclared": 5,
   "fail:widening:unproved_widening": 11
  },
- "graded": 2608,
+ "graded": 2609,
  "not_pass": 889,
  "not_pass_rows": [
   {
@@ -4293,7 +4293,7 @@
    "class": "Annotated",
    "document": "core/creative-assets.json",
    "dump": "dump=pass",
-   "note": "#/patternProperties: a key the patternProperties admits could not be drawn: the constructed value is refused on minProperties",
+   "note": "#/additionalProperties: a key the additionalProperties admits could not be drawn: the constructed value is refused on minProperties",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -11568,44 +11568,44 @@
    "widening": "widening=absent:no_declarations"
   }
  ],
- "pass": 1719,
+ "pass": 1720,
  "per_check": {
   "accepts": {
    "absent": 8,
    "fail": 62,
-   "pass": 2538
+   "pass": 2539
   },
   "admits": {
    "absent": 0,
    "fail": 861,
-   "pass": 1747
+   "pass": 1748
   },
   "dump": {
    "absent": 62,
    "fail": 8,
-   "pass": 2538
+   "pass": 2539
   },
   "refuses": {
    "absent": 11,
    "fail": 0,
-   "pass": 2597
+   "pass": 2598
   },
   "undeclared": {
    "absent": 368,
    "fail": 5,
-   "pass": 2235
+   "pass": 2236
   },
   "widening": {
-   "absent": 2421,
+   "absent": 2422,
    "fail": 34,
    "pass": 153
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/20dde630968ddcd5253c7c74aae4f720296576f8f5c97b165ca7c5e47afc0953",
-  "head": "b0f3bd254+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/144a9c9f09ab3e45b3360476b059cd263cb69f12f06413e05eb5960e024d80ed",
+  "head": "5363454c3+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 443.9,
- "seconds_per_pair": 0.1702
+ "seconds": 626.9,
+ "seconds_per_pair": 0.2403
 }
