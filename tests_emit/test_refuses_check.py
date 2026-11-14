@@ -271,9 +271,9 @@ def test_the_explicit_null_witness_is_derived_and_it_discriminates() -> None:
 
     taken = check_refuses(schema, TakesTheNull.model_validate, instance)
     assert taken.outcome == "widened_undeclared", taken
-    assert any(
-        json.loads(row[0]) == {"cursor": "a", "limit": None} for row in taken.undeclared
-    ), taken.undeclared
+    assert any(json.loads(row[0]) == {"cursor": "a", "limit": None} for row in taken.undeclared), (
+        taken.undeclared
+    )
 
     class RefusesTheNull(BaseModel):
         cursor: str
@@ -293,7 +293,8 @@ def test_the_explicit_null_witness_is_derived_and_it_discriminates() -> None:
         "required": ["cursor"],
     }
     assert not [
-        c for c, k, _ in refused_witnesses(nullable, instance)
+        c
+        for c, k, _ in refused_witnesses(nullable, instance)
         if k == "properties" and isinstance(c, dict) and c.get("limit", 0) is None
     ]
     assert check_refuses(nullable, TakesTheNull.model_validate, instance).outcome == "pass"
@@ -887,3 +888,145 @@ def test_the_document_the_p0_was_measured_on_is_GRADED_and_never_skipped() -> No
         declared=tuple(one.keyword for one in harness.declarations_of(symbol)),
     )
     assert result.outcome == "pass", result
+
+
+# --------------------------------------------------------------------------- #
+# the marker is the declaration, and it is PRECISE
+# --------------------------------------------------------------------------- #
+#: The document the three clauses below are read on: one optional property whose ``type``
+#: refuses ``null``, one required property, and nothing else.  Stated once because the
+#: claim is about which FIELD the class binds ``note`` to, so the three must be asked
+#: about one document or they are three measurements.
+_A_DOCUMENT_REFUSING_NULL = {
+    "type": "object",
+    "properties": {"id": {"type": "integer"}, "note": {"type": "string"}},
+    "required": ["id"],
+    "additionalProperties": False,
+}
+_AN_ACCEPTED_INSTANCE = {"id": 1, "note": "a"}
+
+
+def test_the_marker_declares_an_explicit_null_at_its_own_field() -> None:
+    """**A ``None`` AT A MARKED FIELD IS DECLARED -- by the marker, at the site, once.**
+
+    ``docs/plan/rebuild-plan.md`` §2 *"``None`` is absence and ``null`` is a value"* takes
+    the decision and its last paragraph says the widening is declared; the marker is where
+    it is stated, at every one of the fields it applies to.  So the class below is wider
+    than its document at ``note`` on the Python route -- deliberately, and with
+    ``Approximation`` declaring nothing -- and this column must read it as a ``pass``.
+
+    The witness is not constructed here: ``refused_witnesses``' explicit-null derivation
+    builds it from the document's own ``properties``, so this clause grades the production
+    derivation rather than a payload written to match the exemption.
+    """
+
+    class Marked(BaseModel):
+        model_config = {"extra": "forbid"}
+
+        id: int
+        note: Annotated[str | None, OmittedNotNull] = None
+
+    offered = refused_witnesses(_A_DOCUMENT_REFUSING_NULL, _AN_ACCEPTED_INSTANCE)
+    claimed(
+        "derivations the document's own keywords offer",
+        tuple(how for _candidate, _keyword, how in offered),
+    )
+    assert any(
+        isinstance(candidate, dict) and candidate.get("note", False) is None
+        for candidate, _keyword, _how in offered
+    ), offered
+
+    result = check_refuses(_A_DOCUMENT_REFUSING_NULL, Marked.model_validate, _AN_ACCEPTED_INSTANCE)
+    assert result.rows, "the witnesses do not discriminate"
+    assert result.outcome == "pass", result
+    assert not result.undeclared, result
+    # and the exemption is the MARKER's and not the declaration machinery's: nothing was
+    # declared at this pointer, which is the whole reason the row used to fail.
+    assert result.declared == (), result
+    #: **THE OTHER PRECISION DIRECTION IS ALREADY ASSERTED IN THIS FILE and is not
+    #: restated here**, which is §8's rule about a fact being declared once applied to the
+    #: gate: :func:`test_the_explicit_null_witness_is_derived_and_it_discriminates` offers
+    #: the same derived null to a ``TakesTheNull`` carrying NO marker and requires
+    #: ``widened_undeclared`` with that row named, and to a ``RefusesTheNull`` carrying one
+    #: and requires ``pass``.  Both of those clauses were RED before this exemption
+    #: existed, so the direction has a gate older than the change it grades.
+
+
+def test_any_other_value_at_a_MARKED_field_is_still_undeclared() -> None:
+    """**THE SECOND PRECISION DIRECTION: the marker declares a ``None`` and nothing else.**
+
+    ``OmittedNotNull`` states one fact -- that this property's absence is spelled ``None``
+    -- so it cannot stand for a different widening at the same field.  A declaration that
+    covered every value at its own field would be an allowlist by position, which is what
+    ``check_refuses``' comparison against ``declared`` is written to avoid in this
+    direction too.
+
+    **Asked of the predicate directly, and that is the right level rather than a shortcut.**
+    ``refused_witnesses``' per-property derivation builds exactly one candidate per key and
+    the value in it is always ``None``, so no document can make the production path offer
+    "some other value at this field" -- the condition is reachable only here.  Three
+    candidates at one marked field of one class, so the claim that they are separable is
+    read off one fixture.
+    """
+
+    class Marked(BaseModel):
+        model_config = {"extra": "forbid"}
+
+        id: int
+        note: Annotated[str | None, OmittedNotNull] = None
+
+    built = Marked.model_validate(_AN_ACCEPTED_INSTANCE)
+    assert harness.the_marker_declares(_AN_ACCEPTED_INSTANCE, {"id": 1, "note": None}, built), (
+        "the marked field's own null is not declared"
+    )
+    for other in ("abcd", 7, [], {}, False):
+        assert not harness.the_marker_declares(
+            _AN_ACCEPTED_INSTANCE, {"id": 1, "note": other}, built
+        ), other
+    # and a null at a SECOND key beside it is two differences, not the derivation's witness
+    assert not harness.the_marker_declares(_AN_ACCEPTED_INSTANCE, {"id": None, "note": None}, built)
+
+
+def test_a_second_undeclared_widening_survives_beside_a_declared_null() -> None:
+    """The exemption is per ROW and does not carry the pair.
+
+    A class carrying the marker at ``note`` and dropping the document's ``minProperties``:
+    the null row is declared and the ``minProperties`` row is not, so the pair still fails
+    and names the one that is genuinely undeclared.  ``minProperties`` rather than a bound
+    on the property, because ``refused_witnesses`` derives from the node's OWN keywords and
+    a ``maxLength`` one level down is not one of them -- a document written to make that
+    witness exist would be testing the derivation and not this.
+    """
+    document = {
+        "type": "object",
+        "properties": {"id": {"type": "integer"}, "note": {"type": "string"}},
+        "required": ["id"],
+        "minProperties": 2,
+        "additionalProperties": False,
+    }
+
+    class Marked(BaseModel):
+        model_config = {"extra": "forbid"}
+
+        id: int
+        note: Annotated[str | None, OmittedNotNull] = None
+
+    result = check_refuses(document, Marked.model_validate, _AN_ACCEPTED_INSTANCE)
+    assert result.outcome == "widened_undeclared", result
+    assert {row[1] for row in result.undeclared} == {"minProperties"}, result.undeclared
+    # the null row at the marked field is the one the marker declares, so it is not here
+    assert not any(json.loads(row[0]).get("note", False) is None for row in result.undeclared), (
+        result.undeclared
+    )
+
+
+def test_the_marker_declares_nothing_for_a_key_the_class_binds_to_no_field() -> None:
+    """An ``extra`` carries no field, so it carries no marker, so it is not declared.
+
+    A document with ``additionalProperties: true`` states a key the class does not declare;
+    a ``None`` there is the payload's own value arriving at a position no field of ours
+    describes, and ``the_marker_declares``' field lookup finds nothing to read. Asserted
+    because the lookup's ``None`` answer is the conservative one and a reader should know
+    it is deliberate rather than an oversight.
+    """
+    assert not harness.the_marker_declares({"a": 1}, {"a": 1, "b": None}, object())

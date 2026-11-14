@@ -105,6 +105,7 @@ from adcp.types._base import (
     Approximation,
     SchemaBound,
     SchemaRef,
+    omits_null,
 )
 from codegen import attribution, bundle, dump_exemptions, keywords
 from codegen.keywords import Position, Rung
@@ -2800,6 +2801,16 @@ def check_refuses(
     a check rather than as prose, and is what keeps the declared set from being an
     allowlist in this direction too.
 
+    **AND A DECLARATION IS NOT ONLY AN ``Approximation``: THE MARKER AT THE FIELD IS ONE.**
+    :func:`the_marker_declares` is the second reading of ``declared``, for the one decision
+    that is stated per FIELD rather than per pointer -- ``OmittedNotNull``, which
+    ``docs/plan/rebuild-plan.md`` §2 states and which sits at every site it applies to.  A
+    row whose witness is an explicit ``null`` at a field carrying it is DECLARED, once, by
+    the marker; a ``null`` at a field without one, and any other value at a field with one,
+    are not.  Without this the column reports a taken decision as a failure, which is the
+    defect ``rebuild-plan.md`` §2's index exists to stop -- *"if a check reports a decision
+    as a failure, the defect is the missing DECLARATION, never the decision"*.
+
     ``no_witness`` is a real answer and not a failure: a document that refuses nothing this
     reduction can build -- an open typeless object, which draft-07 admits every instance of
     -- has nothing for the class to refuse, and the pair is neither graded nor failed.
@@ -2818,9 +2829,15 @@ def check_refuses(
         res.outcome = "no_witness"
         return res
     rows: list[tuple[str, str, tuple[str, ...], bool]] = []
+    #: Parallel to :data:`rows`: whether the MARKER at the admitting field is this row's
+    #: declaration (:func:`the_marker_declares`).  Kept beside the rows rather than folded
+    #: into them because a row is the artifact's own record of what the class was asked and
+    #: what it answered, and this is a fact about the DECLARATION of that answer.
+    by_the_marker: list[bool] = []
     for candidate, keyword, _how in witnesses:
+        built: Any = None
         try:
-            construct(candidate)
+            built = construct(candidate)
             admitted = True
         except ValidationError:
             admitted = False
@@ -2836,12 +2853,78 @@ def check_refuses(
                 admitted,
             )
         )
+        by_the_marker.append(admitted and the_marker_declares(instance, candidate, built))
     res.rows = tuple(rows)
     res.undeclared = tuple(
-        row for row in rows if row[3] and row[1] not in res.declared
+        row
+        for row, marked in zip(rows, by_the_marker, strict=True)
+        if row[3] and row[1] not in res.declared and not marked
     )
     res.outcome = "widened_undeclared" if res.undeclared else "pass"
     return res
+
+
+def the_marker_declares(instance: Any, candidate: Any, built: Any) -> bool:
+    """Whether ``OmittedNotNull`` AT THE ADMITTING FIELD is this widening's declaration.
+
+    **THE MARKER IS THE DECLARATION, AND §8'S RULE IS THAT A FACT IS DECLARED ONCE.**
+    ``docs/plan/rebuild-plan.md`` §2 *"``None`` is absence and ``null`` is a value"* states
+    the decision: a Python ``None`` at an optional property whose document's ``type``
+    refuses ``null`` reads as ABSENCE, the JSON route still refuses, and the section's own
+    last paragraph says the widening *"is declared"*.  Measured, that one decision is
+    almost the whole of this column's failure -- so emitting an ``Approximation`` per
+    property would write one identical record a thousand times for a fact already recorded
+    at every one of those sites by :data:`adcp.types._base.OmittedNotNull`, which is the
+    shape §8 forbids.  ``adcp.types._base.omits_null`` is the public predicate for it and
+    this asks that and nothing else.
+
+    **IT IS PRECISE AND NOT BROAD, which is the whole risk of exempting anything.**  Three
+    conditions, each of which has to hold:
+
+    1. the witness differs from the accepted instance **at exactly one key** -- the shape
+       ``refused_witnesses`` builds for its explicit-null derivation
+       (``{**instance, key: None}``), and nothing else;
+    2. the value at that key **is ``None``**.  Any other value at a marked field is a
+       widening the marker says nothing about and stays undeclared;
+    3. the field the admitting class binds that key to **carries the marker**.  A ``None``
+       at a field WITHOUT it stays undeclared, which is the direction that matters: the
+       marker is on the fields whose document refuses ``null``, so a field without one
+       either admits ``null`` (and the document refuses nothing, so there is no witness) or
+       is a real undeclared widening.
+
+    The key is matched by the field's WIRE spelling -- ``field.alias or name``, the
+    document's own property name and the only accepted one (``emit.field_name``), read the
+    same way ``adcp.types._runtime.supplied`` reads it.  So one mapping answers for an
+    aliased field and an unaliased one alike, and no name resolves two ways.
+
+    **THE CLASS COMES FROM THE ADMISSION ITSELF** and not from a new parameter: the thing
+    that admitted the witness is the thing that returned it, so ``type(built)`` is the
+    class whose field metadata decides this.  A ``built`` that is no model -- a root model
+    over a scalar, a bare value -- answers ``False``, as does a key the class binds to no
+    field at all (an ``extra``, which carries no marker because it carries no field).
+    Conservative in the one direction that costs nothing: a missed exemption is a row that
+    stays reported.
+    """
+    if not isinstance(candidate, dict) or not isinstance(instance, dict):
+        return False
+    differing = [
+        key
+        for key in set(candidate) | set(instance)
+        if key not in instance or key not in candidate or candidate[key] != instance[key]
+    ]
+    if len(differing) != 1:
+        return False
+    key = differing[0]
+    #: ``key not in candidate`` is the DROPPED-REQUIRED-KEY witness, whose one difference
+    #: is a key the candidate does not carry at all -- a widening about ``required`` and
+    #: not about this property's type, so the marker says nothing about it.
+    if key not in candidate or candidate[key] is not None:
+        return False
+    fields = getattr(type(built), "model_fields", None)
+    if not isinstance(fields, dict):
+        return False
+    field = {(f.alias or name): f for name, f in fields.items()}.get(key)
+    return field is not None and omits_null(field)
 
 
 def refusing_payload(
