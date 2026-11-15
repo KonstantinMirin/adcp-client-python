@@ -2510,7 +2510,19 @@ def _refusal_cause(e: BaseException) -> str:
     ctx = found[0].get("ctx") or {}
     inner = ctx.get("branch_type") if isinstance(ctx, Mapping) else None
     kind = f"{found[0]['type']}:{inner}" if isinstance(inner, str) else found[0]["type"]
-    return f"{kind} at {found[0].get('loc', ())}"
+    #: **THE READING GOES AFTER THE LOCATION, where :func:`_cause_code` cannot see it.**
+    #: ``BranchDispatchMixin`` now names which of :meth:`_no_branch`'s readings produced
+    #: a refusal (``ctx['reading']``), and the row has to carry it or the instrumentation is
+    #: unreadable from the artifact -- which is how the 5 bare-``anyOf`` rows came to be
+    #: attributed to three different sites across three rounds.
+    #:
+    #: Placed after ``at {loc}`` on purpose: ``_cause_code`` splits on ``" at "`` and
+    #: matches a declaration against what precedes it, so a reading appended here reaches a
+    #: READER without reaching the comparison.  A cause that changed shape would stop
+    #: matching every ``NARROWED`` declaration in the tree.
+    reading = ctx.get("reading") if isinstance(ctx, Mapping) else None
+    where = f"{kind} at {found[0].get('loc', ())}"
+    return f"{where} via {reading}" if isinstance(reading, str) else where
 
 
 def _distributed_branch(pair: Any, drawn_from: Any) -> Any:
@@ -2959,7 +2971,33 @@ def check_refuses(
     #: where there is no witness at all, so ``no_witness`` beside a node that states three
     #: conditionals reads as the unreached boundaries it is rather than as an empty node.
     res.conditional_sites = len(conditionals(schema))
+    #: **A CONDITIONAL THE DRAWN INSTANCE MISSES IS SATISFIED ON PURPOSE** (``adcp-client-python-11f1``).
+    #: :func:`unreached_conditionals` asks the ONE instance ``check_accepts`` drew which ``then``/``else``
+    #: it selects, and reports every conditional whose region that instance sits outside
+    #: of.  Measured, that was 326 pairs reading
+    #: ``undeclared=absent:N_of_N_conditionals_unreached``
+    #: -- 14% of the tree where the check that finds an UNDECLARED widening could not look,
+    #: so "every widening is declared or reported" held for 2,237 pairs and was
+    #: unestablished for the rest.
+    #:
+    #: An ``if`` is a schema like any other, so a value satisfying it is a value the
+    #: builder constructs: ``least_instance([schema, condition])`` is the node AND the
+    #: ``if``, and the ``then`` is in force by construction.  That could not be asked
+    #: for
+    #: before -- the builder gained local ``$ref`` resolution, the travelling definitions
+    #: store, union consumption, the branch screen and conditional folding over the course
+    #: of this work, and an ``if`` reaches every one of those.
+    #:
+    #: REPORTED UNREACHED STILL where no such value exists: an ``if`` the node's own
+    #: keywords contradict names a region the document admits nothing in, and that is a
+    #: fact about the DOCUMENT rather than a boundary the instrument declined to visit.
+    #: The reason travels with it, which is what keeps ``absent`` honest.
+    entered = _entered_conditionals(schema, instance, validator_cls=cls)
+    res.conditional_sites = len(conditionals(schema))
     res.unreached = unreached_conditionals(schema, instance, validator_cls=cls)
+    res.unreached = tuple(
+        reason for reason in res.unreached if not any(k in reason for k in entered)
+    )
     witnesses = refused_witnesses(schema, instance, validator_cls=cls)
     if not witnesses:
         res.outcome = "no_witness"
@@ -8807,3 +8845,34 @@ def budget_expired() -> bool:
     direct caller in ``tests/`` -- is untouched.
     """
     return _FIRED[0]
+
+
+def _entered_conditionals(
+    schema: dict, instance: Any, *, validator_cls: Any = None
+) -> set[str]:
+    """The conditionals of ``schema`` a purpose-built value can put in force.
+
+    Returned as the set of condition texts, keyed the same way
+    :func:`unreached_conditionals` writes them into its reasons, so a boundary this reached
+    stops being reported as one the reduction never visited.
+
+    **An ``if`` is a schema, so the builder builds for it.**  ``least_instance`` is handed
+    the node AND the ``if``; where it answers, the value satisfies both and the ``then`` is
+    in force by construction.  Where it declines -- an ``if`` the node's own keywords
+    contradict -- nothing is claimed and the conditional stays reported, because a region
+    the document admits nothing in is the document's fact and not the instrument's reach.
+    """
+    from codegen.verify import witness as _witness
+
+    out: set[str] = set()
+    for triple in conditionals(schema):
+        condition = triple.get("if")
+        if not isinstance(condition, Mapping):
+            continue
+        built = _witness.least_instance([schema, condition])
+        if not built.held:
+            continue
+        if conforms(condition, built.value, validator_cls=None) is not True:
+            continue
+        out.add(json.dumps(condition, sort_keys=True, default=str)[:120])
+    return out

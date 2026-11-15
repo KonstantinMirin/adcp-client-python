@@ -2736,7 +2736,10 @@ class BranchDispatchMixin(_MixedInto):
             [
                 InitErrorDetails(
                     type=PydanticCustomError(
-                        "required", "{detail}", {"detail": f"{key!r} is a required property"}
+                        "required",
+                        "{detail}",
+                        #: ``reading`` for :meth:`_no_branch`'s reason -- see its ``agreed`` reading.
+                        {"detail": f"{key!r} is a required property", "reading": "root_required"},
                     ),
                     loc=(key,),
                     input=value,
@@ -2928,8 +2931,11 @@ class BranchDispatchMixin(_MixedInto):
                             # half beside the sentence.
                             {
                                 "detail": detail,
-"branch_type": row["type"],
+                                "branch_type": row["type"],
                                 "branch": where[1] if where is not None else str(label),
+                                #: Which READING of :meth:`_no_branch` produced this
+                                #: row.  See the ``agreed`` reading for why it travels.
+                                "reading": "per_branch",
                             },
                         ),
                         loc=below,
@@ -3101,6 +3107,8 @@ class BranchDispatchMixin(_MixedInto):
                 return InitErrorDetails(type=row["type"], loc=loc, input=row["input"])
             return InitErrorDetails(type=row["type"], loc=loc, input=row["input"], ctx=ctx)
         return InitErrorDetails(
+            #: ``reading`` is preserved where the row already names one -- a rebuilt
+            #: row keeps whichever reading raised it, and ``_untagged`` adds its own.
             type=PydanticCustomError(row["type"], row["msg"], row.get("ctx")),
             loc=loc,
             input=row["input"],
@@ -3166,8 +3174,32 @@ class BranchDispatchMixin(_MixedInto):
             return cls._no_clause(value)
         agreed = cls._agreed(err)
         if agreed:
+            #: **THE READING IS NAMED IN THE ROW, because every reading of these refusals so
+            #: far has been an inference from the error's SHAPE** (``adcp-client-python-vwgs``).
+            #: :meth:`_no_branch` has seven readings and the row it returns does not say
+            #: which one produced it, so the 5 pairs reporting a bare ``anyOf`` have now been
+            #: attributed to three different sites across three rounds -- the per-branch
+            #: report, the fallback, and this intersection -- and two of those readings
+            #: were wrong.  The fallback was ruled out by MEASUREMENT only after a change
+            #: to it moved nothing.
+            #:
+            #: So the reading travels with the refusal, which is the same move
+            #: ``harness.PairReport.screen`` made for "which of three nodes did the checks
+            #: screen against" -- a question that was also being answered by inference
+            #: until the row carried it.  A consumer reading ``ctx['reading']`` learns which
+            #: one refused them; a reader of ``verdicts.tsv`` learns it without
+            #: instrumenting a build.
+            #:
+            #: ``_line_error`` passes a row's own ``ctx`` straight through, so this names
+            #: the reading WITHOUT displacing whatever the intersected row already carried.
             return ValidationError.from_exception_data(
-                cls.__name__, [cls._line_error(row) for row in agreed]
+                cls.__name__,
+                [
+                    cls._line_error(
+                        {**row, "ctx": {**(row.get("ctx") or {}), "reading": "agreed"}}
+                    )
+                    for row in agreed
+                ],
             )
         #: **AN EMPTY INTERSECTION IS NOT AN EMPTY ANSWER** (``adcp-client-python-xuh7``).
         #: :meth:`_agreed` is right that the branches' INTERSECTION is the document's own
@@ -3254,10 +3286,18 @@ class BranchDispatchMixin(_MixedInto):
         return ValidationError.from_exception_data(
             cls.__name__,
             [
+                #: ``reading`` for :meth:`_no_branch`'s reason -- see its ``agreed`` reading.
+                #: Merged into the row's own ``ctx`` so a native kind rebuilt here keeps
+                #: whatever pydantic put there.
                 cls._line_error(
-                    {**row, "loc": tuple(row["loc"][1:])}
-                    if row["loc"] and row["loc"][0] in names
-                    else row
+                    {
+                        **(
+                            {**row, "loc": tuple(row["loc"][1:])}
+                            if row["loc"] and row["loc"][0] in names
+                            else row
+                        ),
+                        "ctx": {**(row.get("ctx") or {}), "reading": "untagged"},
+                    }
                 )
                 for row in rows
             ],
@@ -3309,7 +3349,10 @@ class BranchDispatchMixin(_MixedInto):
             cls.__name__,
             [
                 InitErrorDetails(
-                    type=PydanticCustomError(keyword, "{detail}", {"detail": detail}),
+                    #: ``reading`` for :meth:`_no_branch`'s reason -- see its ``agreed`` reading.
+                    type=PydanticCustomError(
+                        keyword, "{detail}", {"detail": detail, "reading": "no_clause"}
+                    ),
                     loc=loc,
                     input=value,
                 )

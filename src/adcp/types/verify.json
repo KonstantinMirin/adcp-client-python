@@ -14,10 +14,10 @@
    "class": "ComplyTestControllerRequest",
    "document": "compliance/comply-test-controller-request.json",
    "dump": "dump=pass",
-   "note": "the class is NARROWER than its document: it refused 19 of 1315 values the document admits, on anyOf at ('params', 'result') (and on anyOf:url_parsing at ('params', 'result', 'push_notification_config', 'url'), url_parsing at ('params', 'vendor', 'brand_kit_override', 'logo', 'provenance', 'c2pa', 'manifest_url'), url_parsing at ('params', 'vendor', 'brand_kit_override', 'logo', 'provenance', 'decl",
+   "note": "the class is NARROWER than its document: it refused 19 of 1315 values the document admits, on anyOf at ('params', 'result') (and on anyOf:url_parsing at ('params', 'result', 'push_notification_config', 'url') via per_branch, url_parsing at ('params', 'vendor', 'brand_kit_override', 'logo', 'provenance', 'c2pa', 'manifest_url'), url_parsing at ('params', 'vendor', 'brand_kit_override', 'logo', 'pro",
    "pointer": "#",
    "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:30_of_30_conditionals_unreached",
+   "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:admits:model_refused_admitted",
    "widening": "widening=pass"
   },
@@ -27,7 +27,7 @@
    "class": "Params",
    "document": "compliance/comply-test-controller-request.json",
    "dump": "dump=pass",
-   "note": "the class is NARROWER than its document: it refused 19 of 1301 values the document admits, on anyOf at ('result',) (and on anyOf:url_parsing at ('result', 'push_notification_config', 'url'), url_parsing at ('vendor', 'brand_kit_override', 'logo', 'provenance', 'c2pa', 'manifest_url'), url_parsing at ('vendor', 'brand_kit_override', 'logo', 'provenance', 'declared_by', 'agent_url'), url_parsing at",
+   "note": "the class is NARROWER than its document: it refused 19 of 1301 values the document admits, on anyOf at ('result',) (and on anyOf:url_parsing at ('result', 'push_notification_config', 'url') via per_branch, url_parsing at ('vendor', 'brand_kit_override', 'logo', 'provenance', 'c2pa', 'manifest_url'), url_parsing at ('vendor', 'brand_kit_override', 'logo', 'provenance', 'declared_by', 'agent_url'),",
    "pointer": "#/properties/params",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -40,7 +40,7 @@
    "class": "ComplianceTaskCompletionData",
    "document": "compliance/task-completion-data.json",
    "dump": "dump=pass",
-   "note": "the class is NARROWER than its document: it refused 5 of 664 values the document admits, on anyOf at () (and on anyOf:url_parsing at ('push_notification_config', 'url'), which a NARROWED declaration admits); narrower than its document [anyOf at ()] on format: at ('targeting_resolution',): at ('brief_targeting',): at ('property_list',): at ('agent_url',): uri case 2; the class refused it with 1 val",
+   "note": "the class is NARROWER than its document: it refused 5 of 664 values the document admits, on anyOf at () (and on anyOf:url_parsing at ('push_notification_config', 'url') via per_branch, which a NARROWED declaration admits); narrower than its document [anyOf at ()] on format: at ('targeting_resolution',): at ('brief_targeting',): at ('property_list',): at ('agent_url',): uri case 2; the class refuse",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=absent:no_witness",
@@ -186,7 +186,7 @@
    "note": "the class is NARROWER than its document: it refused 7 of 870 values the document admits, on anyOf at ('packages', 0) (and on url_parsing at ('packages', 0, 'targeting_overlay', 'collection_list', 'agent_url'), url_parsing at ('packages', 0, 'targeting_overlay', 'collection_list_exclude', 'agent_url'), url_parsing at ('packages', 0, 'targeting_overlay', 'property_list', 'agent_url'), url_parsing at",
    "pointer": "#",
    "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:2_of_2_conditionals_unreached",
+   "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:admits:model_refused_admitted",
    "widening": "widening=absent:no_declarations"
   },
@@ -199,7 +199,7 @@
    "note": "the class is NARROWER than its document: it refused 5 of 744 values the document admits, on anyOf at () (and on url_parsing at ('targeting_overlay', 'collection_list', 'agent_url'), url_parsing at ('targeting_overlay', 'collection_list_exclude', 'agent_url'), url_parsing at ('targeting_overlay', 'property_list', 'agent_url'), url_parsing at ('targeting_overlay', 'property_list_exclude', 'agent_url",
    "pointer": "#",
    "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:3_of_3_conditionals_unreached",
+   "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:admits:model_refused_admitted",
    "widening": "widening=absent:no_declarations"
   },
@@ -225,7 +225,7 @@
    "note": "#/properties/adcp/properties/principal/allOf/0/if: a value the if admits placed at ['adcp', 'principal'] makes a payload the document refuses, so it says nothing about the class; #/properties/media_buy/properties/proposal_refinement/allOf/0/if: a value the if admits placed at ['media_buy', 'proposal_refinement'] makes a payload the document refuses, so it says nothing about the class; narrower tha",
    "pointer": "#",
    "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:16_of_16_conditionals_unreached",
+   "undeclared": "undeclared=absent:1_of_16_conditionals_unreached",
    "verdict": "verdict=fail:widening:unproved_widening",
    "widening": "widening=fail:unproved_widening"
   },
@@ -238,7 +238,7 @@
    "note": "#/properties/media_buy/properties/proposal_refinement/allOf/0/if: a value the if admits placed at ['proposal_refinement'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('acceptance_policy_discovery', 'catalog_url')] on pattern: at ('acceptance_policy_discovery',): at ('catalog_url',): a string '^https://' admits; the class refu",
    "pointer": "#/properties/media_buy",
    "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:2_of_2_conditionals_unreached",
+   "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:widening:unproved_widening",
    "widening": "widening=fail:unproved_widening"
   },
@@ -305,9 +305,9 @@
    "pass": 2597
   },
   "undeclared": {
-   "absent": 372,
+   "absent": 123,
    "fail": 0,
-   "pass": 2237
+   "pass": 2486
   },
   "widening": {
    "absent": 2427,
@@ -316,10 +316,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/e7e3ff2697da038173e407e698063d44ae2db189f91fca16cfff03d579d004ba",
-  "head": "0c536e1ba+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/471f1f23321b5784c0215ddd7cac6519ee9001bf95c0eac935790eaaf1e50c9e",
+  "head": "9b34870dd+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 423.8,
- "seconds_per_pair": 0.1625
+ "seconds": 522.9,
+ "seconds_per_pair": 0.2004
 }
