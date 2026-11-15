@@ -2971,8 +2971,10 @@ def check_refuses(
     #: where there is no witness at all, so ``no_witness`` beside a node that states three
     #: conditionals reads as the unreached boundaries it is rather than as an empty node.
     res.conditional_sites = len(conditionals(schema))
-    #: **A CONDITIONAL THE DRAWN INSTANCE MISSES IS SATISFIED ON PURPOSE** (``adcp-client-python-11f1``).
-    #: :func:`unreached_conditionals` asks the ONE instance ``check_accepts`` drew which ``then``/``else``
+    #: **A CONDITIONAL THE DRAWN INSTANCE MISSES IS SATISFIED ON PURPOSE**
+    #: (``adcp-client-python-11f1``).
+    #: :func:`unreached_conditionals` asks the ONE instance ``check_accepts`` drew which
+    #: ``then``/``else``
     #: it selects, and reports every conditional whose region that instance sits outside
     #: of.  Measured, that was 326 pairs reading
     #: ``undeclared=absent:N_of_N_conditionals_unreached``
@@ -5501,7 +5503,7 @@ def _type_list(live: list[dict]) -> tuple[list[str], dict] | None:
     declaration.**  draft-07 applies a constraint keyword only to instances of the type
     it is defined for, so a node whose ``type`` is a list and which states ``minLength``
     means "``minLength`` on the string arm" -- which is the reading the walk makes when
-    it cuts the node into one member per word (``keywords.ARM``), and pydantic has no
+    it cuts the node into one member per word (``keywords.BRANCH``), and pydantic has no
     spelling for the result but a union of the arms.  Lifting each arm's own keywords
     back onto the list is therefore not an approximation of the union: it is the
     document's own node, respelled.
@@ -5559,7 +5561,7 @@ def _type_list(live: list[dict]) -> tuple[list[str], dict] | None:
     not this function's.
     """
     words = [b.get("type") for b in live]
-    if not all(isinstance(w, str) and w in keywords.ARM for w in words):
+    if not all(isinstance(w, str) and w in keywords.BRANCH for w in words):
         return None
     if len(set(words)) != len(words):
         return None
@@ -5575,7 +5577,7 @@ def _type_list(live: list[dict]) -> tuple[list[str], dict] | None:
         for key, value in _silent_about_extras(branch).items():
             if key == "type":
                 continue
-            if key not in keywords.ARM[word] or key in descends or key in arms:
+            if key not in keywords.BRANCH[word] or key in descends or key in arms:
                 return None
             arms[key] = value
     return words, arms
@@ -5688,7 +5690,7 @@ def _normalize(
       at ``/properties/embedded_credential/properties/value``, ``["object",
       "string"]`` with ``minLength: 1`` -- and carried nothing transitively, because 43
       documents reference that one.  The walk CUTS such a node into one arm per
-      word, each arm carrying only what that word carries (``keywords.ARM``), and
+      word, each arm carrying only what that word carries (``keywords.BRANCH``), and
       D5's alias module puts the bound on the arm's own type.  Lifting the arms'
       keywords back onto the list therefore restates the document's own node and
       moves no fact; folding to the type list and DROPPING the constraint would be
@@ -5852,7 +5854,7 @@ def _normalize(
                 return node
             # The per-arm facts sit between the type list and the OUTER keys, because
             # outer still wins: a ``default`` or a ``description`` beside the combinator
-            # is the node's own and an arm cannot carry one anyway (``keywords.ARM``).
+            # is the node's own and an arm cannot carry one anyway (``keywords.BRANCH``).
             return {
                 "type": [*kinds, "null"] if keep_null and nulls else kinds,
                 **arms,

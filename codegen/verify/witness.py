@@ -832,7 +832,7 @@ def _implied(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
     every branch of which declares an object has declared an object as surely as ``type:
     object`` does -- the same entailment the keyword reading already makes for ``contains``
     implying an array"*.  Read off :func:`codegen.keywords.constrains_container` and
-    :data:`codegen.keywords.ARM` so the set of keywords that declare a type is the declared
+    :data:`codegen.keywords.BRANCH` so the set of keywords that declare a type is the declared
     one and not a list written here.
     """
     stated = {k for view in views for k in view}
@@ -840,7 +840,7 @@ def _implied(views: Sequence[Mapping[str, Any]]) -> tuple[str, ...]:
         if stated & keywords.constrains_container(word):
             return (word,)
     for word in ("string", "integer"):
-        if stated & keywords.ARM[word]:
+        if stated & keywords.BRANCH[word]:
             return (word,)
     return ()
 
@@ -3398,7 +3398,7 @@ class Construction:
                 for word in words:
                     if not isinstance(word, str) or word in _CONTAINERS:
                         continue
-                    arm = {k: v for k, v in node.items() if k in keywords.ARM.get(word, ())}
+                    arm = {k: v for k, v in node.items() if k in keywords.BRANCH.get(word, ())}
                     built = _from_word(word, [{**arm, "type": word}])
                     if built.held:
                         out.append(Class("type", f"the {word} arm", built.value))
