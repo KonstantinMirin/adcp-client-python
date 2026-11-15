@@ -4190,10 +4190,43 @@ def _least_once(
     #: ``country`` came from the branch and was right; ``system`` came from the root's
     #: enum and was the one key the branch exists to pin.  6 of the 15 remaining
     #: ``witness_refused`` rows are pure ``const`` like this.
-    for one in joined:
-        members = one.get("enum")
-        if isinstance(members, list) and members:
-            return Built(members[0], Source.CONSTRUCTED)
+    #: **AND AN ``enum`` IS INTERSECTED WITH EVERY OTHER ``enum``, for the reason the
+    #: ``const`` pass above exists** (``adcp-client-python-01p4``).  Taking ``members[0]``
+    #: of the FIRST statement answered with a member a later statement's ``enum`` excludes
+    #: -- the conjunction demands all of them, so the only admissible members are the ones
+    #: in every list.
+    #:
+    #: Measured on ``core/postal-area.json#/anyOf/0/allOf/0`` -> ``PostalAreaCA``, ``GB``
+    #: and ``US``, each a distributed branch conjoined with the root:
+    #:
+    #:     refused {"country": "CA", "system": "postal_code", "values": [""]}
+    #:       at allOf/1/properties/system/enum
+    #:
+    #: ``country`` came from the branch and was right; ``system`` took the ROOT's first
+    #: member, which the branch's own enum does not admit.  3 of the 9 remaining
+    #: ``witness_refused`` rows, and the same defect the ``const`` pass fixed one keyword
+    #: along.
+    #:
+    #: ``_equal`` and not ``in``, which is ``jsonschema``'s own comparison for an enum
+    #: member: it reads ``1`` and ``True`` as different where Python's ``in`` does not, and
+    #: the document's reading is the one that decides.
+    enums = [
+        one["enum"]
+        for one in joined
+        if isinstance(one.get("enum"), list) and one["enum"]
+    ]
+    for members in enums:
+        for member in members:
+            if all(any(_equal(member, other) for other in rest) for rest in enums):
+                return Built(member, Source.CONSTRUCTED)
+        #: An empty intersection is a fact about the DOCUMENT -- two enums sharing no
+        #: member admit nothing -- and is reported rather than answered with a member one
+        #: of them refuses.
+        return Built(
+            None,
+            Source.APPROXIMATED,
+            "the enums this node conjoins share no member",
+        )
     for one in joined:
         ref = one.get("$ref")
         if isinstance(ref, str):

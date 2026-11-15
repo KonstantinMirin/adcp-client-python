@@ -1,12 +1,12 @@
 {
  "causes": {
   "fail:accepts:model_refused_valid": 2,
-  "fail:accepts:witness_refused": 9,
+  "fail:accepts:witness_refused": 6,
   "fail:admits:model_refused_admitted": 8,
   "fail:widening:unproved_widening": 5
  },
  "graded": 2609,
- "not_pass": 24,
+ "not_pass": 21,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -137,45 +137,6 @@
    "undeclared": "undeclared=absent:unrun",
    "verdict": "verdict=fail:accepts:witness_refused",
    "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "PostalAreaCA",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on enum; refused {\"country\": \"CA\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/enum; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "PostalAreaGB",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on enum; refused {\"country\": \"GB\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/enum; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "PostalAreaUS",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on enum; refused {\"country\": \"US\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/enum; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
   },
   {
    "accepts": "accepts=pass",
@@ -321,12 +282,12 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2585,
+ "pass": 2588,
  "per_check": {
   "accepts": {
    "absent": 0,
-   "fail": 11,
-   "pass": 2598
+   "fail": 8,
+   "pass": 2601
   },
   "admits": {
    "absent": 17,
@@ -334,19 +295,19 @@
    "pass": 2582
   },
   "dump": {
-   "absent": 11,
+   "absent": 8,
    "fail": 0,
-   "pass": 2598
+   "pass": 2601
   },
   "refuses": {
-   "absent": 15,
+   "absent": 12,
    "fail": 0,
-   "pass": 2594
+   "pass": 2597
   },
   "undeclared": {
-   "absent": 375,
+   "absent": 372,
    "fail": 0,
-   "pass": 2234
+   "pass": 2237
   },
   "widening": {
    "absent": 2427,
@@ -355,10 +316,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/a35c7c93e5534e7ee55b7032fbb37b8c7c056e597b6b4e48703e1d7b276364f4",
-  "head": "c8739aca9+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/e7e3ff2697da038173e407e698063d44ae2db189f91fca16cfff03d579d004ba",
+  "head": "0c536e1ba+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 427.4,
- "seconds_per_pair": 0.1638
+ "seconds": 423.8,
+ "seconds_per_pair": 0.1625
 }
