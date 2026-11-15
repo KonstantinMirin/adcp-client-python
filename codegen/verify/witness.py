@@ -4115,6 +4115,29 @@ def least_instance(
             for branch in branches:
                 if not isinstance(branch, Mapping):
                     continue
+                #: **THE OWNER IS DROPPED AND THE UNION COMES BACK, which is a located
+                #: defect and not the shape anyone wants** (``adcp-client-python-01p4``).
+                #: Dropping ``one`` does not remove its ``oneOf``: the owner is reachable
+                #: again through the ``allOf`` wrapper that contains it, so this call
+                #: re-derives the same alternation and reports "no branch admits" all the
+                #: way down.  Measured on ``media-buy/build-creative-response.json#``,
+                #: whose root has six branches: all four tried failed with that same
+                #: recursive reason, while branch 2 joined with the declaration ALONE
+                #: builds.  4 of the 16 remaining ``unproved_widening`` rows.
+                #:
+                #: REPLACING the owner with a copy lacking ``word`` is the right shape --
+                #: it keeps every statement the owner makes about this instance and loses
+                #: only the alternation being selected from, which is what
+                #: ``harness._distributed_branch`` does for a class that IS one branch.
+                #: It was tried and it does not terminate: a fresh copy has a fresh ``id``,
+                #: so the ``walked`` set above -- deliberately by IDENTITY, because a
+                #: document states equal-but-distinct mappings -- never matches it and the
+                #: recursion makes another copy each time (``RecursionError``).
+                #:
+                #: So the repair needs a STABLE identity for "this owner's union has been
+                #: consumed", threaded through the recursion beside ``seen``.  That is a
+                #: signature change through this builder and is left to its own commit
+                #: rather than half-made here.
                 inner = least_instance([branch, *(s for s in joined if s is not one)], seen)
                 if inner.held:
                     return inner
