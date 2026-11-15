@@ -4332,7 +4332,30 @@ def _conjoined(host: Any, sub: Any) -> Any:
     taken, and then there is nothing to conjoin and the subject is unchanged -- which is
     every declaration this check proved before the host existed.
     """
-    return {"allOf": [host, sub]} if isinstance(host, Mapping) else sub
+    #: **THE HOST'S OWN DEFINITIONS TRAVEL WITH IT, because wrapping RE-ROOTS the schema**
+    #: (``adcp-client-python-01p4``).  A ``#/definitions/X`` reference resolves against the
+    #: ROOT of the schema it is validated under, and this wrapper is a new root -- so a
+    #: host carrying local references stopped being able to resolve them the moment it was
+    #: conjoined, and ``jsonschema`` raises
+    #: ``PointerToNowhere: '/definitions/H' does not exist within {'allOf': [...]}``.
+    #:
+    #: The consequence for the GRADE is quieter than a raise and worse: the builder sees a
+    #: conjunction whose ``type`` is behind an unresolvable reference, finds no type word,
+    #: and returns the null floor -- so ``check_widening`` drew ``None`` for a node
+    #: demanding an object and reported the DECLARATION as unproved.  17 rows, every one
+    #: reading "a value the if admits could not be drawn: the constructed value is refused
+    #: on type / on required".  Measured: the same conjunction with the host's type INLINE
+    #: builds ``{'url': ''}`` and conforms.
+    #:
+    #: Carried rather than inlined, which is the smaller claim: the keys are copied onto
+    #: the wrapper so the references resolve exactly as they did at the host's own root,
+    #: and no subschema is rewritten.  ``sub``'s own definitions would collide at the same
+    #: keys, so the host's win -- ``sub`` is a RESTRICTION of the host and derived from it,
+    #: so a name they share is the host's name.
+    if not isinstance(host, Mapping):
+        return sub
+    carried = {k: host[k] for k in ("definitions", "$defs") if k in host}
+    return {"allOf": [host, sub], **carried}
 
 
 def _value_at(instance: Any, path: Sequence[Any]) -> list[Any]:
