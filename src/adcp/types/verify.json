@@ -1,12 +1,12 @@
 {
  "causes": {
   "fail:accepts:model_refused_valid": 2,
-  "fail:accepts:witness_refused": 15,
+  "fail:accepts:witness_refused": 9,
   "fail:admits:model_refused_admitted": 8,
   "fail:widening:unproved_widening": 5
  },
  "graded": 2609,
- "not_pass": 30,
+ "not_pass": 24,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -101,19 +101,6 @@
   },
   {
    "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=pass",
-   "class": "MediaBuyCommitmentResponseCompleted",
-   "document": "core/async-response-data.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const; refused {\"status\": \"completed\", \"media_buy_id\": \"a\", \"revision\": 1, \"accepted_proposal\": {\"proposal_id\": \"a\", \"proposal_kind\": \"new_media_buy\", \"proposal_status\": \"draft\", \"name\": \"a\", \"commercial_terms\": {\"brand\": {\"domain\": \"a\"}, \"purchases\": [{\"product_id\": \"a\", \"pricing_option_id\": \"a\", \"pricing\": {\"pricing_option_id\": \"a\", \"pric",
-   "pointer": "#/anyOf/10",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
    "admits": "admits=absent:no_witness",
    "class": "CreativeRepresentationFormatId",
    "document": "core/creative-representation.json",
@@ -154,32 +141,6 @@
   {
    "accepts": "accepts=fail:witness_refused",
    "admits": "admits=absent:no_witness",
-   "class": "PostalAreaAUPostcode",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"AU\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "PostalAreaBRCep",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"BR\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
    "class": "PostalAreaCA",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
@@ -193,49 +154,10 @@
   {
    "accepts": "accepts=fail:witness_refused",
    "admits": "admits=absent:no_witness",
-   "class": "PostalAreaFRCodePostal",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"FR\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
    "class": "PostalAreaGB",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
    "note": "the node refuses the value its own keywords construct, on enum; refused {\"country\": \"GB\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/enum; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "PostalAreaINPin",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"IN\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "PostalAreaPlz",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"DE\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -399,12 +321,12 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2579,
+ "pass": 2585,
  "per_check": {
   "accepts": {
    "absent": 0,
-   "fail": 17,
-   "pass": 2592
+   "fail": 11,
+   "pass": 2598
   },
   "admits": {
    "absent": 17,
@@ -412,19 +334,19 @@
    "pass": 2582
   },
   "dump": {
-   "absent": 17,
+   "absent": 11,
    "fail": 0,
-   "pass": 2592
+   "pass": 2598
   },
   "refuses": {
-   "absent": 21,
+   "absent": 15,
    "fail": 0,
-   "pass": 2588
+   "pass": 2594
   },
   "undeclared": {
-   "absent": 381,
+   "absent": 375,
    "fail": 0,
-   "pass": 2228
+   "pass": 2234
   },
   "widening": {
    "absent": 2427,
@@ -433,10 +355,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/ffe66cc6956f31d6e9792c13a38c248ae31d5ebd6c505f4988e7c6b61b54f4ae",
-  "head": "06afa8324+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/a35c7c93e5534e7ee55b7032fbb37b8c7c056e597b6b4e48703e1d7b276364f4",
+  "head": "c8739aca9+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 423.3,
- "seconds_per_pair": 0.1622
+ "seconds": 427.4,
+ "seconds_per_pair": 0.1638
 }

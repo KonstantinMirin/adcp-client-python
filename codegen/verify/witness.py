@@ -4174,6 +4174,23 @@ def _least_once(
     for one in joined:
         if "const" in one:
             return Built(one["const"], Source.CONSTRUCTED)
+    #: **EVERY ``const`` IS LOOKED FOR BEFORE ANY ``enum``, because statement ORDER must
+    #: not decide** (``adcp-client-python-01p4``).  Read in one pass, the first statement
+    #: carrying an ``enum`` answered ahead of a LATER statement's ``const`` -- and a
+    #: ``const`` is strictly narrower while the conjunction demands both, so the ``enum``
+    #: answer is a value the ``const`` refuses.
+    #:
+    #: Measured on ``core/postal-area.json#/anyOf/0/allOf/0`` -> ``PostalAreaAUPostcode``,
+    #: a distributed branch whose node is the root conjoined with the AU branch.  The root
+    #: states ``system`` as an enum and the branch pins it:
+    #:
+    #:     refused {"country": "AU", "system": "postal_code", "values": [""]}
+    #:       at allOf/1/properties/system/const
+    #:
+    #: ``country`` came from the branch and was right; ``system`` came from the root's
+    #: enum and was the one key the branch exists to pin.  6 of the 15 remaining
+    #: ``witness_refused`` rows are pure ``const`` like this.
+    for one in joined:
         members = one.get("enum")
         if isinstance(members, list) and members:
             return Built(members[0], Source.CONSTRUCTED)
