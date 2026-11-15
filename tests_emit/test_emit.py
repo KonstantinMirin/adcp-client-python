@@ -464,47 +464,26 @@ def graded() -> list[Graded]:
 #: ``harness.check_format_strategy``: a strategy emitting values the format refuses makes
 #: every site using it pass vacuously, and a vacuous pass is reported by nothing.
 #:
-#: **THE DECLARATION IS ``harness.FORMAT_STRATEGIES`` AND THIS IS AN ALIAS TO IT**
-#: (``adcp-client-python-82m.4``).  There are two graders of the population now -- this
-#: suite and the RUN, which writes §10's per-pair verdict table -- and a strategy declared
-#: in one of them drifts silently in the direction that matters: the suite would pass pairs
-#: the run reports ``missing_formats`` on, and a reviewer comparing the two would be
-#: comparing two instruments.  So the entries are stated once beside the check that reads
-#: them, the test below grades THAT dict, and this name is what every reader in this file
-#: already says.
-FORMAT_STRATEGIES: dict[str, Any] = harness.FORMAT_STRATEGIES
-
-
-def test_every_format_strategy_is_graded_before_it_is_trusted() -> None:
-    """Both answers required of every entry, which is ``check_format_strategy``'s rule.
-
-    "The values it produces are admitted by the format; a deliberately malformed value of
-    the same shape is REFUSED."  The second is not redundant: a validator with no checker
-    for the format answers ``True`` for every input, and that case is reported
-    ``unchecked``, which is not a pass.
-
-    The counterexample is of the SAME SHAPE as what the strategy emits -- a
-    dash-separated hex-ish string that is not a UUID -- so a checker that merely
-    pattern-sniffs is not what makes the second answer green.
-    """
-    counterexamples = {"uuid": "123e4567-e89b-12d3-a456-42661417400"}  # one digit short
-    named = claimed("format strategies", set(FORMAT_STRATEGIES))
-    assert named == set(counterexamples), sorted(named ^ set(counterexamples))
-    for fmt, strategy in sorted(FORMAT_STRATEGIES.items()):
-        verdict = harness.check_format_strategy(
-            fmt, strategy, counterexample=counterexamples[fmt]
-        )
-        assert verdict.checked, (fmt, "no checker: the format cannot be graded by checking")
-        assert verdict.examples, (fmt, verdict.detail)
-        assert verdict.accepted == verdict.examples, (fmt, verdict.rejected)
-        assert verdict.counterexample_refused, (fmt, counterexamples[fmt])
-
-
-#: Cached for ``leaves()``'s reason and with its own reading: one call reads every portable
-#: document once, keys what it ADMITS (``catalogue.Admitted``, which resolves a ``$ref`` to
-#: what it names) and takes the stated-instance closure over ``bundle.edges`` -- a function
-#: of the bundle alone, and every pair of one document wants the same answer.
-@functools.cache
+#: **THERE ARE NO FORMAT STRATEGIES, AND THE CHECK THAT GRADED THEM IS GONE WITH THEM**
+#: (``adcp-client-python-eqlf``).  ``harness.FORMAT_STRATEGIES`` is ``{}`` and nothing in
+#: the repository writes to it; ``harness.check_format_strategy``, which graded a strategy
+#: before it was trusted, was deleted with the SAMPLER it served
+#: (``adcp-client-python-hzio.5``).  Nothing generates at grade time now -- the
+#: construction builds a witness from the node's own keywords -- so a format strategy has
+#: no subject and a grader for one has nothing to grade.
+#:
+#: The test that stood here asserted the property and was RED, measured rather than
+#: assumed:
+#:
+#:     AssertionError: format strategies: empty set of nodes
+#:                     -- every assertion over it holds vacuously
+#:
+#: ``nodeset.claimed`` refuses an empty population, which is right: an assertion over
+#: nothing is not a check.  So the honest repair is to delete the check rather than to
+#: weaken ``claimed`` or to re-populate a dict whose consumers are gone.  What is NOT
+#: deleted here is the ``custom_formats`` plumbing -- 17 sites threading an always-empty
+#: mapping into ``_draw``, whose body never reads it -- because that is a signature change
+#: across the harness and belongs in its own commit with its own measurement.
 def admitted_identities() -> dict[str, str]:
     """``catalogue.admitted_identities(BUNDLE)``, once per process.
 
@@ -581,7 +560,7 @@ def fixtures() -> harness.Fixtures:
         identity=lambda document, pointer: identity_of(SchemaRef(document, pointer)),
         documents=frozenset(bundle.portable(BUNDLE)),
         corpus=corpus.STORE,
-        custom_formats=FORMAT_STRATEGIES,
+        custom_formats=harness.FORMAT_STRATEGIES,
     )
 
 
@@ -1482,7 +1461,7 @@ def graded_report(g: Graded) -> PairReport:
         with harness.within(PAIR_BUDGET):
             return check_pair(
                 pair_of(g),
-                custom_formats=FORMAT_STRATEGIES,
+                custom_formats=harness.FORMAT_STRATEGIES,
                 corpus=corpus.STORE,
                 widening_corpus=corpus.WIDENING_STORE,
                 fixtures=fixtures(),

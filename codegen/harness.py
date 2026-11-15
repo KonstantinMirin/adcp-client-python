@@ -1555,39 +1555,13 @@ def _nodes(schema: Any, pointer: str = "") -> list[tuple[str, dict]]:
 # --------------------------------------------------------------------------- #
 # results
 # --------------------------------------------------------------------------- #
-@dataclass
-class FormatStrategyVerdict:
-    """Whether a supplied format strategy produces values the format itself admits.
-
-    ``unchecked`` is a distinct outcome from ``pass`` and that distinction is the
-    reason this type exists: a validator with no checker for a format answers True
-    for every input, garbage included, so grading a strategy against one says
-    nothing at all. Reporting that as a pass is the vacuous pass.
-    """
-
-    fmt: str = ""
-    checked: bool = False  # the validator has a checker for this format
-    examples: int = 0
-    accepted: int = 0  # produced values the checker admits
-    rejected: str = ""  # first produced value the checker REFUSES, if any
-    counterexample_refused: bool | None = None  # the second answer
-    detail: str = ""
-
-    @property
-    def outcome(self) -> str:
-        if self.detail:
-            return "error"
-        if not self.checked:
-            return "unchecked"  # nothing graded the strategy; NOT a pass
-        if not self.examples:
-            return "no_examples"
-        if self.rejected:
-            return "generates_invalid"  # every site using it would pass vacuously
-        if self.counterexample_refused is not True:
-            return "checker_accepts_anything"
-        return "pass"
-
-
+#: **``FormatStrategyVerdict`` IS DELETED, WITH THE GRADER AND THE POPULATION IT SERVED**
+#: (``adcp-client-python-eqlf``).  It was ``check_format_strategy``'s return type; that
+#: function went with the SAMPLER (``adcp-client-python-hzio.5``) and
+#: :data:`FORMAT_STRATEGIES` is ``{}`` with no writer anywhere in the repository.  A
+#: result type for a check that does not exist, over a population that is empty, is three
+#: dead things holding each other up -- and the suite's own assertion said so, in red:
+#: "format strategies: empty set of nodes -- every assertion over it holds vacuously".
 @dataclass
 class AcceptsResult:
     examples: int = 0

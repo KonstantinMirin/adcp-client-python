@@ -53,9 +53,35 @@ def _report() -> dict:
     return json.loads(REPORT.read_text())
 
 
-def _head() -> str:
+#: What the grade READS: the emitted tree and the compiler that graded it.  Not the whole
+#: repository, and that distinction is the whole of :func:`_graded_at`.
+INPUTS = ("src/adcp/types/_schemas", "src/adcp/types/constraints.py", "codegen")
+
+
+def _graded_at() -> str:
+    """The last commit that changed anything the grade reads.
+
+    **``HEAD`` IS THE WRONG COMPARISON, and it is wrong in a way no artifact can ever
+    satisfy.**  ``verify.json`` records the tree it graded, so an artifact graded at commit
+    N is COMMITTED in commit N+1 -- the commit that contains it is necessarily later than
+    the one it names.  Measured, twice in one session: the clause passed in the window
+    between grading and committing and failed the moment the artifact landed
+    (``verify.json graded ccd9de3f0 and this checkout is fd779eed4``), so a correct,
+    freshly-taken measurement reported itself stale forever after.
+
+    What the clause is actually for is "does this artifact describe the tree in front of
+    me" -- and the tree in front of me is the EMITTED tree and the COMPILER, not the
+    repository.  A commit that edits a document, a bead or this test changes no input the
+    grade reads and must not invalidate it.  So the comparison is the last commit that
+    touched :data:`INPUTS`, which is a fact about the graded subject rather than about the
+    history around it.
+
+    Still strict in the direction that matters: regenerate the tree or change the harness,
+    and the next commit moves this answer, so a stale artifact is caught at the first
+    commit that could have changed its verdicts.
+    """
     done = subprocess.run(
-        ["git", "-C", str(ROOT), "rev-parse", "--short", "HEAD"],
+        ["git", "-C", str(ROOT), "log", "-1", "--format=%h", "--", *INPUTS],
         capture_output=True,
         text=True,
         check=False,
@@ -78,8 +104,9 @@ def test_the_artifact_graded_this_tree() -> None:
     """
     recorded = (_report().get("provenance") or {}).get("head", "")
     assert recorded, "verify.json records no head; the artifact cannot be dated"
-    assert recorded.split("+")[0] == _head(), (
-        f"verify.json graded {recorded} and this checkout is {_head()} -- "
+    assert recorded.split("+")[0] == _graded_at(), (
+        f"verify.json graded {recorded}, and the graded inputs last changed at "
+        f"{_graded_at()} -- "
         "the artifact is stale, run ./verify"
     )
 
