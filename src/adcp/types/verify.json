@@ -720,10 +720,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/eeaf113835ac594f47d17ca7461c28e0636e105f1f8b342d56def3ec8d19f389",
-  "head": "305439aca+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/a3bf4380addb162a789c8937a1a31ae93803b3852f9e53952f92b1ec154b8deb",
+  "head": "dc0782734+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 426.6,
- "seconds_per_pair": 0.1635
+ "seconds": 547.3,
+ "seconds_per_pair": 0.2098
 }

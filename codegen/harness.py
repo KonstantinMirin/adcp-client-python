@@ -7666,6 +7666,25 @@ def _check_pair(
         )
         if pointer is not None:
             try:
+                #: **WITNESSING THE SUBSTITUTED NODE FROM ITSELF WAS TRIED AND IS
+                #: WORSE** (``adcp-client-python-jt6r``, the fifth measurement in this
+                #: family).  The reasoning was sound -- the screen is the branch's node, so
+                #: ask ``witness.least_instance([drawn_from])`` and the two cannot disagree
+                #: -- and the numbers were not:
+                #:
+                #:     ============================  ========  ================  ===========
+                #:     \                             not pass  witness_refused   no_witness
+                #:     ============================  ========  ================  ===========
+                #:     THIS -- ask at the pointer          52               22            0
+                #:     least_instance([drawn_from])        65               19           15
+                #:     ============================  ========  ================  ===========
+                #:
+                #: Three rows cleared and fifteen pairs stopped having a witness at all:
+                #: ``least_instance`` declines on the composed ``{**root, "allOf": [...]}``
+                #: node, which carries the referring document's conditionals.  A false
+                #: failure traded for no measurement is the same trade architecture §10
+                #: counts twice as a defect, and it is the trade four earlier attempts here
+                #: made too.
                 answer = construction.applied(witness_ref.document, pointer)
                 built = [answer.value] if answer.held else None
                 rep.witness_absent = "" if answer.held else answer.reason[:300]
@@ -8411,6 +8430,37 @@ def verdict_row(
             notes.append(f"and {len(r.unreached) - 2} more unreached conditionals")
         if r.detail:
             notes.append(r.detail)
+    #: **THE NOTE LEADS WITH THE CHECK THE VERDICT NAMES**, which is the same rule that
+    #: moved the undeclared cause ahead of the witness and put ``screen`` in front of
+    #: everything: the cell is truncated to 400 characters, so whatever is written first
+    #: is what a reader gets.
+    #:
+    #: Measured on the 15 ``widening:unproved_widening`` rows that carry no draw failure at
+    #: all -- ``account/sync-accounts-request.json#`` and its siblings.  Their ``admits``
+    #: check PASSES (the URL narrowing is declared) and their ``widening`` check fails, and
+    #: the note was spending all 400 characters on the admits detail: the witness, the
+    #: class's error and the admitted value, so the row said nothing about the failure its
+    #: own verdict names.  Reordering is the whole of the fix; no verdict moves.
+    #:
+    #: Sorted by whether the note belongs to the failing check and NOT by rewriting the
+    #: appends above, so each check keeps writing its own notes in its own place and the
+    #: order is decided once, here, from the verdict.
+    failing = _pair_verdict(report, error).split(":")
+    owner = failing[2] if len(failing) > 2 and failing[1] == "fail" else ""
+    if owner:
+        prefix = {
+            "accepts": ("the node refuses", "narrower than its document", "counterexample"),
+            #: ``"#"`` and not ``"/"``: ``check_widening``'s own notes are keyed by the
+            #: declaration's POINTER and a pointer starts ``#/properties/...``, so the
+            #: first spelling matched nothing and 10 of the 15 rows still led with the
+            #: admits detail.  Measured on the artifact, not reasoned about.
+            "widening": ("could not be drawn", "#"),
+            "undeclared": ("undeclared widening", "unreached"),
+            "admits": ("narrower than its document", "and ", "the class is NARROWER"),
+            "dump": ("the document refuses the dump", "dump exempt"),
+        }.get(owner, ())
+        if prefix:
+            notes.sort(key=lambda note: 0 if note.startswith(prefix) else 1)
     return "\t".join(
         _cell(x)
         for x in (
