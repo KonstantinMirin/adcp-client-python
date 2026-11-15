@@ -707,9 +707,9 @@
  },
  "provenance": {
   "bundle": "/srv/ws/.adcp-cache/patched-bundle/fb6a3952e8f8e51e2a9581421b651d454fdb4994101d38b32615ee487a1bb118",
-  "head": "789ac918c+dirty",
+  "head": "ccd9de3f0",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 428.9,
- "seconds_per_pair": 0.1644
+ "seconds": 432.4,
+ "seconds_per_pair": 0.1657
 }
