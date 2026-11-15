@@ -252,7 +252,7 @@ def test_the_rows_delta_is_reported_with_its_denominator() -> None:
     claimed("this step's population", pop, inside=docs)
 
     with_row = compiled(BUNDLE, pop)
-    # Removing THIS ARM at THIS POSITION, rather than emptying the walk: the other
+    # Removing THIS BRANCH at THIS POSITION, rather than emptying the walk: the other
     # arms are other steps' and a verdict read with them absent is a verdict about a
     # compiler nobody runs.
     #
@@ -634,7 +634,7 @@ def test_a_composing_root_reaches_one_arm_and_nothing_can_claim_it_twice() -> No
         and populations.union_root(raw)
     ]
     claimed("roots carrying allOf beside a union", both, inside=bundle.portable(BUNDLE))
-    # **WHICH ARM, read off the PARSER, which is where §5's arm order lives.**  This
+    # **WHICH BRANCH, read off the PARSER, which is where §5's arm order lives.**  This
     # asserted that every one of them REFUSES on a ``union.ROOT_CONJUNCTS`` keyword,
     # which was a statement about the answer rather than about the arm -- and
     # ``adcp-client-python-10l.20`` retires that refusal: §14 step 9 compiles the root's

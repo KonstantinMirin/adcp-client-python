@@ -384,7 +384,7 @@ def is_a_class_node(node: dict) -> bool:
     branch -> refused by name: the root symbol is a class or an alias, no shape in §4
     carries both".  So a BRANCH probe's companion branch has to be the same kind as the
     node under test, and this is the bit that decides which -- read off the keywords that
-    make a node an object, which is the ARM table's own object column plus the three
+    make a node an object, which is the BRANCH table's own object column plus the three
     object-only structural keywords.
     """
     return node.get("type") == "object" or any(

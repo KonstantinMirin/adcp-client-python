@@ -2328,7 +2328,7 @@ def lower_union(
         # shapes gets the class its enclosing dispatch needs instead of a type nothing can
         # subclass.
         #
-        # **WHAT THIS ARM CLAIMS, stated as a reading rather than a count.**  It claims a
+        # **WHAT THIS BRANCH CLAIMS, stated as a reading rather than a count.**  It claims a
         # branch the PARSER classified :class:`nodes.Union`, which is the branches whose
         # own combinator is their kind by §5's arm order.  It does NOT claim a branch that
         # reaches a union some other way -- a branch composing a ``$ref`` whose target is a
@@ -2636,7 +2636,7 @@ def value_set(raw: Any, mod: compiler.Module) -> tuple[str | None, tuple[Any, ..
     is about -- :data:`_PURE_VALUE_SET` is a statement about which keys the document wrote
     at the arm, and §2's intersection rule reads a declaration for the same reason.
 
-    **A BARE ``$ref`` ARM IS READ THROUGH, and the row refutes the ruling that said it
+    **A BARE ``$ref`` BRANCH IS READ THROUGH, and the row refutes the ruling that said it
     must not be** (``adcp-client-python-69mi``, 2026-11-10).  The ruling measured
     ``bundled/media-buy/get-products-request.json`` and reported "anyOf of TWO INLINE
     enums, no $ref" -- true of the BUNDLED copy, which no run compiles.  The portable
@@ -2887,7 +2887,7 @@ def nested(node: nodes.Union, mod: compiler.Module) -> ir.Decided | Refusal:
     ``lower.containers.multi_type`` already builds for a ``type`` LIST, through the same
     ``ir.TypeRef(container="union", ...)``.
 
-    It is the SAME ARM of the one dispatch that :func:`lower_union` is, reached at a
+    It is the SAME BRANCH of the one dispatch that :func:`lower_union` is, reached at a
     position that is not ROOT -- §5's "root and non-root are one path", so what the
     position changes is the arm's ANSWER and not which arm answers.  There was a table
     of root selectors above this and §14 step 5 deleted it: dispatching on a root's KIND
@@ -3213,7 +3213,7 @@ def _inherited(parsed: nodes.Node, mod: compiler.Module) -> Inherited | Refusal:
     of a class, because ``emit.answer`` nulled a union base's shape on §5's ``$ref`` row
     at CONJ -- a different POSITION's answer to a different question.
 
-    **BOTH ARMS READ ONE CARRIER**, which is :class:`compiler.Target`: the LOCAL arm is
+    **BOTH BRANCHES READ ONE CARRIER**, which is :class:`compiler.Target`: the LOCAL arm is
     told apart by :attr:`nodes.Reference.head` -- the parser's own reading of the document
     half, so this row re-reads no ``#`` (§3's one dispatch seam) -- and
     ``compiler.local_target`` wraps the two records ``declare_object`` wrote for a node of

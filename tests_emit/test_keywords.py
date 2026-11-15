@@ -512,7 +512,7 @@ _SURVIVING_SITES: dict[tuple[str, tuple[str, ...]], str] = {
         "declares.  const and enum are claimed to put the explicit refusal below in "
         "front of the screen's generic one, which is attribution and not admission.",
     ("codegen.lower.union", ("$ref", "const", "enum")):
-        "_CLASSIFIED_BEFORE_AN_OBJECT: the keywords §5's ARM ORDER classifies a node on "
+        "_CLASSIFIED_BEFORE_AN_OBJECT: the keywords §5's BRANCH ORDER classifies a node on "
         "before it reads properties, so a branch stating one is not an Object node.  "
         "A fact about the parser's dispatch order (lower/decide.py), which §5 owns and "
         "the keyword table does not.",

@@ -227,7 +227,7 @@ def url_type(node: Mapping[str, Any]) -> str:
     descendant.  :data:`HIERARCHICAL` carries why the host is required and why bare
     ``AnyUrl`` was not the answer.
 
-    **THE GENERAL ARM WAS ``HttpUrl`` AND THAT WAS A REFUSAL, NOT A CEILING**
+    **THE GENERAL BRANCH WAS ``HttpUrl`` AND THAT WAS A REFUSAL, NOT A CEILING**
     (``adcp-client-python-dza0``).  What stood here read "``HttpUrl``'s own two ceilings
     are named at D5 and are accepted deliberately: it still refuses ``urn:`` and
     ``file:``, leaving 227 of 300 positions narrower than their document".  Naming a
@@ -246,7 +246,7 @@ def url_type(node: Mapping[str, Any]) -> str:
     gone.  What remains is the SCHEME, and a pattern pinning ``^https://`` as a prefix
     pins the scheme whatever else it pins after it.
 
-    **ONE NODE OF THE BUNDLE PINS NO SUCH PREFIX AND SO TAKES THE GENERAL ARM**, which is
+    **ONE NODE OF THE BUNDLE PINS NO SUCH PREFIX AND SO TAKES THE GENERAL BRANCH**, which is
     this function's own rule and not an exception to it: ``core/macro-bearing-url.json``
     at ``#/anyOf/1`` states ``^https?://…``, which ADMITS ``http://``.  :data:`URL` there
     would refuse a value the document admits, and the chained pattern would not catch it

@@ -1657,7 +1657,7 @@ def _lengthened(
     is not colliding however the domain spells that name, and a group of two already
     collides on the module scope alone.
 
-    **THE SUBJECT ARM IS NARROWED TO THE POSITIONS THAT DECLARE, and that narrowing is the
+    **THE SUBJECT BRANCH IS NARROWED TO THE POSITIONS THAT DECLARE, and that narrowing is the
     whole difference between §3a's rule and a ban on the word** (§3a step 3;
     :data:`SUBJECT_SCOPE`).  §3a's answer where two positions are one type is an ALIAS --
     "a restated title that a consumer needs is an alias at its position, never a second
@@ -1884,7 +1884,7 @@ def _bound(declaration: ir.Declaration, symbols: Mapping[str, str]) -> ir.Declar
         )
     if isinstance(declaration, ir.RootModelDecl):
         # §7's third root shape, whose name and whose wrapped type are bound exactly as a
-        # class's are.  An ARM of its own and not the fallthrough, because the fallthrough
+        # class's are.  An BRANCH of its own and not the fallthrough, because the fallthrough
         # is what the type checker reads as "everything left", and adding a declaration to
         # ``ir.Declaration`` without one here is how a new kind silently takes another
         # kind's rewrite -- which is what mypy reported the moment ``RootModelDecl`` joined
@@ -2146,7 +2146,7 @@ def the_surface_exports(
       the three above -- a property, an element, a mapping value or a ``definitions``
       entry whose node the bundle gives no title.
 
-    **THE INNER ARM IS NOT "EVERY CLASS THE TREE DECLARES" UNDER A NEW NAME**, which was
+    **THE INNER BRANCH IS NOT "EVERY CLASS THE TREE DECLARES" UNDER A NEW NAME**, which was
     decided and withdrawn on 2026-10-30 "because it makes ``core.Status`` name one of
     fourteen declarations".  That withdrawal was about the WORD and not about the set: the
     name it would have exported is the position's own short symbol, and fourteen positions

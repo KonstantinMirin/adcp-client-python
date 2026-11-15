@@ -136,7 +136,7 @@ def test_the_named_case() -> None:
     assert not isinstance(got, str), type(got)
     assert got.scheme == "acmegames", got
 
-    # (3) THE ARM THAT WAS REJECTED, failing -- which is what makes (2) a choice.
+    # (3) THE BRANCH THAT WAS REJECTED, failing -- which is what makes (2) a choice.
     for refusing in (HttpUrl, AdCPUrl):
         with pytest.raises(ValidationError):
             TypeAdapter(refusing).validate_python(THE_NAMED_VALUE)

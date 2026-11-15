@@ -149,7 +149,7 @@ TARGET = PythonVersion.PY_311
 #: array row relies on the same seam without needing an entry, because the generator's
 #: ``Constraints`` happens to alias ``minItems`` itself.  A node carries at most one of
 #: the two pairs -- a string's ``minLength`` and an object's ``minProperties`` are
-#: keywords of different types, and ``containers.ARM`` is what keeps a multi-type node's
+#: keywords of different types, and ``containers.BRANCH`` is what keeps a multi-type node's
 #: arms apart -- so the translation cannot collide with a spelling already present.
 KEY_COUNT = {"minProperties": "minLength", "maxProperties": "maxLength"}
 
@@ -2419,7 +2419,7 @@ def flat_surface(
     ``__getattr__`` reveals ``Any``.  Written from one ``held``, so the list and the imports
     cannot disagree.
 
-    **AND READING 10's ALIAS ARM IS THE SECOND HALF OF THE SAME MODULE** (2026-11-10).
+    **AND READING 10's ALIAS BRANCH IS THE SECOND HALF OF THE SAME MODULE** (2026-11-10).
     ``aliases`` is upstream's own published word -> the PRIVATE module whose ``X = <symbol>``
     statement binds it, and ``declined`` is the words that arm could not bind -> the
     ``<module>.<symbol>`` subjects each has.  Both are ``emit._alias_words``' decision,

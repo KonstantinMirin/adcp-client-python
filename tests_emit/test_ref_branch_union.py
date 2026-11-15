@@ -177,7 +177,7 @@ def test_a_ref_branch_is_a_class_with_two_bases_and_the_dispatch_is_derived() ->
         assert isinstance(base(kind="cat", lives=9), branches["AnimalCat"])
 
         # **The key alone selects the arm.**  A payload whose ``kind`` names one branch
-        # and whose FIELDS are the other's is reported against THE ARM THE KEY NAMED, in
+        # and whose FIELDS are the other's is reported against THE BRANCH THE KEY NAMED, in
         # the document's own vocabulary -- which is the difference §4 names between a
         # discriminated union and one that tries each branch and reports one ``missing``
         # per field per branch.

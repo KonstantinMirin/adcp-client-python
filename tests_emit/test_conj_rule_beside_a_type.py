@@ -232,7 +232,7 @@ def test_the_three_shapes_of_not_beside_a_conjoined_type_partition_the_populatio
     ``not``.  The sites are DERIVED from the run, so a document arriving or leaving the
     population moves the parts and not the property.
 
-    **The population is the sites this ARM reaches**, which is narrower than every call of
+    **The population is the sites this BRANCH reaches**, which is narrower than every call of
     the row: a node with two non-class targets, and a node that is a class as well, both
     refuse on an earlier screen and their conjuncts are never read for a rule.  Those two
     are named parts of the outer partition rather than a filter, so a site moving between

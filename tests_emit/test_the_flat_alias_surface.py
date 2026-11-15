@@ -121,7 +121,7 @@ def test_a_bound_word_resolves_flat_to_the_object_its_own_module_binds(words, fl
     re-export that reached a different class of the same name would fail here while a
     resolution check passed.
 
-    **AND THE FACADE IS ASKED SEPARATELY, BECAUSE IT IS NOT THIS ARM'S QUESTION.**
+    **AND THE FACADE IS ASKED SEPARATELY, BECAUSE IT IS NOT THIS BRANCH'S QUESTION.**
     ``adcp.types.__getattr__`` consults this module LAST, after the alias table, the
     generated adapter and the restored modules, "so nothing any of them decided is
     overridden".  A word one of those already binds therefore keeps THEIR object, which is

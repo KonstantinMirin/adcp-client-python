@@ -1989,7 +1989,7 @@ _NUMERIC = frozenset({"minimum", "maximum", "exclusiveMinimum", "exclusiveMaximu
 #: A ``description`` is in no arm, deliberately: it is a statement about the instance
 #: that every word carries equally, and ``schema.parse`` copies it into every member for
 #: that reason.
-ARM: Mapping[str, frozenset[str]] = {
+BRANCH: Mapping[str, frozenset[str]] = {
     "string": frozenset({"format", "minLength", "maxLength", "pattern"}),
     "integer": _NUMERIC,
     "number": _NUMERIC,
@@ -2002,7 +2002,7 @@ ARM: Mapping[str, frozenset[str]] = {
 #: **The ORDERING keywords, as the five RANGES they pin** -- each pair being
 #: ``(the keyword that pins the floor, the keyword that pins the ceiling)``.
 #:
-#: **DECLARED SEMANTICS, and here for :data:`ARM`'s reason exactly** -- that it is read by
+#: **DECLARED SEMANTICS, and here for :data:`BRANCH`'s reason exactly** -- that it is read by
 #: BOTH halves of the pipeline, for two operations that have to agree:
 #:
 #: * the WALK asks which of two restatements is NARROWER (``compiler._narrower``: a
@@ -2073,25 +2073,25 @@ def constrains_container(word: str) -> frozenset[str]:
 
     A PROJECTION of two columns already declared and not a third list of names
     (``adcp-client-python-3be.8``): §5's ``objects`` and ``arrays`` sub-grids are the
-    keyword FAMILIES (:func:`grid_of`), and :data:`ARM` names the ones draft-07 cuts onto
+    keyword FAMILIES (:func:`grid_of`), and :data:`BRANCH` names the ones draft-07 cuts onto
     that type word.  The union is what "this keyword declares the instance to be an
     ``object``" means, which is the question ``intersect._container_kind`` asks of two
     declarations before it decides whether they declare ONE container.
 
     The two columns are needed TOGETHER and neither alone, which is what makes this a
     reading rather than a rename.  ``properties`` and ``required`` are object-only keywords
-    in the STRUCTURE grid, so the grid misses them; :data:`ARM` deliberately omits
+    in the STRUCTURE grid, so the grid misses them; :data:`BRANCH` deliberately omits
     ``patternProperties``, ``minProperties``, ``maxProperties`` and ``dependencies``,
     because a node stating one of those beside a type LIST refuses by name rather than
     being cut onto an arm, so the arm misses those.
 
-    A word with no :data:`ARM` entry is not a container and gets the empty set, which is
+    A word with no :data:`BRANCH` entry is not a container and gets the empty set, which is
     the answer ``_container_kind`` reads as "neither".
     """
     grid = {"object": OBJECTS, "array": ARRAYS}.get(word)
     if grid is None:
         return frozenset()
-    return frozenset({k for k in TABLE if grid_of(k) == grid} | set(ARM.get(word, ())))
+    return frozenset({k for k in TABLE if grid_of(k) == grid} | set(BRANCH.get(word, ())))
 
 
 def pins_a_floor(keyword: str) -> bool:

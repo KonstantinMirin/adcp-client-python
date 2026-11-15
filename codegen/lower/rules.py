@@ -818,7 +818,7 @@ def _conditional(
     writes at this pointer and not the keyword the cell is about, because the fact
     dropped belongs to the conditional.
 
-    **THE DECLARATION IS THE CONDITIONAL'S AND IT IS SPELLED ``if``, WHATEVER ARM THE
+    **THE DECLARATION IS THE CONDITIONAL'S AND IT IS SPELLED ``if``, WHATEVER BRANCH THE
     DROPPED FACT SITS IN** (``adcp-client-python-wvod``, ``-szfx``).  A conditional is a
     TRIPLE whose members mean nothing apart -- ``harness.own_facts`` says exactly that
     about the same three keys -- so what a declaration here records is that the
@@ -829,7 +829,7 @@ def _conditional(
     carries"), and ``check_refuses`` compares that keyword against the declared set.  Two
     halves, one keyword, which is §9's rule for every fact that has two readers.
 
-    **AND AN ARM THAT NARROWS A VALUE IS A DROPPED FACT, which is the reading this row
+    **AND AN BRANCH THAT NARROWS A VALUE IS A DROPPED FACT, which is the reading this row
     replaced.**  The gate was ``_states_presence`` -- an arm counted only where it said
     something about which KEYS are present, nested arms included -- on two measurements,
     and ``check_refuses`` refuted both:

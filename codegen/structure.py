@@ -476,7 +476,7 @@ def _shape_of(type_ref: ir.TypeRef) -> str:
     a reference to an ENUMERATION in this compiler's output, so the shape it answers is the
     reference's ``""``, and the other reader answers ``""`` for a reference too.
 
-    **THE ``None`` ARM IS DROPPED HERE EXACTLY AS :func:`_unwrap` DROPS IT ON THE OTHER
+    **THE ``None`` BRANCH IS DROPPED HERE EXACTLY AS :func:`_unwrap` DROPS IT ON THE OTHER
     SIDE, and the two must do it together or neither.**  A field that admits an explicit
     JSON ``null`` is ``union`` over ``(X, None)`` in the IR and ``X | None`` in the text, so
     an unwrap on one side alone makes ONE field's shape read ``union`` against ``""`` and
@@ -719,7 +719,7 @@ def bind_statements(
     property only one side pins is not evidence either way and is skipped, because the two
     generators do not agree about where a discriminator is restated.
 
-    **AN ARM REFUSED BY :func:`bind` ON SHAPE IS STILL BOUND HERE, and that is the point
+    **AN BRANCH REFUSED BY :func:`bind` ON SHAPE IS STILL BOUND HERE, and that is the point
     of a second key rather than a loosening of the first.**  ``adcp-client-python-eknd``:
     upstream's arms 1 and 3 carry a ``status`` default their own document does not state,
     so their SHAPE differs from ours and :func:`bind` is right to refuse -- shape cannot
@@ -738,7 +738,7 @@ def bind_statements(
         return word if word in declared else None
 
     for word, arms in sorted(statements.get("unions", {}).items()):
-        # **THE UNION'S OWN WORD BEING TAKEN DOES NOT REFUSE ITS ARMS.**  It usually IS
+        # **THE UNION'S OWN WORD BEING TAKEN DOES NOT REFUSE ITS BRANCHES.**  It usually IS
         # taken -- upstream's union word is the document's root word and our module
         # declares the root -- and treating that as a refusal of the family bound none of
         # the four ordinals on the first run.  The word and the positions are two

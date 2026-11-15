@@ -278,7 +278,7 @@ def test_a_root_stating_two_kinds_reaches_one_arm_and_the_enum_wins_by_position(
     reaches exactly one arm.  A build failure with no way to occur is not a check that
     was dropped -- it is a shape the structure no longer has.
 
-    What is still a real question is which ARM a root stating two kinds reaches, and
+    What is still a real question is which BRANCH a root stating two kinds reaches, and
     that is the ORDER of the arms rather than a precedence between rows.
     ``{"type": "string", "enum": [...]}`` is the shape: the ``enum`` arm is read before
     ``type`` is read at all, because the base comes from the MEMBERS
@@ -530,7 +530,7 @@ def test_enum_descriptions_are_carried_into_the_member_docstrings() -> None:
                 else:
                     assert got.get(member) == text, (document, pointer, member)
     # Three non-empty sets rather than three counts: the per-member assertion in the
-    # loop is the obligation, and each of these says one ARM of it was reached -- a node
+    # loop is the obligation, and each of these says one BRANCH of it was reached -- a node
     # at all, an entry with text, and the multi-line arm whose normalizer is the half a
     # one-line-only population would leave ungraded.
     claimed("nodes carrying enumDescriptions", nodes)
@@ -664,7 +664,7 @@ def test_a_reference_to_a_root_enum_binds_the_class_and_not_a_copy() -> None:
     # core/tasks-get-response.json and protocol/get-task-status-response.json, both on
     # `status` -- now declare the field in their own module.
     #
-    # SO THE `inherited` ARM NOW GRADES A POPULATION OF 0, and it is pinned at 0
+    # SO THE `inherited` BRANCH NOW GRADES A POPULATION OF 0, and it is pinned at 0
     # rather than dropped: the shape it covers -- a root enum bound through a base's
     # field -- is still reachable if a later row inherits again, and a pin at 0 says
     # loudly that nothing exercises it today. This is the same treatment

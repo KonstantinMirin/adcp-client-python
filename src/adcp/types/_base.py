@@ -1034,7 +1034,7 @@ _ANNOTATES_THE_POINTER_THAT_STATES_IT = ("title", "description")
 #: the three ``oneOf`` nodes the clause fires at state these four keys and nothing
 #: else, and admitting ``title``/``description`` beside them adds no site at all.
 #:
-#: It equals ``codegen.keywords.ARM["object"]`` today and is NOT that table: ARM
+#: It equals ``codegen.keywords.BRANCH["object"]`` today and is NOT that table: BRANCH
 #: answers which keyword a ``type`` word carries on one arm of a type LIST, for a cut
 #: and its inverse fold, and omits the other three because no row of the cut decides
 #: them.  This answers which keyword says nothing about a non-object.  Same four keys,
@@ -1239,7 +1239,7 @@ def _cut_to_its_own_word(node: dict) -> dict:
     already graded.  The model is faithful at both pointers; only the pairing was wrong.
 
     It subtracts WORDS and nothing else.  A keyword only another word can carry is that
-    arm's and reaches no class either way (``codegen.schema.parse.ARM``), and a keyword
+    arm's and reaches no class either way (``codegen.schema.parse.BRANCH``), and a keyword
     the object word carries is this class's, so there is nothing else to take away.
     """
     if not isinstance(node.get("type"), list) or not node.get("properties"):
@@ -2764,7 +2764,7 @@ class BranchDispatchMixin(_MixedInto):
         intersection is the one ``string_type``, which is the error upstream's own class
         raises for the same payload at the same pointer.
 
-        **The ARM LABEL is the first segment and it is dropped, because it is pydantic's
+        **The BRANCH LABEL is the first segment and it is dropped, because it is pydantic's
         word and not the document's.**  A plain union prefixes each arm's errors with
         that arm's label -- here ``function-after[_enforce_adcp_rules(), <Branch>]`` --
         and the rest of the ``loc`` is the document's own pointer below the union's
@@ -3021,7 +3021,7 @@ class BranchDispatchMixin(_MixedInto):
         the dispatch was reached through onto it, so a nested union still tells a caller
         which field of theirs refused.
 
-        **AND IT IS THE POSITIONS EVERY ARM COMPLAINS ABOUT, not every position any arm
+        **AND IT IS THE POSITIONS EVERY BRANCH COMPLAINS ABOUT, not every position any arm
         complains about** -- which is :meth:`_agreed`'s rule with the type and the message
         dropped, and it is what a ``oneOf`` of mutually exclusive keys needs.  Measured on
         ``a2ui/bound-value.json#/oneOf/4``, the arm admitting BOTH ``literalString`` and
@@ -3044,7 +3044,7 @@ class BranchDispatchMixin(_MixedInto):
         ``account/list-account-changes-response.json``, where a ``status`` that is not a
         string took the refusal from ``()`` to ``('status',)``.
 
-        **AN ARM WITH NOTHING TO SAY ABOUT WHAT WAS SENT DOES NOT VOTE**, which the
+        **AN BRANCH WITH NOTHING TO SAY ABOUT WHAT WAS SENT DOES NOT VOTE**, which the
         screen above makes true by construction: an arm whose every complaint is a
         ``missing`` for a key the payload does not carry contributes no position, so it
         neither names one nor vetoes the one the other arms agree on.  The alternative --
@@ -3151,7 +3151,7 @@ class BranchDispatchMixin(_MixedInto):
         branches agree on nothing the combinator is still the answer and the paragraph
         above is still the reason.
 
-        **A PRESENCE DISPATCH READS BOTH ARMS, and its tag error has its own sentence**
+        **A PRESENCE DISPATCH READS BOTH BRANCHES, and its tag error has its own sentence**
         (:attr:`_BRANCH_PRESENCE`, :meth:`_no_clause`).  The exception above is "the key
         alone selected the branch, so ``err`` is that branch's own report", and it holds
         word for word of a key SET: the tag function picked one clause, pydantic

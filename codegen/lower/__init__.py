@@ -64,5 +64,5 @@ So a row answers for its own node kind and is handed everything else:
 second reading of a node's kind; the populations are measurements and live in
 ``tests/populations.py`` (§5), and the walk reads a node's kind once, in
 :func:`codegen.lower.decide.decide`, at the node's own position.  So a lane adds its
-module here and the ARM its kind reaches, and nothing anywhere claims a document.
+module here and the BRANCH its kind reaches, and nothing anywhere claims a document.
 """

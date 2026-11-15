@@ -217,7 +217,7 @@ def test_every_rule_the_two_forms_mint_is_bound_on_a_class_of_the_tree() -> None
 
     Not a site-by-site equality with the bundle population, and the reason is measured:
     the reduction reads a condition at every node of the bundle, and a condition whose
-    ARM states no presence fact yields no rule at all (``lower.rules._branch``) -- 14 of
+    BRANCH states no presence fact yields no rule at all (``lower.rules._branch``) -- 14 of
     the 54 immaterial conditions are such a node, every one of them a ``then`` that
     narrows a value and nothing else, which §5 compiles to nothing on the model and whose
     ceiling ``lower.rules``' own docstring names.  So the obligation is stated over the

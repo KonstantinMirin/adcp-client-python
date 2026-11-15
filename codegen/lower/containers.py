@@ -200,7 +200,7 @@ _NO_KEY_ANSWER = (
 #: walk and permits it the keyword table, so the table is in the table.  Re-bound here so this module's own screen keeps
 #: one spelling of it, and ``parse.value_facts`` reads the same rows to derive what
 #: ``ir.FACTS`` was.
-ARM = nodes_parse.ARM
+BRANCH = nodes_parse.BRANCH
 
 
 def _inner(decided: ir.Decided, pointer: str, what: str, mod: Module) -> ir.TypeRef | Refusal:
@@ -222,7 +222,7 @@ def _contents(node: nodes.Node, what: str, mod: Module) -> ir.TypeRef | Refusal:
 
     One function for the two, because the two are the same question asked at two
     pointers: the node is a schema of its own, at a pointer of its own, and the
-    container is one type word above it.  A container's KEY and a multi-type ARM are
+    container is one type word above it.  A container's KEY and a multi-type BRANCH are
     not that question and do not come here -- an arm is the node RE-CUT to one type,
     so its annotations are the node's own and the field holding the union already
     carries them, and a ``propertyNames`` node is a statement about a key rather than
@@ -549,7 +549,7 @@ def mapping(node: nodes.Mapping_, mod: Module) -> ir.Decided | Refusal:
                 "value types differ per branch, which is a rule and not a dict[K, V]",
                 kind=Kind.VERDICT,
             )
-        # **THE EXPRESSION IS READ ONCE, FOR BOTH ARMS.**  It was read only in the
+        # **THE EXPRESSION IS READ ONCE, FOR BOTH BRANCHES.**  It was read only in the
         # ``additionalProperties: false`` arm below, because the other arm dropped the
         # pattern entirely; both now lower the pattern's VALUE, so the one entry's key is
         # the one thing both need and the refusal below guards both.
@@ -905,7 +905,7 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     """``X | Y`` for a node whose ``type`` is a list, each keyword on its OWN arm.
 
     An arm is the node re-cut to one type, carrying only the keywords that type can
-    carry (:data:`ARM`), and lowered by the same ``compiler.lower_node`` as any other
+    carry (:data:`BRANCH`), and lowered by the same ``compiler.lower_node`` as any other
     node -- so a string arm gets its ``minLength`` and the ``number`` arm beside it does
     not.
     That is draft-07's own semantics: a constraint keyword applies to instances of the
@@ -928,7 +928,7 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     arm carried a constraint had no composed node to read the ``minLength`` at -- an
     instrument defect in the same place as the ``null`` arm's below, fixed the same way:
     ``harness._type_list`` lifts each arm's own keywords back onto the list it folds to,
-    reading ``keywords.ARM``, which is the CUT this row makes.  So the document's fact is
+    reading ``keywords.BRANCH``, which is the CUT this row makes.  So the document's fact is
     read where it belongs and the refusal is retired rather than restated with a new
     reason.
 
@@ -937,7 +937,7 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     with ``minLength`` -- and 43 documents transitively, which was the largest cascade
     per primary refusal in the report.
 
-    **A ``null`` arm is an ARM, and it used to refuse on the instrument.**  ``None``
+    **A ``null`` arm is an BRANCH, and it used to refuse on the instrument.**  ``None``
     was always a perfectly good arm and the compiler always folded it with D4's own
     ``| None`` on an optional property, so ``str | None`` came out either way; what
     had no answer was READING the document at such a node.  The fold read a ``null``
@@ -958,10 +958,10 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     kinds = list(node.words)
     if not kinds or len(set(kinds)) != len(kinds) or not all(isinstance(k, str) for k in kinds):
         return Refusal("type", pointer, f"not a set of type names: {kinds!r}", kind=Kind.VERDICT)
-    unknown = sorted(set(kinds) - set(ARM))
+    unknown = sorted(set(kinds) - set(BRANCH))
     if unknown:
         return Refusal("type", pointer, f"unknown type(s) {unknown}", kind=Kind.VERDICT)
-    carried = frozenset().union(*(ARM[k] for k in kinds))
+    carried = frozenset().union(*(BRANCH[k] for k in kinds))
     refused = compiler.check_keywords(  # the walk's own check
         node,
         {"type", *carried},
@@ -970,7 +970,7 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     )
     if refused is not None:
         return refused
-    # **THE CONSTRAINED-ARM REFUSAL STOOD HERE AND IS RETIRED, on the instrument's side
+    # **THE CONSTRAINED-BRANCH REFUSAL STOOD HERE AND IS RETIRED, on the instrument's side
     # and not by a widening here.**  It fired where the node stated a keyword some arm
     # carries and more than one arm was live, and its reason was never the rendering --
     # D5's alias module puts the bound on the arm's own type, so ``StrMinLen1 | dict[str,
@@ -982,7 +982,7 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     #
     # That is an instrument defect in the same place as the ``null`` arm's, and it is
     # fixed in the same place: ``harness._type_list`` lifts each arm's own keywords back
-    # onto the type list it folds to, reading ``keywords.ARM`` -- the very table this row
+    # onto the type list it folds to, reading ``keywords.BRANCH`` -- the very table this row
     # cuts by -- so the fold is the cut's inverse and the document's ``type`` list and
     # ``minLength`` are both read at the node they belong to.
     #
@@ -996,17 +996,17 @@ def multi_type(node: nodes.MultiType, mod: Module) -> ir.Decided | Refusal:
     #
     # **§2's SECOND node rewrite, retired on the multi-type side.**  The cut -- one
     # mapping per type word, each holding only the keywords that word can carry -- is a
-    # reading the PARSER makes once (``schema.parse.ARM``), at the position that implies
+    # reading the PARSER makes once (``schema.parse.BRANCH``), at the position that implies
     # it, and each member arrives here as a node of its own kind.  This row re-cut the
     # node and handed each piece back to the dispatch, which is the defect §2 names.
     arms: list[ir.TypeRef] = []
     # **The arms are lowered in the document's own ``type`` order and the FIRST refusal
     # returns** (§6), which is :func:`codegen.refusal.first_refusal` fused with the map:
     # the parser cut the node into one member per word in the order the list states them
-    # (``schema.parse.ARM``), so the arm a refusal names is the earliest one in the
+    # (``schema.parse.BRANCH``), so the arm a refusal names is the earliest one in the
     # document and not the one iteration happened to reach first.
     for kind, member in zip(kinds, node.members, strict=True):
-        at = f"{pointer}/type/{kind}"  # not a real pointer; it names the ARM that refused
+        at = f"{pointer}/type/{kind}"  # not a real pointer; it names the BRANCH that refused
         # No hop: the parser cuts each member at the node's OWN pointer, because it is
         # the same instance re-read under one of its admissible words (§4), so a member
         # inherits the name entry the node's own parent recorded.

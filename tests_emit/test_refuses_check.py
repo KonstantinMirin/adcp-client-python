@@ -463,7 +463,7 @@ def test_a_conditional_stated_by_a_conjunct_is_a_witness_source() -> None:
 
 
 def test_the_conditional_arm_fails_a_model_that_drops_the_conditional() -> None:
-    """**THE ARM'S OWN REFUTATION, which ``adcp-client-python-x63t`` requires.**
+    """**THE BRANCH'S OWN REFUTATION, which ``adcp-client-python-x63t`` requires.**
 
     "A conditional arm must be added with its own refutation -- wvod's own payload is the
     counterexample, so the arm is proved red by construction before it is trusted."  A

@@ -228,7 +228,7 @@ def lower(node: nodes.Scalar, mod: Module) -> ir.Decided | Refusal:
 
     ``node.facts`` is the classification ``ir.FACTS`` was: a key whose cell LOWERS at this
     node's position, that holds no subschema, and that this node's own TYPE WORD can carry
-    (``schema.parse.ARM``).  The parser states it once, from the table, at the position --
+    (``schema.parse.BRANCH``).  The parser states it once, from the table, at the position --
     which is what §11 asks for and what no column of §3 could answer on its own.
     """
     word = node.word

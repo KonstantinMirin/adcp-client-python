@@ -238,7 +238,7 @@ def at_least_as_tight(
         # A non-list is draft-07-invalid at this keyword and falls to False with
         # everything else this predicate cannot read.
         return isinstance(c, list) and isinstance(b, list)
-    # **``contains`` HAS NO ARM, DELIBERATELY, and that is the one clause of §5's "Two
+    # **``contains`` HAS NO BRANCH, DELIBERATELY, and that is the one clause of §5's "Two
     # ARRAY declarations under one ``allOf``" this compiler does not write**
     # (``adcp-client-python-10l.83``).  The row: "Every ``contains`` is kept: two
     # ``contains`` predicates are two independent ``AtLeastOne`` rules over the same
@@ -697,7 +697,7 @@ _AXES: tuple[frozenset[str], ...] = (frozenset({"const", "enum"}),)
 #:
 #: **It is now that reading and no longer a transcription of it**
 #: (``adcp-client-python-3be.8``): :func:`keywords.constrains_container` is the projection
-#: of the grid family and :data:`keywords.ARM` together, and the two sets it returns are
+#: of the grid family and :data:`keywords.BRANCH` together, and the two sets it returns are
 #: the two written here, with ONE difference -- ``additionalItems`` is gone.  That keyword
 #: has no ROW, so a declaration stating one refuses by name at the screen long before this
 #: predicate is asked, and bundle 3.2 states **0 of them** (measured over the cache; the
@@ -1273,7 +1273,7 @@ def _distributes(
     §2's intersection has both sides and :func:`intersected_at_a_branch` computes it with
     the same two functions every other restatement passes through.
 
-    **2. A SECOND ARM STOOD HERE AND IS GONE, because the pairing gap it named is
+    **2. A SECOND BRANCH STOOD HERE AND IS GONE, because the pairing gap it named is
     closed** (``adcp-client-python-10l.37``'s fourth fix, lifted here by
     ``adcp-client-python-10l.76``).  It refused a node carrying a field its OWN
     declaration does not state -- one a sibling conjunct or a base contributes -- on the
@@ -1306,7 +1306,7 @@ def _distributes(
     its document accepts is never declarable, and every emitted class is drawn against
     its own document.
 
-    **BOTH ARMS ARE GONE, each for its own measured reason, and they left by different
+    **BOTH BRANCHES ARE GONE, each for its own measured reason, and they left by different
     merges.**  Arm 1 refused a property this node and a target branch both declare,
     because "the branch's declaration is the target's rather than this module's, so there
     is nothing here to intersect".  ``adcp-client-python-10l.74`` computes that
@@ -1691,7 +1691,7 @@ def intersected_at_a_branch(
       row, and a branch dropped for one admits instances the document admits, which is a
       model narrower than its document.
 
-    **THE NODE'S DECLARATION BEING THE NARROWER ONE IS NOT AN ARM, and the asymmetry is
+    **THE NODE'S DECLARATION BEING THE NARROWER ONE IS NOT AN BRANCH, and the asymmetry is
     the MRO's.**  The node's class is the first base, so its field is already the one the
     branch gets and there is nothing here to rescue -- while re-deciding the key from the
     merged declaration would import whatever the TARGET states BESIDE the constraint.

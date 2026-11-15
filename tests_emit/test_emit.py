@@ -1793,7 +1793,7 @@ def test_a_null_is_refused_and_a_none_is_absence_at_every_optional_field(
         #: grading a configuration rather than the default a consumer gets.
         with pytest.raises(ValidationError) as caught:
             model.model_validate_json(json.dumps({wire: None}))
-        #: **The loc PREFIX, because a union-typed field reports one error per ARM**:
+        #: **The loc PREFIX, because a union-typed field reports one error per BRANCH**:
         #: pydantic's loc for ``locator: A | B | None`` is ``('locator', 'A')``, not
         #: ``('locator',)``, so an exact match read a real refusal as none.  The prefix is
         #: what says "this key", and the ``missing`` filter below then ranges over the
@@ -1842,7 +1842,7 @@ def test_a_null_is_refused_and_a_none_is_absence_at_every_optional_field(
             f"{row.ref.document}{row.ref.pointer} {model.__name__}.{name}: a Python None "
             f"round-trips to an explicit null at {wire!r}, which IS a widening"
         )
-        #: **FACT 4: THE PUBLISHED SCHEMA STATES NO NULL ARM.**  Pydantic renders from the
+        #: **FACT 4: THE PUBLISHED SCHEMA STATES NO NULL BRANCH.**  Pydantic renders from the
         #: ``json_schema`` side of the ``json_or_python`` schema, so this holds for free --
         #: which is exactly why it is asserted: it holds for free until someone reorders
         #: the two sides, and this rendering is what a consumer's codegen reads.
@@ -2154,8 +2154,8 @@ def test_a_format_selects_a_type_where_the_schema_half_asserts_it() -> None:
             # unhashable, so the site died with a ``TypeError`` rather than failing an
             # assertion -- latent until a document declaring ``["string", "null"]``
             # beside a ``format`` emitted (``salesagent-j3k2l.21``).  D5's rule is
-            # per-ARM: ``lower.containers.multi_type`` cuts the node to one type at a
-            # time carrying only what that type can hold (``ARM["string"]`` holds
+            # per-BRANCH: ``lower.containers.multi_type`` cuts the node to one type at a
+            # time carrying only what that type can hold (``BRANCH["string"]`` holds
             # ``format``), so the format selects the type of the arm that defines it
             # and the ``null`` arm takes none of it.  Asserted over the arms, which is
             # what the emitter actually reads.
@@ -4938,7 +4938,7 @@ def test_every_root_reaches_one_arm_and_the_populations_partition_the_bundle() -
         emitted=emitted_here,
         refused={d for d in uncounted if d in out.refusals},
     )
-    # **WHICH ARM ANSWERED IS SPLIT OFF THE DOCUMENT, because they are not one arm.**
+    # **WHICH BRANCH ANSWERED IS SPLIT OFF THE DOCUMENT, because they are not one arm.**
     # This asserted ``RootModelDecl`` of every emitter and called each one "§4's third
     # root shape"; ``core/signal-pricing-option.json`` is not one -- it states a BARE
     # ROOT ``$ref`` and nothing else, so §4's reference arm answers it and binds the
@@ -4954,7 +4954,7 @@ def test_every_root_reaches_one_arm_and_the_populations_partition_the_bundle() -
         through_a_permissive_root_model=emitted_here - through_a_reference,
     )
     for document in sorted(emitted_here):
-        # **THE ARM ANSWERED BY NAME, read off the RUN and keyed on the ROOT POINTER.**
+        # **THE BRANCH ANSWERED BY NAME, read off the RUN and keyed on the ROOT POINTER.**
         # The two maps partition the run's symbol table, so a root bound by identity to
         # another pointer's declaration is answered too, and no spelling enters it.
         at_the_root = {**out.adopted[document], **out.declared[document]}
@@ -6326,7 +6326,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     # documents referencing it.  The new reading is not weaker: the keyword arrives at
     # the node the document states it on, so it is READ where it was previously
     # unreadable, and the four ways a model can be wrong about it are each asserted
-    # below.  ``harness._type_list`` is the lift and ``keywords.ARM`` is what says which
+    # below.  ``harness._type_list`` is the lift and ``keywords.BRANCH`` is what says which
     # arm a key belongs to.
     normalize = harness._normalize  # the normalization under test
     assert normalize(
@@ -6370,7 +6370,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     assert check_accepts(doc, accept, examples=50).outcome == "pass"
 
     # **A CONSTRAINED arm is NAMED, and this is the rendering that forces it to be.**
-    # The split needs the bound on the ARM; the compiler's ``DataType`` carries no
+    # The split needs the bound on the BRANCH; the compiler's ``DataType`` carries no
     # constraint, so a keyword left on the node reaches the FIELD and bounds the whole
     # union -- the string's ``minLength`` applied to the integer arm. Measured here on
     # the compiler directly, so the alternative has its own evidence rather than a
@@ -6417,7 +6417,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
     from codegen.lower import containers as lower_containers
 
     emitted = compiled(BUNDLE, population()).emitted
-    carried = frozenset().union(*lower_containers.ARM.values())
+    carried = frozenset().union(*lower_containers.BRANCH.values())
     assert sorted(
         (d, p)
         for d in emitted
@@ -6432,7 +6432,7 @@ def test_a_multi_type_property_applies_each_keyword_to_its_own_branch() -> None:
         )
     ]
 
-    # **A null arm no longer refuses: it is an ARM.** The refusal stood on what the
+    # **A null arm no longer refuses: it is an BRANCH.** The refusal stood on what the
     # document-side reading could not lift, and that reading takes a null arm now -- so
     # the cell asserts the EMISSION and the annotation, because a cell that only stopped
     # asserting the refusal would pass for a row that silently dropped the arm.

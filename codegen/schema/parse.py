@@ -51,7 +51,7 @@ implies them.**  A handler never sees a mapping the document does not state:
   mapping NODE, built here, where ``lower.objects.declare_object`` built a synthetic
   ``{"type": "object", "additionalProperties": ap, ...}`` and handed it to the dispatch;
 * the multi-type cut -- one member per type word, each holding only the keywords that
-  word can carry (:data:`ARM`), which is draft-07's own semantics.
+  word can carry (:data:`BRANCH`), which is draft-07's own semantics.
 
 **The screen and the classification INTERLEAVE, and §4 is where that is decided** (settled
 2026-10-26, after this row found that the section's "four things … in this order" could not
@@ -114,13 +114,13 @@ UNION = tuple(
 )
 
 #: Which constraint keywords each ``type`` word can carry, for the multi-type CUT, read
-#: off :data:`codegen.keywords.ARM` -- which is where it now lives, because the cut is
+#: off :data:`codegen.keywords.BRANCH` -- which is where it now lives, because the cut is
 #: not its only reader.  It was here, and before that in ``lower/containers.py``; the
 #: verifier's fold from a model ``anyOf`` back to a document type list is the CUT'S
 #: INVERSE and has to read the same declaration, and §9 forbids the verifier the walk.
 #: So the table moved to the one module both halves may read and this is the name the
 #: parse keeps using.
-ARM: Mapping[str, frozenset[str]] = keywords.ARM
+BRANCH: Mapping[str, frozenset[str]] = keywords.BRANCH
 
 #: An ARRAY's own bounds and a MAPPING's own bounds, in the document's spelling: how long
 #: the list may be, and how many keys the mapping may carry.  Both are the CONTAINER's
@@ -719,9 +719,9 @@ def _multi_type(
     # gives PROP a ``Field(description=…)`` -- so what was dropped was the class's half
     # and not the property's.
     #
-    # It is not in :data:`ARM`, and deliberately: that table is "the keywords that type
+    # It is not in :data:`BRANCH`, and deliberately: that table is "the keywords that type
     # can carry", a per-word CONSTRAINT question, and a description is a statement about
-    # the instance that every word carries equally.  Putting it in ARM would also put it
+    # the instance that every word carries equally.  Putting it in BRANCH would also put it
     # in the screen ``lower.containers.multi_type`` admits a keyword by, so a document
     # could state a description a NON-OBJECT arm then carries into its own node -- and
     # it would put it in ``harness._type_list``'s liftable set, where it is the one key
@@ -732,7 +732,7 @@ def _multi_type(
             {
                 "type": word,
                 **annotated,
-                **{k: v for k, v in raw.items() if k in ARM.get(word, frozenset())},
+                **{k: v for k, v in raw.items() if k in BRANCH.get(word, frozenset())},
             },
             pointer=pointer,
             position=position,
@@ -1630,7 +1630,7 @@ def forbidden_values(sub: Any, position: Position) -> dict[str, Any]:
     return out
 
 
-#: The type words whose ARM row holds constraints of a VALUE: the four scalars and the
+#: The type words whose BRANCH row holds constraints of a VALUE: the four scalars and the
 #: array.  ``object``'s row is excluded because its keys constrain the KEYS of an
 #: instance rather than the instance itself, and ``null`` carries nothing.
 _VALUE_WORDS = ("string", "integer", "number", "boolean", "array")
@@ -1646,7 +1646,7 @@ def value_facts(raw: Mapping[str, Any], position: Position) -> dict[str, Any]:
     is the parser's, and it is three readings of the declaration at once -- a fact is a
     key that
 
-    * some type word can carry (:data:`ARM`, draft-07's own rule that a constraint keyword
+    * some type word can carry (:data:`BRANCH`, draft-07's own rule that a constraint keyword
       applies to instances of the type it is defined for), of the words whose constraints
       are constraints of the instance (:data:`_VALUE_WORDS`);
     * whose cell LOWERS at this position, so a keyword that states nothing here is not a
@@ -1660,7 +1660,7 @@ def value_facts(raw: Mapping[str, Any], position: Position) -> dict[str, Any]:
     ``ir.FACTS``'s eleven keywords, with no key on either side the other lacks.  So the
     tuple is deleted and nothing moves.
     """
-    carried = frozenset().union(*(ARM[w] for w in _VALUE_WORDS))
+    carried = frozenset().union(*(BRANCH[w] for w in _VALUE_WORDS))
     return {
         k: v
         for k, v in raw.items()
