@@ -4002,6 +4002,75 @@ def least_instance(
     consumed: frozenset[int] = frozenset(),
     defs: Mapping[str, Any] = MappingProxyType({}),
 ) -> Built:
+    """:func:`_least_once`, with each conditional the VALUE FIRES folded back in.
+
+    **A ``then`` IS A STATEMENT ABOUT THE INSTANCE ONCE THE ``if`` HOLDS, and the builder
+    was reading only the unconditional ones** (``adcp-client-python-01p4``).  So a value
+    built from a ``const`` could TRIGGER a conditional and then fail its consequent:
+    measured on ``adagents.json#/oneOf/1/properties/formats/items/allOf/0``, where
+    ``format_kind`` is pinned ``custom`` by a ``const``, the build was
+    ``{"format_kind": "custom", "params": {}}`` and the node refused it at
+    ``allOf/3/then/anyOf`` -- the arm its own ``format_kind`` selects.
+
+    This is ``Construction._arms``' reading -- "the consequent of each conditional this
+    value's own content selects" -- applied to the least-instance builder, which had none.
+
+    A FIXED POINT and not one pass: folding a consequent can pin another key, which fires
+    another conditional.  Bounded by the number of statements, because each round either
+    folds a consequent not yet folded or stops -- and the bound is a terminator for a
+    pathological document, never a budget: a round that folds nothing returns at once.
+    """
+    answer = _least_once(statements, seen, consumed, defs)
+    folded: list[Mapping[str, Any]] = []
+    for _ in range(len(statements) + 8):
+        if not answer.held:
+            return answer
+        arms = [
+            arm
+            for one in statements
+            for arm in _fired(one, answer.value)
+            if not any(arm is already for already in folded)
+        ]
+        if not arms:
+            return answer
+        folded += arms
+        answer = _least_once([*statements, *folded], seen, consumed, defs)
+    return answer
+
+
+def _fired(node: Mapping[str, Any], value: Any) -> list[Mapping[str, Any]]:
+    """The arm of ``node``'s own conditional that ``value`` selects, if it states one.
+
+    ``then`` where the ``if`` holds of this value and ``else`` where it does not, which is
+    draft-07's own reading and :meth:`Construction._arms`'.  An ``allOf`` member's
+    conditional is reached too, because a conjunct states about this instance whatever the
+    node does.
+    """
+    out: list[Mapping[str, Any]] = []
+    stack = [node]
+    while stack:
+        one = stack.pop()
+        if not isinstance(one, Mapping):
+            continue
+        for word in _JOINS:
+            held = one.get(word)
+            if isinstance(held, list):
+                stack += [s for s in held if isinstance(s, Mapping)]
+        condition = one.get("if")
+        if not isinstance(condition, Mapping):
+            continue
+        arm = "then" if jsonschema.Draft7Validator(condition).is_valid(value) else "else"
+        if isinstance(one.get(arm), Mapping):
+            out.append(one[arm])
+    return out
+
+
+def _least_once(
+    statements: Sequence[Mapping[str, Any]],
+    seen: frozenset[frozenset[int]] = frozenset(),
+    consumed: frozenset[int] = frozenset(),
+    defs: Mapping[str, Any] = MappingProxyType({}),
+) -> Built:
     """The least instance the CONJUNCTION of ``statements`` admits, or a named reason.
 
     **READ OFF THE NODE AND NEVER OFF A POINTER**, which is the whole of why this exists

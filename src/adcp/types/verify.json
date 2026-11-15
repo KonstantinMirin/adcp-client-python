@@ -1,26 +1,13 @@
 {
  "causes": {
   "fail:accepts:model_refused_valid": 2,
-  "fail:accepts:witness_refused": 17,
+  "fail:accepts:witness_refused": 15,
   "fail:admits:model_refused_admitted": 8,
-  "fail:widening:unproved_widening": 6
+  "fail:widening:unproved_widening": 5
  },
  "graded": 2609,
- "not_pass": 33,
+ "not_pass": 30,
  "not_pass_rows": [
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=pass",
-   "class": "FormatsItemCustom",
-   "document": "adagents.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on anyOf, required; refused {\"format_kind\": \"custom\", \"params\": {}} at allOf/3/then/anyOf, allOf/3/then/anyOf/0/required, allOf/3/then/anyOf/1/required, allOf/3/then/required; narrower than its document [url_parsing at ('sample_render_url',)] on pattern: at ('sample_render_url',): a string '^https://' admits; the class refused it with 1 valida",
-   "pointer": "#/oneOf/1/properties/formats/items/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
   {
    "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
@@ -163,19 +150,6 @@
    "undeclared": "undeclared=absent:unrun",
    "verdict": "verdict=fail:accepts:witness_refused",
    "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=pass",
-   "class": "PackageFormatSnapshotCustom",
-   "document": "core/package-format-snapshot.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on anyOf, required; refused {\"format_kind\": \"custom\", \"params\": {}} at allOf/5/then/anyOf, allOf/5/then/anyOf/0/required, allOf/5/then/anyOf/1/required, allOf/5/then/required; narrower than its document [url_parsing at ('sample_render_url',)] on pattern: at ('sample_render_url',): a string '^https://' admits; the class refused it with 1 valida",
-   "pointer": "#/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
   },
   {
    "accepts": "accepts=fail:witness_refused",
@@ -335,19 +309,6 @@
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "CreateMediaBuyRequest",
-   "document": "media-buy/create-media-buy-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/opportunity/allOf/1/if: a value the if admits placed at ['opportunity'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('packages', 0, 'format_ids', 0, 'agent_url')] on format: at ('packages',): at (0,): at ('format_ids',): at (0,): at ('agent_url',): uri case 2; the class refused it with 1 validation error for Crea",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:2_of_2_conditionals_unreached",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
    "class": "PackageControl",
    "document": "media-buy/package-control.json",
@@ -438,12 +399,12 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2576,
+ "pass": 2579,
  "per_check": {
   "accepts": {
    "absent": 0,
-   "fail": 19,
-   "pass": 2590
+   "fail": 17,
+   "pass": 2592
   },
   "admits": {
    "absent": 17,
@@ -451,14 +412,14 @@
    "pass": 2582
   },
   "dump": {
-   "absent": 19,
+   "absent": 17,
    "fail": 0,
-   "pass": 2590
+   "pass": 2592
   },
   "refuses": {
-   "absent": 23,
+   "absent": 21,
    "fail": 0,
-   "pass": 2586
+   "pass": 2588
   },
   "undeclared": {
    "absent": 381,
@@ -467,15 +428,15 @@
   },
   "widening": {
    "absent": 2427,
-   "fail": 7,
-   "pass": 175
+   "fail": 6,
+   "pass": 176
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/21c4b762549ccc2420310f24d7c8cacf58f272a117c1f539cd31e16ae2530bb4",
-  "head": "82dd1d8ac+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/ffe66cc6956f31d6e9792c13a38c248ae31d5ebd6c505f4988e7c6b61b54f4ae",
+  "head": "06afa8324+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 430.6,
- "seconds_per_pair": 0.165
+ "seconds": 423.3,
+ "seconds_per_pair": 0.1622
 }
