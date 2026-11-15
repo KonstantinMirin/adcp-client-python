@@ -32,7 +32,7 @@ must be one of them:
   ``TaskResult(status=TaskStatus.COMPLETED, ...)``, which is the test saying what its
   scenario means.  ``'completed'`` is that reading; the ``#/oneOf/1`` error arm takes
   ``'failed'`` and ``#/oneOf/2`` takes ``'submitted'``.
-* **an `anyOf` refusal is a CHOICE OF ARM, and the payload's own shape makes it.**  Where
+* **an `anyOf` refusal is a CHOICE OF BRANCH, and the payload's own shape makes it.**  Where
   no branch admits the payload, each branch names something different as missing, so the
   row has to say which arm the payload *means* and not which repair is smallest.
 
@@ -376,7 +376,7 @@ LITERALS: tuple[Literal, ...] = (
         "GetProductsResponse", "media-buy/get-products-response.json", "#",
         "completed", 2, _SYNC_WRAPPED,
     ),
-    # **AN `anyOf` REFUSAL IS A CHOICE OF ARM, AND THE PAYLOAD'S OWN SHAPE MAKES IT.**
+    # **AN `anyOf` REFUSAL IS A CHOICE OF BRANCH, AND THE PAYLOAD'S OWN SHAPE MAKES IT.**
     # `media-buy/create-media-buy-request.json` refuses this payload at the root and at all
     # three arms, and each arm names something different as missing:
     #

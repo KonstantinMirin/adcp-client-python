@@ -101,7 +101,7 @@ left ``A`` and ``B`` not partitioning the 124 object-ish ``oneOf`` occurrences t
 class.
 
 **``dispatch_mixin`` IS INHERITED AND THE COLUMN SAYS SO RATHER THAN HIDING IT.**  It is
-``issubclass(cls, BranchDispatchMixin)``, so a class that is itself an ARM of an outer
+``issubclass(cls, BranchDispatchMixin)``, so a class that is itself an BRANCH of an outer
 ``oneOf`` reads ``yes`` whether or not anything dispatches the union in ITS own row --
 ``core/audience-selector.json#/oneOf/0`` and ``brand.json#/oneOf/2`` are the shape, five
 rows of it, all in ``E``.  Reading the mixin off ``__dict__`` instead would answer "which
@@ -472,7 +472,7 @@ def bucket_of(
 
     Read in this order, which is the order the definitions nest: object-ish first (``G``
     is everything else and is decided before any class is looked at), then whether we
-    emitted anything at the pointer at all, then whether what we emitted has ARMS.  Every
+    emitted anything at the pointer at all, then whether what we emitted has BRANCHES.  Every
     row therefore gets exactly one bucket and no row gets none, which is the property the
     table is checked for (:func:`partitions`).
     """
@@ -496,7 +496,7 @@ def census(bundle_dir: Path) -> list[Row]:
         for pointer, node, keyword, branches, position in occurrences(bundle_dir, document):
             here = index.get((document, pointer), [])
             arms = branch_pointers(pointer, keyword, len(branches))
-            #: THE ARMS, asked of the pointer index and not of the base's subclasses, which
+            #: THE BRANCHES, asked of the pointer index and not of the base's subclasses, which
             #: is how a bucket name stops being the whole answer: 37 of ``C``'s 54 and 17 of
             #: ``F``'s 287 emit a class AT A BRANCH POINTER while emitting nothing at the
             #: union's own.  Those are arms with no base -- nothing dispatches to them and

@@ -496,7 +496,7 @@ def admits_null(node: Any) -> bool:
         return declared == "null"
     if isinstance(declared, list):
         return "null" in declared
-    #: **A DISJUNCTION WITH NO NULL ARM REFUSES, and the clause below must not reach it.**
+    #: **A DISJUNCTION WITH NO NULL BRANCH REFUSES, and the clause below must not reach it.**
     #: ``core/mcp-webhook-payload.json``'s ``result`` states an ``anyOf`` and no ``type``, so a
     #: reader that fell through to "no ``type`` means unconstrained" would call it
     #: null-admitting and report our refusal as a defect.  A node that states a disjunction

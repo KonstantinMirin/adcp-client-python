@@ -560,7 +560,7 @@ def some_arm_requires(root: dict, pointer: str) -> frozenset[str]:
     field of that single class -- and a field required by only one arm cannot be made
     required there without refusing the other arms.  So the generator defaults it, and the
     class then admits an instance satisfying NO arm, which the document refuses.  This
-    compiler emits one class PER ARM instead (``CreateMediaBuySuccess`` /
+    compiler emits one class PER BRANCH instead (``CreateMediaBuySuccess`` /
     ``CreateMediaBuyError`` / ``CreateMediaBuyResponseSubmitted``), so the requirement is
     carried where the document states it.
     """
@@ -590,7 +590,7 @@ def properties_at(root: dict, pointer: str) -> dict[str, list[dict]]:
 
 
 def properties_spanning(root: dict, pointer: str) -> dict[str, list[dict]]:
-    """:func:`properties_at` with every ARM of every disjunction folded in beside it.
+    """:func:`properties_at` with every BRANCH of every disjunction folded in beside it.
 
     **THE PROPERTY SET A COLLAPSED CLASS CARRIES.**  Where a generator emits one class for a
     position stating ``oneOf``, that class's fields are the union over the arms, so a reader
@@ -725,7 +725,7 @@ def verdict(
     required at ``#/oneOf/0`` because ``allOf[1]`` requires it, and the arm's own text never
     mentions it.
 
-    ``spanning`` says the class was matched to this position at its ARM-UNION property set --
+    ``spanning`` says the class was matched to this position at its BRANCH-UNION property set --
     one class where the document states a disjunction -- so a property only some arm requires
     is read as :data:`KINDS`' ``collapsed-disjunction`` rather than as optional.
     """
@@ -831,7 +831,7 @@ def candidates_for(
     2. **A class whose fields are a position's own property set is a class at that
        position** -- the exact match, and an arm pointer enclosed by another candidate is
        dropped, because a class their module did NOT name as an arm is not one.
-    3. **A class whose fields are a position's ARM-UNION set spans the disjunction there** --
+    3. **A class whose fields are a position's BRANCH-UNION set spans the disjunction there** --
        one class where the document states a choice.  Strictly weaker than (2), so it never
        shadows it.
 

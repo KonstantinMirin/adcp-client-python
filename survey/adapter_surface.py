@@ -1163,7 +1163,7 @@ class Join:
                 self._values[key] = frozenset()
         return self._values[key] or None
 
-    #: **A UNION OF ARMS IS A NAME FOR A UNION AND NEVER FOR AN ENUMERATION**, and the
+    #: **A UNION OF BRANCHES IS A NAME FOR A UNION AND NEVER FOR AN ENUMERATION**, and the
     #: distinction is the KIND of the thing upstream published rather than the values it
     #: admits (`adcp-client-python-69mi`).  Measured, and it cost 105 of upstream's files
     #: and ~1,797 test functions: the writer bound `GetProductsField` to
@@ -1176,7 +1176,7 @@ class Join:
     #: `adcp/decisioning/__init__.py` imports.  So the whole `decisioning` package died at
     #: import over a name whose value set was right.
     #:
-    #: **AND THE REPAIR IS NOT A DIFFERENT ARM.**  It was proposed that their
+    #: **AND THE REPAIR IS NOT A DIFFERENT BRANCH.**  It was proposed that their
     #: `GetProductsField` is our 17-member `FieldsItem`, read off their comment's "38 + 17
     #: members"; their own next clause refutes it -- "the public ``GetProductsField`` alias
     #: resolves to a third, 53-member enum that the request never holds" -- and so does
@@ -1626,7 +1626,7 @@ class Join:
             if len(hit) > 1:
                 row["prefix_refused"] = f"{len(hit)} declarations of ours carry a prefixed form"
 
-        # 7: they flattened a union we keep split -- AND A UNION OF ARMS IS NOT AN
+        # 7: they flattened a union we keep split -- AND A UNION OF BRANCHES IS NOT AN
         # ENUMERATION, which is what this key was measured to get wrong
         # (`adcp-client-python-69mi`).  The value-set reading was right and is kept as the
         # finding; what it licensed was not.  See :meth:`flattened`.
@@ -2142,7 +2142,7 @@ def write_modules(
                 # whole package.  Defence in depth and not a duplicate reading -- the key
                 # decides a binding, this decides whether a STATEMENT may be written.
                 refused[row["name"]] = (
-                    "UNION-OF-ARMS-IS-NOT-AN-ENUMERATION: upstream published one "
+                    "UNION-OF-BRANCHES-IS-NOT-AN-ENUMERATION: upstream published one "
                     f"enumeration and the subject is {len(paths)} of ours"
                 )
                 continue
