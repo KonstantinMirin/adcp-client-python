@@ -3,10 +3,10 @@
   "fail:accepts:model_refused_valid": 2,
   "fail:accepts:witness_refused": 22,
   "fail:admits:model_refused_admitted": 8,
-  "fail:widening:unproved_widening": 12
+  "fail:widening:unproved_widening": 6
  },
  "graded": 2609,
- "not_pass": 44,
+ "not_pass": 38,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -33,19 +33,6 @@
    "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:admits:model_refused_admitted",
    "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "ComplyTestControllerResponse",
-   "document": "compliance/comply-test-controller-response.json",
-   "dump": "dump=pass",
-   "note": "#/oneOf/6/properties/recorded_calls/items/properties/payload/maxLength: maxLength exactly (65536) placed at ['recorded_calls', 0, 'payload'] makes a payload the document refuses, so it says nothing about the class; #/oneOf/6/properties/recorded_calls/items/properties/payload/maxLength: maxLength one step inside (65535) placed at ['recorded_calls', 0, 'payload'] makes a payload the document refuses",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
   },
   {
    "accepts": "accepts=pass",
@@ -373,19 +360,6 @@
    "widening": "widening=absent:no_declarations"
   },
   {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "BuildCreativeResponse",
-   "document": "media-buy/build-creative-response.json",
-   "dump": "dump=pass",
-   "note": "#/oneOf/2/if: a value the if admits could not be drawn: the constructed value is refused on oneOf; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for BuildCreativeResponse push_notification_config.url   Input should be a valid URL, empty host [typ; the",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
    "accepts": "accepts=fail:model_refused_valid",
    "admits": "admits=fail:model_refused_admitted",
    "class": "BuyProductsRequestAccountAccountAccountId",
@@ -439,32 +413,6 @@
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "GetReportingStatusResponse",
-   "document": "media-buy/get-reporting-status-response.json",
-   "dump": "dump=pass",
-   "note": "#/oneOf/0/oneOf/1/if: a value the if admits could not be drawn: the constructed value is refused on const, oneOf; narrower than its document [url_parsing at ('completed', 'summary', 'push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for GetReportingStatusResponse completed.summary.push_notification_",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:4_of_5_conditionals_unreached",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SuccessfulLookup",
-   "document": "media-buy/get-reporting-status-response.json",
-   "dump": "dump=pass",
-   "note": "#/oneOf/0/oneOf/1/if: a value the if admits could not be drawn: the constructed value is refused on const, not, oneOf, required; narrower than its document [url_parsing at ('summary', 'push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SuccessfulLookup summary.push_notification_config.url   Input",
-   "pointer": "#/oneOf/0",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:4_of_5_conditionals_unreached",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
    "class": "PackageControl",
    "document": "media-buy/package-control.json",
@@ -488,32 +436,6 @@
    "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:accepts:model_refused_valid",
    "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "RequestProposalsResponse",
-   "document": "media-buy/request-proposals-response.json",
-   "dump": "dump=pass",
-   "note": "#/properties/purchase_continuation/oneOf/1/allOf/0/if: a value the if admits placed at ['purchase_continuation'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('proposals', 0, 'commercial_terms', 'purchases', 0, 'targeting_overlay', 'property_list', 'agent_url')] on format: at ('proposals',): at (0,): at ('commercial_terms',):",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SyncCatalogsResponse",
-   "document": "media-buy/sync-catalogs-response.json",
-   "dump": "dump=pass",
-   "note": "#/oneOf/1/properties/errors/items/allOf/1/if: a value the if admits placed at ['errors', 0] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SyncCatalogsResponse push_notificat",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
   },
   {
    "accepts": "accepts=pass",
@@ -581,7 +503,7 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2565,
+ "pass": 2571,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -610,15 +532,15 @@
   },
   "widening": {
    "absent": 2427,
-   "fail": 13,
-   "pass": 169
+   "fail": 7,
+   "pass": 175
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/4f1ab27d2bb09a413bad24ffc194f496a3dc570b4165229c2553f70a02a65a83",
-  "head": "c912a7bc6+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/70fedb0598b3b1c1b711569cb64da19fdea32930f7b3a1491ed5a5f7a4bfff6f",
+  "head": "34a021e16+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 434.0,
- "seconds_per_pair": 0.1663
+ "seconds": 424.6,
+ "seconds_per_pair": 0.1627
 }

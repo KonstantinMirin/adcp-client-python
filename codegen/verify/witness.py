@@ -4186,6 +4186,45 @@ def least_instance(
                 inner = least_instance(
                     [branch, *joined], seen, consumed | {id(one)}, defs
                 )
+                #: **THE BRANCH'S VALUE IS SCREENED BY THE UNION IT CAME FROM**
+                #: (``adcp-client-python-01p4``).  "The FIRST branch that answers" is the
+                #: wrong rule where the OTHER statements already pin which branch the value
+                #: must be: this loop joins them into every branch, so a branch that
+                #: contradicts them still "answers" by emitting both its own required keys
+                #: and theirs -- and a ``oneOf`` refuses a value satisfying two branches.
+                #:
+                #: Measured on ``media-buy/build-creative-response.json#`` with the
+                #: declaration at ``#/oneOf/2``, which requires ``creatives``.  The loop
+                #: selected branch 0, which requires ``creative_manifest``, and built
+                #: ``{"creative_manifest": ..., "creatives": [...], "status": ...}`` --
+                #: branch 0 AND branch 2 -- refused at ``allOf/0/oneOf``.
+                #:
+                #: NOT a discriminator the document lacks.  The six branches are
+                #: discriminated by PRESENCE, each requiring a distinct key, which is what
+                #: ``_base.BranchDispatchMixin._BRANCH_PRESENCE`` dispatches on at runtime
+                #: and what this loop was not consulting.  ``status`` in that value is the
+                #: Protocol Envelope's and legitimately required of every response -- so
+                #: excluding "sibling keys" by name would have been wrong, and screening
+                #: the finished value against the alternation is right.
+                #:
+                #: The screen is the OWNER's union alone and not the whole conjunction: the
+                #: rest is already in the statement list and answered for by construction,
+                #: and re-validating it here would re-report a failure the caller's own
+                #: screen reports once.
+                #: ``Draft7Validator`` on the one keyword, built here rather than taken
+                #: from ``harness``: §9 forbids this module the verifier's readers, and the
+                #: screen is one keyword over a value already in hand.
+                #: **AND THE SCREEN CARRIES THE DEFINITIONS, for the reason
+                #: ``harness._conjoined`` does**: ``{word: branches}`` is a NEW root, the
+                #: branches are usually ``$ref``s, and without the store the screen itself
+                #: raises ``PointerToNowhere: '/definitions/Shared26' does not exist
+                #: within {'oneOf': [...]}``.  Measured the moment the screen was added --
+                #: the same re-rooting defect, one layer along, and the travelling store is
+                #: already in hand to answer it.
+                if inner.held and not jsonschema.Draft7Validator(
+                    {word: branches, "definitions": dict(defs)} if defs else {word: branches}
+                ).is_valid(inner.value):
+                    continue
                 if inner.held:
                     return inner
             return Built(None, Source.APPROXIMATED, f"no branch of {word} admits an instance")
