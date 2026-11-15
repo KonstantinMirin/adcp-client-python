@@ -3,10 +3,10 @@
   "fail:accepts:model_refused_valid": 2,
   "fail:accepts:witness_refused": 22,
   "fail:admits:model_refused_admitted": 8,
-  "fail:widening:unproved_widening": 19
+  "fail:widening:unproved_widening": 16
  },
  "graded": 2609,
- "not_pass": 51,
+ "not_pass": 48,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -14,21 +14,8 @@
    "class": "SyncAccountsRequest",
    "document": "account/sync-accounts-request.json",
    "dump": "dump=pass",
-   "note": "#/properties/accounts/items/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on type; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SyncAccountsRequest push_notification_c",
+   "note": "#/properties/accounts/items/properties/notification_configs/items/allOf/1/if: a value the if admits has nowhere to go in the drawn instance at ['accounts', 0, 'notification_configs', 0]; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SyncAccountsRe",
    "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "AccountsItem",
-   "document": "account/sync-accounts-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/accounts/items/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on type; narrower than its document [url_parsing at ('brand', 'data_subject_contestation', 'url')] on pattern: at ('brand',): at ('data_subject_contestation',): at ('url',): a string '^https://' admits; the class refused it with 1 validation error",
-   "pointer": "#/properties/accounts/items",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:widening:unproved_widening",
@@ -426,19 +413,6 @@
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "AcceptProposalRequest",
-   "document": "media-buy/accept-proposal-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/opportunity/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on required; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for AcceptProposalRequest push_notification_config.url   Input should be a valid",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
    "class": "Annotated",
    "document": "media-buy/accept-proposal-response.json",
@@ -457,19 +431,6 @@
    "document": "media-buy/build-creative-response.json",
    "dump": "dump=pass",
    "note": "#/oneOf/2/if: a value the if admits could not be drawn: the node states no constructible instance: no branch of oneOf admits an instance; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for BuildCreativeResponse push_notification_config.url   Input shou",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "BuyProductsRequest",
-   "document": "media-buy/buy-products-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/opportunity/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on required; narrower than its document [url_parsing at ('purchases', 0, 'targeting_overlay', 'property_list', 'agent_url')] on format: at ('purchases',): at (0,): at ('targeting_overlay',): at ('property_list',): at ('agent_url',): uri case 2; the class refused it with 1 validation erro",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -521,7 +482,7 @@
    "class": "CreateMediaBuyRequest",
    "document": "media-buy/create-media-buy-request.json",
    "dump": "dump=pass",
-   "note": "#/properties/opportunity/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on required; narrower than its document [url_parsing at ('packages', 0, 'format_ids', 0, 'agent_url')] on format: at ('packages',): at (0,): at ('format_ids',): at (0,): at ('agent_url',): uri case 2; the class refused it with 1 validation error for CreateMediaBuyRequest packages.0.forma",
+   "note": "#/properties/opportunity/allOf/1/if: a value the if admits placed at ['opportunity'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('packages', 0, 'format_ids', 0, 'agent_url')] on format: at ('packages',): at (0,): at ('format_ids',): at (0,): at ('agent_url',): uri case 2; the class refused it with 1 validation error for Crea",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=absent:2_of_2_conditionals_unreached",
@@ -599,7 +560,7 @@
    "class": "SyncCatalogsResponse",
    "document": "media-buy/sync-catalogs-response.json",
    "dump": "dump=pass",
-   "note": "#/oneOf/1/properties/errors/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on anyOf, type; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SyncCatalogsResponse push_notification_config.url   Input should",
+   "note": "#/oneOf/1/properties/errors/items/allOf/1/if: a value the if admits placed at ['errors', 0] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SyncCatalogsResponse push_notificat",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -625,7 +586,7 @@
    "class": "GetAdCPCapabilitiesResponseMediaBuy",
    "document": "protocol/get-adcp-capabilities-response.json",
    "dump": "dump=pass",
-   "note": "#/properties/media_buy/properties/proposal_refinement/allOf/0/if: a value the if admits placed at ['proposal_refinement'] makes a payload the document refuses, so it says nothing about the class; #/properties/media_buy/properties/features/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on type; narrower than its document [url_parsing at ('acceptance_policy_di",
+   "note": "#/properties/media_buy/properties/proposal_refinement/allOf/0/if: a value the if admits placed at ['proposal_refinement'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('acceptance_policy_discovery', 'catalog_url')] on pattern: at ('acceptance_policy_discovery',): at ('catalog_url',): a string '^https://' admits; the class refu",
    "pointer": "#/properties/media_buy",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=absent:2_of_2_conditionals_unreached",
@@ -638,7 +599,7 @@
    "class": "SyncAgentNotificationConfigsRequest",
    "document": "protocol/sync-agent-notification-configs-request.json",
    "dump": "dump=pass",
-   "note": "#/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on type",
+   "note": "#/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on not",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -651,7 +612,7 @@
    "class": "SyncPrincipalRequest",
    "document": "protocol/sync-principal-request.json",
    "dump": "dump=pass",
-   "note": "#/properties/configuration/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on type",
+   "note": "#/properties/configuration/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on not",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -664,7 +625,7 @@
    "class": "Configuration",
    "document": "protocol/sync-principal-request.json",
    "dump": "dump=pass",
-   "note": "#/properties/configuration/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on type",
+   "note": "#/properties/configuration/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on not",
    "pointer": "#/properties/configuration",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -672,7 +633,7 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2558,
+ "pass": 2561,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -701,15 +662,15 @@
   },
   "widening": {
    "absent": 2427,
-   "fail": 20,
-   "pass": 162
+   "fail": 17,
+   "pass": 165
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/62a216edc6cd58aeebbafee8eb1e92183a6508d3c945aa0a6953f3d539fd9b26",
-  "head": "b5464cc9e+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/311654d7c82d7253daed162a620e9eb6756ea25f0082aa52271cbdc19e8e6bad",
+  "head": "f91dd2387+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 428.1,
- "seconds_per_pair": 0.1641
+ "seconds": 432.1,
+ "seconds_per_pair": 0.1656
 }

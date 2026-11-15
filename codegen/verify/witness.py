@@ -4042,13 +4042,43 @@ def least_instance(
         return Built(None, Source.APPROXIMATED, "a cycle of statements admits no instance")
     seen = seen | {here}
 
+    #: **THE JOIN IS TRANSITIVE, because an ``allOf`` of an ``allOf`` is still one
+    #: conjunction about one instance** (``adcp-client-python-01p4``).  One level deep,
+    #: a statement two conjuncts down was never seen at all -- and ``check_widening``
+    #: produces exactly that shape: ``_conjoined(host, sub)`` wraps the host, whose own
+    #: node is itself an ``allOf`` carrying the ``$ref`` that holds the type.  So the
+    #: builder found no ``type`` word among the members it could see, fell through to the
+    #: null floor, and returned ``None`` for a node demanding an object -- which the node
+    #: then refused on ``type``, reported as 17 `unproved_widening` rows blaming the
+    #: declaration for a value the instrument could not build.
+    #:
+    #: A fixed point and not a recursion, with membership by IDENTITY: a document may
+    #: state the same mapping object at two positions, and ``in`` on a list of mappings
+    #: compares by value -- so two distinct conjuncts that happen to be equal would
+    #: collapse to one and a cycle of equal-but-distinct nodes would not terminate.
     joined: list[Mapping[str, Any]] = []
-    for one in kept:
+    pending = list(kept)
+    walked: set[int] = set()
+    while pending:
+        one = pending.pop(0)
+        if id(one) in walked:
+            continue
+        walked.add(id(one))
         joined.append(one)
         for word in _JOINS:
             held = one.get(word)
             if isinstance(held, list):
-                joined.extend(s for s in held if isinstance(s, Mapping))
+                pending.extend(s for s in held if isinstance(s, Mapping))
+        #: **A LOCAL REFERENCE IS FOLLOWED HERE, IN THE JOIN, and not in an arm below.**
+        #: Resolved in the ``$ref`` arm it needed a recursive call, and the recursion
+        #: re-derived the same statement set -- the reference is reachable again through
+        #: the host that carried it -- so the cycle guard fired: "a cycle of statements
+        #: admits no instance".  Pushed into ``pending`` instead, the target becomes one
+        #: more conjunct of the SAME frame, which is what a ``$ref`` beside other keywords
+        #: means, and the ``walked`` set terminates it for free.
+        target = _referenced(one.get("$ref"), joined) if "$ref" in one else None
+        if target is not None:
+            pending.append(target)
     for one in joined:
         if "const" in one:
             return Built(one["const"], Source.CONSTRUCTED)
@@ -4056,9 +4086,24 @@ def least_instance(
         if isinstance(members, list) and members:
             return Built(members[0], Source.CONSTRUCTED)
     for one in joined:
-        if isinstance(one.get("$ref"), str):
+        ref = one.get("$ref")
+        if isinstance(ref, str):
+            #: **A LOCAL REFERENCE IS RESOLVED FROM THE CONJUNCTION ITSELF**
+            #: (``adcp-client-python-01p4``).  Declining here was right while there was
+            #: nothing to resolve against; ``harness._conjoined`` now carries the host's
+            #: ``definitions``/``$defs`` onto the wrapper, so the target is a member of the
+            #: very conjunction being built -- and the join above is transitive, so it is
+            #: reachable.  That is the pair the two halves of this repair make: the first
+            #: put the definitions in scope and the second reads them.
+            #:
+            #: ONLY a local pointer into those two keywords.  An absolute or external
+            #: reference names a document this builder does not hold, and §8's fixture rule
+            #: already says a referenced document is graded by its own pair -- so it keeps
+            #: the honest refusal rather than reaching for something it cannot see.
+            if _referenced(ref, joined) is not None:
+                continue  # followed in the join above; this member states nothing else
             return Built(
-                None, Source.APPROXIMATED, f"the node's instance is {one['$ref']!r}, a reference"
+                None, Source.APPROXIMATED, f"the node's instance is {ref!r}, a reference"
             )
     #: A union: the FIRST branch that answers, with the unconditional statements joined
     #: into it so the value satisfies the node and not only the branch.
@@ -4174,3 +4219,25 @@ def least_instance(
     if word in ("integer", "number"):
         return _number(joined, whole=word == "integer")
     return Built(WORD_FLOOR.get(word), Source.CONSTRUCTED)
+
+
+def _referenced(ref: str, joined: Sequence[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    """The target of a LOCAL ``$ref``, found among the statements already in hand.
+
+    ``#/definitions/X`` and ``#/$defs/X`` only, and only where some member of the
+    conjunction holds that keyword -- which is exactly what ``harness._conjoined`` arranges
+    by carrying the host's own definitions onto the wrapper it builds.  Anything else
+    returns ``None`` and the caller keeps its refusal: an absolute reference names another
+    document, and §8 grades a referenced document by its own pair rather than inlining it
+    here.
+    """
+    if not ref.startswith("#/"):
+        return None
+    parts = [p for p in ref[2:].split("/") if p]
+    if len(parts) != 2 or parts[0] not in ("definitions", "$defs"):
+        return None
+    for one in joined:
+        store = one.get(parts[0])
+        if isinstance(store, Mapping) and isinstance(store.get(parts[1]), Mapping):
+            return store[parts[1]]
+    return None
