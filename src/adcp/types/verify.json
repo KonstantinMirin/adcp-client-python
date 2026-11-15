@@ -3,11 +3,10 @@
   "fail:accepts:model_refused_valid": 2,
   "fail:accepts:witness_refused": 22,
   "fail:admits:model_refused_admitted": 8,
-  "fail:undeclared:widened_undeclared": 1,
   "fail:widening:unproved_widening": 19
  },
  "graded": 2609,
- "not_pass": 52,
+ "not_pass": 51,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -332,19 +331,6 @@
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
    "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "PostalCountrySystemCountrySystem",
-   "document": "core/postal-country-system.json",
-   "dump": "dump=pass",
-   "note": "undeclared widening on properties: the class admitted {\"country\": null, \"system\": \"postal_code\"} which the document refuses on type",
-   "pointer": "#/anyOf/9",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=fail:widened_undeclared",
-   "verdict": "verdict=fail:undeclared:widened_undeclared",
    "widening": "widening=absent:no_declarations"
   },
   {
@@ -686,7 +672,7 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2557,
+ "pass": 2558,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -710,8 +696,8 @@
   },
   "undeclared": {
    "absent": 387,
-   "fail": 1,
-   "pass": 2221
+   "fail": 0,
+   "pass": 2222
   },
   "widening": {
    "absent": 2427,
@@ -720,10 +706,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/a3bf4380addb162a789c8937a1a31ae93803b3852f9e53952f92b1ec154b8deb",
-  "head": "dc0782734+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/fb6a3952e8f8e51e2a9581421b651d454fdb4994101d38b32615ee487a1bb118",
+  "head": "789ac918c+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 547.3,
- "seconds_per_pair": 0.2098
+ "seconds": 428.9,
+ "seconds_per_pair": 0.1644
 }

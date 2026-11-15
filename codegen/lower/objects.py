@@ -666,6 +666,34 @@ def declare_object(
 
         for drop in stated.dropped:
             _declare_widening(mod, drop.pointer, drop.keyword, drop.position, drop.fact)
+    #: **A TYPELESS PROPERTY MUST NOT OVERRIDE A BASE'S TYPE** (``adcp-client-python-s4bd``).
+    #: §4 emits a union as a base plus one child per branch, and a branch's node is lowered
+    #: on its own -- so where a branch CONSTRAINS a property without TYPING it, the field
+    #: decides ``typing.Any`` and that redeclaration replaces the base's correctly typed
+    #: one.
+    #:
+    #: Measured on ``core/postal-country-system.json``:
+    #:
+    #:     branch  PostalCountrySystemCountrySystem  (#/anyOf/9)  country: typing.Any
+    #:     base    PostalCountrySystem               (#)          country: str
+    #:
+    #: The branch states ``country: {"not": {"enum": [11 codes]}}`` -- a constraint and no
+    #: ``type`` -- and the root states ``{"type": "string", "pattern": "^[A-Z]{2}$"}`` about
+    #: the same instance.  So the class admitted every JSON value at a REQUIRED
+    #: property
+    #: (``required=True``, no default): ``'US'`` refused by the rule, ``'ZZ'`` accepted, and
+    #: ``None`` accepted where the document refuses it.  Every sibling branch is already
+    #: right, because ``#/anyOf/0..6`` state a ``const``/``enum`` the lowering types from;
+    #: ``not`` is the one constraint that yields no type.
+    #:
+    #: **THE BASE'S TYPE WITH THIS NODE'S VALIDATORS**, which is the intersection and needs
+    #: no derivation at all -- the type is already on the base, and ``mod.at`` is keyed by
+    #: pointer while a local ``TypeRef``'s path IS the pointer until ``names.assign`` runs.
+    #: The rule the branch states still rides: ``Annotated[str,
+    #: AfterValidator(NotValue(...))]``.  No widening, so nothing to declare -- which is
+    #: why §2's "a branch's property keeps ``Any``" subsection and its index row come out
+    #: with this: a decision index carrying a decision nobody took is worse than silence.
+    props = tuple(_typed_by_a_base(one, bases, mod) for one in props)
     described = node.description if node.description is not None else description
     declaration = ir.ClassDecl(
         # **The POINTER in the name slot, until the pass runs** (§7, and
@@ -935,3 +963,33 @@ def lower_object(
         extras=node.extras,
         bases=bases,
     )
+
+
+def _typed_by_a_base(
+    field: ir.Field, bases: tuple[ir.TypeRef, ...], mod: compiler.Module
+) -> ir.Field:
+    """``field`` with a base's type where this node decided ``Any`` and a base did not.
+
+    The whole of :func:`declare_object`'s clause above, as one function so the rule is
+    stated once.  ``Any`` and only ``Any``: a node that decides a type of its own has read
+    its own keywords and a base cannot improve on that, and §2's intersection is already
+    the compiler's answer wherever both state one.  What this covers is the node that
+    states NO type and whose field therefore carries the widest annotation there is.
+
+    The validators stay this node's: the branch's ``not`` is a statement about this
+    instance that the base does not make, so it rides on the base's type rather than being
+    replaced by it.
+    """
+    if field.type.path != "typing.Any" or field.type.container:
+        return field
+    for base in bases:
+        if not base.local:
+            continue
+        declared = mod.at.get(base.path)
+        for theirs in getattr(declared, "fields", ()) or ():
+            if theirs.name != field.name or theirs.type.path == "typing.Any":
+                continue
+            return replace(
+                field, type=replace(theirs.type, validators=field.type.validators)
+            )
+    return field

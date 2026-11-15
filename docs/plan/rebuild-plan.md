@@ -253,7 +253,6 @@ decision nobody can find is a decision that gets rediscovered as a bug.
 | **`Format` names the canonical declaration; `LegacyFormat` names the v1 definition.** | `CLAUDE.md` → Formats | code that said `Format` and meant the v1 breaks at validation rather than silently retargeting. |
 | **One class per SUBJECT, not per position.** | [§4 What becomes what](#what-becomes-what) | several of upstream's names resolve to one class of ours, and `isinstance` holds across all of them. |
 | **A positional index is a declared placeholder, not a name.** | [§4](#a-positional-index-is-a-declared-placeholder-not-a-name--and-not-a-licence-either) | no public name carries `Branch<N>`. |
-| **A branch's property keeps `Any` where the branch states no type.** | [§2 A branch's property keeps `Any`](#a-branchs-property-keeps-any-where-the-branch-states-no-type) | a branch constraining a property without typing it admits every JSON value, `None` included, where the ancestor's type is narrower; the rule the branch DOES state is still enforced, `strict_validate` still refuses, and `__adcp_approximations__` names `type`. |
 
 **THREE OF THESE ARE NOT STATED IN THIS FILE, and that is a defect of the index rather than of the
 decision**: the pinned default lives in a verdict, and the two format rules live in `CLAUDE.md`.
@@ -438,38 +437,6 @@ redeclaration that changes the TYPE is a build failure.
 
 *Why intersection.* `allOf` means every conjunct holds. A union of their constraints would accept
 payloads a conjunct refuses, making the model looser than its document.
-
-### A branch's property keeps `Any` where the branch states no type
-
-**A BRANCH THAT CONSTRAINS A PROPERTY WITHOUT TYPING IT LOWERS TO `Any`, AND THE ANCESTOR'S TYPE IS
-NOT INTERSECTED INTO IT. THIS IS ACCEPTED, AND IT IS A WIDENING, SO IT IS DECLARED.**
-
-The shape, measured at `core/postal-country-system.json`'s branch stating
-`country: {"not": {"enum": ["US", "GB", …]}}`, whose class is `PostalCountrySystemCountrySystem`:
-
-| | |
-| --- | --- |
-| the branch states | `country: {"not": {"enum": [11 codes]}}` — a constraint and no `type` |
-| the root states | `properties.country = {"type": "string", "pattern": "^[A-Z]{2}$"}` |
-| the class carries | `country: Any`, with `AfterValidator(NotValue(excluded=(…)))` |
-
-So the `not` is EXPRESSED — §2's "where a rule hangs" puts it on the value's own annotated type —
-and `'US'` is refused while `'ZZ'` is accepted, both correct. What is wider than the document is
-`None`: `reading-a-document.md` rule 1 says a property's requiredness is its own node's AND every
-ancestor's, and the same holds of its TYPE, so the conjunction here is `string` and the class admits
-every JSON value.
-
-**WHY IT IS KEPT.** Intersecting an ancestor's type into a branch's untyped property is a change to
-the LOWERING at every branch in the bundle, to move five pairs — and the value a consumer loses by
-it is `None` at a property whose own branch says nothing about type. `strict_validate` refuses that
-payload either way, which is what a widening means here: the model half is wider than the document
-and the document half still answers for it.
-
-**AND BECAUSE IT IS KEPT IT IS `WIDENED`, which is the whole of the obligation.** An accepted
-widening with no `Approximation` is indistinguishable from a defect — that is what this section's
-index row exists to say, and what the `None` and URL rows above cost when it was not said. The
-declaration names `type` with the ancestor's own fact, so a reader of the class sees which keyword
-was dropped and where it was stated.
 
 ### `None` is absence and `null` is a value
 
