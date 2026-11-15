@@ -8419,8 +8419,13 @@ def verdict_row(
     #: Sorted by whether the note belongs to the failing check and NOT by rewriting the
     #: appends above, so each check keeps writing its own notes in its own place and the
     #: order is decided once, here, from the verdict.
+    #: ``verdict=fail:<check>:<cause>`` -- so the CHECK is field 1 and the word "fail" is
+    #: inside field 0.  Read as ``failing[1] == "fail"`` this never matched and the sort
+    #: below never ran, which is why 15 rows still led with a PASSING check's detail after
+    #: the reorder landed.  Measured on the artifact, which is the only reason it was
+    #: caught: the code was right about what it wanted and wrong about the string.
     failing = _pair_verdict(report, error).split(":")
-    owner = failing[2] if len(failing) > 2 and failing[1] == "fail" else ""
+    owner = failing[1] if len(failing) > 2 and failing[0].endswith("fail") else ""
     if owner:
         prefix = {
             "accepts": ("the node refuses", "narrower than its document", "counterexample"),
