@@ -51,6 +51,7 @@ import importlib
 import sys
 import time
 from pathlib import Path
+from typing import Any
 
 from adcp.types._base import KINDS, NARROWED, SchemaRef, schema_at
 from codegen import bundle, catalogue, harness, keywords, patch, refusal
@@ -86,6 +87,142 @@ VERDICTS = "verdicts.tsv"
 #: So there is nothing left for a wall clock to cut, and a pair that took one would be a
 #: finding about that pair rather than a number to raise.  ``verdicts/apparatus-deleted.md``
 #: carries the measurement.
+
+
+def graded_rows(
+    found: Any,
+    *,
+    identity_of: Any,
+    construction: Any,
+    formats: Any,
+    only: str | None = None,
+) -> list[str]:
+    """Every pair's verdict row -- for all of ``found``, or for ONE document of it.
+
+    **THE PER-PAIR STEP AS A FUNCTION, so the grade has ONE derivation and two
+    callers.**  :func:`grade` is the whole-tree caller and writes the artifact;
+    ``tests_emit`` is the per-DOCUMENT caller, which is what lets ``pytest -n auto``
+    spread the work.  Measured, that split is worth making: the setup above is 10.1 s
+    of the grade's 430 s (``harness.pairs`` 4.3 s, ``catalogue.admitted_identities``
+    5.7 s, over 1,020 documents), so a worker pays it once and then grades documents
+    independently of every other worker.
+
+    ``only`` filters by document and changes NOTHING else: the rows a filtered call
+    returns are the rows the whole-tree call returns for that document.  That is what
+    makes the two paths comparable rather than merely similar, and it is asserted by
+    diffing ``verdicts.tsv`` across the change rather than by this sentence.
+    """
+    rows: list[str] = []
+    for p in found:
+        if only is not None and p.ref.document != only:
+            continue
+        name = f"{p.ref.document}{p.ref.pointer}"
+        model = getattr(p.model, "__name__", repr(p.model))[:120]
+        #: EVERY failure of the per-pair setup becomes a row, and never an exception out
+        #: of this loop.  Measured on this base: four pairs of
+        #: ``media-buy/buy-products-request.json`` and
+        #: ``media-buy/request-proposals-request.json`` declare a pointer the document of
+        #: record does not carry, and ``schema_at`` raises ``KeyError`` on it -- which is
+        #: enough to take a whole grading pass down and leave every other pair ungraded.
+        #: ``adcp-client-python-82m.4``'s own reason: "one raised in its own setup so it
+        #: never computed anything.  In a per-pair table, a check that computed nothing is
+        #: a BLANK COLUMN."
+        try:
+            holder = (
+                p.model if isinstance(p.model, type) else importlib.import_module(p.module)
+            )
+            #: **``module=`` IS WHICH TREE, and without it this run graded the tree it
+            #: wrote against the records that were INSTALLED** (``adcp-client-python-ir3l``).
+            #: ``schemas.__path__`` is bound to ``tree`` above so the MODULES come from
+            #: this run's output, but ``schema_at`` resolved its records through the
+            #: imported package, which answers from wherever ``_schemas/__init__.py`` was
+            #: loaded.  Measured over bundle 3.3: 1,806 pairs, 0 pass, 1,806 absent -- 107
+            #: ``FileNotFoundError`` for a 3.3-only document the committed tree has no
+            #: record for, 28 ``KeyError``/``IndexError`` at a pointer that is not 3.3's,
+            #: and every shared document served the 3.2 text with no error at all.
+            #: ``harness.pairs`` already records which module each pair was taken from, so
+            #: the tree is not inferred here -- it is the one the class came out of.
+            pair = harness.Pair(
+                name=name,
+                schema=schema_at(p.ref, module=p.module),
+                model=p.model,
+                accept=p.accept,
+                document=schema_at(SchemaRef(p.ref.document, "#"), module=p.module),
+                ref=p.ref,
+                declared=harness.declarations_of(holder),
+                #: ONE derivation of the identity, shared with the fixture reader above:
+                #: the store's key and a fixture's key are the same key, and two spellings
+                #: of it is a divergence waiting to happen.
+                identity=identity_of(p.ref.document, p.ref.pointer),
+            )
+        except Exception as e:  # a row with a cause, never a lost pair
+            rows.append(
+                harness.verdict_row(
+                    p.ref, None, model=model, error=f"pairing raised {type(e).__name__} {e}"
+                )
+            )
+            continue
+        #: **THE RUN DRAWS WHERE THE STORE IS SHORT, AND THE STORE IS A SAVING RATHER THAN
+        #: THE INSTRUMENT.**  What stood here skipped a pair the store held nothing for and
+        #: wrote ``absent:no held instance for this pair``, on the division "the SUITE draws
+        #: and the RUN reports".  That division made the table a function of the STORE, and
+        #: ``docs/plan/final-state.md`` reading 1 forbids exactly it: "BOTH CHECKS ARE A
+        #: FUNCTION OF (class, document) AND OF NOTHING ELSE", and "A PAIR THAT CAN ONLY BE
+        #: GRADED FROM A STORE IS NOT VERIFIED, IT IS REMEMBERED."  A pair whose only
+        #: obstruction is a missing cache entry read the same ``absent`` as a pair whose
+        #: node admits nothing, so the artifact could not tell a saving apart from a defect.
+        #:
+        #: MEASURED over the 28 pairs the floor was short at ``00092b521``
+        #: (``adcp-client-python-gbw``): 23 draw and PASS in 0.0-0.2 s each, under one
+        #: second for all 23 together; 2 report ``no_instrument`` by a named cause
+        #: (``core/reference-renderer.json#`` and its ``#/properties/provenance``); 2 report
+        #: ``accepts:strategy_error`` in 0.0 s because the node admits nothing
+        #: (``adcp-client-python-qzx.5``'s dead union branch); and 1 is cut
+        #: (``core/signal-coverage-forecast.json#``, ``adcp-client-python-qzx.8``).  So the
+        #: skip was hiding 23 passes behind the same word as 5 real findings.
+        #:
+        #: **The cost the skip was defending against is bounded by :data:`BUDGET` already,
+        #: and is now bounded for the draw too** -- a pair that cannot be drawn inside it
+        #: reads ``absent`` with the budget in the cause, which NAMES the draw instead of
+        #: naming the cache.  ``adcp-client-python-3be.26``'s 2 h 57 m pairs are reached by
+        #: that clause and not by this one.
+        #:
+        #: **And the draw is FIXTURED**, which is the other half the run was missing: §8's
+        #: rule ("a referenced document is graded by its own pair, so at a referring
+        #: position it is a fixture and not a draw") was wired into the suite's grading pass
+        #: and not into the run's, so a drawing run would have paid the unsubstituted node.
+        #: ``_fixtures`` is the same object the suite builds, from the same three readers.
+        #: **A BACKSTOP ON THE WALL CLOCK, because §8's obligation draws from a key space
+        #: nothing can precompute.**  ``check_widening`` derives its draws from the
+        #: declared pointer -- a value class, an intermediate node, the node conjoined
+        #: with a demand -- so which positions a pair asks for is known only by running
+        #: it, and the committed widening floor holds ZERO entries (``tests/corpus.py``
+        #: records that it has no currency gate yet).  Measured: 246.7 s on one pair of
+        #: ``core/async-response-data.json`` and over 600 s on another, with every accepts
+        #: draw already replayed.
+        #:
+        #: A pair that does not finish inside the budget becomes ``absent`` with the
+        #: budget in the cause, which is this artifact's own rule applied to itself: a
+        #: check that computed nothing is a blank column, and a blank column is still a
+        #: row.  ``SIGALRM`` and not a thread, because the harness is pure Python on this
+        #: thread and a timer that cannot interrupt it is not a bound.
+        #: **NO BOUND, which is the deletion above arriving at its one call site.**  A
+        #: pair either grades or raises, and a raise is a row with a cause in it.
+        try:
+            report = harness.check_pair(
+                pair,
+                custom_formats=formats,
+                construction=construction,
+            )
+        except Exception as e:  # as above: the run reports, it does not die
+            rows.append(
+                harness.verdict_row(
+                    p.ref, None, model=model, error=f"check raised {type(e).__name__} {e}"
+                )
+            )
+            continue
+        rows.append(harness.verdict_row(p.ref, report, model=model))
+    return rows
 
 
 def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]:
@@ -202,113 +339,9 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
         harness.verdict_row(None, None, name=name, model="-", error=f"unimportable module {why}")
         for name, why in sorted(unimportable.items())
     ]
-    for p in found:
-        name = f"{p.ref.document}{p.ref.pointer}"
-        model = getattr(p.model, "__name__", repr(p.model))[:120]
-        #: EVERY failure of the per-pair setup becomes a row, and never an exception out
-        #: of this loop.  Measured on this base: four pairs of
-        #: ``media-buy/buy-products-request.json`` and
-        #: ``media-buy/request-proposals-request.json`` declare a pointer the document of
-        #: record does not carry, and ``schema_at`` raises ``KeyError`` on it -- which is
-        #: enough to take a whole grading pass down and leave every other pair ungraded.
-        #: ``adcp-client-python-82m.4``'s own reason: "one raised in its own setup so it
-        #: never computed anything.  In a per-pair table, a check that computed nothing is
-        #: a BLANK COLUMN."
-        try:
-            holder = (
-                p.model if isinstance(p.model, type) else importlib.import_module(p.module)
-            )
-            #: **``module=`` IS WHICH TREE, and without it this run graded the tree it
-            #: wrote against the records that were INSTALLED** (``adcp-client-python-ir3l``).
-            #: ``schemas.__path__`` is bound to ``tree`` above so the MODULES come from
-            #: this run's output, but ``schema_at`` resolved its records through the
-            #: imported package, which answers from wherever ``_schemas/__init__.py`` was
-            #: loaded.  Measured over bundle 3.3: 1,806 pairs, 0 pass, 1,806 absent -- 107
-            #: ``FileNotFoundError`` for a 3.3-only document the committed tree has no
-            #: record for, 28 ``KeyError``/``IndexError`` at a pointer that is not 3.3's,
-            #: and every shared document served the 3.2 text with no error at all.
-            #: ``harness.pairs`` already records which module each pair was taken from, so
-            #: the tree is not inferred here -- it is the one the class came out of.
-            pair = harness.Pair(
-                name=name,
-                schema=schema_at(p.ref, module=p.module),
-                model=p.model,
-                accept=p.accept,
-                document=schema_at(SchemaRef(p.ref.document, "#"), module=p.module),
-                ref=p.ref,
-                declared=harness.declarations_of(holder),
-                #: ONE derivation of the identity, shared with the fixture reader above:
-                #: the store's key and a fixture's key are the same key, and two spellings
-                #: of it is a divergence waiting to happen.
-                identity=identity_of(p.ref.document, p.ref.pointer),
-            )
-        except Exception as e:  # a row with a cause, never a lost pair
-            rows.append(
-                harness.verdict_row(
-                    p.ref, None, model=model, error=f"pairing raised {type(e).__name__} {e}"
-                )
-            )
-            continue
-        #: **THE RUN DRAWS WHERE THE STORE IS SHORT, AND THE STORE IS A SAVING RATHER THAN
-        #: THE INSTRUMENT.**  What stood here skipped a pair the store held nothing for and
-        #: wrote ``absent:no held instance for this pair``, on the division "the SUITE draws
-        #: and the RUN reports".  That division made the table a function of the STORE, and
-        #: ``docs/plan/final-state.md`` reading 1 forbids exactly it: "BOTH CHECKS ARE A
-        #: FUNCTION OF (class, document) AND OF NOTHING ELSE", and "A PAIR THAT CAN ONLY BE
-        #: GRADED FROM A STORE IS NOT VERIFIED, IT IS REMEMBERED."  A pair whose only
-        #: obstruction is a missing cache entry read the same ``absent`` as a pair whose
-        #: node admits nothing, so the artifact could not tell a saving apart from a defect.
-        #:
-        #: MEASURED over the 28 pairs the floor was short at ``00092b521``
-        #: (``adcp-client-python-gbw``): 23 draw and PASS in 0.0-0.2 s each, under one
-        #: second for all 23 together; 2 report ``no_instrument`` by a named cause
-        #: (``core/reference-renderer.json#`` and its ``#/properties/provenance``); 2 report
-        #: ``accepts:strategy_error`` in 0.0 s because the node admits nothing
-        #: (``adcp-client-python-qzx.5``'s dead union branch); and 1 is cut
-        #: (``core/signal-coverage-forecast.json#``, ``adcp-client-python-qzx.8``).  So the
-        #: skip was hiding 23 passes behind the same word as 5 real findings.
-        #:
-        #: **The cost the skip was defending against is bounded by :data:`BUDGET` already,
-        #: and is now bounded for the draw too** -- a pair that cannot be drawn inside it
-        #: reads ``absent`` with the budget in the cause, which NAMES the draw instead of
-        #: naming the cache.  ``adcp-client-python-3be.26``'s 2 h 57 m pairs are reached by
-        #: that clause and not by this one.
-        #:
-        #: **And the draw is FIXTURED**, which is the other half the run was missing: §8's
-        #: rule ("a referenced document is graded by its own pair, so at a referring
-        #: position it is a fixture and not a draw") was wired into the suite's grading pass
-        #: and not into the run's, so a drawing run would have paid the unsubstituted node.
-        #: ``_fixtures`` is the same object the suite builds, from the same three readers.
-        #: **A BACKSTOP ON THE WALL CLOCK, because §8's obligation draws from a key space
-        #: nothing can precompute.**  ``check_widening`` derives its draws from the
-        #: declared pointer -- a value class, an intermediate node, the node conjoined
-        #: with a demand -- so which positions a pair asks for is known only by running
-        #: it, and the committed widening floor holds ZERO entries (``tests/corpus.py``
-        #: records that it has no currency gate yet).  Measured: 246.7 s on one pair of
-        #: ``core/async-response-data.json`` and over 600 s on another, with every accepts
-        #: draw already replayed.
-        #:
-        #: A pair that does not finish inside the budget becomes ``absent`` with the
-        #: budget in the cause, which is this artifact's own rule applied to itself: a
-        #: check that computed nothing is a blank column, and a blank column is still a
-        #: row.  ``SIGALRM`` and not a thread, because the harness is pure Python on this
-        #: thread and a timer that cannot interrupt it is not a bound.
-        #: **NO BOUND, which is the deletion above arriving at its one call site.**  A
-        #: pair either grades or raises, and a raise is a row with a cause in it.
-        try:
-            report = harness.check_pair(
-                pair,
-                custom_formats=formats,
-                construction=construction,
-            )
-        except Exception as e:  # as above: the run reports, it does not die
-            rows.append(
-                harness.verdict_row(
-                    p.ref, None, model=model, error=f"check raised {type(e).__name__} {e}"
-                )
-            )
-            continue
-        rows.append(harness.verdict_row(p.ref, report, model=model))
+    rows += graded_rows(
+        found, identity_of=identity_of, construction=construction, formats=formats
+    )
     return harness.verdict_table(rows), len(rows)
 
 
