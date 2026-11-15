@@ -129,6 +129,7 @@ import collections
 import dataclasses
 import enum
 from collections.abc import Iterator, Mapping, Sequence
+from types import MappingProxyType
 from typing import Any, NamedTuple
 
 import jsonschema
@@ -3999,6 +4000,7 @@ def least_instance(
     statements: Sequence[Mapping[str, Any]],
     seen: frozenset[frozenset[int]] = frozenset(),
     consumed: frozenset[int] = frozenset(),
+    defs: Mapping[str, Any] = MappingProxyType({}),
 ) -> Built:
     """The least instance the CONJUNCTION of ``statements`` admits, or a named reason.
 
@@ -4057,6 +4059,26 @@ def least_instance(
     #: state the same mapping object at two positions, and ``in`` on a list of mappings
     #: compares by value -- so two distinct conjuncts that happen to be equal would
     #: collapse to one and a cycle of equal-but-distinct nodes would not terminate.
+    #: **A DEFINITIONS STORE TRAVELS DOWN, because a reference deep in a subtree names
+    #: the DOCUMENT's root** (``adcp-client-python-01p4``).  ``_referenced`` reads the
+    #: statements of the frame it is in, which is enough at the top -- ``harness._conjoined``
+    #: carries the host's store onto the wrapper -- and empty three levels down, where the
+    #: recursion has passed only the local statements.  Measured, the chain that exposed it:
+    #:
+    #:     needs 'creatives' -> needs an element -> needs 'variants' -> needs an element
+    #:       -> needs 'creative_manifest'
+    #:       -> the node's instance is '#/definitions/Shared28', a reference
+    #:
+    #: Accumulated rather than replaced, and the OUTER store wins a shared name: an inner
+    #: ``$defs`` is a different document's and must not shadow the one the reference was
+    #: written against.
+    store = dict(defs)
+    for one in kept:
+        for keyword in ("definitions", "$defs"):
+            held = one.get(keyword)
+            if isinstance(held, Mapping):
+                store = {**held, **store}
+    defs = MappingProxyType(store)
     joined: list[Mapping[str, Any]] = []
     pending = list(kept)
     walked: set[int] = set()
@@ -4077,7 +4099,7 @@ def least_instance(
         #: admits no instance".  Pushed into ``pending`` instead, the target becomes one
         #: more conjunct of the SAME frame, which is what a ``$ref`` beside other keywords
         #: means, and the ``walked`` set terminates it for free.
-        target = _referenced(one.get("$ref"), joined) if "$ref" in one else None
+        target = _referenced(one.get("$ref"), joined, defs) if "$ref" in one else None
         if target is not None:
             pending.append(target)
     for one in joined:
@@ -4101,7 +4123,7 @@ def least_instance(
             #: reference names a document this builder does not hold, and §8's fixture rule
             #: already says a referenced document is graded by its own pair -- so it keeps
             #: the honest refusal rather than reaching for something it cannot see.
-            if _referenced(ref, joined) is not None:
+            if _referenced(ref, joined, defs) is not None:
                 continue  # followed in the join above; this member states nothing else
             return Built(
                 None, Source.APPROXIMATED, f"the node's instance is {ref!r}, a reference"
@@ -4162,7 +4184,7 @@ def least_instance(
                 #: signature change through this builder and is left to its own commit
                 #: rather than half-made here.
                 inner = least_instance(
-                    [branch, *joined], seen, consumed | {id(one)}
+                    [branch, *joined], seen, consumed | {id(one)}, defs
                 )
                 if inner.held:
                     return inner
@@ -4180,7 +4202,7 @@ def least_instance(
                 if isinstance(held, Mapping) and isinstance(held.get(name), Mapping)
             ]
             inner = (
-                least_instance(about, seen, consumed)
+                least_instance(about, seen, consumed, defs)
                 if about
                 else Built(None, Source.CONSTRUCTED)
             )
@@ -4241,7 +4263,7 @@ def least_instance(
                     "minProperties needs a key only an unsolved pattern admits",
                 )
             inner = (
-                least_instance([extra], seen, consumed)
+                least_instance([extra], seen, consumed, defs)
                 if isinstance(extra, Mapping)
                 else Built(None, Source.CONSTRUCTED)
             )
@@ -4260,7 +4282,7 @@ def least_instance(
         items = [one["items"] for one in joined if isinstance(one.get("items"), Mapping)]
         if not items:
             return Built([None] * count, Source.CONSTRUCTED)
-        inner = least_instance(items, seen, consumed)
+        inner = least_instance(items, seen, consumed, defs)
         if not inner.held:
             return Built(
                 None, Source.APPROXIMATED, f"the least instance needs an element: {inner.reason}"
@@ -4273,7 +4295,11 @@ def least_instance(
     return Built(WORD_FLOOR.get(word), Source.CONSTRUCTED)
 
 
-def _referenced(ref: str, joined: Sequence[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+def _referenced(
+    ref: str,
+    joined: Sequence[Mapping[str, Any]],
+    defs: Mapping[str, Any] = MappingProxyType({}),
+) -> Mapping[str, Any] | None:
     """The target of a LOCAL ``$ref``, found among the statements already in hand.
 
     ``#/definitions/X`` and ``#/$defs/X`` only, and only where some member of the
@@ -4292,4 +4318,7 @@ def _referenced(ref: str, joined: Sequence[Mapping[str, Any]]) -> Mapping[str, A
         store = one.get(parts[0])
         if isinstance(store, Mapping) and isinstance(store.get(parts[1]), Mapping):
             return store[parts[1]]
-    return None
+    #: The travelling store last: a frame that holds the keyword itself answers from it,
+    #: and only a frame that does not falls back to what an enclosing one carried.
+    held = defs.get(parts[1])
+    return held if isinstance(held, Mapping) else None
