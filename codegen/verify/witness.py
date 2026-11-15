@@ -3998,6 +3998,7 @@ _JOINS = ("allOf",)
 def least_instance(
     statements: Sequence[Mapping[str, Any]],
     seen: frozenset[frozenset[int]] = frozenset(),
+    consumed: frozenset[int] = frozenset(),
 ) -> Built:
     """The least instance the CONJUNCTION of ``statements`` admits, or a named reason.
 
@@ -4109,6 +4110,28 @@ def least_instance(
     #: into it so the value satisfies the node and not only the branch.
     for word in ("oneOf", "anyOf"):
         for one in joined:
+            #: **A UNION ALREADY SELECTED FROM IS NOT SELECTED FROM AGAIN**
+            #: (``adcp-client-python-01p4``).  ``consumed`` holds the ``id`` of every owner
+            #: whose alternation an enclosing frame has already chosen a branch of, which
+            #: is what lets the owner STAY in the statement list: its ``type``, its
+            #: ``required`` and its ``properties`` still apply to this instance, and only
+            #: the alternation is spent.
+            #:
+            #: Dropping the owner instead -- which is what stood here -- did not remove the
+            #: union at all, because the owner is reachable again through the ``allOf``
+            #: wrapper that contains it: the recursive call re-derived the same ``oneOf``
+            #: and reported "no branch admits" all the way down.  Measured on
+            #: ``media-buy/build-creative-response.json#``, six branches, all four tried
+            #: failing with that recursive reason while branch 2 joined with the
+            #: declaration alone builds.
+            #:
+            #: An ID and not a COPY, which is the other thing tried: replacing the owner
+            #: with a mapping lacking the keyword gives a fresh ``id`` every call, so the
+            #: ``walked`` set -- by identity on purpose, because a document states
+            #: equal-but-distinct mappings -- never matches and the recursion copies
+            #: forever (``RecursionError``).  An identity is stable; a copy is not.
+            if id(one) in consumed:
+                continue
             branches = one.get(word)
             if not isinstance(branches, list):
                 continue
@@ -4138,7 +4161,9 @@ def least_instance(
                 #: consumed", threaded through the recursion beside ``seen``.  That is a
                 #: signature change through this builder and is left to its own commit
                 #: rather than half-made here.
-                inner = least_instance([branch, *(s for s in joined if s is not one)], seen)
+                inner = least_instance(
+                    [branch, *joined], seen, consumed | {id(one)}
+                )
                 if inner.held:
                     return inner
             return Built(None, Source.APPROXIMATED, f"no branch of {word} admits an instance")
@@ -4154,7 +4179,11 @@ def least_instance(
                 for held in [one.get("properties")]
                 if isinstance(held, Mapping) and isinstance(held.get(name), Mapping)
             ]
-            inner = least_instance(about, seen) if about else Built(None, Source.CONSTRUCTED)
+            inner = (
+                least_instance(about, seen, consumed)
+                if about
+                else Built(None, Source.CONSTRUCTED)
+            )
             if not inner.held and about:
                 return Built(
                     None, Source.APPROXIMATED, f"the least instance needs {name!r}: {inner.reason}"
@@ -4212,7 +4241,7 @@ def least_instance(
                     "minProperties needs a key only an unsolved pattern admits",
                 )
             inner = (
-                least_instance([extra], seen)
+                least_instance([extra], seen, consumed)
                 if isinstance(extra, Mapping)
                 else Built(None, Source.CONSTRUCTED)
             )
@@ -4231,7 +4260,7 @@ def least_instance(
         items = [one["items"] for one in joined if isinstance(one.get("items"), Mapping)]
         if not items:
             return Built([None] * count, Source.CONSTRUCTED)
-        inner = least_instance(items, seen)
+        inner = least_instance(items, seen, consumed)
         if not inner.held:
             return Built(
                 None, Source.APPROXIMATED, f"the least instance needs an element: {inner.reason}"

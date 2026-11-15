@@ -3,24 +3,11 @@
   "fail:accepts:model_refused_valid": 2,
   "fail:accepts:witness_refused": 22,
   "fail:admits:model_refused_admitted": 8,
-  "fail:widening:unproved_widening": 16
+  "fail:widening:unproved_widening": 12
  },
  "graded": 2609,
- "not_pass": 48,
+ "not_pass": 44,
  "not_pass_rows": [
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SyncAccountsRequest",
-   "document": "account/sync-accounts-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/accounts/items/properties/notification_configs/items/allOf/1/if: a value the if admits has nowhere to go in the drawn instance at ['accounts', 0, 'notification_configs', 0]; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SyncAccountsRe",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
   {
    "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
@@ -53,21 +40,8 @@
    "class": "ComplyTestControllerResponse",
    "document": "compliance/comply-test-controller-response.json",
    "dump": "dump=pass",
-   "note": "#/oneOf/6/properties/recorded_calls/items/properties/payload/maxLength: maxLength exactly (65536) has nowhere to go in the drawn instance at ['recorded_calls', 0, 'payload']; #/oneOf/6/properties/recorded_calls/items/properties/payload/maxLength: maxLength one step inside (65535) has nowhere to go in the drawn instance at ['recorded_calls', 0, 'payload']; narrower than its document [url_parsing at",
+   "note": "#/oneOf/6/properties/recorded_calls/items/properties/payload/maxLength: maxLength exactly (65536) placed at ['recorded_calls', 0, 'payload'] makes a payload the document refuses, so it says nothing about the class; #/oneOf/6/properties/recorded_calls/items/properties/payload/maxLength: maxLength one step inside (65535) placed at ['recorded_calls', 0, 'payload'] makes a payload the document refuses",
    "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "UpstreamTrafficSuccess",
-   "document": "compliance/comply-test-controller-response.json",
-   "dump": "dump=pass",
-   "note": "#/oneOf/6/properties/recorded_calls/items/properties/payload/maxLength: maxLength exactly (65536) has nowhere to go in the drawn instance at ['recorded_calls', 0, 'payload']; #/oneOf/6/properties/recorded_calls/items/properties/payload/maxLength: maxLength one step inside (65535) has nowhere to go in the drawn instance at ['recorded_calls', 0, 'payload']; narrower than its document [url_parsing at",
-   "pointer": "#/oneOf/6",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:widening:unproved_widening",
@@ -387,32 +361,6 @@
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "ListCreativesResponse",
-   "document": "creative/list-creatives-response.json",
-   "dump": "dump=pass",
-   "note": "#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/2/if: a value the if admits has nowhere to go in the drawn instance at ['creatives', 0, 'assignments', 'assigned_packages', 0]; #/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3/if: a value the if admits has nowhere to go in the drawn instance at ['creatives', 0",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SyncPlansRequest",
-   "document": "governance/sync-plans-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/plans/items/allOf/0/if: a value the if admits could not be drawn: the constructed value is refused on required, type; #/properties/plans/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on required, type",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
    "class": "Annotated",
    "document": "media-buy/accept-proposal-response.json",
@@ -430,7 +378,7 @@
    "class": "BuildCreativeResponse",
    "document": "media-buy/build-creative-response.json",
    "dump": "dump=pass",
-   "note": "#/oneOf/2/if: a value the if admits could not be drawn: the node states no constructible instance: no branch of oneOf admits an instance; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for BuildCreativeResponse push_notification_config.url   Input shou",
+   "note": "#/oneOf/2/if: a value the if admits could not be drawn: the constructed value is refused on oneOf; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for BuildCreativeResponse push_notification_config.url   Input should be a valid URL, empty host [typ; the",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -495,7 +443,7 @@
    "class": "GetReportingStatusResponse",
    "document": "media-buy/get-reporting-status-response.json",
    "dump": "dump=pass",
-   "note": "#/oneOf/0/oneOf/1/if: a value the if admits could not be drawn: the node states no constructible instance: no branch of oneOf admits an instance; narrower than its document [url_parsing at ('completed', 'summary', 'push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for GetReportingStatusResponse comp",
+   "note": "#/oneOf/0/oneOf/1/if: a value the if admits could not be drawn: the constructed value is refused on const, oneOf; narrower than its document [url_parsing at ('completed', 'summary', 'push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for GetReportingStatusResponse completed.summary.push_notification_",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=absent:4_of_5_conditionals_unreached",
@@ -508,7 +456,7 @@
    "class": "SuccessfulLookup",
    "document": "media-buy/get-reporting-status-response.json",
    "dump": "dump=pass",
-   "note": "#/oneOf/0/oneOf/1/if: a value the if admits could not be drawn: the node states no constructible instance: no branch of oneOf admits an instance; narrower than its document [url_parsing at ('summary', 'push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SuccessfulLookup summary.push_notification_c",
+   "note": "#/oneOf/0/oneOf/1/if: a value the if admits could not be drawn: the constructed value is refused on const, not, oneOf, required; narrower than its document [url_parsing at ('summary', 'push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for SuccessfulLookup summary.push_notification_config.url   Input",
    "pointer": "#/oneOf/0",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=absent:4_of_5_conditionals_unreached",
@@ -547,7 +495,7 @@
    "class": "RequestProposalsResponse",
    "document": "media-buy/request-proposals-response.json",
    "dump": "dump=pass",
-   "note": "#/properties/purchase_continuation/oneOf/1/allOf/0/if: a value the if admits could not be drawn: the node states no constructible instance: no branch of oneOf admits an instance; narrower than its document [url_parsing at ('proposals', 0, 'commercial_terms', 'purchases', 0, 'targeting_overlay', 'property_list', 'agent_url')] on format: at ('proposals',): at (0,): at ('commercial_terms',): at ('pur",
+   "note": "#/properties/purchase_continuation/oneOf/1/allOf/0/if: a value the if admits placed at ['purchase_continuation'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('proposals', 0, 'commercial_terms', 'purchases', 0, 'targeting_overlay', 'property_list', 'agent_url')] on format: at ('proposals',): at (0,): at ('commercial_terms',):",
    "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
@@ -633,7 +581,7 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2561,
+ "pass": 2565,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -662,15 +610,15 @@
   },
   "widening": {
    "absent": 2427,
-   "fail": 17,
-   "pass": 165
+   "fail": 13,
+   "pass": 169
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/311654d7c82d7253daed162a620e9eb6756ea25f0082aa52271cbdc19e8e6bad",
-  "head": "f91dd2387+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/204218f4fb06ddb29710083c1c70a004ca6828f5dd0b8daa7de827a6d9eca9df",
+  "head": "50eb74976+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 432.1,
- "seconds_per_pair": 0.1656
+ "seconds": 424.1,
+ "seconds_per_pair": 0.1626
 }
