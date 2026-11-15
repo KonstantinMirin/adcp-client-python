@@ -1,13 +1,26 @@
 {
  "causes": {
   "fail:accepts:model_refused_valid": 2,
-  "fail:accepts:witness_refused": 22,
+  "fail:accepts:witness_refused": 17,
   "fail:admits:model_refused_admitted": 8,
   "fail:widening:unproved_widening": 6
  },
  "graded": 2609,
- "not_pass": 38,
+ "not_pass": 33,
  "not_pass_rows": [
+  {
+   "accepts": "accepts=fail:witness_refused",
+   "admits": "admits=pass",
+   "class": "FormatsItemCustom",
+   "document": "adagents.json",
+   "dump": "dump=absent:no_instance_reached_the_dump",
+   "note": "the node refuses the value its own keywords construct, on anyOf, required; refused {\"format_kind\": \"custom\", \"params\": {}} at allOf/3/then/anyOf, allOf/3/then/anyOf/0/required, allOf/3/then/anyOf/1/required, allOf/3/then/required; narrower than its document [url_parsing at ('sample_render_url',)] on pattern: at ('sample_render_url',): a string '^https://' admits; the class refused it with 1 valida",
+   "pointer": "#/oneOf/1/properties/formats/items/allOf/0",
+   "refuses": "refuses=absent:no_payload",
+   "undeclared": "undeclared=absent:unrun",
+   "verdict": "verdict=fail:accepts:witness_refused",
+   "widening": "widening=absent:no_declarations"
+  },
   {
    "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
@@ -101,12 +114,12 @@
   },
   {
    "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "CreativeRepresentationFormatId",
-   "document": "core/creative-representation.json",
+   "admits": "admits=pass",
+   "class": "MediaBuyCommitmentResponseCompleted",
+   "document": "core/async-response-data.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on not, required; refused {\"format_id\": {\"agent_url\": \"https://example.com\", \"id\": \"a\"}, \"assets\": {}} at allOf/0/required, allOf/1/not, allOf/1/required; screened against the distributed node; the document admits none of the 425 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no i",
-   "pointer": "#/allOf/0",
+   "note": "the node refuses the value its own keywords construct, on const; refused {\"status\": \"completed\", \"media_buy_id\": \"a\", \"revision\": 1, \"accepted_proposal\": {\"proposal_id\": \"a\", \"proposal_kind\": \"new_media_buy\", \"proposal_status\": \"draft\", \"name\": \"a\", \"commercial_terms\": {\"brand\": {\"domain\": \"a\"}, \"purchases\": [{\"product_id\": \"a\", \"pricing_option_id\": \"a\", \"pricing\": {\"pricing_option_id\": \"a\", \"pric",
+   "pointer": "#/anyOf/10",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
    "verdict": "verdict=fail:accepts:witness_refused",
@@ -115,10 +128,10 @@
   {
    "accepts": "accepts=fail:witness_refused",
    "admits": "admits=absent:no_witness",
-   "class": "CreativeRepresentationFormatKind",
+   "class": "CreativeRepresentationFormatId",
    "document": "core/creative-representation.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"format_kind\": \"image\", \"assets\": {}} at allOf/0/required; screened against the distributed node; the document admits none of the 425 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on not; refused {\"assets\": {}, \"representation_id\": \"a\", \"source\": {\"system\": \"a\", \"source_representation\": \"a\"}, \"format_kind\": \"image\", \"format_id\": {\"agent_url\": \"https://example.com\", \"id\": \"a\"}} at allOf/1/not, allOf/5/not; screened against the distributed node; the document admits none of the 425 classes the construction builds over this",
    "pointer": "#/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -153,11 +166,24 @@
   },
   {
    "accepts": "accepts=fail:witness_refused",
+   "admits": "admits=pass",
+   "class": "PackageFormatSnapshotCustom",
+   "document": "core/package-format-snapshot.json",
+   "dump": "dump=absent:no_instance_reached_the_dump",
+   "note": "the node refuses the value its own keywords construct, on anyOf, required; refused {\"format_kind\": \"custom\", \"params\": {}} at allOf/5/then/anyOf, allOf/5/then/anyOf/0/required, allOf/5/then/anyOf/1/required, allOf/5/then/required; narrower than its document [url_parsing at ('sample_render_url',)] on pattern: at ('sample_render_url',): a string '^https://' admits; the class refused it with 1 valida",
+   "pointer": "#/allOf/0",
+   "refuses": "refuses=absent:no_payload",
+   "undeclared": "undeclared=absent:unrun",
+   "verdict": "verdict=fail:accepts:witness_refused",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=fail:witness_refused",
    "admits": "admits=absent:no_witness",
    "class": "PostalAreaAUPostcode",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"AU\", \"system\": \"postcode\"} at allOf/0/required; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"AU\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -170,7 +196,7 @@
    "class": "PostalAreaBRCep",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"BR\", \"system\": \"cep\"} at allOf/0/required; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"BR\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -183,20 +209,7 @@
    "class": "PostalAreaCA",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"CA\", \"system\": \"fsa\"} at allOf/0/required; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "PostalAreaCountrySystem",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"AA\", \"system\": \"postal_code\"} at allOf/0/required; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on enum; refused {\"country\": \"CA\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/enum; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -209,7 +222,7 @@
    "class": "PostalAreaFRCodePostal",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"FR\", \"system\": \"code_postal\"} at allOf/0/required; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"FR\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -222,7 +235,7 @@
    "class": "PostalAreaGB",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"GB\", \"system\": \"outward\"} at allOf/0/required; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on enum; refused {\"country\": \"GB\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/enum; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -235,7 +248,7 @@
    "class": "PostalAreaINPin",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"IN\", \"system\": \"pin\"} at allOf/0/required; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"IN\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -248,7 +261,7 @@
    "class": "PostalAreaPlz",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"DE\", \"system\": \"plz\"} at allOf/0/required; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on const; refused {\"country\": \"DE\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/const; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
@@ -261,86 +274,8 @@
    "class": "PostalAreaUS",
    "document": "core/postal-area.json",
    "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"US\", \"system\": \"zip\"} at allOf/0/required; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
+   "note": "the node refuses the value its own keywords construct, on enum; refused {\"country\": \"US\", \"system\": \"postal_code\", \"values\": [\"\"]} at allOf/1/properties/system/enum; screened against the distributed node; the document admits none of the 8 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
    "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "PostalAreaZAPostalCode",
-   "document": "core/postal-area.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"country\": \"ZA\", \"system\": \"postal_code\"} at allOf/0/required; screened against the distributed node; the document admits none of the 6 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/anyOf/0/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "VendorPricingOptionCpm",
-   "document": "core/vendor-pricing-option.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"model\": \"cpm\", \"cpm\": 0, \"currency\": \"AAA\"} at allOf/0/required; screened against the distributed node; the document admits none of the 9 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/allOf/1",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "VendorPricingOptionCustom",
-   "document": "core/vendor-pricing-option.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"model\": \"custom\", \"description\": \"a\", \"metadata\": {\"summary_for_operator\": \"a\"}} at allOf/0/required; screened against the distributed node; the document admits none of the 15 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew",
-   "pointer": "#/allOf/1",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "VendorPricingOptionFlatFee",
-   "document": "core/vendor-pricing-option.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"model\": \"flat_fee\", \"amount\": 0, \"period\": \"monthly\", \"currency\": \"AAA\"} at allOf/0/required; screened against the distributed node; the document admits none of the 14 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no inst",
-   "pointer": "#/allOf/1",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "VendorPricingOptionPerUnit",
-   "document": "core/vendor-pricing-option.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"model\": \"per_unit\", \"unit\": \"\", \"unit_price\": 0, \"currency\": \"AAA\"} at allOf/0/required; screened against the distributed node; the document admits none of the 10 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/allOf/1",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "VendorPricingOptionPercentOfMedia",
-   "document": "core/vendor-pricing-option.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on required; refused {\"model\": \"percent_of_media\", \"percent\": 0, \"currency\": \"AAA\"} at allOf/0/required; screened against the distributed node; the document admits none of the 14 classes the construction builds over this node's subtree, so the class was never asked; the accepts check drew no instance; the accepts check drew no instance",
-   "pointer": "#/allOf/1",
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
    "verdict": "verdict=fail:accepts:witness_refused",
@@ -503,12 +438,12 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2571,
+ "pass": 2576,
  "per_check": {
   "accepts": {
    "absent": 0,
-   "fail": 24,
-   "pass": 2585
+   "fail": 19,
+   "pass": 2590
   },
   "admits": {
    "absent": 17,
@@ -516,19 +451,19 @@
    "pass": 2582
   },
   "dump": {
-   "absent": 24,
+   "absent": 19,
    "fail": 0,
-   "pass": 2585
+   "pass": 2590
   },
   "refuses": {
-   "absent": 28,
+   "absent": 23,
    "fail": 0,
-   "pass": 2581
+   "pass": 2586
   },
   "undeclared": {
-   "absent": 387,
+   "absent": 381,
    "fail": 0,
-   "pass": 2222
+   "pass": 2228
   },
   "widening": {
    "absent": 2427,
@@ -537,10 +472,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/70fedb0598b3b1c1b711569cb64da19fdea32930f7b3a1491ed5a5f7a4bfff6f",
-  "head": "34a021e16+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/21c4b762549ccc2420310f24d7c8cacf58f272a117c1f539cd31e16ae2530bb4",
+  "head": "82dd1d8ac+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 424.6,
- "seconds_per_pair": 0.1627
+ "seconds": 430.6,
+ "seconds_per_pair": 0.165
 }

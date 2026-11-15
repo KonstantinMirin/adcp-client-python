@@ -7645,6 +7645,11 @@ def _check_pair(
     admitted: tuple[tuple[Any, str, str], ...] = ()
     #: Why there is no set, in the words the row will carry.  A fact about the CONSTRUCTION
     #: and never about a draw, which is the whole of what this check's ``unrun`` now means.
+    #: Imported HERE and not at module scope, which is this module's rule for this name
+    #: (two other call sites do the same): ``codegen.verify.witness`` imports the harness's
+    #: own readers, so a module-level import is a cycle.
+    from codegen.verify import witness as _witness
+
     admits_absent = "no construction was supplied, so there is no witness set"
     #: **A DISTRIBUTED BRANCH IS CONSULTED AT ITS BASE'S REF** (``adcp-client-python-jt6r``),
     #: and the branch is TOLD rather than the pointer redirected (``witness_branch``
@@ -7682,7 +7687,32 @@ def _check_pair(
                 #: failure traded for no measurement is the same trade architecture §10
                 #: counts twice as a defect, and it is the trade four earlier attempts here
                 #: made too.
-                answer = construction.applied(witness_ref.document, pointer)
+                #: **A SUBSTITUTED NODE IS WITNESSED FROM ITSELF, and this is the SECOND
+                #: time it is tried** (``adcp-client-python-jt6r``).  Where
+                #: ``_distributed_branch`` built the node, no pointer names it: asking the
+                #: construction at the BASE's pointer answers from the TARGET document's
+                #: conjunction while the checks screen against the referring document's, so
+                #: the witness satisfies the branch and not the screen -- 17 of the 22
+                #: ``accepts:witness_refused`` rows, all reading "screened against the
+                #: distributed node ... refused ... at allOf/0/required".
+                #:
+                #: It was tried at verify31 and cost 15 pairs their witness entirely,
+                #: because ``least_instance`` declined on the composed node.  It no longer
+                #: does: the builder has since gained local ``$ref`` resolution, a
+                #: travelling definitions store, union consumption and the branch screen.
+                #: Measured on ``core/creative-representation.json#/allOf/0`` before this
+                #: line was written -- built and CONFORMS, where the first attempt declined:
+                #:
+                #:     {'assets': {}, 'representation_id': 'a', 'source': {...}}
+                #:
+                #: ``least_instance`` takes STATEMENTS rather than a pointer, which is why
+                #: it fits: the node in hand is the node witnessed, so the two cannot
+                #: disagree.
+                answer = (
+                    _witness.least_instance([drawn_from])
+                    if distributed is not None
+                    else construction.applied(witness_ref.document, pointer)
+                )
                 built = [answer.value] if answer.held else None
                 rep.witness_absent = "" if answer.held else answer.reason[:300]
             except OverBudget:
