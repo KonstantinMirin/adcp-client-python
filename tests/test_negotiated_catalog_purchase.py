@@ -318,7 +318,7 @@ async def test_compact_list_buy_preserves_real_versions_and_country_filter() -> 
     assert listing.feed_version == "seller-feed-1"
     assert listing.compatibility.lifecycle is MediaBuyLifecycle.COMPACT
     assert listing.compatibility.compatibility is MediaBuyCompatibility.NATIVE
-    assert client.list_requests[0].criteria.offer_filters.countries[0].root == "US"
+    assert client.list_requests[0].criteria.offer_filters.countries[0] == "US"
     sent = client.buy_requests[0]
     assert sent.feed_version == "seller-feed-1"
     assert sent.pricing_version == "seller-price-1"

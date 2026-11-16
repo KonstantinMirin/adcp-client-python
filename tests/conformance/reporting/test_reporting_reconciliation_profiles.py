@@ -94,8 +94,8 @@ async def test_generated_provider_identifiers_round_trip_without_rewriting(
     resource = replace(
         s.outcome.resource,
         location=generated.resource.location,
-        native_version_ref=generated.resource.native_version_ref.root,
-        reader_compatibility=tuple(item.root for item in generated.resource.reader_compatibility),
+        native_version_ref=generated.resource.native_version_ref,
+        reader_compatibility=tuple(generated.resource.reader_compatibility),
         object_refs=(object_ref,) if method == "file_transfer" else (),
     )
     verification = replace(
