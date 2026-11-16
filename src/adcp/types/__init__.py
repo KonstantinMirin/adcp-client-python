@@ -267,6 +267,35 @@ def __getattr__(name: str) -> object:
         return getattr(_legacy_names_module(), name)
     except AttributeError:
         pass
+    # **AND AFTER ALL OF THEM, UPSTREAM'S OWN MODULE PATH, BECAUSE A WORD BOUND THERE AND
+    # NOT HERE IS THE SAME SURFACE ANSWERING TWO WAYS.**  ``adcp.types.aliases`` exists at
+    # upstream's path so their kept machinery's module-scope ``from adcp.types.aliases
+    # import <Name>`` resolves, and the words it binds are decided by the pointer their
+    # subject carries.  It was not in this chain, so 23 of them resolved at ``adcp`` and at
+    # ``adcp.types.aliases`` and RAISED at ``adcp.types`` -- and the one place that bit was
+    # a FUNCTION-scope ``from adcp.types import SyncCreativeResult`` in
+    # ``adcp/server/_creative_batch.py``, which no import and no collection error can show
+    # you because it waits for a caller.  One layer closes the class of it rather than the
+    # two instances.
+    #
+    # **CONSULTED LAST, AND THAT IS WHAT MAKES IT SAFE RATHER THAN TIDY.**  Measured over
+    # the module's 127 words against the chain above: 103 already resolve here to the SAME
+    # object, 23 resolve nowhere and are what this line adds, and exactly ONE --
+    # ``AuthorizedAgent`` -- resolves here to a different subject, ``adcp.types.registry``'s
+    # restored model that ``legacy_names`` binds flat.  Reached last, that word keeps the
+    # class it already had: a public word changing meaning while staying importable is the
+    # outcome ``docs/plan/rebuild-plan.md`` §4 calls the worst available, and a layer that
+    # can only ADD a spelling cannot cause it.  (``adcp``'s own ``AuthorizedAgent`` is the
+    # union, which is upstream's binding for the flat word; the two subjects under one word
+    # are recorded in ``FINDINGS-rootnames.md`` as a question for the owner.)
+    #
+    # It is NOT in ``_NOT_ROUTED``: asking for the attribute ``aliases`` reaches this line,
+    # finds no ``aliases`` attribute ON the aliases module, and falls through to the
+    # submodule import below, which is where that name has always been answered.
+    try:
+        return getattr(_alias_path_module(), name)
+    except AttributeError:
+        pass
 
     # **AND A SUBMODULE OF OURS IS THE IMPORT SYSTEM'S OWN THIRD STEP, which a lazy facade
     # is the one kind of package that has to perform for itself.**  ``from M import N``
@@ -314,6 +343,19 @@ def _alias_module():
 #: import them.  All three are compatibility layers of this package and each is reached by
 #: ``import_module`` below rather than by an attribute.
 _NOT_ROUTED = ("compat", "_adapter", "_restored", "legacy_names")
+
+
+def _alias_path_module():
+    """``adcp.types.aliases``, reached by ``import_module`` like every other layer.
+
+    Upstream's own module path, served from our surface.  ``import_module`` and never
+    ``from adcp.types import aliases``, for :func:`_alias_module`'s measured reason: the
+    import system answers a fromlist entry by asking ``hasattr`` on the parent first, which
+    re-enters :func:`__getattr__` and recurses until the stack ends.
+    """
+    import importlib
+
+    return importlib.import_module("adcp.types.aliases")
 
 
 def _legacy_names_module():
