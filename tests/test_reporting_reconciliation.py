@@ -101,6 +101,12 @@ def test_capability_uses_public_reporting_delivery_model() -> None:
     reporting = ReportingDeliveryCapabilities.model_validate(
         {
             "supported": True,
+            # `core/reporting-delivery-capabilities.json` requires both of these and
+            # states each as a `const`, so the document supplies the value; `receipt_task`
+            # is the `const` its `#/allOf/4` requires under `reconciled_billing`.
+            "configuration_task": "sync_accounts",
+            "status_task": "get_reporting_status",
+            "receipt_task": "sync_reporting_receipts",
             "managed_delivery": True,
             "reconciled_billing": True,
             "offerings": [
@@ -115,6 +121,9 @@ def test_capability_uses_public_reporting_delivery_model() -> None:
                         "version": "1",
                         "schema_uri": "https://schemas.example/reporting/billing-v1.json",
                         "schema_sha256": "c" * 64,
+                        # Required by the reporting_profile node, both `const`.
+                        "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+                        "schema_ref_policy": "local_fragment_only",
                         "grain": "media_buy_day",
                         "primary_keys": ["media_buy_id", "date"],
                         "canonicalization_id": "rows-v1",

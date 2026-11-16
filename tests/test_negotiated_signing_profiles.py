@@ -44,6 +44,13 @@ def make_client(*, override=None, covers="forbidden"):
     )
     client._capabilities = GetAdcpCapabilitiesResponse.model_validate(
         {
+            # Required one level up: `protocol/get-adcp-capabilities-response.json`
+            # composes `core/protocol-envelope.json` at `#/allOf/1`, which requires
+            # `status`.  It is the 9-member `enums/task-status.json` there, and
+            # "completed" is the member the envelope names for this very task --
+            # "including synchronous metadata responses (e.g. `get_adcp_capabilities`)
+            # where the value is `completed`".
+            "status": "completed",
             "adcp": {
                 "major_versions": [3],
                 "supported_versions": ["3.0", "3.1"],

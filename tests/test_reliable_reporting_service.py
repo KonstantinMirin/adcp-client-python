@@ -665,6 +665,9 @@ async def test_decisioning_caller_uses_live_principal_not_account_cache_identity
 async def test_sdk_delivery_floats_publish_canonical_revision(with_packages: bool) -> None:
     response = GetMediaBuyDeliveryResponse.model_validate(
         {
+            # Required one level up by `core/protocol-envelope.json` (`#/allOf/1`);
+            # 9-member enum there, "completed" chosen for a finished delivery read.
+            "status": "completed",
             "reporting_period": {
                 "start": "2026-11-01T02:00:00Z",
                 "end": "2026-11-01T03:00:00Z",

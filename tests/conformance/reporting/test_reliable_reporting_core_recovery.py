@@ -95,6 +95,11 @@ async def core_factory(request: Any) -> AsyncIterator[tuple[ServiceFactory, date
 def _sdk_delivery(start: datetime, end: datetime, *, packages: bool) -> GetMediaBuyDeliveryResponse:
     return GetMediaBuyDeliveryResponse.model_validate(
         {
+            # Required one level up: `core/protocol-envelope.json` composes into this
+            # document at `#/allOf/1` and requires `status` there.  It is the 9-member
+            # `enums/task-status.json`; "completed" is the member chosen, this being a
+            # synchronous delivery read that has finished.
+            "status": "completed",
             "reporting_period": {"start": start, "end": end},
             "media_buy_deliveries": [
                 {
