@@ -129,14 +129,16 @@ def test_repeatable_asset_group_discriminator_is_stable() -> None:
     )
 
 
-def test_format_category_module_raises_migration_pointer() -> None:
-    # MIGRATION_v3_to_v4: `FormatCategory` was removed from the generated
-    # schemas in AdCP 3.0. Importing the old module path now raises a
-    # guided ImportError instead of ModuleNotFoundError.
+def test_format_category_raises_a_migration_pointer() -> None:
+    # MIGRATION_v3_to_v4: `FormatCategory` was removed from the schemas in
+    # AdCP 3.0 and the pinned bundle states no such document, so no module
+    # compiles to it and no module path can carry the note. The guided
+    # ImportError is served at the NAME, by `adcp._REMOVED_IN_V4`, which is
+    # where an adopter's `from adcp import FormatCategory` arrives.
+    import adcp
+
     with pytest.raises(ImportError, match="MIGRATION_v3_to_v4"):
-        from adcp.types.domains.enums.format_category import (  # noqa: F401
-            FormatCategory,
-        )
+        adcp.FormatCategory  # noqa: B018
 
 
 def test_all_aliases_exported_from_adcp_types() -> None:
@@ -155,10 +157,9 @@ def test_all_aliases_exported_from_adcp_types() -> None:
     assert not missing, f"Asset aliases missing from adcp.types: {missing}"
 
 
-# Asset-content types: `<Type>Content` is the public name for the
-# payload-describing types (issue #221). The pre-4.0 `<Type>Asset` names
-# collided against `<Type>FormatAsset` (slot-describing) and were removed
-# from the public surface in 4.0.
+# Asset-content types: `<Type>Content` is a public name for the
+# payload-describing types (issue #221), and it is a NAME: each resolves to
+# the class compiled from one `core/assets/<type>-asset.json` document.
 #
 # These classes describe an actual asset payload (codec, duration, URL,
 # dimensions) rather than a slot inside a format definition, so they
@@ -180,17 +181,26 @@ CONTENT_TYPE_EXPECTATIONS: dict[str, str] = {
     ("content_name", "expected_module_suffix"),
     list(CONTENT_TYPE_EXPECTATIONS.items()),
 )
-def test_content_type_resolves_to_generated_payload_class(
+def test_content_type_resolves_to_the_class_its_document_compiles_to(
     content_name: str, expected_module_suffix: str
 ) -> None:
-    # Each public `<Type>Content` must resolve to the corresponding
-    # generated payload class under ``domains/core/assets/*``.
+    # Each public `<Type>Content` must resolve to the payload class compiled
+    # from `core/assets/<type>-asset.json`. Graded on the document the class
+    # declares (`__adcp_schema__`) and on the module the compiler wrote it to;
+    # `adcp.types.domains.core.assets.<x>` is a second NAME for that module and
+    # is not what `__module__` reports.
     cls = getattr(adcp_types, content_name)
-    expected_module = f"adcp.types.domains.core.assets.{expected_module_suffix}"
+    expected_module = f"adcp.types._schemas.core.assets.{expected_module_suffix}"
     assert cls.__module__ == expected_module, (
         f"{content_name} resolved to {cls.__module__}.{cls.__name__}; "
         f"expected a class from {expected_module}."
     )
+
+    expected_document = f"core/assets/{expected_module_suffix.replace('_', '-')}.json"
+    assert (cls.__adcp_schema__.document, cls.__adcp_schema__.pointer) == (
+        expected_document,
+        "#",
+    ), f"{content_name} is {cls.__adcp_schema__}; expected the root of {expected_document}."
 
 
 def test_content_types_do_not_collide_with_format_assets() -> None:
