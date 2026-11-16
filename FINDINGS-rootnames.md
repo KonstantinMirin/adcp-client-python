@@ -9,14 +9,41 @@ after    745  0
 ```
 
 **`PYTHONPATH=src` IS NOT DECORATION, AND THE GATE AS TASK.md SPELLS IT READS ANOTHER
-CHECKOUT.** The venv's editable `.pth` names `/srv/ws/adcp-client-python/src`, so a bare
-`.venv/bin/python -c "import adcp"` in this worktree resolves
-`/srv/ws/adcp-client-python/src/adcp/__init__.py` and reports `748 27` however this tree is
-edited — which is the hazard `./check`'s own shell preamble is written about. Measured on
-this tree with `src` first, the pre-change figure is the same `748 27` and the same 27
-names, so the work list was right; the reading was of a sibling. `pytest` is unaffected
-(`pyproject.toml:452`, `pythonpath = [".", "src"]`) and so are `./check` and `./verify`,
-which set the path themselves. Every figure in this document is `src`-first.
+CHECKOUT.** This worktree's `.venv` is the main repo's, and it carries an editable install
+whose `.pth` names `/srv/ws/adcp-client-python/src`. So a bare
+`.venv/bin/python -c "import adcp"` here resolves
+`/srv/ws/adcp-client-python/src/adcp/__init__.py` — TRUNK's package, not this tree's — and
+answers `748 27` however this tree is edited. That is the hazard `./check`'s own shell
+preamble is written about, and it is why the gate looked unmoved after the work was done.
+
+**Which figures were read off the wrong tree: the opening census, and only that.** The
+first `748 27` in this document was taken with the bare command, so it described
+`/srv/ws/adcp-client-python`. Re-taken `src`-first against this tree at its own pre-change
+commit it is the **same** `748 27` with the **same** 27 names, so the work list was right
+and nothing in §1–§4 turns on the slip. Every other figure here already read this tree:
+`./check` and `./verify` set the path in their own preamble, `ruff check src/` resolves by
+path, `mypy` was run with `PYTHONPATH=.:src`, and `pytest` picks this tree up from
+`pyproject.toml:452` (`pythonpath = [".", "src"]`) — verified, `adcp.__file__` under pytest
+is `/srv/ws/wt-rootnames/src/adcp/__init__.py`.
+
+**THE FOUR GATES, RE-TAKEN WITH THE PREFIX ON EVERY ONE.**
+
+```
+PYTHONPATH=src .venv/bin/python -c "import adcp; print(len([n for n in adcp.__all__ if not hasattr(adcp,n)]))"
+    0                                                        (was 27)
+
+PYTHONPATH=src .venv/bin/python -m pytest tests/ -q --no-header -p no:randomly | tail -3
+    31 errors during collection, and NOT ONE of them names one of the 27  (was 2 that did)
+
+./check
+    emitted 1059 / refused 0 (deferred 0, verdict 0); accounted 1059      (unmoved)
+
+PYTHONPATH=src .venv/bin/ruff check src/ | tail -2
+    Found 308 errors                                                      (was 310)
+```
+
+Gates 1, 3 and 4 pass. Gate 2 does not reach zero and cannot from this write scope — §5(a)
+is the measurement of why, and the half of it that belongs to these 27 names is met.
 
 **24 BIND, 3 DROP, 0 for the owner.** Every one of the 27 was decided by the pointer its
 subject carries, never by the spelling, and the ground is below. `./check` is unmoved at
@@ -225,7 +252,8 @@ ruff check src/                      310 errors             ->  308
 
 ### (a) The task's premise about collection errors is not what the suite reports
 
-TASK says the 27 "block **31** test files from COLLECTING". Measured, before any change,
+TASK says the 27 "block **31** test files from COLLECTING". Measured `src`-first
+(`PYTHONPATH=src .venv/bin/python -m pytest tests/ --co -q`), before any change,
 **2** of the 31 collection errors were caused by one of the 27 — `test_discriminated_unions.py`
 and `test_type_aliases.py`, both `ImportError: cannot import name 'InlineDaastAsset' from
 'adcp'`. The other 29 have 25 distinct unrelated causes. After this change **none** of the
