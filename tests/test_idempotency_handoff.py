@@ -160,11 +160,17 @@ class Seller(DecisioningPlatform):
             # Needs a person: hand the call to an external review workflow.
             return ctx.handoff_to_workflow(lambda task_ctx: self.enqueued.append(task_ctx.id))
         self.created += 1
+        # Two status fields, and 'active' belongs to the second. The envelope's
+        # ``status`` is a TaskStatus (``core/protocol-envelope.json`` one
+        # ``allOf`` up); ``media_buy_status`` is the lifecycle state, and
+        # ``create-media-buy-response.json`` says so itself: "This field
+        # carries the media buy lifecycle state; top-level `status` ...".
         return CreateMediaBuySuccessResponse(
             media_buy_id=f"mb_{self.created}",
             confirmed_at="2026-05-01T00:00:00Z",
             revision=1,
-            status="active",
+            status="completed",
+            media_buy_status="active",
             packages=[Package(package_id="pkg_1", product_id="prod_1")],
         )
 
