@@ -39,7 +39,10 @@ def installation(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
     with zipfile.ZipFile(wheel) as archive:
         assert "adcp/notification_outbox.sql" in archive.namelist()
         assert "adcp/py.typed" in archive.namelist()
-        assert "adcp/types/v32.pyi" in archive.namelist()
+        # The version-pinned typing surface ships as a real module, not a stub:
+        # this emission writes ``adcp/types/v32.py`` and there is no ``.pyi``
+        # beside it.
+        assert "adcp/types/v32.py" in archive.namelist()
     uv = shutil.which("uv")
     assert uv is not None, "uv is required for isolated artifact installation"
     venv = directory / "installed"
@@ -86,7 +89,13 @@ def test_installed_public_import_schema_and_typing(installation: tuple[Path, Pat
     fixture = directory / "adopter.py"
     fixture.write_text((ROOT / "tests/type_checks/notification_outbox.py").read_text())
     config = directory / "mypy.ini"
-    config.write_text("[mypy]\nplugins = adcp.types.mypy_plugin\n")
+    # No plugin line. `adcp.types.mypy_plugin` was upstream's 39-line plugin
+    # for rewriting `SchemaVariant[T]` to `Any`, and this compiler emits no
+    # `SchemaVariant` — the decision and its reason are recorded at the
+    # `[tool.mypy]` block in pyproject.toml. Naming it here made mypy abort at
+    # `Error importing plugin` before checking the adopter fixture at all,
+    # which is the one thing this test is for.
+    config.write_text("[mypy]\n")
     output = run(
         [
             str(python),

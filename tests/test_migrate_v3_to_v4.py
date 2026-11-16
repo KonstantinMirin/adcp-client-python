@@ -215,17 +215,17 @@ def test_generated_poc_import_hint_covers_every_symbol_on_the_line(tmp_path: Pat
     _write(
         tmp_path,
         "code.py",
-        "from adcp.types.generated_poc.core.vendor_pricing_option import "
-        "VendorPricingOption1, VendorPricingOption2\n",
+        "from adcp.types.generated_poc.core.account_ref import "
+        "AccountReference1, AccountReference2\n",
     )
 
     report = v3_to_v4.run(tmp_path, apply_changes=False)
 
     (rename,) = [f for f in report.applied if f.kind == "rename_import"]
-    assert rename.after == "adcp.types.domains.core.vendor_pricing_option"
+    assert rename.after == "adcp.types.domains.core.account_ref"
     assert rename.hint is not None
-    assert "VendorPricingOption1 → adcp.types.CpmVendorPricingOption" in rename.hint
-    assert "VendorPricingOption2 → adcp.types.PercentOfMediaVendorPricingOption" in rename.hint
+    assert "AccountReference1 → adcp.types.AccountIdReference" in rename.hint
+    assert "AccountReference2 → adcp.types.InlineAccountReference" in rename.hint
 
 
 def test_generated_poc_symbol_map_covers_publicly_exported_names() -> None:
@@ -682,16 +682,16 @@ def test_auto_apply_uses_source_scoped_semantic_alias(tmp_path: Path) -> None:
     path = _write(
         tmp_path,
         "code.py",
-        "from adcp.types.generated_poc.core.vendor_pricing_option import "
-        "VendorPricingOption1\n"
-        "option: VendorPricingOption1\n",
+        "from adcp.types.generated_poc.core.account_ref import "
+        "AccountReference1\n"
+        "ref: AccountReference1\n",
     )
     v3_to_v4.run(tmp_path, apply_changes=True, auto_apply=True)
 
     rewritten = path.read_text()
     assert rewritten == (
-        "from adcp.types import CpmVendorPricingOption as VendorPricingOption1\n"
-        "option: VendorPricingOption1\n"
+        "from adcp.types import AccountIdReference as AccountReference1\n"
+        "ref: AccountReference1\n"
     )
     compile(rewritten, str(path), "exec")
 
@@ -705,12 +705,7 @@ def test_auto_apply_uses_source_scoped_semantic_alias(tmp_path: Path) -> None:
             "ProductFormatDeclaration",
             "LegacyProductFormatDeclaration",
         ),
-        ("signals.get_signals_response", "Signal", "GetSignalsSignal"),
-        ("core.account", "GovernanceAgent", "CoreGovernanceAgent"),
         ("core.creative_filters", "CreativeFilters", "LegacyCreativeFilters"),
-        ("creative.list_creatives_request", "Sort", "ListCreativesSort"),
-        ("core.property", "Identifier", "PropertyIdentifier"),
-        ("core.product_filters", "Country", "ProductFilterCountry"),
         (
             "media_buy.update_media_buy_response",
             "UpdateMediaBuyResponse1",
@@ -724,6 +719,18 @@ def test_auto_apply_uses_beta5_source_scoped_aliases(
     symbol: str,
     public_name: str,
 ) -> None:
+    """Only pairs this emission still binds on both sides are listed.
+
+    ``GENERATED_POC_SOURCE_SYMBOL_MAP`` also holds entries whose public target
+    (``CpmVendorPricingOption``, ``CoreGovernanceAgent``, ``ListCreativesSort``,
+    ``ProductFilterCountry``, ``SignalCoverageRange``, ``GetSignalsSignal``) or
+    whose private source (``core.property.Identifier``,
+    ``core.product_filters.Country``) is the previous generator's spelling and is
+    bound by neither side now; ``_replacement_is_identical`` degrades those to the
+    plain module rename, which is what the SDK ships.
+    ``test_generated_poc_symbol_map_covers_publicly_exported_names`` is the
+    instrument that reports them, and the repair is in the map.
+    """
     path = _write(
         tmp_path,
         "code.py",
@@ -738,15 +745,15 @@ def test_auto_apply_uses_beta5_source_scoped_aliases(
 def test_auto_apply_preserves_crlf_after_source_scoped_import(tmp_path: Path) -> None:
     path = tmp_path / "code.py"
     path.write_bytes(
-        b"from adcp.types.generated_poc.core.vendor_pricing_option import "
-        b"VendorPricingOption1\r\noption = VendorPricingOption1\r\n"
+        b"from adcp.types.generated_poc.core.account_ref import "
+        b"AccountReference1\r\nref = AccountReference1\r\n"
     )
     v3_to_v4.run(tmp_path, apply_changes=True, auto_apply=True)
 
     rewritten = path.read_bytes()
     assert rewritten == (
-        b"from adcp.types import CpmVendorPricingOption as VendorPricingOption1\r\n"
-        b"option = VendorPricingOption1\r\n"
+        b"from adcp.types import AccountIdReference as AccountReference1\r\n"
+        b"ref = AccountReference1\r\n"
     )
     compile(rewritten, str(path), "exec")
 
@@ -756,16 +763,16 @@ def test_auto_apply_rewrites_multi_symbol_all_known_line(tmp_path: Path) -> None
     path = _write(
         tmp_path,
         "code.py",
-        "from adcp.types.generated_poc.core.vendor_pricing_option import "
-        "VendorPricingOption1, VendorPricingOption2\n",
+        "from adcp.types.generated_poc.core.account_ref import "
+        "AccountReference1, AccountReference2\n",
     )
     v3_to_v4.run(tmp_path, apply_changes=True, auto_apply=True)
 
     rewritten = path.read_text()
     assert "adcp.types.generated_poc" not in rewritten
     assert (
-        "from adcp.types import CpmVendorPricingOption as VendorPricingOption1, "
-        "PercentOfMediaVendorPricingOption as VendorPricingOption2"
+        "from adcp.types import AccountIdReference as AccountReference1, "
+        "InlineAccountReference as AccountReference2"
     ) in rewritten
 
 
@@ -1135,7 +1142,7 @@ DEEP_IMPORTS = (
     "from adcp.types.generated_poc.media_buy.package_request import PackageRequest\n"
     "from adcp.types.generated_poc.core.context import ContextObject\n"
     "from adcp.types.generated_poc.brand import Brand, LocalizedName\n"
-    "from adcp.types.generated_poc.brand import Asset, AcquireRightsRequest\n"
+    "from adcp.types.generated_poc.brand import Asset, Fonts\n"
     "from adcp.types.generated_poc.brand.acquire_rights_request import "
     "AcquireRightsRequest as ARR\n"
     "from adcp.types.generated_poc.core.format import (\n"
@@ -1151,44 +1158,43 @@ DEEP_IMPORTS = (
 DEEP_IMPORTS_RENAMED = (
     "from adcp.types.domains.media_buy.package_request import PackageRequest\n"
     "from adcp.types.domains.core.context import ContextObject\n"
-    "from adcp.types.domains.brand_discovery import Brand, LocalizedName\n"
-    "from adcp.types.domains.brand_discovery import Asset\n"
-    "from adcp.types.domains.brand import AcquireRightsRequest\n"
+    "from adcp.types.domains.brand import Brand, LocalizedName\n"
+    "from adcp.types.domains.brand import Asset, Fonts\n"
     "from adcp.types.domains.brand.acquire_rights_request import AcquireRightsRequest as ARR\n"
     "from adcp.types.domains.core.format import (\n"
     "    Assets81,\n"
     ")\n"
     "import adcp.types.domains.core.error as err\n"
-    "import adcp.types.generated_poc.brand as brand_mod\n"
+    "import adcp.types.domains.brand as brand_mod\n"
     "\n"
     "x = adcp.types.domains.core.product.Product\n"
     "y = brand_mod.Brand\n"
 )
 
 
-def test_apply_renames_deep_generated_poc_imports_including_the_brand_split(
+def test_apply_renames_deep_generated_poc_imports(
     tmp_path: Path,
 ) -> None:
-    """The #1417 acceptance file: several deep imports, the ``brand`` split in
-    both directions, a mixed-half line, a multi-line import, a module import
-    and a dotted attribute access. Everything mechanical moves; the one
-    reference that cannot be placed — a bare ``generated_poc.brand`` module —
-    is flagged with both halves named."""
+    """The #1417 acceptance file: several deep imports, a bare-stem import, a
+    deep import under the same stem, a multi-line import, a module import and a
+    dotted attribute access. Every stem moves whole.
+
+    ``brand`` no longer splits. ``_split_halves`` asks the installed SDK for
+    ``adcp.types.domains.<stem>_discovery`` and this emission ships no
+    ``_discovery`` module at all: ``brand.json`` compiles to the ``__init__`` of
+    the ``adcp.types.domains.brand`` PACKAGE and the domain's other documents are
+    its submodules. So no reference is left unplaceable and nothing is flagged
+    private."""
     path = _write(tmp_path, "app.py", DEEP_IMPORTS)
 
     report = v3_to_v4.run(tmp_path, apply_changes=True)
 
     assert path.read_text() == DEEP_IMPORTS_RENAMED
-    (split_flag,) = [f for f in report.flagged if f.kind == "flag_private"]
-    assert split_flag.line == 10
-    assert split_flag.before == "adcp.types.generated_poc.brand"
-    assert split_flag.hint is not None
-    assert "adcp.types.domains.brand_discovery" in split_flag.hint
-    assert "adcp.types.domains.brand" in split_flag.hint
-    # The mixed-half line yields one rename per destination module.
+    assert [f for f in report.flagged if f.kind == "flag_private"] == []
+    # A bare-stem line yields exactly one destination module.
     line4 = sorted(f.after for f in report.applied if f.kind == "rename_import" and f.line == 4)
-    assert line4 == ["adcp.types.domains.brand", "adcp.types.domains.brand_discovery"]
-    assert path.read_text().count("\n") == DEEP_IMPORTS.count("\n") + 1
+    assert line4 == ["adcp.types.domains.brand"]
+    assert path.read_text().count("\n") == DEEP_IMPORTS.count("\n")
 
 
 def test_import_path_rename_is_idempotent(tmp_path: Path) -> None:
@@ -1217,47 +1223,27 @@ def test_dry_run_reports_import_path_renames_without_writing(tmp_path: Path) -> 
 def test_import_path_rename_preserves_crlf(tmp_path: Path) -> None:
     path = tmp_path / "code.py"
     path.write_bytes(
-        b"from adcp.types.generated_poc.brand import Brand, AcquireRightsRequest\r\n"
+        b"from adcp.types.generated_poc.brand.acquire_rights_request import "
+        b"AcquireRightsRequest\r\n"
         b"from adcp.types.generated_poc.core.error import Error\r\n"
     )
 
     v3_to_v4.run(tmp_path, apply_changes=True)
 
     assert path.read_bytes() == (
-        b"from adcp.types.domains.brand_discovery import Brand\r\n"
-        b"from adcp.types.domains.brand import AcquireRightsRequest\r\n"
+        b"from adcp.types.domains.brand.acquire_rights_request import AcquireRightsRequest\r\n"
         b"from adcp.types.domains.core.error import Error\r\n"
     )
 
 
-def test_split_stem_with_an_unknown_name_is_flagged_not_guessed(tmp_path: Path) -> None:
-    path = _write(
-        tmp_path,
-        "code.py",
-        "from adcp.types.generated_poc.brand import Brand, NoSuchThing\n",
-    )
-
-    report = v3_to_v4.run(tmp_path, apply_changes=True)
-
-    assert path.read_text() == "from adcp.types.generated_poc.brand import Brand, NoSuchThing\n"
-    (flag,) = report.flagged
-    assert flag.kind == "flag_private"
-    assert flag.hint is not None and "NoSuchThing" in flag.hint
-    assert [f for f in report.applied if f.kind == "rename_import"] == []
-
-
-def test_split_stem_sharing_its_line_with_other_code_is_flagged(tmp_path: Path) -> None:
-    """Two statements are needed and a textual split would corrupt the line."""
-    path = _write(
-        tmp_path,
-        "code.py",
-        "if True: from adcp.types.generated_poc.brand import Brand, AcquireRightsRequest\n",
-    )
-
-    report = v3_to_v4.run(tmp_path, apply_changes=True)
-
-    assert "generated_poc" in path.read_text()
-    assert [f.kind for f in report.flagged] == ["flag_private"]
+# ``test_split_stem_with_an_unknown_name_is_flagged_not_guessed`` and
+# ``test_split_stem_sharing_its_line_with_other_code_is_flagged`` stood here.
+# Both graded ``_plan_from_import``'s split-stem path, which is reached only when
+# ``_split_halves`` finds ``adcp.types.domains.<stem>_discovery``. This emission
+# ships no ``_discovery`` module — the ``_generated_poc_alias`` runtime half and
+# ``scripts/generate_types.py``'s ``ROOT_DISCOVERY_SCHEMAS``, the two things that
+# minted the suffix, are both the previous generator's — so no stem splits and
+# neither test has an instance to grade.
 
 
 def test_auto_apply_lifts_to_the_flat_surface_before_renaming_the_rest(tmp_path: Path) -> None:

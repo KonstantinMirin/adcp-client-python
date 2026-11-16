@@ -51,12 +51,20 @@ class TestSelectorXorAutoEnforce:
             PublisherPropertySelector1,
         )
 
-        with pytest.raises(ValidationError, match="mutually exclusive"):
+        # The reason is the DOCUMENT's keyword, not a sentence this SDK wrote.
+        # ``not`` is what refuses the pair, and the message names both
+        # properties: "'publisher_domain', 'publisher_domains' are present
+        # together, which the document forbids". "mutually exclusive" was the
+        # aliases patch's own prose and no document contains it.
+        with pytest.raises(ValidationError) as raised:
             PublisherPropertySelector1(
                 selection_type="all",
                 publisher_domain="cnn.com",
                 publisher_domains=["espn.com"],
             )
+        (error,) = raised.value.errors()
+        assert error["type"] == "not"
+        assert "publisher_domain" in error["msg"] and "publisher_domains" in error["msg"]
 
     def test_selector1_accepts_singular_form(self):
         from adcp.types.domains.core.publisher_property_selector import (
@@ -134,14 +142,32 @@ class TestPydanticInternalApiDriftSentinel:
         )
 
     def test_selector1_has_registered_validator(self):
-        # The patch lands at module-import time. If the registration
-        # shape changes and the patch silently no-ops, this catches it.
+        # The rule lands at class-build time. If the registration shape
+        # changes and it silently no-ops, this catches it.
+        #
+        # The validator is the EMITTER's, not the aliases patch's.
+        # ``core/publisher-property-selector.json`` states the XOR itself —
+        # a ``not`` over the pair and an ``anyOf`` over the two singleton
+        # required groups — and §2 lowers both to ``_adcp_rules``, which
+        # ``RuleBound._enforce_adcp_rules`` reads. ``_selector_xor_validate``
+        # was the hand-written patch that stood in before the document's own
+        # keyword compiled, and nothing re-attaches it.
         from adcp.types.domains.core.publisher_property_selector import (
             PublisherPropertySelector1,
         )
 
+        from adcp.types._runtime import ForbiddenGroups
+
         validators = PublisherPropertySelector1.__pydantic_decorators__.model_validators
-        assert "_selector_xor_validate" in validators, (
-            "XOR auto-enforce validator missing from PublisherPropertySelector1 — "
-            "patch in adcp.types.aliases may have silently failed."
+        assert "_enforce_adcp_rules" in validators, (
+            "rule validator missing from PublisherPropertySelector1 — the "
+            "emitted _adcp_rules are not being enforced."
         )
+        forbidden = [
+            rule
+            for rule in PublisherPropertySelector1._adcp_rules
+            if isinstance(rule, ForbiddenGroups)
+        ]
+        assert [rule.groups for rule in forbidden] == [
+            (("publisher_domain", "publisher_domains"),)
+        ]

@@ -417,6 +417,11 @@ class _MCPHandler(BaseHTTPRequestHandler):
     #: Answer like a pre-2025-03-26 server: the whole AdCP payload serialized
     #: into one ``content[].text`` item, with no ``structuredContent``.
     text_fallback = False
+    #: Both payloads carry ``status``. It is required by
+    #: ``core/protocol-envelope.json`` one ``allOf`` above
+    #: ``GetProductsResponse``, so a response without it never reaches the
+    #: budget this module grades — the client reports a parse failure first,
+    #: and every size assertion below would be reading that instead.
 
     def do_POST(self):  # noqa: N802 - BaseHTTPRequestHandler override
         message = json.loads(self.rfile.read(int(self.headers.get("content-length", 0))))
@@ -447,14 +452,16 @@ class _MCPHandler(BaseHTTPRequestHandler):
                     "content": [
                         {
                             "type": "text",
-                            "text": json.dumps({"products": [], "padding": padding}),
+                            "text": json.dumps(
+                                {"status": "completed", "products": [], "padding": padding}
+                            ),
                         }
                     ]
                 }
             else:
                 result = {
                     "content": [{"type": "text", "text": padding}],
-                    "structuredContent": {"products": []},
+                    "structuredContent": {"status": "completed", "products": []},
                 }
         else:
             result = {
@@ -536,7 +543,7 @@ async def test_mcp_tool_call_under_cap_succeeds(mcp_agent):
     finally:
         await adapter.close()
 
-    assert result.data == {"products": []}
+    assert result.data == {"status": "completed", "products": []}
 
 
 @pytest.mark.asyncio
@@ -574,7 +581,7 @@ async def test_mcp_opt_out_disables_the_budget(mcp_agent):
     finally:
         await adapter.close()
 
-    assert result.data == {"products": []}
+    assert result.data == {"status": "completed", "products": []}
 
 
 # ---------------------------------------------------------------------------
@@ -919,7 +926,7 @@ async def _injected_session(text: str):
 @pytest.mark.asyncio
 async def test_injected_session_text_is_bounded_by_the_extraction_budget():
     """`from_mcp_client` has no transport budget; this is its only bound."""
-    payload = json.dumps({"products": [], "padding": "x" * 200_000})
+    payload = json.dumps({"status": "completed", "products": [], "padding": "x" * 200_000})
     client = ADCPClient.from_mcp_client(
         await _injected_session(payload),
         validation=ValidationHookConfig(responses="warn"),
@@ -938,7 +945,7 @@ async def test_injected_session_text_is_bounded_by_the_extraction_budget():
 @pytest.mark.asyncio
 async def test_injected_session_budget_is_configurable():
     """Raising it accepts the same response; `None` removes the bound."""
-    payload = json.dumps({"products": [], "padding": "x" * 200_000})
+    payload = json.dumps({"status": "completed", "products": [], "padding": "x" * 200_000})
 
     for budget in (4 * 1024 * 1024, None):
         client = ADCPClient.from_mcp_client(

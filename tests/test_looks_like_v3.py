@@ -132,8 +132,14 @@ class TestLooksLikeV3CapabilitiesNegative:
 
 
 def _success_capabilities_dict() -> dict:
-    """A clean v3 capabilities dict that passes strict schema validation."""
+    """A clean v3 capabilities dict that passes strict schema validation.
+
+    ``status`` is required by ``core/protocol-envelope.json`` one ``allOf``
+    above ``GetAdCPCapabilitiesResponse``. Without it this dict is v3-SHAPED
+    and invalid, which is what ``_broken_v3_capabilities_dict`` below is for.
+    """
     return {
+        "status": "completed",
         "adcp": {
             "major_versions": [3],
             "idempotency": {"supported": True, "replay_ttl_seconds": 86400},

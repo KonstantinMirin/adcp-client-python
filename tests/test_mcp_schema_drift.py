@@ -22,6 +22,7 @@ This module protects the generation path from regressions:
 from __future__ import annotations
 
 import json
+import re
 
 from adcp.server.mcp_tools import (
     _PYDANTIC_SCHEMAS,
@@ -548,7 +549,18 @@ def test_advertised_output_schemas_use_local_refs_like_input_schemas() -> None:
     assert "$defs" in create_media_buy["inputSchema"]
     output = create_media_buy["outputSchema"]
     assert "$defs" in output
-    assert all("$ref" in arm for arm in output["anyOf"])
+    # Every ``$defs`` entry is REACHED by a local ``$ref`` from the body, which
+    # is what "compact" means and what inlining would have removed. The refs
+    # are read off properties rather than off union branches: the advertised output
+    # for a union-rooted response carries the envelope's own properties and no
+    # ``anyOf`` at all, which is the separate finding
+    # ``test_tools_list_output_schema`` reports.
+    body = {key: value for key, value in output.items() if key != "$defs"}
+    referenced = {
+        ref.removeprefix("#/$defs/") for ref in re.findall(r'"\$ref": "([^"]+)"', json.dumps(body))
+    }
+    assert referenced, body
+    assert referenced <= set(output["$defs"])
 
 
 # ---------------------------------------------------------------------------

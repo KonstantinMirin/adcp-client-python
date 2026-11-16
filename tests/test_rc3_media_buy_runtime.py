@@ -105,7 +105,16 @@ def test_an_explicit_null_frequency_cap_survives_as_a_clear() -> None:
     # The regression this module exists for. Before the fix the key was
     # dropped, so "remove the cap" became "leave the cap alone" -- and the
     # request still succeeded.
-    wire = _serialize(_control(frequency_cap=None), "control_media_buy")
+    #
+    # ``paused`` rides along for the same reason it does in
+    # ``test_a_meaningless_explicit_null_is_still_dropped``: control-media-buy
+    # -request.json requires at least one of twelve control groups, and §2
+    # reads a Python ``None`` as absence -- ``supplied()``, which that rule
+    # asks, does not count one. So a clear supplies no group on the Python
+    # route and the request carries no mutation to make. The clear itself is
+    # what the two assertions below grade, and ``paused`` is not what carries
+    # the null through.
+    wire = _serialize(_control(frequency_cap=None, paused=True), "control_media_buy")
     assert wire["frequency_cap"] is None
     assert validate_request("control_media_buy", wire).valid
 
@@ -146,7 +155,10 @@ def test_numeric_zero_is_not_confused_with_a_clear() -> None:
     # the day, a null removes the cap entirely.
     wire = _serialize(_control(daily_budget_cap=0), "control_media_buy")
     assert wire["daily_budget_cap"] == 0
-    cleared = _serialize(_control(daily_budget_cap=None), "control_media_buy")
+    # ``paused`` rides along only on the clear: a 0 is a present group and a
+    # ``None`` is not. See the note on
+    # ``test_an_explicit_null_frequency_cap_survives_as_a_clear``.
+    cleared = _serialize(_control(daily_budget_cap=None, paused=True), "control_media_buy")
     assert cleared["daily_budget_cap"] is None
 
 

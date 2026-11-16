@@ -18,6 +18,21 @@ from adcp.types import ControlMediaBuyRequest
 from adcp.validation import ValidationHookConfig, validate_request
 
 
+def _supplied_only(value: Any) -> Any:
+    """The patch with its clears removed — what a dump can still carry.
+
+    §2's dump rule omits an optional property's ``None`` whatever
+    ``exclude_none`` says, so a clear never appears in a dump on either side of
+    the wire. It is still *supplied*, and ``model_fields_set`` is where that is
+    read.
+    """
+    if isinstance(value, dict):
+        return {key: _supplied_only(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [_supplied_only(item) for item in value]
+    return value
+
+
 def _request(**patch: Any) -> ControlMediaBuyRequest:
     return ControlMediaBuyRequest.model_validate(
         {
@@ -80,7 +95,13 @@ async def test_control_intent_survives_real_client_and_typed_mcp_handler() -> No
         {
             "daily_budget_cap": None,
             "budget_cap_timezone": None,
-            "packages": [{"package_id": "package-1", "daily_budget_cap": None}],
+            # ``paused`` rides along so the PACKAGE carries a mutation:
+            # control-media-buy-request.json requires at least one of fifteen
+            # groups per package, and §2 reads a Python ``None`` as absence, so
+            # a clear supplies none of them on the Python route.
+            "packages": [
+                {"package_id": "package-1", "daily_budget_cap": None, "paused": False}
+            ],
         },
         {
             "daily_budget_cap": 0,
@@ -116,8 +137,23 @@ async def test_control_intent_survives_real_client_and_typed_mcp_handler() -> No
                         mode="json", exclude_unset=True, exclude_none=False
                     )
                     for key, value in patch.items():
-                        assert actual[key] == value
+                        if value is None:
+                            # A CLEAR is carried by ``model_fields_set``, not by
+                            # the dump: §2 omits an optional property's ``None``
+                            # whatever ``exclude_none`` says, so the key is
+                            # absent from the dump on both sides of the wire.
+                            assert key in received.model_fields_set, key
+                            assert getattr(received, key) is None
+                            assert key not in actual
+                        else:
+                            assert actual[key] == _supplied_only(value), key
                     assert received.canceled is patch.get("canceled")
+                    for position, package_patch in enumerate(patch.get("packages") or []):
+                        package = (received.packages or [])[position]
+                        for key, value in package_patch.items():
+                            if value is None:
+                                assert key in package.model_fields_set, key
+                                assert getattr(package, key) is None
                     if "daily_budget_cap" not in patch:
                         assert "daily_budget_cap" not in received.model_fields_set
                     if "budget_cap_timezone" not in patch:

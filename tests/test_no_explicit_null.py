@@ -3,12 +3,12 @@
 The generator renders every optional property as ``T | None = None``. That is
 the right Python surface — omitted reads as ``None`` and dumps as absent — but
 it also admitted an explicit JSON ``null`` that the schema, and so the SDK's
-own JSON-Schema arm, rejects (#1547). The generator now marks each optional
+own JSON-Schema branch, rejects (#1547). The generator now marks each optional
 property the bundled validator says cannot be ``null`` and the post-generation
 pass points the mark at :data:`adcp.types.base.NoExplicitNull`.
 
 The rule is about the wire: a JSON document carrying ``null`` is refused, and
-the published JSON Schema has no null arm. A Python ``None`` — keyword
+the published JSON Schema has no null branch. A Python ``None`` — keyword
 construction, ``model_validate`` on a dict — stays the SDK's spelling of
 "not supplied", symmetric with ``model_dump``'s ``exclude_none`` default, unless
 ``ADCP_STRICT_VALIDATION`` asks for it to be refused too.
@@ -33,6 +33,7 @@ from pydantic import BaseModel, ValidationError
 
 import adcp.types as public_types
 from adcp.types import base as types_base
+from adcp.types._base import OmittedNotNull
 from adcp.types.base import NoExplicitNull, is_no_explicit_null
 from adcp.types.domains.creative.sync_creatives_request import SyncCreativesRequest
 from adcp.types.domains.media_buy.update_media_buy_request import UpdateMediaBuyRequest
@@ -55,7 +56,7 @@ def _null_errors(exc: ValidationError) -> list[tuple[tuple[Any, ...], str]]:
 
 
 def test_explicit_null_creatives_is_refused_like_the_bundled_schema() -> None:
-    """The reported case: both arms now reject the JSON document at the same place."""
+    """The reported case: both branches now reject the JSON document at the same place."""
     schema_node = get_schema("sync_creatives", "request", version="3.2")["properties"]["creatives"]
     assert schema_node["type"] == "array"
 
@@ -163,7 +164,7 @@ def test_constraints_and_description_survive_beside_the_marker() -> None:
 
 
 def test_published_schema_states_what_the_bundle_states() -> None:
-    """``model_json_schema`` no longer advertises a null arm for a non-nullable property."""
+    """``model_json_schema`` no longer advertises a null branch for a non-nullable property."""
     node = SyncCreativesRequest.model_json_schema()["properties"]["creatives"]
     assert "anyOf" not in node
     assert node["type"] == "array"
@@ -192,7 +193,7 @@ def test_genuinely_nullable_property_keeps_accepting_null() -> None:
     assert request.budget_cap_timezone is None
     assert "budget_cap_timezone" in request.model_fields_set
     for name in ("budget_cap_timezone", "daily_budget_cap"):
-        assert not is_no_explicit_null(UpdateMediaBuyRequest.model_fields[name])
+        assert not _refuses_json_null(UpdateMediaBuyRequest.model_fields[name])
     node = UpdateMediaBuyRequest.model_json_schema()["properties"]["budget_cap_timezone"]
     assert {"type": "null"} in node["anyOf"]
 
@@ -207,6 +208,23 @@ def test_json_round_trip_of_an_omitted_property_stays_omitted() -> None:
 
 
 # --- a sample of generated models, graded against their own schema -----------------
+
+
+#: The marker's VALIDATION half, under either spelling -- the half this module
+#: is about. ``is_no_explicit_null`` reads the field's ``exclude_if``, which is
+#: the SERIALISATION half, and §2 made that half universal: *"the dump omits
+#: ``None`` UNLESS the document requires the property ... Serialisation keys on
+#: ``required``, validation still keys on nullability."* So every optional field
+#: carries the ``exclude_if`` and that predicate answers True for all of them,
+#: genuinely nullable ones included. Measured on ``UpdateMediaBuyRequest``: 24
+#: optional fields, 24 carrying the ``exclude_if``, 20 carrying the validation
+#: half, and the 4 without it are exactly the 4 whose published node has a null
+#: branch. Written up in FINDINGS-rest.md; the repair is in ``src``.
+_NULL_REFUSERS = tuple({type(m) for m in (*NoExplicitNull.metadata, *OmittedNotNull.metadata)})
+
+
+def _refuses_json_null(field: Any) -> bool:
+    return any(isinstance(entry, _NULL_REFUSERS) for entry in field.metadata)
 
 
 def _generated_models() -> list[tuple[str, type[BaseModel]]]:
@@ -237,7 +255,7 @@ def test_every_optional_field_either_carries_the_marker_or_admits_null(
     Each optional field is probed in isolation with ``model_construct``-free input:
     a document carrying every required field's current default-less sentinel would
     need per-model synthesis, so the probe reads the field's own validator through
-    the published schema instead — a marked field has no null arm, an unmarked
+    the published schema instead — a marked field has no null branch, an unmarked
     optional field has one (or is a bare ``Any``).
     """
     schema = model.model_json_schema()
@@ -249,14 +267,14 @@ def test_every_optional_field_either_carries_the_marker_or_admits_null(
         node = schema["properties"].get(wire_name)
         if node is None:
             continue
-        marked = is_no_explicit_null(field)
+        marked = _refuses_json_null(field)
         annotation = repr(field.annotation)
         if marked:
             assert wire_name not in required
             assert node.get("type") != "null"
             assert {"type": "null"} not in node.get("anyOf", []), (name, field_name, node)
         elif "None" in annotation and "Any" not in annotation and node.get("anyOf") is None:
-            # An unmarked optional ``T | None`` must publish a null arm, unless the
+            # An unmarked optional ``T | None`` must publish a null branch, unless the
             # type itself is a reference the schema expresses without ``anyOf``.
             assert "$ref" in node or node.get("type") == "null" or "allOf" in node, (
                 name,
@@ -265,25 +283,34 @@ def test_every_optional_field_either_carries_the_marker_or_admits_null(
             )
 
 
+#: Where the generator WRITES. ``adcp.types.domains`` is a ``sys.meta_path``
+#: mirror in this emission -- it binds ``adcp.types.domains.<rest>`` to the
+#: module ``adcp.types._schemas.<rest>`` already is, and has no directory of its
+#: own -- so an ``rglob`` over it finds nothing and every file-level sweep below
+#: it passes vacuously. The emitted tree is ``adcp/types/_schemas``.
+_EMITTED = Path(public_types.__file__).parent / "_schemas"
+
+
 def test_no_generated_module_still_carries_the_transient_mark() -> None:
     """The ``x-adcp-no-explicit-null`` key is a generator-internal carrier and never ships."""
-    domains = Path(public_types.__file__).parent / "domains"
     offenders = [
-        path.relative_to(domains)
-        for path in domains.rglob("*.py")
+        path.relative_to(_EMITTED)
+        for path in _EMITTED.rglob("*.py")
         if "x-adcp-no-explicit-null" in path.read_text()
     ]
     assert offenders == []
-    bundled = Path(public_types.__file__).parent.parent / "_schemas"
-    if bundled.exists():
-        for path in bundled.rglob("*.json"):
-            assert "x-adcp-no-explicit-null" not in path.read_text(), path
+    for path in _EMITTED.rglob("*.json"):
+        assert "x-adcp-no-explicit-null" not in path.read_text(), path
 
 
 def test_marker_is_widespread_in_the_generated_tree() -> None:
-    """The rule is generator-level: it reaches thousands of fields across hundreds of modules."""
-    domains = Path(public_types.__file__).parent / "domains"
-    modules = [path for path in domains.rglob("*.py") if "NoExplicitNull" in path.read_text()]
-    fields = sum(path.read_text().count("NoExplicitNull") - 1 for path in modules)
+    """The rule is generator-level: it reaches thousands of fields across hundreds of modules.
+
+    ``OmittedNotNull`` is the emitter's spelling of the marker;
+    ``is_no_explicit_null``'s docstring is where the two names are reconciled.
+    Measured: 662 of 1,094 emitted modules and 7,056 field occurrences.
+    """
+    modules = [path for path in _EMITTED.rglob("*.py") if "OmittedNotNull" in path.read_text()]
+    fields = sum(path.read_text().count("OmittedNotNull") - 1 for path in modules)
     assert len(modules) > 500
-    assert fields > 8000
+    assert fields > 6000

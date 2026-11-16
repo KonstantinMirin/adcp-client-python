@@ -1,16 +1,22 @@
 """Peak RSS of importing the SDK's entry modules stays under a budget (#1694).
 
 Importing ``adcp.client`` or ``adcp.server`` realizes the generated type
-surface through ``adcp.types._eager``. On 9.3.0 that cost about 520 MiB of
+surface through ``adcp.types.compat``. On 9.3.0 that cost about 520 MiB of
 resident memory — 3.4x the 6.6 figure — because the import-time patchers
 forced ``model_rebuild`` on two dozen request and response roots and every
 generated ``RootModel`` built its validator at class creation. A seller that
 ran in a 512 MiB container was OOM-killed at startup.
 
+``adcp.types.compat`` is the module that realizes the surface in this emission,
+and it is where ``adcp.types._eager`` stood: ``adcp.types`` itself declares no
+type and binds nothing until ``__getattr__`` is asked for a name, so a bare
+``import adcp.types`` costs 13 MiB and measures nothing. Importing the alias
+layer directly is what an adopter's first attribute access does.
+
 Each module is imported in a fresh ``python -I`` subprocess, as an adopter's
 process would, and its own peak RSS is read back. The budget sits well above the
-measured figure (about 115 MiB for ``adcp.types._eager`` and 185 MiB for
-``adcp.server`` on Linux / CPython 3.12) so platform and interpreter variance
+measured figure (about 141 MiB for ``adcp.types.compat`` and 201 MiB for
+``adcp.client`` on Linux / CPython 3.12) so platform and interpreter variance
 do not trip it, and well below the 512 MiB the issue was about, so a change
 that reintroduces an import-time build of a large model subtree fails here
 rather than in an adopter's container.
@@ -29,7 +35,7 @@ pytest.importorskip("resource", reason="peak RSS needs a POSIX platform")
 IMPORT_RSS_BUDGET_MIB = 320
 
 ENTRY_MODULES = [
-    "adcp.types._eager",
+    "adcp.types.compat",
     "adcp.client",
     "adcp.server",
     "adcp.server.test_controller",
