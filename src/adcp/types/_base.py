@@ -1655,6 +1655,49 @@ def _refuse_at(ref: SchemaRef, payload: Any, name: str, *, module: str | None = 
     _refuse(applied_schema(root, ref.pointer), payload, name, root=root)
 
 
+def _holds_a_model(value: Any) -> bool:
+    """Does ``value`` carry a pydantic model anywhere inside it.
+
+    A read-only scan, because the answer is NO for almost every payload the screen sees
+    and a converting walk would then allocate a copy of every request for nothing.
+    """
+    if isinstance(value, BaseModel):
+        return True
+    if isinstance(value, Mapping):
+        return any(_holds_a_model(v) for v in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(_holds_a_model(v) for v in value)
+    return False
+
+
+def _as_document(value: Any) -> Any:
+    """``value`` as JSON, so a DOCUMENT can be asked about it.
+
+    **A JSON-SCHEMA QUESTION HAS TO BE ASKED OF JSON** (``adcp-client-python-4x66``).
+    Passing model instances inside a dict is ordinary pydantic usage, and it worked
+    everywhere except behind a keyless union: the structural screen handed the raw Python
+    graph to ``jsonschema``, which answered "InternalOverlay(...) is not of type 'object'"
+    and the union then reported that NO branch's document admits the payload.  Measured,
+    the same payload with a plain dict in that position was accepted, and a non-union
+    container accepted the instance -- so the refusal was the screen's and not the
+    document's.
+
+    The screen's answer is the only thing this changes.  The ORIGINAL value is what gets
+    constructed afterwards, so a branch still receives the caller's own instance and
+    identity and subclass behaviour survive -- which is what the surrounding tests assert
+    (``result.targeting_overlay is overlay``).
+    """
+    if not _holds_a_model(value):
+        return value
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
+    if isinstance(value, Mapping):
+        return {k: _as_document(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_as_document(v) for v in value]
+    return value
+
+
 def _refuse(schema: dict, payload: Any, name: str, *, root: dict | None = None) -> None:
     """Raise pydantic's ``ValidationError`` for every way ``schema`` refuses ``payload``.
 
@@ -1705,7 +1748,7 @@ def _refuse(schema: dict, payload: Any, name: str, *, root: dict | None = None) 
     validator = jsonschema.validators.validator_for(scope, jsonschema.Draft7Validator)
     at_the_node = validator(scope, format_checker=validator.FORMAT_CHECKER).evolve(schema=schema)
     errors = sorted(
-        (_deepest(e) for e in at_the_node.iter_errors(payload)),
+        (_deepest(e) for e in at_the_node.iter_errors(_as_document(payload))),
         key=lambda e: [str(p) for p in e.absolute_path],
     )
     refuse(
