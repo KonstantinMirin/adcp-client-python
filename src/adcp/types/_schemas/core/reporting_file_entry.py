@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import PartitionValue, ReportingAdjustmentReceiptObservedAdjustmentSha256
+from adcp.types.constraints import IntMin0, PartitionValue, ReportingAdjustmentReceiptObservedAdjustmentSha256
 
 from .reporting_file_object_ref import ReportingFileObjectReference
 from .reporting_native_version_ref import ReportingNativeVersionReference
@@ -22,9 +22,9 @@ class ReportingFileEntry(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-file-entry.json', pointer='#')
     object_ref: ReportingFileObjectReference
     native_version_ref: Annotated[ReportingNativeVersionReference | None, OmittedNotNull] = None
-    size_bytes: NonNegativeInt
+    size_bytes: IntMin0
     sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256
-    row_count: NonNegativeInt
+    row_count: IntMin0
     partition: Annotated[dict[str, PartitionValue] | None, Field(max_length=32), OmittedNotNull] = None
 
 

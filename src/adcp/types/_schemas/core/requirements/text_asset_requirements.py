@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import IntMin1
+from adcp.types.constraints import IntMin0, IntMin1
 
 
 class TextAssetRequirements(AdCPBaseModel):
@@ -21,7 +21,7 @@ class TextAssetRequirements(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('allowed_values'),
     )
-    min_length: Annotated[NonNegativeInt | None, Field(description='Minimum character length'), OmittedNotNull] = None
+    min_length: Annotated[IntMin0 | None, Field(description='Minimum character length'), OmittedNotNull] = None
     max_length: Annotated[IntMin1 | None, Field(description='Maximum character length'), OmittedNotNull] = None
     min_lines: Annotated[IntMin1 | None, Field(description='Minimum number of lines'), OmittedNotNull] = None
     max_lines: Annotated[IntMin1 | None, Field(description='Maximum number of lines'), OmittedNotNull] = None

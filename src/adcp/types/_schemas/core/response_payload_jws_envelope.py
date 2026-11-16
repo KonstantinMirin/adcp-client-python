@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
-from adcp.types.constraints import CanonicalProposalTermsDigest, HostedUrl, ResponsePayloadJWSEnvelopeProtected
+from adcp.types.constraints import CanonicalProposalTermsDigest, HostedUrl, IntMin0, ResponsePayloadJWSEnvelopeProtected
 
 from .domain_name import DomainName
 
@@ -36,8 +36,8 @@ class ResponsePayload(AdCPBaseModel):
     brand_domain: Annotated[DomainName, Field(description='Brand tenant whose policy store produced the answer. The signer MUST derive this from server-side tenant resolution, not caller-supplied request fields.')]
     agent_url: Annotated[HostedUrl, Field(description='Canonical URL of the responding brand agent entry whose response-signing key verifies this envelope.')]
     request_hash: Annotated[CanonicalProposalTermsDigest, Field(description='sha256: prefix plus unpadded base64url SHA-256 of the canonical request-binding object for this call.')]
-    iat: Annotated[NonNegativeInt, Field(description='Issued-at time as Unix epoch seconds.')]
-    exp: Annotated[NonNegativeInt, Field(description='Expiration time as Unix epoch seconds. Online verifiers reject envelopes after this time, allowing only implementation-defined clock skew.')]
+    iat: Annotated[IntMin0, Field(description='Issued-at time as Unix epoch seconds.')]
+    exp: Annotated[IntMin0, Field(description='Expiration time as Unix epoch seconds. Online verifiers reject envelopes after this time, allowing only implementation-defined clock skew.')]
     response: Annotated[dict[str, Any], Field(description='Canonical task-body success response payload being attested. Any unsigned task-body fields on the outer response, excluding signed_response and protocol/version envelope fields, MUST match this object.')]
 
 

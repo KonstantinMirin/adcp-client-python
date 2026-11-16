@@ -4,16 +4,18 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule
 from adcp.types.constraints import (
     CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices,
     ConsultationContext,
+    FloatMin0,
     FloatMin0Max100,
     GovernanceContext,
     HostedUrl,
+    IntMin0,
     IntMin1,
     StrMaxLen1000,
     StrMinLen1MaxLen255,
@@ -70,8 +72,8 @@ class AudienceDistribution(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/delivery_metrics/properties/audience_distribution')
     baseline: Annotated[Baseline, Field(description="Population baseline used for index calculation. 'census': national census or equivalent population data. 'platform': the seller's active user base. 'custom': a custom baseline defined by the seller (describe in baseline_description).")]
     baseline_description: Annotated[str | None, Field(description="Description of the baseline when baseline is 'custom' (e.g., 'US adults 18+ with broadband access')."), OmittedNotNull] = None
-    indices: Annotated[dict[CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, NonNegativeFloat], Field(description="Audience index values for the current reporting period. Keys are seller-defined dimension:value strings (e.g., 'age:25-34', 'gender:female', 'income:high'). The protocol does not mandate a taxonomy — dimensions and value labels vary by seller. Values are index relative to the declared baseline (1.0 = at parity, >1.0 = over-indexed, <1.0 = under-indexed).")]
-    cumulative_indices: Annotated[dict[CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, NonNegativeFloat] | None, Field(description='Cumulative audience index values since the governed action started. Same key format as indices (dimension:value). Use for detecting sustained bias drift that may not appear in a single reporting period.'), OmittedNotNull] = None
+    indices: Annotated[dict[CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, FloatMin0], Field(description="Audience index values for the current reporting period. Keys are seller-defined dimension:value strings (e.g., 'age:25-34', 'gender:female', 'income:high'). The protocol does not mandate a taxonomy — dimensions and value labels vary by seller. Values are index relative to the declared baseline (1.0 = at parity, >1.0 = over-indexed, <1.0 = under-indexed).")]
+    cumulative_indices: Annotated[dict[CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices, FloatMin0] | None, Field(description='Cumulative audience index values since the governed action started. Same key format as indices (dimension:value). Use for detecting sustained bias drift that may not appear in a single reporting period.'), OmittedNotNull] = None
 
 
 class CheckGovernanceRequestDeliveryMetrics(AdCPBaseModel):
@@ -87,11 +89,11 @@ class CheckGovernanceRequestDeliveryMetrics(AdCPBaseModel):
     sequence: Annotated[IntMin1 | None, Field(description='Monotonically increasing sequence for this governed action. A statement ID or sequence cannot be reused with different content.'), OmittedNotNull] = None
     issued_at: Annotated[AwareDatetime | None, Field(description='When the seller issued the canonical statement.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEnd, Field(description='Start and end timestamps for the reporting window.')]
-    spend: Annotated[NonNegativeFloat | None, Field(description='Total spend during the reporting period.'), OmittedNotNull] = None
-    cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Total spend since the governed action started.'), OmittedNotNull] = None
+    spend: Annotated[FloatMin0 | None, Field(description='Total spend during the reporting period.'), OmittedNotNull] = None
+    cumulative_spend: Annotated[FloatMin0 | None, Field(description='Total spend since the governed action started.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description='Currency of spend fields; must match the plan and planned delivery.'), OmittedNotNull] = None
-    impressions: Annotated[NonNegativeInt | None, Field(description='Impressions delivered during the reporting period.'), OmittedNotNull] = None
-    cumulative_impressions: Annotated[NonNegativeInt | None, Field(description='Total impressions since the governed action started.'), OmittedNotNull] = None
+    impressions: Annotated[IntMin0 | None, Field(description='Impressions delivered during the reporting period.'), OmittedNotNull] = None
+    cumulative_impressions: Annotated[IntMin0 | None, Field(description='Total impressions since the governed action started.'), OmittedNotNull] = None
     geo_distribution: Annotated[dict[str, FloatMin0Max100] | None, Field(description='Actual geographic distribution. Keys are ISO 3166-1 alpha-2 codes, values are percentages.'), OmittedNotNull] = None
     channel_distribution: Annotated[dict[str, FloatMin0Max100] | None, Field(description='Actual channel distribution. Keys are channel enum values, values are percentages.'), OmittedNotNull] = None
     pacing: Annotated[DeliveryMetricsPacing | None, Field(description='Whether delivery is ahead of, on track with, or behind the planned pace.'), OmittedNotNull] = None

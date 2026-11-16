@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types.constraints import IntMin0
 
 
 class Truncation(AdCPBaseModel):
@@ -16,7 +17,7 @@ class Truncation(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/truncation-sentinel.json', pointer='#/properties/_truncation')
-    original_size_bytes: Annotated[NonNegativeInt, Field(description='Size of the untruncated original content in bytes, measured before any encoding overhead. Lets the receiver decide whether to fetch the full value via a payload-bearing surface (when one exists) or proceed with the preview.')]
+    original_size_bytes: Annotated[IntMin0, Field(description='Size of the untruncated original content in bytes, measured before any encoding overhead. Lets the receiver decide whether to fetch the full value via a payload-bearing surface (when one exists) or proceed with the preview.')]
     preview: Annotated[str | None, Field(description='Optional bounded human-readable excerpt of the original content. Sellers SHOULD keep previews under 8 KiB and SHOULD truncate on a UTF-8 codepoint boundary. Absent when the seller cannot safely surface even a preview (e.g., the original content is binary and not text-decodable, or seller policy forbids any payload surfacing). Receivers MUST NOT parse `preview` as a complete representation of the original value.'), OmittedNotNull] = None
     preview_format: Annotated[str | None, Field(description='Hint for how to render `preview`. Common values: `text` (plain UTF-8), `json` (JSON fragment), `base64` (base64-encoded binary), `xml`, `html`. The list is open — adopters MAY use other MIME-derived shorthands. Receivers SHOULD treat unknown values as `text` and SHOULD NOT reject the sentinel when the value is unfamiliar.'), OmittedNotNull] = None
 

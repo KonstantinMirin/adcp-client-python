@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, StrictFloat
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0Max1
+from adcp.types.constraints import FloatMin0Max1, IntMin0
 
 from ..core.ext import ExtensionObject
 from ..core.identifier import Identifier
@@ -66,7 +66,7 @@ class ValidationResult(AdCPBaseModel):
     identifier: Annotated[Identifier, Field(description='The identifier that was validated')]
     record_id: Annotated[str | None, Field(description='Client-provided ID from the delivery record (if provided)'), OmittedNotNull] = None
     status: Annotated[Status, Field(description='Validation status: compliant (in list), non_compliant (not in list), not_covered (identifier recognized but no data available), unidentified (identifier type not resolvable by this governance agent)')]
-    impressions: Annotated[NonNegativeInt, Field(description='Number of impressions from this record')]
+    impressions: Annotated[IntMin0, Field(description='Number of impressions from this record')]
     features: Annotated[list[FeaturesItem] | None, Field(description='Per-feature breakdown for this record. SHOULD include all failed and warning features. MAY include passed features. For property validation the buyer authored the requirement, so the `requirement` that was not met MAY be echoed back on failures — this is contract data, not evaluator IP.'), OmittedNotNull] = None
     authorization: Annotated[AuthorizationResult | None, Field(description='Authorization validation result (only present if sales_agent_url was provided in the delivery record)'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

@@ -3,11 +3,19 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import FloatGt0Lt1, HostedUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen100, StrMinLen1MaxLen255
+from adcp.types.constraints import (
+    FloatGt0Lt1,
+    FloatMin0,
+    HostedUrl,
+    IntMin1,
+    StrMinLen1,
+    StrMinLen1MaxLen100,
+    StrMinLen1MaxLen255,
+)
 
 from ..enums.feedback_source import FeedbackSource
 from ..enums.metric_type import MetricType
@@ -62,7 +70,7 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
     package_id: Annotated[StrMinLen1 | None, Field(description='Receiver-scoped package identifier when the assertion is package-specific. The orchestrator maps its measurement-facing identifier to seller-local identifiers during fan-out.'), OmittedNotNull] = None
     creative_id: Annotated[StrMinLen1 | None, Field(description='Receiver-scoped creative identifier when the assertion is creative-specific. The orchestrator maps its measurement-facing identifier to seller-local identifiers during fan-out.'), OmittedNotNull] = None
     measurement_period: Annotated[DatetimeRange, Field(description='Period whose performance is summarized by this assertion.')]
-    performance_index: Annotated[NonNegativeFloat, Field(description='Normalized decision signal where 1.0 equals the named baseline, values below 1.0 underperform it, and values above 1.0 outperform it. Compact-contract producers (baseline present) MUST use observed divided by baseline for higher-is-better ratio metrics and baseline divided by observed for lower-is-better ratio metrics such as cost per acquisition.')]
+    performance_index: Annotated[FloatMin0, Field(description='Normalized decision signal where 1.0 equals the named baseline, values below 1.0 underperform it, and values above 1.0 outperform it. Compact-contract producers (baseline present) MUST use observed divided by baseline for higher-is-better ratio metrics and baseline divided by observed for lower-is-better ratio metrics such as cost per acquisition.')]
     baseline: Annotated[PerformanceBaseline | None, Field(description='Expectation represented by performance_index = 1.0. Compact-contract producers MUST populate this field; it remains optional in the schema so existing 3.x request payloads remain valid.'), OmittedNotNull] = None
     metric: Annotated[PerformanceFeedbackMetric | None, Field(description='Metric this assertion describes. Omit only for holistic feedback that is not attributable to one metric.'), OmittedNotNull] = None
     metric_type: Annotated[MetricType | None, Field(deprecated=True, description='Deprecated legacy metric classification retained for existing request payloads. New implementations SHOULD use metric; when both are present consumers MUST use metric for dispatch.'), OmittedNotNull] = None

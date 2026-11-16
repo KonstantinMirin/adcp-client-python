@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
-from adcp.types.constraints import StrMaxLen128
+from adcp.types.constraints import FloatMin0, StrMaxLen128
 
 from ..enums.availability_status import AvailabilityStatus
 from ..enums.viewability_standard import ViewabilityStandard
@@ -52,7 +52,7 @@ class CanonicalForecastPoint(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-forecast-point.json', pointer='#')
     label: Annotated[StrMaxLen128 | None, OmittedNotNull] = None
-    budget: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    budget: Annotated[FloatMin0 | None, OmittedNotNull] = None
     product_id: Annotated[str | None, OmittedNotNull] = None
     dimensions: Annotated[ForecastPointDimensions | None, OmittedNotNull] = None
     availability_status: Annotated[AvailabilityStatus | None, OmittedNotNull] = None

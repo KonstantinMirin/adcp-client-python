@@ -4,11 +4,12 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule
 from adcp.types.constraints import (
+    FloatMin0,
     FloatMin0Max1,
     GovernanceContext,
     HostedUrl,
@@ -150,7 +151,7 @@ class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpReques
     proposal_id: Annotated[str | None, Field(description="ID of the exact committed proposal snapshot to execute. With total_budget, the publisher creates packages using the proposal's fixed percentages or seller-optimized constraints. Mutually exclusive: provide packages or proposal_id, not both. AdCP 3.2 request_proposals and ordinary refine_proposals revisions issue drafts; refine_proposals action finalize creates the executable committed hold. Sellers reject draft, declined, or previously executed snapshots, while exact retries with the original idempotency key replay historical success. Changed commercial terms are issued under a new proposal_id, so no separate proposal version is required."), OmittedNotNull] = None
     opportunity: Annotated[Opportunity | None, Field(description='Optional planning-cycle closure. Sellers infer successful proposal execution as closed with close_reason accepted_with_seller when status is omitted; when status is present it MUST be closed with that reason. If the proposal was issued under an opportunity_id, a supplied ID MUST match it.'), OmittedNotNull] = None
     total_budget: Annotated[Money | None, Field(description='Hard aggregate lifetime budget for the media buy. Required when executing a proposal and for seller-optimized explicit packages. Optional in fixed explicit-package mode; when present there, amount MUST equal the sum of package budgets. For a fixed proposal, the publisher applies allocation percentages to this amount. For a seller-optimized proposal or explicit buy, packages draw dynamically from this shared total.'), OmittedNotNull] = None
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Optional hard aggregate daily spend ceiling in the media-buy currency. It limits total spend without allocating package amounts. Package caps are subordinate and need not sum to it. Requires advertised media_buy budget-capping scope; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None
+    daily_budget_cap: Annotated[FloatMin0 | None, Field(description='Optional hard aggregate daily spend ceiling in the media-buy currency. It limits total spend without allocating package amounts. Package caps are subordinate and need not sum to it. Requires advertised media_buy budget-capping scope; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Optional max-impression cap using one counter across explicit packages. Requires advertised aggregate_frequency_capping and compatible media_buy_support on every product; otherwise sellers MUST reject with UNSUPPORTED_FEATURE before any mutation and MUST NOT silently drop, soften, or clamp the cap. Omit when executing proposal_id because accepted terms are authoritative.'), OmittedNotNull] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional shared IANA day boundary override for all caps. Requires buyer_timezone_override; otherwise rejected with UNSUPPORTED_FEATURE. When omitted, budget_capping.timezone_basis selects Account.timezone or the advertised fixed_timezone.'), OmittedNotNull] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='How budget is allocated across explicit packages. Omission means fixed allocation (legacy-compatible). Buyer agents SHOULD send budget_allocation explicitly ({mode: "fixed"} or seller_optimized) rather than rely on omission, and when the principal\'s instruction does not determine whether the budget is one shared pool across packages or split per package, SHOULD ask the principal rather than guess. seller_optimized requires advertised media_buy.features.seller_optimized_budget; inside it, package budget caps, min_spend_target, and package pacing each require their own advertised sub-capability (seller_optimized_package_budgets, seller_optimized_min_spend_targets, seller_optimized_package_pacing), otherwise the request is rejected with UNSUPPORTED_FEATURE before any over-subscription validation. In proposal mode the committed proposal supplies this configuration and callers MUST omit it here.'), OmittedNotNull] = None
@@ -199,7 +200,7 @@ class PackagesItem(PackageRequest):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('min_spend_target',),)),
     )
-    budget: Annotated[NonNegativeFloat, Field(description="Hard lifetime spend cap for this package in the media buy's currency. Required in fixed allocation mode. Optional in seller-optimized mode; when omitted, the package is bounded by the shared total_budget and any other package constraints. In seller-optimized mode this is a ceiling, not a reserved or current allocation, and requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.")]
+    budget: Annotated[FloatMin0, Field(description="Hard lifetime spend cap for this package in the media buy's currency. Required in fixed allocation mode. Optional in seller-optimized mode; when omitted, the package is bounded by the shared total_budget and any other package constraints. In seller-optimized mode this is a ceiling, not a reserved or current allocation, and requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.")]
 
 
 class ExplicitPackagesWithFixedAllocation(CreateMediaBuyRequest):

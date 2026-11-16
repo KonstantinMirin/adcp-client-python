@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0Max100
+from adcp.types.constraints import FloatMin0, FloatMin0Max100
 
 from .delivery_metrics import DeliveryMetrics
 
@@ -22,8 +22,8 @@ class CreativeDeliveryMetrics(DeliveryMetrics):
     creative_id: Annotated[str, Field(description='Creative identifier matching the creative assignment')]
     creative_name: Annotated[str | None, Field(description='Optional human-readable creative name current when the report is generated. Convenience metadata only: names may change and buyers MUST use creative_id as the stable identity.'), OmittedNotNull] = None
     weight: Annotated[FloatMin0Max100 | None, Field(description='Observed delivery share for this creative within the package during the reporting period, expressed as a percentage (0-100). Reflects actual delivery distribution, not a configured setting.'), OmittedNotNull] = None
-    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
-    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
+    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
+    spend: Annotated[FloatMin0, Field(description='Amount spent')]
 
 
 __all__ = ["CreativeDeliveryMetrics"]

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types.constraints import FloatMin0
 
 from .delivery_metrics import DeliveryMetrics
 from .domain_name import DomainName
@@ -24,8 +25,8 @@ class PlacementDeliveryMetrics(DeliveryMetrics):
     placement_name: Annotated[str | None, Field(description='Current human-readable placement name. Convenience metadata only; placement_identity is stable identity.'), OmittedNotNull] = None
     placement_id: Annotated[str, Field(description='Required flat compatibility identity. It MUST equal placement_identity.placement_id when placement_identity is present.')]
     publisher_domain: Annotated[DomainName | None, Field(description='Legacy publisher attribution. For publisher_ref identity it MUST equal placement_identity.publisher_domain. For seller_inline it identifies inventory context only and is not identity authority.'), OmittedNotNull] = None
-    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
-    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
+    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
+    spend: Annotated[FloatMin0, Field(description='Amount spent')]
 
 
 __all__ = ["PlacementDeliveryMetrics"]

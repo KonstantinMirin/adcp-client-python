@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import (
     AdCPBaseModel,
@@ -14,7 +14,7 @@ from adcp.types._base import (
     SchemaRef,
 )
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import FloatMin0Max100, HostedUrl, IntMin1, StrMaxLen2000
+from adcp.types.constraints import FloatMin0, FloatMin0Max100, HostedUrl, IntMin1, StrMaxLen2000
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.brand_ref import BrandReference
@@ -37,7 +37,7 @@ class AllocationsValue(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/sync-plans-request.json', pointer='#/properties/plans/items/properties/budget/properties/allocations/additionalProperties')
-    amount: Annotated[NonNegativeFloat | None, Field(description='Maximum budget for this purchase type.'), OmittedNotNull] = None
+    amount: Annotated[FloatMin0 | None, Field(description='Maximum budget for this purchase type.'), OmittedNotNull] = None
     max_pct: Annotated[FloatMin0Max100 | None, Field(description='Maximum percentage of total budget for this purchase type.'), OmittedNotNull] = None
 
 
@@ -59,7 +59,7 @@ class Budget(BranchDispatchMixin, AdCPBaseModel):
     currency: Annotated[str, Field(description='ISO 4217 currency code.')]
     accounting_mode: Annotated[AccountingMode | None, Field(description='Controls which verified adjustments restore reusable plan headroom. gross_commitment allows verified decommitments only; verified_net_cost also allows buyer-accepted refunds and credits. Both modes retain the original commitment in anti-fragmentation history and expose economic net cost separately.'), OmittedNotNull] = 'gross_commitment'
     per_seller_max_pct: Annotated[StrictFloat | None, Field(description='Maximum percentage of budget that can go to a single seller.'), OmittedNotNull] = None
-    reallocation_threshold: Annotated[NonNegativeFloat | None, Field(description='Amount above which budget reallocations require human escalation. The orchestrator can reallocate spend across sellers, channels, or purchase types up to this threshold per change without asking a human. Set equal to `total` for effectively unlimited reallocation; set to 0 to require approval for every reallocation. Separate from `plan.human_review_required`, which governs decisions affecting data subjects (targeting, creative, delivery) under GDPR Art 22 / EU AI Act Annex III. Denominated in `budget.currency`.'), OmittedNotNull] = None
+    reallocation_threshold: Annotated[FloatMin0 | None, Field(description='Amount above which budget reallocations require human escalation. The orchestrator can reallocate spend across sellers, channels, or purchase types up to this threshold per change without asking a human. Set equal to `total` for effectively unlimited reallocation; set to 0 to require approval for every reallocation. Separate from `plan.human_review_required`, which governs decisions affecting data subjects (targeting, creative, delivery) under GDPR Art 22 / EU AI Act Annex III. Denominated in `budget.currency`.'), OmittedNotNull] = None
     reallocation_unlimited: Annotated[StrictBool | None, Field(description='Set to true to allow the orchestrator to reallocate without any limit up to `total`. Mutually exclusive with `reallocation_threshold`. Use this for deliberate full-autonomy declarations rather than setting `reallocation_threshold: total` (which silently tightens when `total` changes).'), OmittedNotNull] = None
     allocations: Annotated[dict[PurchaseType, AllocationsValue] | None, Field(description='Optional budget partition across purchase types. Keys are purchase-type enum values (media_buy, rights_license, signal_activation, creative_services). When present, the governance agent validates spend against both the total and the per-type allocation. When absent, all spend counts against the single total regardless of purchase type.'), OmittedNotNull] = None
 
@@ -72,7 +72,7 @@ class BudgetReallocationThreshold(Budget):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reallocation_unlimited',),)),
     )
-    reallocation_threshold: Annotated[NonNegativeFloat, Field(description='Amount above which budget reallocations require human escalation. The orchestrator can reallocate spend across sellers, channels, or purchase types up to this threshold per change without asking a human. Set equal to `total` for effectively unlimited reallocation; set to 0 to require approval for every reallocation. Separate from `plan.human_review_required`, which governs decisions affecting data subjects (targeting, creative, delivery) under GDPR Art 22 / EU AI Act Annex III. Denominated in `budget.currency`.')]
+    reallocation_threshold: Annotated[FloatMin0, Field(description='Amount above which budget reallocations require human escalation. The orchestrator can reallocate spend across sellers, channels, or purchase types up to this threshold per change without asking a human. Set equal to `total` for effectively unlimited reallocation; set to 0 to require approval for every reallocation. Separate from `plan.human_review_required`, which governs decisions affecting data subjects (targeting, creative, delivery) under GDPR Art 22 / EU AI Act Annex III. Denominated in `budget.currency`.')]
 
 
 class BudgetReallocationUnlimited(Budget):

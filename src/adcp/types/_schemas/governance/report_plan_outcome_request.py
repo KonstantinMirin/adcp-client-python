@@ -3,11 +3,18 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import GovernanceContext, StrMaxLen255, StrMinLen1MaxLen255, ZipAssetDigest
+from adcp.types.constraints import (
+    FloatMin0,
+    GovernanceContext,
+    IntMin0,
+    StrMaxLen255,
+    StrMinLen1MaxLen255,
+    ZipAssetDigest,
+)
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -28,7 +35,7 @@ class PackagesItem(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-outcome-request.json', pointer='#/properties/seller_response/properties/packages/items')
-    budget: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    budget: Annotated[FloatMin0 | None, OmittedNotNull] = None
 
 
 class SellerResponse(AdCPBaseModel):
@@ -40,7 +47,7 @@ class SellerResponse(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-outcome-request.json', pointer='#/properties/seller_response')
     seller_reference: Annotated[StrMaxLen255 | None, Field(description="The seller's identifier for the created resource (e.g., media_buy_id, rights_grant_id, deployment_id). Not interpreted by the governance agent — included in audit logs for human-readable traceability alongside the opaque governance_context."), OmittedNotNull] = None
-    committed_budget: Annotated[NonNegativeFloat | None, Field(description='Buyer-reported seller amount retained for reconciliation and audit. It is never ledger authority: the governance agent derives the reserved commitment from its own approved intent check, or from the matching purchase execution check when one exists. A report above that authorized amount is rejected; a lower report does not restore headroom.'), OmittedNotNull] = None
+    committed_budget: Annotated[FloatMin0 | None, Field(description='Buyer-reported seller amount retained for reconciliation and audit. It is never ledger authority: the governance agent derives the reserved commitment from its own approved intent check, or from the matching purchase execution check when one exists. A report above that authorized amount is rejected; a lower report does not restore headroom.'), OmittedNotNull] = None
     packages: Annotated[list[PackagesItem] | None, Field(description='Confirmed packages with actual budget and targeting.'), OmittedNotNull] = None
     planned_delivery: Annotated[PlannedDelivery | None, Field(description="What the seller said it will deliver. When seller-side governance is not configured, this is the governance agent's only view of the seller's delivery parameters."), OmittedNotNull] = None
     creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 deadline for creative submission.'), OmittedNotNull] = None
@@ -63,10 +70,10 @@ class Delivery(AdCPBaseModel):
     seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.'), OmittedNotNull] = None
     seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEnd, Field(description='Start and end timestamps for the reporting window.')]
-    cumulative_spend: Annotated[NonNegativeFloat, Field(description='Buyer-attributed cumulative spend for the governed action.')]
+    cumulative_spend: Annotated[FloatMin0, Field(description='Buyer-attributed cumulative spend for the governed action.')]
     currency: CurrencyCode
     period_closed: Annotated[StrictBool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement. Only the authenticated plan owner may set this to true; the governance agent MUST reject it from any other authenticated reporter.'), OmittedNotNull] = False
-    impressions: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    impressions: Annotated[IntMin0 | None, OmittedNotNull] = None
 
 
 class ReportPlanOutcomeRequest(AdCPVersionEnvelope, AdcpRequest):

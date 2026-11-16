@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import AppItemAppleId, FloatMin0Max5, HostedUrl
+from adcp.types.constraints import AppItemAppleId, FloatMin0Max5, HostedUrl, IntMin0
 
 from .ext import ExtensionObject
 from .offering_asset_group import OfferingAssetGroup
@@ -59,7 +59,7 @@ class AppItem(AdCPBaseModel):
     deep_link_url: Annotated[HostedUrl | None, Field(description="Deep link URI for re-engagement campaigns targeting existing users. Use Universal Links (iOS) or App Links (Android) where available (e.g., 'https://acmegames.com/app/level/5'). Falls back to URI scheme (e.g., 'acmegames://level/5') when universal links are not configured."), OmittedNotNull] = None
     price: Annotated[Price | None, Field(description='App download price. Set amount to 0 for free apps.'), OmittedNotNull] = None
     rating: Annotated[FloatMin0Max5 | None, Field(description='Average store rating (0–5). Use 0 to indicate no ratings yet.'), OmittedNotNull] = None
-    rating_count: Annotated[NonNegativeInt | None, Field(description='Total number of store ratings.'), OmittedNotNull] = None
+    rating_count: Annotated[IntMin0 | None, Field(description='Total number of store ratings.'), OmittedNotNull] = None
     content_rating: Annotated[str | None, Field(description="Age or content rating (e.g., '4+', '12+', 'Everyone', 'Teen', 'PEGI 12'). Format depends on store and region."), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering and targeting (e.g., 'multiplayer', 'offline', 'no-ads', 'subscription').", min_length=1), OmittedNotNull] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description="Typed creative asset pools for this app. Uses the same OfferingAssetGroup structure as offering-type catalogs. Standard group IDs: 'images_landscape' (promotional hero), 'images_vertical' (9:16 for Snap, Stories), 'images_square' (1:1 for display), 'video' (gameplay or demo video). Supplements icon_url and screenshots for platform-specific format requirements.", min_length=1), OmittedNotNull] = None

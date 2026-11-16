@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
-from adcp.types.constraints import CanonicalFormatBaseMigrationTargetVersion, FloatGt0, IntMin1
+from adcp.types.constraints import CanonicalFormatBaseMigrationTargetVersion, FloatGt0, IntMin0, IntMin1
 
 from ...core.downstream_connection_requirement import DownstreamConnectionRequirement
 from ...core.platform_extension_ref import PlatformExtensionReference
@@ -98,7 +98,7 @@ class SlotsItem(AdCPBaseModel):
     asset_group_id: Annotated[str, Field(description='Canonical asset_group_id from /schemas/core/asset-group-vocabulary.json. Non-canonical IDs are valid but trigger soft warnings.')]
     asset_type: Annotated[AssetType, Field(description='Discriminator selecting the asset schema this slot accepts. SDK codegen uses this to type the slot value. `display_tag` is the atomic third-party display representation (URL, inline markup, or paired redirect). `published_post` is an existing-post reference asset. `pixel_tracker` / `vast_tracker` / `daast_tracker` are renderer-fired tracker primitives. `object` is a last-resort fallback.')]
     required: Annotated[StrictBool | None, Field(description='Whether this slot is required for a valid manifest.'), OmittedNotNull] = False
-    min: Annotated[NonNegativeInt | None, Field(description='Minimum count for repeatable / pool slots.'), OmittedNotNull] = None
+    min: Annotated[IntMin0 | None, Field(description='Minimum count for repeatable / pool slots.'), OmittedNotNull] = None
     max: Annotated[IntMin1 | None, Field(description='Maximum count for repeatable / pool slots.'), OmittedNotNull] = None
     max_chars: Annotated[IntMin1 | None, Field(description="Per-slot character limit. Valid only when `asset_type` is `text`, `markdown`, or `brief`. Mutually exclusive with `max_size_kb` (which applies to binary asset types). Schema enforces via if/then so a producer can't set both on the same slot."), OmittedNotNull] = None
     max_size_kb: Annotated[IntMin1 | None, Field(description="Per-slot file size limit in exact kilobytes, where 1 KB = 1,000 bytes. Valid only when `asset_type` is `image`, `video`, `audio`, or `zip`. Mutually exclusive with `max_chars` (which applies to text asset types). Schema enforces via if/then so a producer can't set both on the same slot."), OmittedNotNull] = None
@@ -148,7 +148,7 @@ class CanonicalFormatBase(AdCPBaseModel):
     slots: Annotated[list[SlotsItem] | None, Field(description="Programmatic declaration of which canonical asset_group_id slots a manifest targeting this format must (or may) populate. Lets SDK codegen and validators enumerate expected slots without parsing the format's prose description. Each entry references an asset_group_id from the canonical vocabulary registry, paired with an `asset_type` so the validator knows which asset schema to apply. Format-level narrowing parameters that apply across all slots (e.g., flat `headline_max_chars` on responsive_creative) may also live on the format declaration; per-slot constraints (a specific slot's `max_chars` or `max_size_kb`) live on the slot entry."), OmittedNotNull] = None
     required_connections: Annotated[list[DownstreamConnectionRequirement] | None, Field(description='Downstream platform connections or grants required to use this format declaration. These are in addition to the single AdCP caller credential. Use this when a platform product requires multiple downstream grants, such as an advertiser account connection plus a publisher identity or post authorization for published-post references.'), OmittedNotNull] = None
     reference_mutability: Annotated[ReferenceMutability | None, Field(description='Policy for formats whose `slots` accept a `published_post` reference. `immutable_snapshot`: seller snapshots the referenced post at approval and later source changes do not change the served creative. `mutable_requires_reapproval`: the source post may change and material changes require review before continued serving. `mutable_auto_recheck`: the source post may change and the seller continuously or periodically rechecks authorization/policy without requiring buyer resubmission. Omit when the format has no `published_post` slot.'), OmittedNotNull] = None
-    production_window_business_days: Annotated[NonNegativeInt | None, Field(description='Typical production turnaround in business days when the format requires seller-side production (e.g., host-recording from a buyer-supplied script). 0 for synchronous (e.g., generative AI); >0 for human-produced (e.g., podcast host-read). Absent when no production is required (buyer uploads complete creative).'), OmittedNotNull] = None
+    production_window_business_days: Annotated[IntMin0 | None, Field(description='Typical production turnaround in business days when the format requires seller-side production (e.g., host-recording from a buyer-supplied script). 0 for synchronous (e.g., generative AI); >0 for human-produced (e.g., podcast host-read). Absent when no production is required (buyer uploads complete creative).'), OmittedNotNull] = None
 
 
 Slot = SlotsItem

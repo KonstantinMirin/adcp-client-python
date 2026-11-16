@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, OperationsContactUrl, StrFormatEmailMaxLen254
+from adcp.types.constraints import IntMin0, IntMin1, OperationsContactUrl, StrFormatEmailMaxLen254
 
 from .reporting_delivery_offering import ReportingDeliveryOffering
 from .reporting_reliability_statistics import ReportingReliabilityStatistics
@@ -65,14 +65,14 @@ class ReportingDeliveryCapabilities(AdCPBaseModel):
     status_notification: Annotated[Literal['reporting.status_changed'] | None, Field(description='Optional tier-independent invalidation doorbell for health transitions in either direction, including clock-driven waiting-to-delayed and delayed-to-action_required. Valid for Core: it names no destination. Polling status_task remains the authoritative recovery path whether or not this is offered.'), OmittedNotNull] = None
     ledger_notification: Annotated[Literal['reporting.ledger_changed'] | None, Field(description='Optional tier-independent invalidation for every newly committed revision or post-official adjustment, even when health does not change. Receivers repair through get_reporting_status changes_after; polling remains authoritative.'), OmittedNotNull] = None
     offerings: Annotated[list[ReportingDeliveryOffering], Field(description='Atomic supported feed/profile/schedule/finality/method combinations. offering_id values MUST be unique.', min_length=1)]
-    automated_recovery_window_seconds: Annotated[NonNegativeInt, Field(description='Maximum late interval during which a due obligation may remain delayed while automated recovery continues before action_required.')]
+    automated_recovery_window_seconds: Annotated[IntMin0, Field(description='Maximum late interval during which a due obligation may remain delayed while automated recovery continues before action_required.')]
     status_retention_days: Annotated[IntMin1, Field(description='Minimum period for which obligation, revision, and materialization metadata remain queryable.')]
-    consumer_mismatch_escalation_seconds: Annotated[NonNegativeInt | None, Field(description="Maximum interval after a CONSUMER_STATUS_MISMATCH issue's opened_at during which the seller may keep that issue at a non-escalated recommended_action. After it, the issue MUST be action_required with a contact_ recommended_action naming the diagnosed responsible_party. Declaring it requires operations_contact so the escalation has a destination. Absence means the seller publishes no escalation commitment; it never means an unbounded one."), OmittedNotNull] = None
+    consumer_mismatch_escalation_seconds: Annotated[IntMin0 | None, Field(description="Maximum interval after a CONSUMER_STATUS_MISMATCH issue's opened_at during which the seller may keep that issue at a non-escalated recommended_action. After it, the issue MUST be action_required with a contact_ recommended_action naming the diagnosed responsible_party. Declaring it requires operations_contact so the escalation has a destination. Absence means the seller publishes no escalation commitment; it never means an unbounded one."), OmittedNotNull] = None
     operations_contact: Annotated[OperationsContact | None, Field(description='Optional non-secret human escalation path for reporting issues the protocol cannot resolve. It is display metadata for an operator, not an AdCP endpoint: agents MUST NOT dereference, probe, or send protocol traffic to these values, and they carry no authorization. Required when consumer_mismatch_escalation_seconds is advertised.'), OmittedNotNull] = None
     reliability_statistics: Annotated[list[ReportingReliabilityStatistics] | None, Field(description='Optional evidence-scoped observed performance for advertised offerings. offering_id values MUST be unique and name offerings in this capability block.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     resource_retention_days: Annotated[IntMin1 | None, Field(description='Minimum period after publication for which at least one verified exact materialization remains readable to every still-authorized intended consumer.'), OmittedNotNull] = None
     supports_webhook_activity: Annotated[StrictBool | None, OmittedNotNull] = False
-    authorization_revocation_seconds: Annotated[NonNegativeInt | None, Field(description="Maximum delay after caller/account authorization ends before seller-controlled transport access, provider grants, and write credentials are revoked. It cannot revoke a buyer's access to data already written into a buyer-owned destination."), OmittedNotNull] = None
+    authorization_revocation_seconds: Annotated[IntMin0 | None, Field(description="Maximum delay after caller/account authorization ends before seller-controlled transport access, provider grants, and write credentials are revoked. It cannot revoke a buyer's access to data already written into a buyer-owned destination."), OmittedNotNull] = None
 
 
 __all__ = ["ReportingDeliveryCapabilities"]

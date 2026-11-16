@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl
+from adcp.types.constraints import HostedUrl, IntMin0
 
 from ..core.ext import ExtensionObject
 from ..core.identifier import Identifier
@@ -25,7 +25,7 @@ class DeliveryRecord(AdCPBaseModel):
         Approximation(document='property/delivery-record.json', pointer='#/properties/sales_agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     identifier: Annotated[Identifier, Field(description='The property identifier where impressions were delivered')]
-    impressions: Annotated[NonNegativeInt, Field(description='Number of impressions delivered to this identifier')]
+    impressions: Annotated[IntMin0, Field(description='Number of impressions delivered to this identifier')]
     record_id: Annotated[str | None, Field(description='Optional client-provided ID for correlating results back to source data'), OmittedNotNull] = None
     sales_agent_url: Annotated[HostedUrl | None, Field(description="URL of the sales agent that sold this inventory. If provided, authorization is validated against the property's adagents.json."), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

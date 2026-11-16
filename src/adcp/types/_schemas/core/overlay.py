@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, StrictFloat
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
-from adcp.types.constraints import HostedUrl
+from adcp.types.constraints import FloatMin0, HostedUrl
 
 
 class Visual(AdCPBaseModel):
@@ -63,8 +63,8 @@ class Bounds(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/overlay.json', pointer='#/properties/bounds')
     x: Annotated[StrictFloat, Field(description="Horizontal offset from the asset's left edge")]
     y: Annotated[StrictFloat, Field(description="Vertical offset from the asset's top edge")]
-    width: Annotated[NonNegativeFloat, Field(description='Width of the overlay')]
-    height: Annotated[NonNegativeFloat, Field(description='Height of the overlay')]
+    width: Annotated[FloatMin0, Field(description='Width of the overlay')]
+    height: Annotated[FloatMin0, Field(description='Height of the overlay')]
     unit: Annotated[Unit, Field(description="'px' = absolute pixels from asset top-left. 'fraction' = proportional to asset dimensions (0.0 = edge, 1.0 = opposite edge). 'inches', 'cm', 'mm', 'pt' (1/72 inch) = physical units for print overlays, measured from asset top-left.")]
 
 

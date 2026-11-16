@@ -4,11 +4,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import GovernanceContext
+from adcp.types.constraints import GovernanceContext, IntMin0
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -43,7 +43,7 @@ class Campaign(AdCPBaseModel):
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(deprecated=True, description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Legacy named formats that will be produced. Use `format_kinds` and optional `format_option_refs`.'), OmittedNotNull] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(description='Canonical creative format kinds that will be produced under the rights grant.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     format_option_refs: Annotated[list[FormatOptionReference] | None, Field(description='Exact canonical publisher or product format options covered by the planned rights use, when kind alone is insufficient.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    estimated_impressions: Annotated[NonNegativeInt | None, Field(description="Estimated total impressions for the campaign. Required when the brand agent will project commitment against a governance plan AND the selected pricing_option has model: 'cpm' — projection equals (pricing_option.price / 1000) × estimated_impressions evaluated in pricing_option.currency. The brand agent will project commitment whenever the request is governance-aware via either (a) an intent-phase governance_context token on the protocol envelope, or (b) `account` resolving to an account that has a governance agent previously bound via sync_governance. Brand agents MUST reject with INVALID_REQUEST (field: campaign.estimated_impressions) in either path when CPM-priced rights are requested and this field is omitted or zero; implementer-chosen defaults are non-conformant. See the acquire_rights task reference for the full validation contract including currency-mismatch handling."), OmittedNotNull] = None
+    estimated_impressions: Annotated[IntMin0 | None, Field(description="Estimated total impressions for the campaign. Required when the brand agent will project commitment against a governance plan AND the selected pricing_option has model: 'cpm' — projection equals (pricing_option.price / 1000) × estimated_impressions evaluated in pricing_option.currency. The brand agent will project commitment whenever the request is governance-aware via either (a) an intent-phase governance_context token on the protocol envelope, or (b) `account` resolving to an account that has a governance agent previously bound via sync_governance. Brand agents MUST reject with INVALID_REQUEST (field: campaign.estimated_impressions) in either path when CPM-priced rights are requested and this field is omitted or zero; implementer-chosen defaults are non-conformant. See the acquire_rights task reference for the full validation contract including currency-mismatch handling."), OmittedNotNull] = None
     start_date: Annotated[date | None, Field(description='Campaign start date (ISO 8601)'), OmittedNotNull] = None
     end_date: Annotated[date | None, Field(description='Campaign end date (ISO 8601). Brand agents MUST reject with INVALID_REQUEST (field: campaign.end_date) when end_date is in the past at the time of the request — acquiring rights for an elapsed window produces a zero-duration grant and is almost always a buyer-side bug.'), OmittedNotNull] = None
 

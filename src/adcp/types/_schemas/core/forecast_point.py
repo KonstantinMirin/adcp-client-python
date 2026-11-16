@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
-from adcp.types.constraints import FloatMin0Max1, StrMaxLen128
+from adcp.types.constraints import FloatMin0, FloatMin0Max1, StrMaxLen128
 
 from ..enums.availability_status import AvailabilityStatus
 from ..enums.viewability_standard import ViewabilityStandard
@@ -99,7 +99,7 @@ class ForecastPoint(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-point.json', pointer='#')
     label: Annotated[StrMaxLen128 | None, Field(description="Human-readable name for this forecast point. Required when forecast_range_unit is 'package' so buyer agents can identify and reference individual packages. Optional for other forecast types."), OmittedNotNull] = None
-    budget: Annotated[NonNegativeFloat | None, Field(description='Budget amount for this forecast point. Required for spend curves; omit for availability forecasts where the metrics represent total available inventory. For allocation-level forecasts, this is the absolute budget for that allocation (not the percentage). For proposal-level forecasts, this is the total proposal budget. When omitted, use metrics.spend to express the estimated cost of the available inventory.'), OmittedNotNull] = None
+    budget: Annotated[FloatMin0 | None, Field(description='Budget amount for this forecast point. Required for spend curves; omit for availability forecasts where the metrics represent total available inventory. For allocation-level forecasts, this is the absolute budget for that allocation (not the percentage). For proposal-level forecasts, this is the total proposal budget. When omitted, use metrics.spend to express the estimated cost of the available inventory.'), OmittedNotNull] = None
     product_id: Annotated[str | None, Field(description='Optional product context for this forecast row. Usually omitted on product-level and allocation-level forecasts where the product is already implied. On proposal-level forecasts, populate when a dimensional row, especially a placement row, maps to a specific product allocation so buyers can turn the row into an executable package choice. Omit for true aggregate proposal rows spanning multiple products.'), OmittedNotNull] = None
     dimensions: Annotated[ForecastPointDimensions | None, Field(description='Dimension constraints represented by this forecast point, such as country, region, placement, device type, platform, audience, signal value, time window, or intersections such as placement x country or product x signal. Each item declares one dimension family; when multiple items are present, the point represents their intersection. Sellers MUST NOT emit more than one item for each `kind` on a point; consumers MUST NOT treat repeated kinds as OR semantics. Use multiple points with dimensions to expose country/placement/signal availability within one product, proposal, or signal coverage forecast without creating separate products solely for each dimension. Dimensions describe the forecast row and are independent of pricing_options.'), OmittedNotNull] = None
     availability_status: Annotated[AvailabilityStatus | None, Field(description="Bookability of the inventory this row describes, as of the forecast's generated_at. Most meaningful on rows with a time dimension in an availability forecast (forecast_range_unit 'availability'). This is a snapshot, not a hold: valid_until bounds freshness, and proposal finalization or purchase remains the commitment boundary. When omitted, the row makes no bookability claim. 'unavailable' rows may carry empty metrics."), OmittedNotNull] = None

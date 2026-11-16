@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule
-from adcp.types.constraints import IntMin1, IntMin1Max100
+from adcp.types.constraints import IntMin0, IntMin1, IntMin1Max100
 
 from ._base import CanonicalFormatBase, SlotsItem
 
@@ -54,7 +54,7 @@ class CanonicalFormatHTML5Banner(CanonicalFormatBase):
     max_initial_load_kb: Annotated[IntMin1 | None, Field(description='Maximum initial-load file size (zip + above-the-fold assets) in kilobytes. IAB display standards: 200 KB for fixed sizes, 100 KB for mobile.'), OmittedNotNull] = None
     max_polite_load_kb: Annotated[IntMin1 | None, Field(description='Maximum polite-load file size after host-initiated subload, in kilobytes. IAB display standards: 500 KB for fixed sizes.'), OmittedNotNull] = None
     host_initiated_subload: Annotated[StrictBool | None, Field(description='Whether the host page must initiate the polite-load phase. IAB-compliant banners require true.'), OmittedNotNull] = None
-    max_animation_duration_ms: Annotated[NonNegativeInt | None, Field(description='Maximum total animation duration in milliseconds. IAB standard: 30000 (30 seconds).'), OmittedNotNull] = None
+    max_animation_duration_ms: Annotated[IntMin0 | None, Field(description='Maximum total animation duration in milliseconds. IAB standard: 30000 (30 seconds).'), OmittedNotNull] = None
     max_cpu_load_percent: Annotated[IntMin1Max100 | None, Field(description='Maximum CPU load percentage during render.'), OmittedNotNull] = None
     mraid_required: Annotated[StrictBool | None, Field(description='Whether MRAID compatibility is required (mobile in-app).'), OmittedNotNull] = None
     mraid_version: Annotated[MraidVersion | None, Field(description='Required MRAID version when mraid_required is true.'), OmittedNotNull] = None

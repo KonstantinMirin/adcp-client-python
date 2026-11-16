@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types.constraints import IntMin0
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -23,7 +24,7 @@ class ReportUsageResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/report-usage-response.json', pointer='#')
-    accepted: Annotated[NonNegativeInt, Field(description='Number of usage records successfully stored.')]
+    accepted: Annotated[IntMin0, Field(description='Number of usage records successfully stored.')]
     errors: Annotated[list[Error] | None, Field(description="Validation errors for individual records. The field property identifies which record failed (e.g., 'usage[1].pricing_option_id')."), OmittedNotNull] = None
     sandbox: Annotated[StrictBool | None, Field(description='When true, the account is a sandbox account and no billing occurred.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None

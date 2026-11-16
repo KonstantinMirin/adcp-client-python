@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import IntMin1
+from adcp.types.constraints import FloatMin0, IntMin1
 
 from ..core.currency_code import CurrencyCode
 from ..core.ext import ExtensionObject
@@ -25,12 +25,12 @@ class RightsPricingOption(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/rights-pricing-option.json', pointer='#')
     pricing_option_id: Annotated[str, Field(description='Unique identifier for this pricing option. Referenced in acquire_rights and report_usage.')]
     model: Annotated[PricingModel, Field(description='Pricing model (cpm, flat_rate, etc.)')]
-    price: Annotated[NonNegativeFloat, Field(description='Price amount. Interpretation depends on model: CPM = cost per 1,000 impressions, flat_rate = fixed cost per period.')]
+    price: Annotated[FloatMin0, Field(description='Price amount. Interpretation depends on model: CPM = cost per 1,000 impressions, flat_rate = fixed cost per period.')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     uses: Annotated[list[RightUse], Field(description='Which rights uses this pricing option covers. A single option can bundle multiple uses (e.g., likeness + voice).', min_length=1)]
     period: Annotated[RightsBillingPeriod | None, Field(description='Billing period for flat_rate and time-based models'), OmittedNotNull] = None
     impression_cap: Annotated[IntMin1 | None, Field(description='Maximum impressions included in this pricing option per period'), OmittedNotNull] = None
-    overage_cpm: Annotated[NonNegativeFloat | None, Field(description='CPM rate applied to impressions exceeding the impression_cap'), OmittedNotNull] = None
+    overage_cpm: Annotated[FloatMin0 | None, Field(description='CPM rate applied to impressions exceeding the impression_cap'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Human-readable description of this pricing option'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import AfterValidator, ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
@@ -12,6 +12,7 @@ from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
     BrandDiscoveryAgentId,
     CanonicalFormatBaseMigrationTargetVersion,
+    IntMin0,
     IntMin1,
 )
 
@@ -276,7 +277,7 @@ class SharedSlotsItem(AdCPBaseModel):
     asset_group_id: BrandDiscoveryAgentId
     asset_type: AssetType
     required: Annotated[StrictBool | None, OmittedNotNull] = False
-    min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    min: Annotated[IntMin0 | None, OmittedNotNull] = None
     max: Annotated[IntMin1 | None, OmittedNotNull] = None
     consumed_by: Annotated[list[str], Field(description='Component IDs that consume this shared asset. Every value MUST resolve to `components[].component_id`.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 

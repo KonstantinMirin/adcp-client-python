@@ -3,11 +3,16 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AcceptedGovernanceAgentsAnyOfItemAgentUrl, AnyOfItemAdcpVersion, AnyOfItemRole
+from adcp.types.constraints import (
+    AcceptedGovernanceAgentsAnyOfItemAgentUrl,
+    AnyOfItemAdcpVersion,
+    AnyOfItemRole,
+    IntMin0,
+)
 
 from ..core.verification_token_claims import VerificationMode
 
@@ -34,7 +39,7 @@ class AnyOfItemVerification(AdCPBaseModel):
     role: Annotated[AnyOfItemRole, Field(description="Role asserted by the trusted registry's verified record, never by candidate self-description.")]
     adcp_version: Annotated[AnyOfItemAdcpVersion, Field(description='Registry protocol version in canonical MAJOR.MINOR form.')]
     verification_modes: Annotated[list[VerificationMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    max_age_seconds: Annotated[NonNegativeInt, Field(description='Maximum age of the registry evidence at binding time. Zero requires a fresh result. Evidence is pinned to the accepted binding; later registry drift does not silently revoke an existing binding.')]
+    max_age_seconds: Annotated[IntMin0, Field(description='Maximum age of the registry evidence at binding time. Zero requires a fresh result. Evidence is pinned to the accepted binding; later registry drift does not silently revoke an existing binding.')]
 
 
 class AcceptedGovernanceAgents(AdCPBaseModel):

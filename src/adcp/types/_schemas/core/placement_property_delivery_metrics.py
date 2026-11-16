@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types.constraints import FloatMin0
 
 from .delivery_metrics import DeliveryMetrics
 from .domain_name import DomainName
@@ -29,8 +30,8 @@ class PlacementPropertyDeliveryMetrics(DeliveryMetrics):
     identifier: Annotated[Identifier, Field(description='Primary operational identifier of the property that delivered.')]
     property_ref: Annotated[PropertyReference | None, Field(description="Canonical publisher-scoped property catalog identity when available. Its publisher_domain MUST equal the row's publisher_domain."), OmittedNotNull] = None
     property_name: Annotated[str | None, Field(description='Current convenience name for the property.'), OmittedNotNull] = None
-    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
-    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
+    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
+    spend: Annotated[FloatMin0, Field(description='Amount spent')]
 
 
 __all__ = ["PlacementPropertyDeliveryMetrics"]

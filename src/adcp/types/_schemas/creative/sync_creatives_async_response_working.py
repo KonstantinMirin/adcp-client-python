@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0Max100, IntMin1
+from adcp.types.constraints import FloatMin0Max100, IntMin0, IntMin1
 
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -24,8 +24,8 @@ class SyncCreativesWorking(AdCPBaseModel):
     current_step: Annotated[str | None, Field(description='Current step or phase of the operation'), OmittedNotNull] = None
     total_steps: Annotated[IntMin1 | None, Field(description='Total number of steps in the operation'), OmittedNotNull] = None
     step_number: Annotated[IntMin1 | None, Field(description='Current step number'), OmittedNotNull] = None
-    creatives_processed: Annotated[NonNegativeInt | None, Field(description='Number of creatives processed so far'), OmittedNotNull] = None
-    creatives_total: Annotated[NonNegativeInt | None, Field(description='Total number of creatives to process'), OmittedNotNull] = None
+    creatives_processed: Annotated[IntMin0 | None, Field(description='Number of creatives processed so far'), OmittedNotNull] = None
+    creatives_total: Annotated[IntMin0 | None, Field(description='Total number of creatives to process'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

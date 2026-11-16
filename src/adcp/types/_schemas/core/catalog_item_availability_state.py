@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import StrMinLen1MaxLen255
+from adcp.types.constraints import IntMin0, StrMinLen1MaxLen255
 
 from .catalog_item_availability_error import CatalogItemAvailabilityError
 from .ext import ExtensionObject
@@ -50,13 +50,13 @@ class CatalogItemAvailabilityState(AdCPBaseModel):
         Approximation(document='core/catalog-item-availability-state.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['expires_at']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/catalog-item-availability-state.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'errors': {'contains': {'properties': {'code': {'const': 'REFERENCE_NOT_FOUND'}}, 'required': ['code']}}}, 'required': ['errors']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    request_index: Annotated[NonNegativeInt, Field(description='Zero-based index of the corresponding item_availability_queries entry.')]
+    request_index: Annotated[IntMin0, Field(description='Zero-based index of the corresponding item_availability_queries entry.')]
     catalog_id: StrMinLen1MaxLen255
     catalog_generation: StrMinLen1MaxLen255
     item_id: StrMinLen1MaxLen255
     status: Annotated[Status, Field(description='found returns current state; failed means the reference could not be read.')]
     availability: Annotated[Availability | None, Field(description='Current buyer-authored overlay state. active does not imply seller approval or delivery eligibility.'), OmittedNotNull] = None
-    overlay_revision: Annotated[NonNegativeInt | None, Field(description='Current optimistic-concurrency token. Revision 0 is the initial active state. Every applied suppress, applied restore, and automatic expiry increments it exactly once; unchanged updates, reads, and idempotent replays do not increment it.'), OmittedNotNull] = None
+    overlay_revision: Annotated[IntMin0 | None, Field(description='Current optimistic-concurrency token. Revision 0 is the initial active state. Every applied suppress, applied restore, and automatic expiry increments it exactly once; unchanged updates, reads, and idempotent replays do not increment it.'), OmittedNotNull] = None
     expires_at: Annotated[AwareDatetime | None, Field(description='Current automatic expiry, present only while availability is suppressed with an expiry.'), OmittedNotNull] = None
     updated_at: Annotated[AwareDatetime | None, Field(description='Seller timestamp of the state represented by overlay_revision.'), OmittedNotNull] = None
     errors: Annotated[list[CatalogItemAvailabilityError] | None, Field(min_length=1), OmittedNotNull] = None

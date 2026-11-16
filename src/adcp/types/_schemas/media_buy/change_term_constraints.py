@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
+from adcp.types.constraints import FloatMin0, IntMin0
 
 from ..core.currency_code import CurrencyCode
 from ..core.duration import Duration
@@ -30,7 +31,7 @@ class Money(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/change-term-constraints.json', pointer='#/definitions/money')
-    amount: NonNegativeFloat
+    amount: FloatMin0
     currency: CurrencyCode
 
 
@@ -44,7 +45,7 @@ class BudgetChangeConstraints(MediaBuyChangeTermConstraints):
     )
     kind: Literal['budget']
     max_delta_amount: Annotated[Money | None, Field(description='Maximum absolute amount by which the affected budget may change in the direction named by the action.'), OmittedNotNull] = None
-    max_delta_percent: Annotated[NonNegativeFloat | None, Field(description='Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.'), OmittedNotNull] = None
+    max_delta_percent: Annotated[FloatMin0 | None, Field(description='Maximum percentage change relative to the current committed value. Values above 100 are valid for increases greater than the current value.'), OmittedNotNull] = None
     min_result_amount: Annotated[Money | None, Field(description='Minimum resulting committed value after the change.'), OmittedNotNull] = None
     max_result_amount: Annotated[Money | None, Field(description='Maximum resulting committed value after the change.'), OmittedNotNull] = None
 
@@ -73,9 +74,9 @@ class PackageCountConstraints(MediaBuyChangeTermConstraints):
         RequiredGroups((('max_additions',), ('max_removals',), ('max_result_count',)), 'anyOf'),
     )
     kind: Literal['package_count']
-    max_additions: Annotated[NonNegativeInt | None, Field(description='Maximum packages that may be added by one exercise of the right.'), OmittedNotNull] = None
-    max_removals: Annotated[NonNegativeInt | None, Field(description='Maximum packages that may be removed by one exercise of the right.'), OmittedNotNull] = None
-    max_result_count: Annotated[NonNegativeInt | None, Field(description='Maximum active package count after the change.'), OmittedNotNull] = None
+    max_additions: Annotated[IntMin0 | None, Field(description='Maximum packages that may be added by one exercise of the right.'), OmittedNotNull] = None
+    max_removals: Annotated[IntMin0 | None, Field(description='Maximum packages that may be removed by one exercise of the right.'), OmittedNotNull] = None
+    max_result_count: Annotated[IntMin0 | None, Field(description='Maximum active package count after the change.'), OmittedNotNull] = None
 
 
 class EffectiveTimingConstraints(MediaBuyChangeTermConstraints):

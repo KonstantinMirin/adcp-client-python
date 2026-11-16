@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
+    FloatMin0,
     IntMin1,
     MediaBuyName,
     StrMaxLen500,
@@ -80,8 +81,8 @@ class MediaBuy(AdCPBaseModel):
     rejection_reason: Annotated[str | None, Field(description="Reason provided by the seller when status is 'rejected'. Present only when status is 'rejected'."), OmittedNotNull] = None
     confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller committed to this media buy. May be null until seller commitment occurs in deferred/manual approval flows. Once populated, remains stable through later pause, resume, activation, completion, cancellation, and reporting transitions.')]
     cancellation: Annotated[ObjCanceledAtCanceledByReason | None, Field(description="Cancellation metadata. Present only when status is 'canceled'."), OmittedNotNull] = None
-    total_budget: Annotated[NonNegativeFloat, Field(description='Hard aggregate lifetime budget amount')]
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Current hard aggregate spend ceiling per calendar day. Sellers MUST echo this whenever an aggregate daily cap is set. It bounds total media-buy spend without allocating or reserving spend for packages.'), OmittedNotNull] = None
+    total_budget: Annotated[FloatMin0, Field(description='Hard aggregate lifetime budget amount')]
+    daily_budget_cap: Annotated[FloatMin0 | None, Field(description='Current hard aggregate spend ceiling per calendar day. Sellers MUST echo this whenever an aggregate daily cap is set. It bounds total media-buy spend without allocating or reserving spend for packages.'), OmittedNotNull] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Current hard MediaBuy-level cap. Sellers MUST echo it whenever set. Its counter aggregates exposures across all participating packages; each package targeting_overlay.frequency_cap remains independently binding.'), OmittedNotNull] = None
     budget_cap_timezone: Annotated[str | None, Field(description='IANA timezone defining the shared calendar-day boundary for every aggregate and package daily cap on this media buy. Sellers MUST echo it whenever any daily cap is set.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description="Single ISO 4217 denomination for total_budget, every package budget/minimum, and every canonical BiddingPolicy monetary field. Every package's selected pricing option MUST declare this currency; packages requiring another currency belong in a separate media buy."), OmittedNotNull] = None

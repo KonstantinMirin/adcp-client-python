@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictInt
+from pydantic import ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, SchemaIntegral
+from adcp.types.constraints import FloatMin0, HostedUrl, IntMin0, SchemaIntegral
 
 from .destination_item import ObjLatLng
 from .ext import ExtensionObject
@@ -62,7 +62,7 @@ class Area(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/real-estate-item.json', pointer='#/properties/area')
-    value: Annotated[NonNegativeFloat, Field(description='Area value.')]
+    value: Annotated[FloatMin0, Field(description='Area value.')]
     unit: Annotated[Unit, Field(description='Area unit.')]
 
 
@@ -86,8 +86,8 @@ class RealEstateItem(AdCPBaseModel):
     price: Annotated[Price | None, Field(description="Property price or rental rate. Use period 'month' for rentals."), OmittedNotNull] = None
     property_type: Annotated[RealEstateItemPropertyType | None, Field(description='Type of property.'), OmittedNotNull] = None
     listing_type: Annotated[ListingType | None, Field(description='Whether the property is for sale or rent.'), OmittedNotNull] = None
-    bedrooms: Annotated[NonNegativeInt | None, Field(description='Number of bedrooms.'), OmittedNotNull] = None
-    bathrooms: Annotated[NonNegativeFloat | None, Field(description='Number of bathrooms (e.g., 2.5 for two full and one half bath).'), OmittedNotNull] = None
+    bedrooms: Annotated[IntMin0 | None, Field(description='Number of bedrooms.'), OmittedNotNull] = None
+    bathrooms: Annotated[FloatMin0 | None, Field(description='Number of bathrooms (e.g., 2.5 for two full and one half bath).'), OmittedNotNull] = None
     area: Annotated[Area | None, Field(description='Property size.'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Property description.'), OmittedNotNull] = None
     location: Annotated[ObjLatLng | None, Field(description='Geographic coordinates of the property.'), OmittedNotNull] = None

@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
+from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
-from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, FloatGt0
+from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, FloatGt0, FloatMin0
 
 
 class Constraint(StrEnum):
@@ -37,8 +37,8 @@ class Region(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/canvas-constraint.json', pointer='#/properties/region/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'unit': {'const': 'percent'}}, 'required': ['unit']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    x: NonNegativeFloat
-    y: NonNegativeFloat
+    x: FloatMin0
+    y: FloatMin0
     width: FloatGt0
     height: FloatGt0
     unit: Annotated[Unit | None, Field(json_schema_extra={'default': 'px'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Unit).validate_python('px'))

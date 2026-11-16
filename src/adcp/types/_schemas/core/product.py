@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import (
@@ -20,6 +20,7 @@ from adcp.types.constraints import (
     CanonicalProductCatalogMatchMatchedGtinsItem,
     FloatGt0,
     HostedUrl,
+    IntMin0,
     IntMin1,
     ProductCardCtaLabel,
     StrMaxLen30,
@@ -147,8 +148,8 @@ class CatalogMatch(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product.json', pointer='#/properties/catalog_match')
     matched_gtins: Annotated[list[CanonicalProductCatalogMatchMatchedGtinsItem] | None, Field(description="GTINs from the buyer's catalog that are eligible on this product's inventory. Standard GTIN formats (GTIN-8 through GTIN-14). Only present for product-type catalogs with GTIN matching."), OmittedNotNull] = None
     matched_ids: Annotated[list[str] | None, Field(description="Item IDs from the buyer's catalog that matched this product's inventory. The ID type depends on the catalog type and content_id_type (e.g., SKUs for product catalogs, job_ids for job catalogs, offering_ids for offering catalogs)."), OmittedNotNull] = None
-    matched_count: Annotated[NonNegativeInt | None, Field(description="Number of catalog items that matched this product's inventory."), OmittedNotNull] = None
-    submitted_count: Annotated[NonNegativeInt, Field(description="Total catalog items evaluated from the buyer's catalog.")]
+    matched_count: Annotated[IntMin0 | None, Field(description="Number of catalog items that matched this product's inventory."), OmittedNotNull] = None
+    submitted_count: Annotated[IntMin0, Field(description="Total catalog items evaluated from the buyer's catalog.")]
 
 
 class ProductCard(AdCPBaseModel):

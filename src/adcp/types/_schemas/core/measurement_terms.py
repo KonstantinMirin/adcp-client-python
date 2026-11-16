@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import BillingMeasurementMaxVariancePercent
+from adcp.types.constraints import BillingMeasurementMaxVariancePercent, IntMin0
 
 from ..enums.makegood_remedy import MakegoodRemedy
 from .brand_ref import BrandReference
@@ -24,7 +24,7 @@ class BillingMeasurement(AdCPBaseModel):
     vendor: Annotated[BrandReference, Field(description="Vendor whose measurement of the billing metric is authoritative for invoicing (e.g., { domain: 'campaignmanager.google.com' } for buyer's DCM, { domain: 'admanager.google.com' } for seller's GAM).")]
     max_variance_percent: Annotated[BillingMeasurementMaxVariancePercent | None, Field(description="Maximum acceptable variance between the billing vendor's count and the other party's count before resolution is triggered (e.g., 10 means a 10% divergence triggers review)."), OmittedNotNull] = None
     measurement_window: Annotated[str | None, Field(description="Which measurement maturation stage the billing metric is reconciled against. References a window_id from the product's reporting_capabilities.measurement_windows. Examples: 'c7' for broadcast TV guarantees (live + 7 days DVR), 'final' for DOOH after IVT/fraud-check processing, 'post_sivt' for digital after sophisticated invalid-traffic filtering, 'downloads_30d' for podcast. When absent, billing is based on the seller's standard reporting without windowed maturation."), OmittedNotNull] = None
-    finalization_deadline_hours: Annotated[NonNegativeInt | None, Field(description='Maximum hours by which the authoritative party MUST publish a final record (`is_final: true` / `finalized_at` on `get_media_buy_delivery`, or `final: true` / `finalized_at` on `report_usage`). **Anchor:** when `measurement_window` is set, hours are counted from the close of that window (e.g., 240h after `c7` close = ~10 days after the 7-day DVR accumulation completes); when `measurement_window` is absent, hours are counted from `reporting_period.end`. Picking a single anchor avoids ambiguity for windowed channels where `reporting_period.end` and window close differ by days. The deadline applies to whichever party is named in `vendor` — seller, buyer, or third-party vendor — symmetrically. When the deadline elapses without a final record, the counterparty MAY fall back to its own attestation for invoicing (seller falls back to seller-attested numbers via `get_media_buy_delivery`; buyer falls back to a buyer-attested `report_usage` push), and the breach is treated like any other measurement-terms breach under `makegood_policy`. Absent means no contractual deadline — finalization is best-effort and disagreements resolve out of band.'), OmittedNotNull] = None
+    finalization_deadline_hours: Annotated[IntMin0 | None, Field(description='Maximum hours by which the authoritative party MUST publish a final record (`is_final: true` / `finalized_at` on `get_media_buy_delivery`, or `final: true` / `finalized_at` on `report_usage`). **Anchor:** when `measurement_window` is set, hours are counted from the close of that window (e.g., 240h after `c7` close = ~10 days after the 7-day DVR accumulation completes); when `measurement_window` is absent, hours are counted from `reporting_period.end`. Picking a single anchor avoids ambiguity for windowed channels where `reporting_period.end` and window close differ by days. The deadline applies to whichever party is named in `vendor` — seller, buyer, or third-party vendor — symmetrically. When the deadline elapses without a final record, the counterparty MAY fall back to its own attestation for invoicing (seller falls back to seller-attested numbers via `get_media_buy_delivery`; buyer falls back to a buyer-attested `report_usage` push), and the breach is treated like any other measurement-terms breach under `makegood_policy`. Absent means no contractual deadline — finalization is best-effort and disagreements resolve out of band.'), OmittedNotNull] = None
 
 
 class MakegoodPolicy(AdCPBaseModel):

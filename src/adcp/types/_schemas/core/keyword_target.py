@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, NonNegativeFloat
+from pydantic import ConfigDict
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import StrMinLen1
+from adcp.types.constraints import FloatMin0, StrMinLen1
 
 from ..enums.match_type import MatchType
 
@@ -21,7 +21,7 @@ class KeywordTarget(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/keyword-target.json', pointer='#')
     keyword: StrMinLen1
     match_type: MatchType
-    bid_price: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    bid_price: Annotated[FloatMin0 | None, OmittedNotNull] = None
 
 
 __all__ = ["KeywordTarget"]

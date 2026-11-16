@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, StrMaxLen255, StrMaxLen500, TermsTotalBudgetCurrency
+from adcp.types.constraints import FloatMin0, HostedUrl, StrMaxLen255, StrMaxLen500, TermsTotalBudgetCurrency
 
 
 class TotalBudget(AdCPBaseModel):
@@ -15,7 +15,7 @@ class TotalBudget(AdCPBaseModel):
     Total committed budget
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/insertion-order.json', pointer='#/properties/terms/properties/total_budget')
-    amount: NonNegativeFloat
+    amount: FloatMin0
     currency: Annotated[TermsTotalBudgetCurrency, Field(description='ISO 4217 currency code')]
 
 

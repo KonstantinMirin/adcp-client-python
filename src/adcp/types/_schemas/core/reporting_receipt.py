@@ -4,12 +4,13 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    IntMin0,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
     ReportingAdjustmentReceiptRejectionCode,
     StrIdempotencyKey,
@@ -53,7 +54,7 @@ class ReportingReceipt(AdCPBaseModel):
     supersedes_reporting_receipt_id: Annotated[StrIdempotencyKey | None, Field(description="Optional immutable rejected receipt replaced by this new receipt. It MUST name the caller's current rejected receipt for this obligation and revision; accepted current receipts are terminal."), OmittedNotNull] = None
     status: Status
     verification_profile: ReportingVerificationProfile
-    observed_row_count: NonNegativeInt
+    observed_row_count: IntMin0
     observed_control_totals: Annotated[list[ReportingControlTotal], Field(json_schema_extra={'uniqueItems': True})]
     observed_canonical_content_digest: Annotated[ReportingCanonicalContentDigest | None, OmittedNotNull] = None
     observed_manifest_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, OmittedNotNull] = None

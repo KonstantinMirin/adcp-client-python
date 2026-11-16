@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import InlineMarkupMarkup
+from adcp.types.constraints import InlineMarkupMarkup, IntMin0
 
 from ...enums.macro_value_context import MacroValueContext
 from ..macro_bearing_url import MacroBearingURL
@@ -59,7 +59,7 @@ class InlineMarkupMacroDeclarationsItemLocation(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items/allOf/1/properties/location')
     field: Annotated[Literal['markup'], Field(description='Asset field containing this occurrence.')]
-    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
+    occurrence: Annotated[IntMin0, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 
 
@@ -117,7 +117,7 @@ class PairedRedirectMacroDeclarationsItemLocation(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/2/properties/macro_declarations/items/allOf/1/properties/location')
     field: Annotated[LocationField, Field(description='Asset field containing this occurrence.')]
-    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
+    occurrence: Annotated[IntMin0, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 
 

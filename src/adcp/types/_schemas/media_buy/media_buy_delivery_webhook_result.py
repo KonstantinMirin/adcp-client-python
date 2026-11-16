@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import IntMin1, StrMaxLen50, StrMinLen1
+from adcp.types.constraints import FloatMin0, IntMin0, IntMin1, StrMaxLen50, StrMinLen1
 
 from ..core.attribution_window import AttributionWindow
 from ..core.context import ContextObject
@@ -83,7 +83,7 @@ class Totals(DeliveryMetrics):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#/properties/media_buy_deliveries/items/properties/totals')
-    effective_rate: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    effective_rate: Annotated[FloatMin0 | None, OmittedNotNull] = None
 
 
 class ByPackageItem(DeliveryMetrics):
@@ -95,9 +95,9 @@ class ByPackageItem(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items')
     package_id: Annotated[str | None, OmittedNotNull] = None
-    pacing_index: Annotated[NonNegativeFloat | None, Field(description='Subordinate package pacing diagnostic. May be absent for seller-optimized packages without package-level pacing.'), OmittedNotNull] = None
+    pacing_index: Annotated[FloatMin0 | None, Field(description='Subordinate package pacing diagnostic. May be absent for seller-optimized packages without package-level pacing.'), OmittedNotNull] = None
     pricing_model: Annotated[PricingModel | None, OmittedNotNull] = None
-    rate: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    rate: Annotated[FloatMin0 | None, OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description="ISO 4217 currency code for this package's spend and currency-denominated pricing rate. The rate for revenue_share is a dimensionless commission fraction, but attributed monetary values still use this currency. When the enclosing media_buy_deliveries[].currency is present, this value MUST equal it. For AdCP-authored buys both values MUST equal the media-buy currency. A different package currency is permitted only for a legacy or externally created mixed-currency buy whose row currency and row-level monetary totals are omitted. When both row and deprecated response-wide currency are absent, a package with monetary values MUST include this field. AdCP does not perform currency conversion."), OmittedNotNull] = None
     delivery_status: Annotated[DeliveryStatus | None, Field(description="System-reported operational state of this package. Reflects actual delivery state independent of buyer pause control. 'not_delivering' means zero impressions were recorded for the entire reporting_period while the package was in-flight. Sellers SHOULD only report 'not_delivering' once the package's data is_final for the period — a provisional (is_final: false) zero may still be measurement catching up, not genuine non-delivery."), OmittedNotNull] = None
     paused: Annotated[StrictBool | None, OmittedNotNull] = None
@@ -106,7 +106,7 @@ class ByPackageItem(DeliveryMetrics):
     measurement_window: Annotated[StrMaxLen50 | None, OmittedNotNull] = None
     supersedes_window: Annotated[StrMaxLen50 | None, OmittedNotNull] = None
     metric_values: Annotated[list[PackageDeliveryMetricValue] | None, Field(description='Qualified standard delivery values for this package. Each entry is the delivered counterpart to a standard-scope package.committed_metrics or by_package[].missing_metrics row, using the same atomic key (scope, metric_id, qualifier). Sellers report one row per full qualifier set at package grain; when a metric appears here, its flat scalar counterpart on the package MUST be omitted to avoid two sources of truth. Vendor-scope values continue to use vendor_metric_values. Buyers reconcile rows directly and perform any compatible cross-package aggregation themselves.'), OmittedNotNull] = None
-    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
+    spend: Annotated[FloatMin0, Field(description='Amount spent')]
 
 
 class MediaBuyDeliveriesItem(AdCPBaseModel):
@@ -125,7 +125,7 @@ class MediaBuyDeliveriesItem(AdCPBaseModel):
     is_final: Annotated[StrictBool | None, Field(description="Whether this row's delivery data is final for the reporting period."), OmittedNotNull] = None
     finalized_at: Annotated[AwareDatetime | None, Field(description='Timestamp when this row became final. Present only when is_final is true.'), OmittedNotNull] = None
     pricing_model: Annotated[PricingModel | None, OmittedNotNull] = None
-    pacing_index: Annotated[NonNegativeFloat | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan. Authoritative for seller-optimized buys.'), OmittedNotNull] = None
+    pacing_index: Annotated[FloatMin0 | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan. Authoritative for seller-optimized buys.'), OmittedNotNull] = None
     totals: Totals
     by_package: Annotated[list[ByPackageItem], Field(description='Metrics broken down by package.')]
 
@@ -143,7 +143,7 @@ class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
     )
     notification_type: Annotated[MediaBuyDeliveryWebhookResultNotificationType, Field(description='Type of delivery-report notification: scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = corrected data for the same window, window_update = a wider measurement window supersedes a prior window.')]
     partial_data: Annotated[StrictBool | None, Field(description='Indicates if any media buys in this webhook have missing or delayed data.'), OmittedNotNull] = None
-    unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status when partial_data is true.'), OmittedNotNull] = None
+    unavailable_count: Annotated[IntMin0 | None, Field(description='Number of media buys with reporting_delayed or failed status when partial_data is true.'), OmittedNotNull] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number for this reporting webhook stream.'), OmittedNotNull] = None
     next_expected_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for the next expected notification. Omitted on final notifications.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEndTimezone, Field(description="Period covered by the delivery report. start and end are instants on the reporting timezone's period boundaries (the products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC.")]

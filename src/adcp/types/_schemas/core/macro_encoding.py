@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import ClassVar
 
-from pydantic import ConfigDict, NonNegativeInt
+from pydantic import ConfigDict
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types.constraints import IntMin0
 
 
 class Kind(StrEnum):
@@ -32,7 +33,7 @@ class MacroEncoding(AdCPBaseModel):
         Approximation(document='core/macro-encoding.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'kind': {'const': 'iab_vast_uri'}}, 'required': ['kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     kind: Kind
-    depth: NonNegativeInt
+    depth: IntMin0
 
 
 __all__ = ["MacroEncoding"]

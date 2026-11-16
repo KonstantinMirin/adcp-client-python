@@ -5,11 +5,11 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictFloat
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import FloatMin0Max100
+from adcp.types.constraints import FloatMin0, FloatMin0Max100, IntMin0
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.account_ref import AccountReference
@@ -44,8 +44,8 @@ class Spend(AdCPBaseModel):
     Spend summary for the period
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/spend')
-    total_spend: Annotated[NonNegativeFloat, Field(description='Total spend in the period, in currency')]
-    media_buy_count: Annotated[NonNegativeInt | None, Field(description='Number of active media buys in the period'), OmittedNotNull] = None
+    total_spend: Annotated[FloatMin0, Field(description='Total spend in the period, in currency')]
+    media_buy_count: Annotated[IntMin0 | None, Field(description='Number of active media buys in the period'), OmittedNotNull] = None
 
 
 class Credit(AdCPBaseModel):
@@ -53,7 +53,7 @@ class Credit(AdCPBaseModel):
     Credit status. Present for credit-based accounts (payment_terms like net_30).
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/credit')
-    credit_limit: Annotated[NonNegativeFloat, Field(description='Maximum outstanding balance allowed')]
+    credit_limit: Annotated[FloatMin0, Field(description='Maximum outstanding balance allowed')]
     available_credit: Annotated[StrictFloat, Field(description='Remaining credit available (credit_limit minus outstanding balance)')]
     utilization_percent: Annotated[FloatMin0Max100 | None, Field(description='Credit utilization as a percentage (0-100)'), OmittedNotNull] = None
 
@@ -63,7 +63,7 @@ class LastTopUp(AdCPBaseModel):
     Most recent balance top-up
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/balance/properties/last_top_up')
-    amount: Annotated[NonNegativeFloat, Field(description='Top-up amount')]
+    amount: Annotated[FloatMin0, Field(description='Top-up amount')]
     date: Annotated[date, Field(description='Date of top-up')]
 
 
@@ -72,7 +72,7 @@ class Balance(AdCPBaseModel):
     Prepay balance. Present for prepay accounts.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/balance')
-    available: Annotated[NonNegativeFloat, Field(description='Remaining prepaid balance')]
+    available: Annotated[FloatMin0, Field(description='Remaining prepaid balance')]
     last_top_up: Annotated[LastTopUp | None, Field(description='Most recent balance top-up'), OmittedNotNull] = None
 
 
@@ -108,7 +108,7 @@ class InvoicesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/get-account-financials-response.json', pointer='#/oneOf/0/properties/invoices/items')
     invoice_id: Annotated[str, Field(description='Seller-assigned invoice identifier')]
     period: Annotated[DateRange | None, Field(description='Billing period covered by this invoice'), OmittedNotNull] = None
-    amount: Annotated[NonNegativeFloat, Field(description='Invoice total in currency')]
+    amount: Annotated[FloatMin0, Field(description='Invoice total in currency')]
     status: Annotated[Status, Field(description='Invoice status')]
     due_date: Annotated[date | None, Field(description='Payment due date'), OmittedNotNull] = None
     paid_date: Annotated[date | None, Field(description="Date payment was received. Present when status is 'paid'."), OmittedNotNull] = None

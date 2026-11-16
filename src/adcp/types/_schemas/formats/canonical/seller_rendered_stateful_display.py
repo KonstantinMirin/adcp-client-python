@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Presence, PresenceGroups, Rule, UniqueItems
@@ -15,6 +15,7 @@ from adcp.types.constraints import (
     CanonicalFormatImageAspectRatio,
     FloatGt0,
     FloatMin0Max100,
+    IntMin0,
     IntMin1,
     StatesItemBreakpointsItemViewportHeightPercent,
 )
@@ -225,8 +226,8 @@ class TransitionsItem(BranchDispatchMixin, AdCPBaseModel):
     media_event: Annotated[MediaEvent | None, Field(description='Playback milestone of `video_main` driving a `media_event` transition (endframes, collapse-on-complete).'), OmittedNotNull] = None
     direction: Annotated[Direction | None, Field(description='Scroll direction that arms a `scroll_threshold` transition; enables direction-aware expand/collapse cycles. Re-crossing in the opposite direction does not re-fire this transition.', json_schema_extra={'default': 'down'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Direction).validate_python('down'))
     transition_mode: Annotated[TransitionsItemTransitionMode, Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
-    delay_ms: Annotated[NonNegativeInt | None, Field(description='For `timer`: delay after `from_state_id` activates (re-entry restarts it). For `in_view_timer`: accumulated viewable milliseconds in `from_state_id`. Timer-class transitions in a state cycle MUST declare at least 1000 (anti-strobe floor).'), OmittedNotNull] = None
-    duration_ms: Annotated[NonNegativeInt | None, Field(description='Duration of a seller-rendered animated transition.'), OmittedNotNull] = None
+    delay_ms: Annotated[IntMin0 | None, Field(description='For `timer`: delay after `from_state_id` activates (re-entry restarts it). For `in_view_timer`: accumulated viewable milliseconds in `from_state_id`. Timer-class transitions in a state cycle MUST declare at least 1000 (anti-strobe floor).'), OmittedNotNull] = None
+    duration_ms: Annotated[IntMin0 | None, Field(description='Duration of a seller-rendered animated transition.'), OmittedNotNull] = None
     scroll_threshold_percent: Annotated[FloatMin0Max100 | None, Field(description='Viewport/page scroll threshold that starts a `scroll_threshold` transition.'), OmittedNotNull] = None
     scroll_reference: Annotated[ScrollReference | None, Field(description='Reference frame for scroll percentages. Progress is `scroll_offset / max(scroll_extent - viewport_extent, 1) * 100`, measured on either the page document or the nearest seller-declared containing scroller.'), OmittedNotNull] = None
     scroll_start_percent: Annotated[FloatMin0Max100 | None, Field(description='Start of the bounded scroll interval for a `scroll_progress` transition.'), OmittedNotNull] = None
@@ -254,7 +255,7 @@ class TransitionsItemTimer(TransitionsItem):
     )
     trigger: Annotated[Literal[Trigger.TIMER], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.')]
     transition_mode: Annotated[TransitionsItemTimerTransitionMode, Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
-    delay_ms: Annotated[NonNegativeInt, Field(description='For `timer`: delay after `from_state_id` activates (re-entry restarts it). For `in_view_timer`: accumulated viewable milliseconds in `from_state_id`. Timer-class transitions in a state cycle MUST declare at least 1000 (anti-strobe floor).')]
+    delay_ms: Annotated[IntMin0, Field(description='For `timer`: delay after `from_state_id` activates (re-entry restarts it). For `in_view_timer`: accumulated viewable milliseconds in `from_state_id`. Timer-class transitions in a state cycle MUST declare at least 1000 (anti-strobe floor).')]
 
 
 TransitionsItemInViewTimerTransitionMode = TransitionsItemTimerTransitionMode
@@ -270,7 +271,7 @@ class TransitionsItemInViewTimer(TransitionsItem):
     )
     trigger: Annotated[Literal[Trigger.IN_VIEW_TIMER], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.')]
     transition_mode: Annotated[TransitionsItemInViewTimerTransitionMode, Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
-    delay_ms: Annotated[NonNegativeInt, Field(description='For `timer`: delay after `from_state_id` activates (re-entry restarts it). For `in_view_timer`: accumulated viewable milliseconds in `from_state_id`. Timer-class transitions in a state cycle MUST declare at least 1000 (anti-strobe floor).')]
+    delay_ms: Annotated[IntMin0, Field(description='For `timer`: delay after `from_state_id` activates (re-entry restarts it). For `in_view_timer`: accumulated viewable milliseconds in `from_state_id`. Timer-class transitions in a state cycle MUST declare at least 1000 (anti-strobe floor).')]
 
 
 TransitionsItemScrollThresholdScrollTransitionMode = TransitionsItemTimerTransitionMode
@@ -397,7 +398,7 @@ class CanonicalFormatSellerRenderedStatefulDisplay(CanonicalFormatBase):
     clickthrough: Annotated[CoBrandingRequirement | None, Field(description='Destination policy. `required` (default): manifest MUST supply `landing_page_url`. `optional`: click-optional units (in-feed brand units) may omit it. `none`: unit is non-clickable; manifests MUST NOT supply `landing_page_url` or `state_click_urls`. Per-state overrides via `state_click_urls` entries carrying `state_id`; `landing_page_url` is the fallback for unlisted states.'), OmittedNotNull] = 'required'
     user_controls: Annotated[UserControls, Field(description="When any state anchors as `overlay` or `fullscreen_overlay`, either `dismissible` MUST be true or that state's `close_affordance` MUST be true (dismissibility floor; semantic validators enforce).")]
     canvas_constraints: Annotated[list[CanvasConstraint] | None, Field(description='Rectangular areas constraining buyer artwork. Omitted state/breakpoint selectors apply the constraint to every canvas. For fluid or range-sized breakpoints, use percent-unit regions.'), OmittedNotNull] = None
-    duration_ms_range: Annotated[list[NonNegativeInt | None] | None, Field(description='Accepted embedded-video duration [min, max]. `duration_ms_exact` takes precedence when both are present.', max_length=2, min_length=2), OmittedNotNull] = None
+    duration_ms_range: Annotated[list[IntMin0 | None] | None, Field(description='Accepted embedded-video duration [min, max]. `duration_ms_exact` takes precedence when both are present.', max_length=2, min_length=2), OmittedNotNull] = None
     duration_ms_exact: Annotated[IntMin1 | None, OmittedNotNull] = None
     aspect_ratio: Annotated[CanonicalFormatImageAspectRatio | None, Field(description='Embedded-video aspect ratio.'), OmittedNotNull] = None
     containers: Annotated[list[ContainersItem] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None

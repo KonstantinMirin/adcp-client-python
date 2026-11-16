@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import FloatMin0Max1
+from adcp.types.constraints import FloatMin0, FloatMin0Max1
 
 from .duration import Duration
 
@@ -41,7 +41,7 @@ class CancellationFee(AdCPBaseModel):
     )
     type: Annotated[CancellationFeeType, Field(description="Fee calculation method. 'percent_remaining': percentage of remaining uncommitted spend. 'full_commitment': buyer owes the full committed budget regardless of delivery. 'fixed_fee': flat monetary amount. 'none': no financial fee (cancellation with notice is free).")]
     rate: Annotated[FloatMin0Max1 | None, Field(description="Fee rate as a decimal proportion of remaining committed spend. Required when type is 'percent_remaining' (e.g., 0.5 means 50% of remaining spend)."), OmittedNotNull] = None
-    amount: Annotated[NonNegativeFloat | None, Field(description="Fixed fee amount in the buy's currency. Required when type is 'fixed_fee'."), OmittedNotNull] = None
+    amount: Annotated[FloatMin0 | None, Field(description="Fixed fee amount in the buy's currency. Required when type is 'fixed_fee'."), OmittedNotNull] = None
 
 
 class CancellationPolicy(AdCPBaseModel):

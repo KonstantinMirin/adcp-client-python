@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types.constraints import IntMin0
 
 from ..enums.available_metric import AvailableMetric
 from ..enums.reporting_frequency import ReportingFrequency
@@ -57,7 +58,7 @@ class ReportingCapabilities(AdCPBaseModel):
         UniqueItems('measurement_windows'),
     )
     available_reporting_frequencies: Annotated[list[ReportingFrequency], Field(description='Supported reporting frequency options', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    expected_delay_minutes: Annotated[NonNegativeInt, Field(description='Expected delay in minutes before reporting data becomes available (e.g., 240 for 4-hour delay)')]
+    expected_delay_minutes: Annotated[IntMin0, Field(description='Expected delay in minutes before reporting data becomes available (e.g., 240 for 4-hour delay)')]
     timezone: Annotated[str, Field(description="Timezone for this product's reporting periods. Use 'UTC' or an IANA timezone (e.g., 'America/New_York'). This explicit reporting clock may equal Account.timezone or differ when the upstream platform reports on a separate boundary, so buyers MUST NOT infer it from Account.timezone. It is the reporting timezone for this product's delivery reporting: get_media_buy_delivery start_date, end_date, and daily_breakdown dates are calendar dates in it, and reporting_period boundaries and daily, weekly, or monthly windows fall on its calendar boundaries. Buyers MUST use this value for daily/monthly report alignment.")]
     supports_webhooks: Annotated[StrictBool, Field(description='Whether this product supports webhook-based reporting notifications')]
     reporting_delivery_offering_ids: Annotated[list[ReportingDeliveryOfferingID] | None, Field(description='Product-scoped subset of get_adcp_capabilities.media_buy.reporting_delivery.offerings[].offering_id that packages using this product can satisfy. This binds seller-wide managed-delivery offerings to product/package eligibility. An empty array explicitly declares no managed offering; absence means product-level applicability is unknown and MUST NOT be inferred from the seller-wide list. Account, seat, credential, or provider constraints may narrow support further during sync_accounts validation.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None

@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import StrMinLen1MaxLen1000, StrMinLen1MaxLen2000
+from adcp.types.constraints import IntMin0, StrMinLen1MaxLen1000, StrMinLen1MaxLen2000
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -137,7 +137,7 @@ class ExcludedByValue(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/filter_diagnostics/properties/excluded_by/additionalProperties')
-    count: Annotated[NonNegativeInt, Field(description='Number of products excluded by this filter, interpreted per the parent `semantics` field.')]
+    count: Annotated[IntMin0, Field(description='Number of products excluded by this filter, interpreted per the parent `semantics` field.')]
     values: Annotated[list[str | dict[str, Any]] | None, Field(description='Optional list of the specific filter values that contributed to exclusions, when meaningful. For `required_metrics`: the metric names that excluded products (strings). For `required_vendor_metrics`: the vendor/metric pin entries (objects). Item shape is filter-specific; the schema admits string OR object items. Buyers without filter-specific knowledge SHOULD treat as opaque.'), OmittedNotNull] = None
     notes: Annotated[str | None, Field(description="Optional human-readable note about why this filter narrowed the set (e.g., 'no products in this brief support DV viewability at the requested threshold')."), OmittedNotNull] = None
 
@@ -151,7 +151,7 @@ class FilterDiagnostics(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/filter_diagnostics')
     semantics: Annotated[Semantics | None, Field(description="How `excluded_by[*].count` values are computed across multiple filters. `only`: counts products that would have been included if not for THIS filter alone (deterministic; the right value for 'which filter killed my result set' triage — recommended when feasible). `any`: counts products excluded by ANY filter (so multiple filters' counts may overlap and sum to more than `total_candidates`). `approximate`: sellers SHOULD use this when their pipeline can't cleanly attribute exclusions to a single filter. Buyers SHOULD inspect `semantics` before doing arithmetic on counts."), OmittedNotNull] = None
-    total_candidates: Annotated[NonNegativeInt | None, Field(description='Number of products the seller considered before applying `filters`. Baseline for interpreting per-filter exclusion counts. Approximate — sellers MAY return a sampled or capped count when their candidate pool is large. Optional; sellers whose baseline candidate set size is sensitive (revealing market posture or competitive density) MAY omit this while still emitting `excluded_by`.'), OmittedNotNull] = None
+    total_candidates: Annotated[IntMin0 | None, Field(description='Number of products the seller considered before applying `filters`. Baseline for interpreting per-filter exclusion counts. Approximate — sellers MAY return a sampled or capped count when their candidate pool is large. Optional; sellers whose baseline candidate set size is sensitive (revealing market posture or competitive density) MAY omit this while still emitting `excluded_by`.'), OmittedNotNull] = None
     excluded_by: Annotated[dict[str, ExcludedByValue] | None, Field(description="Per-filter exclusion counts, keyed by the filter property name as it appears in the request's `filters` object (e.g., `pricing_currencies`, `required_metrics`, `required_vendor_metrics`, `required_geo_targeting`, `budget_range`). Values are objects carrying `count` and optional filter-specific detail. Only filters that actually narrowed the set need appear here; absence of a key means that filter did not exclude anything (or was not in the request)."), OmittedNotNull] = None
 
 

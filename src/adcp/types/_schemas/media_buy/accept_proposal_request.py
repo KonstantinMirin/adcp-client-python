@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
+    FloatMin0,
     IoAcceptanceSignatory,
     MediaBuyName,
     StrMinLen1,
@@ -75,7 +76,7 @@ class AcceptProposalRequest(AdCPVersionEnvelope, AdcpRequest):
     proposal_id: StrMinLen1
     proposal_terms_digest: Annotated[CanonicalProposalTermsDigest, Field(description='terms_digest from the committed proposal. The seller MUST atomically verify both ID and digest before acceptance.')]
     total_budget: Annotated[Money | None, Field(description='Execution amount when the committed proposal defines scalable percentages or constraints rather than a fixed total.'), OmittedNotNull] = None
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling applied when the committed proposal is accepted. It constrains execution without changing the proposal's negotiated pricing."), OmittedNotNull] = None
+    daily_budget_cap: Annotated[FloatMin0 | None, Field(description="Optional hard aggregate daily spend ceiling applied when the committed proposal is accepted. It constrains execution without changing the proposal's negotiated pricing."), OmittedNotNull] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional shared IANA cap-day timezone override. Requires buyer_timezone_override support. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.'), OmittedNotNull] = None
     io_acceptance: Annotated[IoAcceptance | None, OmittedNotNull] = None
     purchase_order_ref: Annotated[StrMinLen1MaxLen255 | None, OmittedNotNull] = None

@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import AfterValidator, ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, HostedUrl, IntMin1
+from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, HostedUrl, IntMin0, IntMin1
 
 from ..enums.available_metric import AvailableMetric
 from ..enums.dimension_unit import DimensionUnit
@@ -535,7 +535,7 @@ class RepeatableGroupAsset(AdCPBaseModel):
     item_type: Annotated[Literal['repeatable_group'], Field(description='Discriminator indicating this is a repeatable asset group')]
     asset_group_id: Annotated[str, Field(description="Identifier for this asset group (e.g., 'product', 'slide', 'card')")]
     required: Annotated[StrictBool, Field(description='Whether this asset group is required. If true, at least min_count repetitions must be provided.')]
-    min_count: Annotated[NonNegativeInt, Field(description='Minimum number of repetitions required (if group is required) or allowed (if optional)')]
+    min_count: Annotated[IntMin0, Field(description='Minimum number of repetitions required (if group is required) or allowed (if optional)')]
     max_count: Annotated[IntMin1, Field(description='Maximum number of repetitions allowed')]
     selection_mode: Annotated[SelectionMode | None, Field(description="How the platform uses repetitions of this group. 'sequential' means all items display in order (carousels, playlists). 'optimize' means the platform selects the best-performing combination from alternatives (asset group optimization like Meta Advantage+ or Google Pmax).", json_schema_extra={'default': 'sequential'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(SelectionMode).validate_python('sequential'))
     assets: Annotated[list[GroupImageAsset | GroupVideoAsset | GroupAudioAsset | GroupTextAsset | GroupMarkdownAsset | GroupHtmlAsset | GroupCssAsset | GroupJavaScriptAsset | GroupZipAsset | GroupVastAsset | GroupDaastAsset | GroupUrlAsset | GroupWebhookAsset | GroupBriefAsset | GroupCatalogAsset | GroupDisplayTagAsset | GroupPublishedPostAsset | GroupCardAsset | GroupPixelTrackerAsset | GroupVastTrackerAsset | GroupDaastTrackerAsset], Field(description='Assets within each repetition of this group')]

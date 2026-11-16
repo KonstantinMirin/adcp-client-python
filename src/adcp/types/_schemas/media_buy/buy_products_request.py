@@ -3,11 +3,18 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import MediaBuyName, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen4096
+from adcp.types.constraints import (
+    FloatMin0,
+    MediaBuyName,
+    StrMaxLen100,
+    StrMinLen1,
+    StrMinLen1MaxLen255,
+    StrMinLen1MaxLen4096,
+)
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.bidding_policy import BiddingPolicy
@@ -80,7 +87,7 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
     pricing_version: Annotated[StrMinLen1 | None, Field(description='list_products pricing_version containing the accepted rate. Buyers MUST include this whenever list_products returned one; omission means the seller does not version pricing separately.'), OmittedNotNull] = None
     purchases: Annotated[list[ProductPurchaseInput], Field(min_length=1)]
     total_budget: Annotated[Money | None, OmittedNotNull] = None
-    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard aggregate daily spend ceiling in total_budget.currency or the media buy's derived currency. It bounds the shared daily spend pool without allocating or reserving amounts for purchases."), OmittedNotNull] = None
+    daily_budget_cap: Annotated[FloatMin0 | None, Field(description="Optional hard aggregate daily spend ceiling in total_budget.currency or the media buy's derived currency. It bounds the shared daily spend pool without allocating or reserving amounts for purchases."), OmittedNotNull] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Optional max-impression cap using one counter across purchases. Buyers send it only when aggregate_frequency_capping is advertised. Every selected product must declare compatible media_buy_support; otherwise the purchase is rejected atomically with UNSUPPORTED_FEATURE before any mutation, never clamped.'), OmittedNotNull] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional IANA timezone override shared by every aggregate and purchase daily cap. Requires buyer_timezone_override support; otherwise rejected with UNSUPPORTED_FEATURE. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.'), OmittedNotNull] = None
     budget_allocation: Annotated[CanonicalBudgetAllocation | None, OmittedNotNull] = None

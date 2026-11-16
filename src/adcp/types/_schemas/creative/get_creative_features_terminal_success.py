@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import HostedUrl, StrMinLen1
+from adcp.types.constraints import FloatMin0, HostedUrl, StrMinLen1
 
 from ..core.context import ContextObject
 from ..core.creative_consumption import CreativeConsumption
@@ -37,7 +37,7 @@ class GetCreativeFeaturesSuccess(AdCPBaseModel):
     detail_url: Annotated[HostedUrl | None, Field(description="URL to the vendor's full assessment report. The vendor controls what information is disclosed and access control."), OmittedNotNull] = None
     audit_observations: Annotated[list[CreativeAuditObservation] | None, Field(description='Non-blocking audit observations from the governance agent. Observations surface audit-worthy claims that are not verifier refutations and are not rejection grounds by themselves.'), OmittedNotNull] = None
     pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this evaluation. Present when the governance agent charges for evaluations and account was provided in the request.'), OmittedNotNull] = None
-    vendor_cost: Annotated[NonNegativeFloat | None, Field(description='Cost incurred for this evaluation, denominated in currency.'), OmittedNotNull] = None
+    vendor_cost: Annotated[FloatMin0 | None, Field(description='Cost incurred for this evaluation, denominated in currency.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for vendor_cost.'), OmittedNotNull] = None
     consumption: Annotated[CreativeConsumption | None, Field(description='Structured consumption details for this evaluation. Informational — lets the buyer verify that vendor_cost is consistent with the rate card. vendor_cost is the billing source of truth.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None

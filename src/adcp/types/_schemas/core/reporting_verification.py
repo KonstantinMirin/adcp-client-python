@@ -4,11 +4,12 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
+    IntMin0,
     PhysicalChecksumsItemSHA512PhysicalChecksumValue,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
 )
@@ -88,7 +89,7 @@ class ReportingVerification(AdCPBaseModel):
     verified_at: Annotated[AwareDatetime, Field(description='When the producer completed verification through the claimed consumer/destination path.')]
     verification_path: Annotated[VerificationPath, Field(description='Path on which verification succeeded. dataset_share readiness requires representative_consumer; delivered warehouse state requires destination.')]
     verification_profile: ReportingVerificationProfile
-    row_count: Annotated[NonNegativeInt, Field(description='Verified row count. Zero explicitly distinguishes an empty committed revision from a missing revision.')]
+    row_count: Annotated[IntMin0, Field(description='Verified row count. Zero explicitly distinguishes an empty committed revision from a missing revision.')]
     control_totals: Annotated[list[ReportingControlTotal], Field(description='Profile-defined totals recomputed through verification_path. Names MUST be unique.', json_schema_extra={'uniqueItems': True})]
     canonical_content_digest: Annotated[ReportingCanonicalContentDigest | None, OmittedNotNull] = None
     physical_checksums: Annotated[list[SHA256PhysicalChecksum | SHA512PhysicalChecksum] | None, Field(description='Method-specific byte/object checksums. Different encodings of the same logical revision normally have different values.', min_length=1), OmittedNotNull] = None

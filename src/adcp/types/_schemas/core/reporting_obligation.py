@@ -4,13 +4,14 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
+    IntMin0,
     IntMin1,
     StrIdempotencyKey,
     StrMinLen1,
@@ -100,17 +101,17 @@ class ReportingObligation(AdCPBaseModel):
     reconciliation_status: Annotated[ReconciliationStatus, Field(description='Consumer agreement state for the current required revision. A later superseding revision returns a receipt-required obligation to pending until that revision is accepted.')]
     health: ReportingHealth
     production_status: Annotated[ProductionStatus, Field(description='Whether any revision has been produced for this obligation. published includes zero-row revisions.')]
-    revision_count: Annotated[NonNegativeInt, Field(description='Number of revision records for this obligation in the consistent ledger snapshot.')]
-    consumer_status_count: Annotated[NonNegativeInt | None, Field(description='Complete number of immutable authenticated consumer status statements associated with this obligation in the ledger snapshot, whether originally joined by reporting_obligation_id or by the exact configuration-generation, report-definition, and period key before the obligation existed. Core status-sync history is counted independently from Reconciled Billing receipts.'), OmittedNotNull] = None
+    revision_count: Annotated[IntMin0, Field(description='Number of revision records for this obligation in the consistent ledger snapshot.')]
+    consumer_status_count: Annotated[IntMin0 | None, Field(description='Complete number of immutable authenticated consumer status statements associated with this obligation in the ledger snapshot, whether originally joined by reporting_obligation_id or by the exact configuration-generation, report-definition, and period key before the obligation existed. Core status-sync history is counted independently from Reconciled Billing receipts.'), OmittedNotNull] = None
     current_consumer_status_id: Annotated[StrIdempotencyKey | None, Field(description='Current unsuperseded consumer status statement associated with this obligation by seller ID or its exact logical period key. Omitted when consumer_status_count is zero.'), OmittedNotNull] = None
-    adjustment_count: Annotated[NonNegativeInt | None, Field(description='Number of immutable post-official reporting adjustment records for this obligation in the consistent ledger snapshot.'), OmittedNotNull] = None
-    materialization_count: Annotated[NonNegativeInt | None, Field(description="Number of materialization records for this obligation's revisions in the consistent ledger snapshot. Present iff the obligation is managed-delivery (destination_ref present)."), OmittedNotNull] = None
-    successful_materialization_count: Annotated[NonNegativeInt | None, Field(description='Number of available/delivered verified materializations in the consistent ledger snapshot. Present iff the obligation is managed-delivery (destination_ref present).'), OmittedNotNull] = None
-    receipt_count: Annotated[NonNegativeInt | None, Field(description='Complete number of authenticated receipts associated with this obligation in the ledger snapshot. Present iff reconciliation_mode is consumer_receipt.'), OmittedNotNull] = None
-    accepted_receipt_count: Annotated[NonNegativeInt | None, Field(description='Number of accepted receipts. At most one current accepted receipt per consumer and revision contributes to reconciliation_status. Present iff reconciliation_mode is consumer_receipt.'), OmittedNotNull] = None
-    adjustment_receipt_count: Annotated[NonNegativeInt | None, Field(description="Number of authenticated receipts for adjustments targeting this obligation's official revision. Reconciled Billing only."), OmittedNotNull] = None
-    accepted_adjustment_receipt_count: Annotated[NonNegativeInt | None, Field(description='Number of accepted adjustment receipts. Reconciled Billing buyers do not post an adjustment until their exact digest is accepted.'), OmittedNotNull] = None
-    pending_adjustment_count: Annotated[NonNegativeInt | None, Field(description='Number of applicable adjustments without an accepted receipt. Reconciled Billing complete/healthy requires zero.'), OmittedNotNull] = None
+    adjustment_count: Annotated[IntMin0 | None, Field(description='Number of immutable post-official reporting adjustment records for this obligation in the consistent ledger snapshot.'), OmittedNotNull] = None
+    materialization_count: Annotated[IntMin0 | None, Field(description="Number of materialization records for this obligation's revisions in the consistent ledger snapshot. Present iff the obligation is managed-delivery (destination_ref present)."), OmittedNotNull] = None
+    successful_materialization_count: Annotated[IntMin0 | None, Field(description='Number of available/delivered verified materializations in the consistent ledger snapshot. Present iff the obligation is managed-delivery (destination_ref present).'), OmittedNotNull] = None
+    receipt_count: Annotated[IntMin0 | None, Field(description='Complete number of authenticated receipts associated with this obligation in the ledger snapshot. Present iff reconciliation_mode is consumer_receipt.'), OmittedNotNull] = None
+    accepted_receipt_count: Annotated[IntMin0 | None, Field(description='Number of accepted receipts. At most one current accepted receipt per consumer and revision contributes to reconciliation_status. Present iff reconciliation_mode is consumer_receipt.'), OmittedNotNull] = None
+    adjustment_receipt_count: Annotated[IntMin0 | None, Field(description="Number of authenticated receipts for adjustments targeting this obligation's official revision. Reconciled Billing only."), OmittedNotNull] = None
+    accepted_adjustment_receipt_count: Annotated[IntMin0 | None, Field(description='Number of accepted adjustment receipts. Reconciled Billing buyers do not post an adjustment until their exact digest is accepted.'), OmittedNotNull] = None
+    pending_adjustment_count: Annotated[IntMin0 | None, Field(description='Number of applicable adjustments without an accepted receipt. Reconciled Billing complete/healthy requires zero.'), OmittedNotNull] = None
     issues: list[ReportingStatusIssue]
     resource_retained_until: Annotated[AwareDatetime | None, Field(description='Minimum time through which at least one verified materialization for a completed obligation remains readable. Managed-delivery only; Core revisions are retained per status_retention_days and readable through the existing API transports.'), OmittedNotNull] = None
 

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types.constraints import FloatMin0
 
 from .delivery_metrics import DeliveryMetrics
 from .installment_ref import InstallmentReference
@@ -22,8 +23,8 @@ class InstallmentDeliveryMetrics(DeliveryMetrics):
     installment_ref: InstallmentReference
     installment_name: Annotated[str | None, Field(description='Current human-readable installment name. Convenience metadata only; installment_ref is stable identity.'), OmittedNotNull] = None
     scheduled_at: Annotated[AwareDatetime | None, Field(description="Convenience echo of the installment's scheduled publication or air time."), OmittedNotNull] = None
-    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
-    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
+    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
+    spend: Annotated[FloatMin0, Field(description='Amount spent')]
 
 
 __all__ = ["InstallmentDeliveryMetrics"]

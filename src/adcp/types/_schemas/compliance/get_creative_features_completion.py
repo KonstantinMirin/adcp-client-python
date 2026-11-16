@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, NonNegativeFloat
+from pydantic import ConfigDict
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import StrMinLen1
+from adcp.types.constraints import FloatMin0, StrMinLen1
 
 from ..core.creative_consumption import CreativeConsumption
 from ..core.currency_code import CurrencyCode
@@ -25,7 +25,7 @@ class GetCreativeFeaturesComplianceCompletion(AdCPBaseModel):
     evaluation_id: StrMinLen1
     results: list[CreativeFeatureResult]
     pricing_option_id: Annotated[str | None, OmittedNotNull] = None
-    vendor_cost: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    vendor_cost: Annotated[FloatMin0 | None, OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, OmittedNotNull] = None
     consumption: Annotated[CreativeConsumption | None, OmittedNotNull] = None
 

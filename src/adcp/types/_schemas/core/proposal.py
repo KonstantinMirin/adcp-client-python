@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
-from adcp.types.constraints import StrMaxLen255, StrMaxLen500, StrMaxLen2000
+from adcp.types.constraints import FloatMin0, StrMaxLen255, StrMaxLen500, StrMaxLen2000
 
 from ..enums.pacing import Pacing
 from ..enums.proposal_status import ProposalStatus
@@ -26,9 +26,9 @@ class TotalBudgetGuidance(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/proposal.json', pointer='#/properties/total_budget_guidance')
-    min: Annotated[NonNegativeFloat | None, Field(description='Minimum recommended budget'), OmittedNotNull] = None
-    recommended: Annotated[NonNegativeFloat | None, Field(description='Recommended budget for optimal performance'), OmittedNotNull] = None
-    max: Annotated[NonNegativeFloat | None, Field(description='Maximum budget before diminishing returns'), OmittedNotNull] = None
+    min: Annotated[FloatMin0 | None, Field(description='Minimum recommended budget'), OmittedNotNull] = None
+    recommended: Annotated[FloatMin0 | None, Field(description='Recommended budget for optimal performance'), OmittedNotNull] = None
+    max: Annotated[FloatMin0 | None, Field(description='Maximum budget before diminishing returns'), OmittedNotNull] = None
     currency: Annotated[str | None, Field(description='ISO 4217 currency code'), OmittedNotNull] = None
 
 

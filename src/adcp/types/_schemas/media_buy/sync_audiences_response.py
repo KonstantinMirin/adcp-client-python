@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
-from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMaxLen2000
+from adcp.types.constraints import FloatMin0Max1, IntMin0, IntMin1, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.brand_ref import BrandReference
@@ -59,8 +59,8 @@ class MatchBreakdownItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-audiences-response.json', pointer='#/oneOf/0/properties/audiences/items/properties/match_breakdown/items')
     id_type: Annotated[MatchIDType, Field(description='Identifier type. Combines hashed PII types (hashed_email, hashed_phone) with universal ID types (rampid, uid2, maid, etc.).')]
-    submitted: Annotated[NonNegativeInt, Field(description='Cumulative number of members submitted with this identifier type across all syncs (matches total_uploaded_count semantics, not uploaded_count). Compare with matched to calculate per-type match rate.')]
-    matched: Annotated[NonNegativeInt, Field(description='Cumulative number of members matched via this identifier type across all syncs.')]
+    submitted: Annotated[IntMin0, Field(description='Cumulative number of members submitted with this identifier type across all syncs (matches total_uploaded_count semantics, not uploaded_count). Compare with matched to calculate per-type match rate.')]
+    matched: Annotated[IntMin0, Field(description='Cumulative number of members matched via this identifier type across all syncs.')]
     match_rate: Annotated[FloatMin0Max1, Field(description='Match rate for this identifier type (matched / submitted). Server-authoritative — consumers should prefer this value over computing their own.')]
 
 
@@ -113,9 +113,9 @@ class AudiencesItem(AdCPBaseModel):
     seller_id: Annotated[str | None, Field(description='Seller-assigned identifier for this audience in their ad platform'), OmittedNotNull] = None
     action: Annotated[Action, Field(description="Action taken for this audience. 'status' is present when action is created, updated, or unchanged. 'status' is absent when action is deleted or failed.")]
     status: Annotated[AudienceStatus | None, Field(description='Matching status. Present when action is created, updated, or unchanged; absent when action is deleted or failed.'), OmittedNotNull] = None
-    uploaded_count: Annotated[NonNegativeInt | None, Field(description='Number of members submitted in this sync operation (delta, not cumulative). In discovery-only calls (no audiences array), this is 0.'), OmittedNotNull] = None
-    total_uploaded_count: Annotated[NonNegativeInt | None, Field(description='Cumulative number of members uploaded across all syncs for this audience. Compare with matched_count to calculate match rate (matched_count / total_uploaded_count). Populated when the seller tracks cumulative upload counts.'), OmittedNotNull] = None
-    matched_count: Annotated[NonNegativeInt | None, Field(description="Total members matched to platform users across all syncs (cumulative, not just this call). Populated when status is 'ready'."), OmittedNotNull] = None
+    uploaded_count: Annotated[IntMin0 | None, Field(description='Number of members submitted in this sync operation (delta, not cumulative). In discovery-only calls (no audiences array), this is 0.'), OmittedNotNull] = None
+    total_uploaded_count: Annotated[IntMin0 | None, Field(description='Cumulative number of members uploaded across all syncs for this audience. Compare with matched_count to calculate match rate (matched_count / total_uploaded_count). Populated when the seller tracks cumulative upload counts.'), OmittedNotNull] = None
+    matched_count: Annotated[IntMin0 | None, Field(description="Total members matched to platform users across all syncs (cumulative, not just this call). Populated when status is 'ready'."), OmittedNotNull] = None
     effective_match_rate: Annotated[FloatMin0Max1 | None, Field(description="Deduplicated match rate across all identifier types (matched_count / total_uploaded_count after deduplication). A single number for reach estimation. Populated when status is 'ready'."), OmittedNotNull] = None
     match_breakdown: Annotated[list[MatchBreakdownItem] | None, Field(description='Per-identifier-type match results. Shows which ID types are resolving and at what rate. Helps buyers decide which identifiers to prioritize. Populated when the seller can report per-type matching. Omitted when the seller only supports aggregate match counts.', min_length=1), OmittedNotNull] = None
     last_synced_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp of when the most recent sync operation was accepted by the platform. Useful for agents reasoning about audience freshness. Omitted if the seller does not track this. For externally sourced audiences, REQUIRED once counts populate (status ready or too_small): every count field is as-of this timestamp — it is the buyer's only anchor for what a count means, since two reads can differ because membership changed, match rate changed, or the seller re-read the source."), OmittedNotNull] = None

@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
-from adcp.types.constraints import CommissionRate, StrMinLen1, StrMinLen1MaxLen1000
+from adcp.types.constraints import CommissionRate, FloatMin0, StrMinLen1, StrMinLen1MaxLen1000
 
 from ..enums.adjustment_kind import PriceAdjustmentKind
 from ..enums.event_type import EventType
@@ -36,10 +36,10 @@ class CanonicalPricingOption(AdCPBaseModel):
     pricing_option_id: StrMinLen1
     pricing_model: PricingModel
     currency: CurrencyCode
-    fixed_price: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
-    floor_price: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    fixed_price: Annotated[FloatMin0 | None, OmittedNotNull] = None
+    floor_price: Annotated[FloatMin0 | None, OmittedNotNull] = None
     price_guidance: Annotated[PriceGuidance | None, OmittedNotNull] = None
-    min_spend_per_package: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    min_spend_per_package: Annotated[FloatMin0 | None, OmittedNotNull] = None
     price_breakdown: Annotated[PriceBreakdown | None, OmittedNotNull] = None
     eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     parameters: Annotated[dict[str, Any] | None, OmittedNotNull] = None

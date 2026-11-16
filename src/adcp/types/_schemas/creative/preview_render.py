@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl
+from adcp.types.constraints import FloatMin0, HostedUrl
 
 from ..core.preview_renderer_metadata import PreviewRendererMetadata
 
@@ -35,8 +35,8 @@ class PreviewRenderUrlDimensions(AdCPBaseModel):
     Dimensions for this rendered piece
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/0/properties/dimensions')
-    width: NonNegativeFloat
-    height: NonNegativeFloat
+    width: FloatMin0
+    height: FloatMin0
 
 
 class PreviewRenderUrlEmbedding(AdCPBaseModel):

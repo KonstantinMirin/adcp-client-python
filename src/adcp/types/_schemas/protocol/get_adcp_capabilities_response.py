@@ -5,16 +5,7 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import (
-    AfterValidator,
-    AwareDatetime,
-    ConfigDict,
-    Field,
-    NonNegativeInt,
-    StrictBool,
-    StrictFloat,
-    TypeAdapter,
-)
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
@@ -34,6 +25,7 @@ from adcp.types.constraints import (
     GetAdCPCapabilitiesResponseRequestSigningProtocolMethodsRequiredForItem,
     GovernanceAggregationWindowDays,
     HostedUrl,
+    IntMin0,
     IntMin0Max86400,
     IntMin1,
     IntMin2Max10,
@@ -902,8 +894,8 @@ class MatchingLatencyHours(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/media_buy/properties/audience_targeting/properties/matching_latency_hours')
-    min: Annotated[NonNegativeInt | None, OmittedNotNull] = None
-    max: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    min: Annotated[IntMin0 | None, OmittedNotNull] = None
+    max: Annotated[IntMin0 | None, OmittedNotNull] = None
 
 
 class AudienceTargeting(AdCPBaseModel):
@@ -1472,7 +1464,7 @@ class Creative(AdCPBaseModel):
     supports_refinement: Annotated[StrictBool | None, Field(description="When true, this agent retains produced build_variant leaves for an agent-defined retention window and can re-build from one via build_creative's refine_from_build_variant_id — applying a natural-language instruction in message plus an optional config delta, returning new lineage-linked variants. A build-time agent capability independent of generation/transformation. When false or absent, refine_from_build_variant_id is rejected with UNSUPPORTED_FEATURE; buyers refine instead via the transform path (creative_manifest + message)."), OmittedNotNull] = False
     supports_spend_controls: Annotated[StrictBool | None, Field(description='When true, build_creative honors a per-call `max_spend` ceiling (producing partial paid results and returning budget_status:"capped" + a BUDGET_CAP_REACHED advisory rather than overspending) AND supports mode:"estimate" dry-runs (a projected cost band, producing/billing nothing). When false or absent, max_spend / mode:estimate are rejected with UNSUPPORTED_FEATURE. Out-of-band billers (bills_through_adcp:false) have no AdCP cost truth to cap against, so this is meaningful only alongside bills_through_adcp:true.'), OmittedNotNull] = False
     supports_evaluator: Annotated[StrictBool | None, Field(description="Experimental (x-status: experimental) — agents setting this true MUST also list `creative.evaluator` in `experimental_features`; the surface MAY change between 3.x releases with notice (see docs/reference/experimental-status). When true, build_creative accepts an advisory `evaluator` input (exemplars / account-arranged evaluator_id / agent_url, plus an optional `feature_requirement[]` gate, a `rank_by` ordering, and an allowlisted `feature_agent` pointer). Feature discovery uses this response's governance.creative_features catalog: rank_by, feature_requirement, and eval.features[] all share the same creative-feature vocabulary as get_creative_features. evaluator_id is not discovered from this catalog; it is a pre-provisioned account preset whose emitted feature_ids still come from it. The evaluator populates a per-leaf `eval` block of creative-feature values (creative-feature-result[], the same shape get_creative_features returns) on BuildCreativeVariantSuccess leaves, which is what the recommended/rank it sets on the best_of_n axis are computed over. The agent runs a gate-then-rank pipeline over its best_of_n exploration: it evaluates each leaf, DROPS leaves failing `feature_requirement[]` from its recommended survivors, then orders survivors by `rank_by`. The gate is internal pruning of which leaves the agent recommends/returns from its own exploration — it never blocks an already-produced billable leaf: what is produced and billed is governed by max_variants/max_creatives/max_spend, not the evaluator. When the evaluator names an external agent, it MUST appear in `creative_policy.accepted_verifiers[]` (off-list → EVALUATOR_AGENT_NOT_ACCEPTED), and the producing agent authenticates the outbound evaluator call on the transport. Evaluator credentials and caller-supplied trust material MUST NOT be passed in the build_creative payload; credential- or trust-material payload keys should be rejected with CREDENTIAL_IN_ARGS. When false or absent, the `evaluator` input is ignored and no `eval` block is emitted."), OmittedNotNull] = False
-    refinable_retention_seconds: Annotated[NonNegativeInt | None, Field(description='When supports_refinement is true, the GUARANTEED-MINIMUM window (a floor, not a ceiling) during which a produced build_variant_id remains refinable via refine_from_build_variant_id: a ref within this window from production SHOULD resolve; the agent MAY retain longer. Omit when the retention window is agent-defined and not advertised — buyers then treat refinability as best-effort and handle REFERENCE_NOT_FOUND.'), OmittedNotNull] = None
+    refinable_retention_seconds: Annotated[IntMin0 | None, Field(description='When supports_refinement is true, the GUARANTEED-MINIMUM window (a floor, not a ceiling) during which a produced build_variant_id remains refinable via refine_from_build_variant_id: a ref within this window from production SHOULD resolve; the agent MAY retain longer. Omit when the retention window is agent-defined and not advertised — buyers then treat refinability as best-effort and handle REFERENCE_NOT_FOUND.'), OmittedNotNull] = None
     multiplicity: Annotated[Multiplicity | None, Field(description="Pre-call discriminators for build_creative fan-out, so a buyer knows BEFORE sending max_creatives / max_variants whether this agent supports them and the ceilings. Over-limit requests are CLAMPED to these ceilings (the agent produces up to the limit and signals the shortfall via items_returned < items_total on BuildCreativeVariantSuccess), not rejected — consistent with item_limit's 'use the lesser' rule. Absent means no fan-out: build_creative produces a single creative and max_creatives/max_variants>1 are not supported."), OmittedNotNull] = None
     supported_formats: Annotated[list[SupportedFormatsItem] | None, Field(description='Canonical-format capability catalog for this creative agent. This is the 3.2 source of truth for discovering which format contracts the agent can build, validate, or preview; it replaces the deprecated `list_creative_formats` task. Each entry uses the authority-free `CreativeOperationFormatDeclaration` projection of a product format declaration: canonical shape and creative-route macro processing are preserved, while seller production commitments are excluded. New 3.2 producers MUST publish a stable agent-local `capability_id` and explicit `operations` for task routing. Every emitted `capability_id` MUST be unique within this catalog so a route selects exactly one entry. During the 3.x compatibility window, consumers MUST also accept legacy entries that omit either field; absent `operations` means `["build"]`, while an absent `capability_id` means the entry is discoverable by canonical contract but cannot be selected through a capability-ID route.\n\n**Publisher-specific support.** To claim exact support for a publisher declaration, `format` carries the declaration\'s `{publisher_domain, format_option_id}` pair plus its canonical `format_kind` and narrowed `params`. Generic creative agents MAY instead advertise a canonical parameter envelope without publisher identity. A generic capability matches a target declaration only when the capability can satisfy every target constraint; matching canonical names alone is insufficient. Registries MAY reverse-index these entries by `format.format_kind`, `format.publisher_domain`, and `format.format_option_id`.\n\nThis catalog describes creative operations, not sales-agent inventory deliverability. Sales agents publish the purchasable closed set on each `Product.format_options[]`; publisher acceptance lives in `adagents.json.formats[]`.'), OmittedNotNull] = None
     preview: Annotated[Preview | None, Field(description='Per-route preview_creative capability metadata. New 3.2 producers whose supported_formats[] explicitly advertises a routable preview operation MUST emit this block. rendering_origin describes how each route is implemented but is informational and never grants presentation authority: only a matching publisher-origin placement preview_provider delegation can do that. routes[].capability_id MUST equal the set of capability IDs on supported_formats[] entries whose operations contains preview.'), OmittedNotNull] = None

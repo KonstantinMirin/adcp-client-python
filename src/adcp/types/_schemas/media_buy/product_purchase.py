@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, NotValue, Rule, UniqueItems
-from adcp.types.constraints import StrMaxLen100, StrMinLen1
+from adcp.types.constraints import FloatMin0, StrMaxLen100, StrMinLen1
 
 from ..core.audience_evidence_pin import AudienceEvidencePin
 from ..core.bidding_policy import BiddingPolicy
@@ -34,13 +34,13 @@ FormatOptionRefs = Annotated[list[FormatOptionReference], Field(description='Can
 CatalogIds = Annotated[list[StrMinLen1], Field(description='Previously synchronized account catalog IDs promoted by this selection. Callers manage catalog bodies through sync_catalogs rather than inlining them here.', min_length=1)]
 
 
-Budget = Annotated[NonNegativeFloat, Field(description='Hard spend cap for this selection in the media-buy currency. In seller-optimized allocation it is an optional ceiling, not a reserved allocation, and requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')]
+Budget = Annotated[FloatMin0, Field(description='Hard spend cap for this selection in the media-buy currency. In seller-optimized allocation it is an optional ceiling, not a reserved allocation, and requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')]
 
 
-DailyBudgetCap = Annotated[NonNegativeFloat, Field(description="Optional hard daily spend ceiling for this purchase. It is subordinate to the media-buy aggregate daily cap and is not a reserved daily allocation. Its day boundary is the media buy's budget_cap_timezone.")]
+DailyBudgetCap = Annotated[FloatMin0, Field(description="Optional hard daily spend ceiling for this purchase. It is subordinate to the media-buy aggregate daily cap and is not a reserved daily allocation. Its day boundary is the media buy's budget_cap_timezone.")]
 
 
-MinSpendTarget = Annotated[NonNegativeFloat, Field(description='Soft lifetime spend target for seller-optimized allocation. Requires advertised media_buy.features.seller_optimized_min_spend_targets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')]
+MinSpendTarget = Annotated[FloatMin0, Field(description='Soft lifetime spend target for seller-optimized allocation. Requires advertised media_buy.features.seller_optimized_min_spend_targets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')]
 
 
 StartTime = Annotated[Annotated[AwareDatetime, AfterValidator(NotValue(('asap',)))], Field(description='Resolved package flight start. On direct-purchase input, omission inherits the MediaBuy start; accepted proposal snapshots carry the resolved timestamp.')]
@@ -81,7 +81,7 @@ class ProductPurchase(AdCPBaseModel):
     budget: Annotated[Budget | None, Field(description='Hard spend cap for this selection in the media-buy currency. In seller-optimized allocation it is an optional ceiling, not a reserved allocation, and requires advertised media_buy.features.seller_optimized_package_budgets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.'), OmittedNotNull] = None
     daily_budget_cap: Annotated[DailyBudgetCap | None, Field(description="Optional hard daily spend ceiling for this purchase. It is subordinate to the media-buy aggregate daily cap and is not a reserved daily allocation. Its day boundary is the media buy's budget_cap_timezone."), OmittedNotNull] = None
     min_spend_target: Annotated[MinSpendTarget | None, Field(description='Soft lifetime spend target for seller-optimized allocation. Requires advertised media_buy.features.seller_optimized_min_spend_targets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.'), OmittedNotNull] = None
-    impressions: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    impressions: Annotated[FloatMin0 | None, OmittedNotNull] = None
     start_time: Annotated[StartTime | None, Field(description='Resolved package flight start. On direct-purchase input, omission inherits the MediaBuy start; accepted proposal snapshots carry the resolved timestamp.'), OmittedNotNull] = None
     end_time: Annotated[EndTime | None, Field(description='Resolved package flight end. On direct-purchase input, omission inherits the MediaBuy end; accepted proposal snapshots carry the resolved timestamp.'), OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Purchase pacing, subordinate to media-buy pacing. In seller-optimized allocation, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None

@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, Year
+from adcp.types.constraints import FloatMin0, HostedUrl, Year
 
 from .destination_item import ObjLatLng
 from .ext import ExtensionObject
@@ -45,7 +45,7 @@ class Mileage(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/vehicle-item.json', pointer='#/properties/mileage')
-    value: Annotated[NonNegativeFloat, Field(description='Mileage value.')]
+    value: Annotated[FloatMin0, Field(description='Mileage value.')]
     unit: Annotated[Unit, Field(description='Distance unit.')]
 
 

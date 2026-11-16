@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types.constraints import FloatMin0
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.canonical_measurement_terms import CanonicalMeasurementTerms
@@ -52,7 +53,7 @@ class ProductPurchaseInput(AdCPBaseModel):
     budget: Annotated[Budget | None, OmittedNotNull] = None
     daily_budget_cap: Annotated[DailyBudgetCap | None, OmittedNotNull] = None
     min_spend_target: Annotated[MinSpendTarget | None, OmittedNotNull] = None
-    impressions: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    impressions: Annotated[FloatMin0 | None, OmittedNotNull] = None
     start_time: Annotated[StartTime | None, OmittedNotNull] = None
     end_time: Annotated[EndTime | None, OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Purchase pacing, subordinate to media-buy pacing. In seller-optimized allocation, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None

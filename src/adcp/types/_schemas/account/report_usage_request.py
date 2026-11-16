@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import StrMaxLen50
+from adcp.types.constraints import FloatMin0, IntMin0, StrMaxLen50
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -24,14 +24,14 @@ class UsageItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='account/report-usage-request.json', pointer='#/properties/usage/items')
     account: Annotated[AccountReference, Field(description='Account for this usage record.')]
     media_buy_id: Annotated[str | None, Field(description='Seller-assigned media buy identifier. Links this usage record to a specific media buy.'), OmittedNotNull] = None
-    vendor_cost: Annotated[NonNegativeFloat, Field(description='Amount owed to the vendor for this record, denominated in currency.')]
+    vendor_cost: Annotated[FloatMin0, Field(description='Amount owed to the vendor for this record, denominated in currency.')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code.')]
     pricing_option_id: Annotated[str | None, Field(description="Pricing option identifier from the vendor's discovery response (e.g., get_signals, list_content_standards). The vendor uses this to verify the correct rate was applied."), OmittedNotNull] = None
-    impressions: Annotated[NonNegativeInt | None, Field(description='Impressions delivered using this vendor service.'), OmittedNotNull] = None
-    media_spend: Annotated[NonNegativeFloat | None, Field(description='Media spend in currency for the period. Required when a percent_of_media pricing model was used, so the vendor can verify the applied rate.'), OmittedNotNull] = None
-    conversions: Annotated[NonNegativeFloat | None, Field(description='Number of attributed conversion events for the reporting period. Optional analytics context for revenue_share reconciliation.'), OmittedNotNull] = None
-    conversion_value: Annotated[NonNegativeFloat | None, Field(description='Total monetary value of attributed conversions for the reporting period, in currency. Optional analytics context for revenue_share reconciliation; it is not the billing basis.'), OmittedNotNull] = None
-    commissionable_value: Annotated[NonNegativeFloat | None, Field(description='Settled attributed value eligible for commission, in currency. Required when pricing_option_id selects a revenue_share option. The receiver verifies vendor_cost = round_currency(commissionable_value × the selected commission_rate).'), OmittedNotNull] = None
+    impressions: Annotated[IntMin0 | None, Field(description='Impressions delivered using this vendor service.'), OmittedNotNull] = None
+    media_spend: Annotated[FloatMin0 | None, Field(description='Media spend in currency for the period. Required when a percent_of_media pricing model was used, so the vendor can verify the applied rate.'), OmittedNotNull] = None
+    conversions: Annotated[FloatMin0 | None, Field(description='Number of attributed conversion events for the reporting period. Optional analytics context for revenue_share reconciliation.'), OmittedNotNull] = None
+    conversion_value: Annotated[FloatMin0 | None, Field(description='Total monetary value of attributed conversions for the reporting period, in currency. Optional analytics context for revenue_share reconciliation; it is not the billing basis.'), OmittedNotNull] = None
+    commissionable_value: Annotated[FloatMin0 | None, Field(description='Settled attributed value eligible for commission, in currency. Required when pricing_option_id selects a revenue_share option. The receiver verifies vendor_cost = round_currency(commissionable_value × the selected commission_rate).'), OmittedNotNull] = None
     signal_agent_segment_id: Annotated[str | None, Field(description='Signal identifier from get_signals. Required for signals agents.'), OmittedNotNull] = None
     standards_id: Annotated[str | None, Field(description='Content standards configuration identifier. Required for governance agents.'), OmittedNotNull] = None
     rights_id: Annotated[str | None, Field(description='Rights grant identifier from acquire_rights. Required for brand/rights agents. Links usage records to specific rights grants for cap tracking, billing verification, and overage calculation.'), OmittedNotNull] = None

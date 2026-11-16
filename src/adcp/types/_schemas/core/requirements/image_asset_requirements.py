@@ -4,11 +4,18 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, IntMin1, MaxWeightGrams
+from adcp.types.constraints import (
+    FloatGt0,
+    FloatMin0,
+    FormatRendersItemDimensionsAspectRatio,
+    IntMin0,
+    IntMin1,
+    MaxWeightGrams,
+)
 
 from ...enums.dimension_unit import DimensionUnit
 
@@ -41,7 +48,7 @@ class BleedUniform(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/image-asset-requirements.json', pointer='#/properties/bleed/oneOf/0')
-    uniform: Annotated[NonNegativeFloat, Field(description='Same bleed on all four sides')]
+    uniform: Annotated[FloatMin0, Field(description='Same bleed on all four sides')]
 
 
 class BleedBottomLeftRightTop(AdCPBaseModel):
@@ -49,10 +56,10 @@ class BleedBottomLeftRightTop(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/image-asset-requirements.json', pointer='#/properties/bleed/oneOf/1')
-    top: NonNegativeFloat
-    right: NonNegativeFloat
-    bottom: NonNegativeFloat
-    left: NonNegativeFloat
+    top: FloatMin0
+    right: FloatMin0
+    bottom: FloatMin0
+    left: FloatMin0
 
 
 class ColorSpace(StrEnum):
@@ -94,7 +101,7 @@ class ImageAssetRequirements(AdCPBaseModel):
     max_file_size_kb: Annotated[IntMin1 | None, Field(description='Maximum file size in kilobytes'), OmittedNotNull] = None
     transparency_required: Annotated[StrictBool | None, Field(description='Whether the image must support transparency (requires PNG, WebP, or GIF)'), OmittedNotNull] = None
     animation_allowed: Annotated[StrictBool | None, Field(description='Whether animated images (GIF, animated WebP) are accepted'), OmittedNotNull] = None
-    max_animation_duration_ms: Annotated[NonNegativeInt | None, Field(description='Maximum animation duration in milliseconds (if animation_allowed is true)'), OmittedNotNull] = None
+    max_animation_duration_ms: Annotated[IntMin0 | None, Field(description='Maximum animation duration in milliseconds (if animation_allowed is true)'), OmittedNotNull] = None
     max_weight_grams: Annotated[MaxWeightGrams | None, Field(description='Maximum weight in grams for the finished physical piece (print inserts, flyers). Affects postage calculations and production constraints. Only applicable to print channels.'), OmittedNotNull] = None
 
 

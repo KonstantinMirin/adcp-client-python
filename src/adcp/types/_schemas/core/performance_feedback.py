@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types.constraints import FloatMin0
 
 from ..enums.feedback_source import FeedbackSource
 from ..enums.metric_type import MetricType
@@ -42,7 +43,7 @@ class PerformanceFeedback(AdCPBaseModel):
     package_id: Annotated[str | None, Field(description='Specific package within the media buy (if feedback is package-specific)'), OmittedNotNull] = None
     creative_id: Annotated[str | None, Field(description='Specific creative asset (if feedback is creative-specific)'), OmittedNotNull] = None
     measurement_period: Annotated[DatetimeRange, Field(description='Time period for performance measurement')]
-    performance_index: Annotated[NonNegativeFloat, Field(description='Normalized performance score (0.0 = no value, 1.0 = expected, >1.0 = above expected)')]
+    performance_index: Annotated[FloatMin0, Field(description='Normalized performance score (0.0 = no value, 1.0 = expected, >1.0 = above expected)')]
     metric_type: Annotated[MetricType | None, Field(deprecated=True, description='**Deprecated as of this minor.** The legacy free-form metric enum that mixes metrics, verification, and attribution into one list. New implementations SHOULD use `metric` (the discriminated `(scope, metric_id, qualifier)` row shape) and populate `metric_type` with a best-effort string for one-minor backwards compatibility. When both `metric` and `metric_type` are present, consumers MUST use `metric` for dispatch. Removed at the next major. See [docs/measurement/taxonomy](https://docs.adcontextprotocol.org/docs/measurement/taxonomy) for why the layered shape replaces the flat enum.'), OmittedNotNull] = None
     metric: Annotated[ObjScopeMetricIdQualifier | MissingMetricVendor | None, Field(description='The metric this feedback row pertains to, using the same `(scope, metric_id, qualifier)` row shape as `committed_metrics` and package-level delivery values (`metric_values` or `vendor_metric_values`). Preferred over the legacy `metric_type` field for new implementations. Brings performance-feedback into the same atomic unit and dispatch model as the rest of the measurement surface — buyer agents reconcile feedback against the contract surface using the row-level join on `(scope, metric_id, qualifier)`. **Optional and may be omitted entirely for holistic feedback** (e.g., a trader flagging a campaign as underperforming without a specific metric in mind — `performance_index` plus the response narrative carry the signal). Senders SHOULD populate `metric` when the feedback is metric-specific so consumers can route it to the right optimization path; senders MAY omit it for general performance feedback.'), OmittedNotNull] = None
     feedback_source: Annotated[FeedbackSource, Field(description='Source of the performance data')]

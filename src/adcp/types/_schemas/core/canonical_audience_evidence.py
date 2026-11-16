@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AwareDatetime, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
+from adcp.types.constraints import FloatMin0, FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -42,7 +42,7 @@ class CanonicalAudienceEvidence(AdCPBaseModel):
     content_digest: ZipAssetDigest
     audience: AudienceCharacteristic
     relationship: Relationship
-    value: NonNegativeFloat
+    value: FloatMin0
     unit: Unit
     baseline: Baseline
     evidence_type: EvidenceType

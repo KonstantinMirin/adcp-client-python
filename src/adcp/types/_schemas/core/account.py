@@ -4,11 +4,12 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, TypeAdapter
+from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
 from adcp.types.constraints import (
+    FloatMin0,
     HostedUrl,
     IntMin1,
     ReportingBucketBucket,
@@ -41,7 +42,7 @@ class CreditLimit(AdCPBaseModel):
     Maximum outstanding balance allowed
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account.json', pointer='#/properties/credit_limit')
-    amount: NonNegativeFloat
+    amount: FloatMin0
     currency: CurrencyCode
 
 

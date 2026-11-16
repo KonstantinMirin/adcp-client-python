@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, ZipAssetDigest
+from adcp.types.constraints import HostedUrl, IntMin0, ZipAssetDigest
 
 from ..provenance import Provenance
 from .html_asset import Accessibility
@@ -28,7 +28,7 @@ class ZipAsset(AdCPBaseModel):
     )
     asset_type: Annotated[Literal['zip'], Field(description='Discriminator identifying this as a zip-bundled asset. See /schemas/creative/asset-types for the registry.')]
     url: Annotated[HostedUrl, Field(description='URL where the zip archive is hosted. Must be HTTPS.')]
-    max_file_size_kb: Annotated[NonNegativeInt | None, Field(description='Maximum file size in kilobytes. Receivers should reject zips exceeding this.'), OmittedNotNull] = None
+    max_file_size_kb: Annotated[IntMin0 | None, Field(description='Maximum file size in kilobytes. Receivers should reject zips exceeding this.'), OmittedNotNull] = None
     entry_point: Annotated[str | None, Field(description="Relative path to the entry file within the zip (typically 'index.html'). Receivers default to 'index.html' if absent."), OmittedNotNull] = None
     allowed_inner_extensions: Annotated[list[str] | None, Field(description="File extensions permitted inside the zip (e.g., ['html', 'css', 'js', 'png', 'jpg', 'svg', 'webp', 'json', 'woff2']). Receivers may reject zips containing other extensions."), OmittedNotNull] = None
     backup_image_url: Annotated[HostedUrl | None, Field(description='Fallback image URL for environments that cannot render the bundled creative (e.g., non-HTML5 endpoints, ad blockers). Recommended for HTML5 banners.'), OmittedNotNull] = None
