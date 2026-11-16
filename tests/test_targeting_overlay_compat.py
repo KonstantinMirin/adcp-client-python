@@ -7,6 +7,15 @@ from importlib import import_module
 from typing import Annotated, Any, get_args, get_origin
 
 import pytest
+from adcp.types.domains.core.targeting_input import TargetingOverlayInput as GeneratedInput
+from adcp.types.domains.media_buy.package_control import PackageControl
+from adcp.types.domains.media_buy.package_request import (
+    PackageRequest as GeneratedPackageRequest,
+)
+from adcp.types.domains.media_buy.package_update import (
+    PackageUpdate as GeneratedPackageUpdate,
+)
+from adcp.types.domains.media_buy.product_purchase_input import ProductPurchaseInput
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -31,15 +40,6 @@ from adcp.types import (
     UpdateMediaBuyRequest,
 )
 from adcp.types.base import is_no_explicit_null
-from adcp.types.domains.core.targeting_input import TargetingOverlayInput as GeneratedInput
-from adcp.types.domains.media_buy.package_control import PackageControl
-from adcp.types.domains.media_buy.package_request import (
-    PackageRequest as GeneratedPackageRequest,
-)
-from adcp.types.domains.media_buy.package_update import (
-    PackageUpdate as GeneratedPackageUpdate,
-)
-from adcp.types.domains.media_buy.product_purchase_input import ProductPurchaseInput
 from adcp.validation import validate_request
 
 _NEW_PACKAGE = {"product_id": "product-1", "pricing_option_id": "price-1", "budget": 1000}
@@ -111,9 +111,16 @@ def test_public_overlay_subclass_preserves_identity_and_internal_behavior(
 
     assert result.targeting_overlay is overlay
     assert result.targeting_overlay.route() == "seller-1"
-    # Both arms read a collection field as the collection. Neither arm is
-    # converted into the other; they agree on the type the field already has.
-    assert [region.root for region in overlay.geo_regions] == ["US-NY"]
+    # Both branches read a collection field as the collection. Neither is converted
+    # into the other; they agree on the type the field already has.
+    #
+    # The element IS the string, read directly. `region.root` was the previous
+    # emission's shape, where a constrained scalar root became a `RootModel` wrapper;
+    # this tree emits it as the scalar itself with the constraint carried in the
+    # annotation (`Annotated[str, pattern=...]`), so the pattern is still enforced --
+    # 'us-ny', 'USA-NYC', '' and ' US-NY' are all refused -- and there is no `.root` to
+    # unwrap.
+    assert list(overlay.geo_regions) == ["US-NY"]
     assert result.model_dump(mode="json", exclude_none=True)["targeting_overlay"] == {
         "geo_regions": ["US-NY"]
     }
