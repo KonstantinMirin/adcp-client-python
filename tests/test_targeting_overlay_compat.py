@@ -149,9 +149,18 @@ def test_raw_dict_keeps_input_materialization(
 ) -> None:
     result = container.model_validate({**required, "targeting_overlay": dimensions})
     assert type(result.targeting_overlay) is GeneratedInput
+    # Materialization is what this grades, and every supplied key is set.
+    assert result.targeting_overlay.model_fields_set == set(dimensions)
+    # The dump is the decision's, not this test's: §2 omits an optional
+    # property's ``None`` whatever ``exclude_none`` says, because only a
+    # REQUIRED key cannot be absent. ``geo_countries`` is optional, so the
+    # supplied ``None`` is recorded as set above and left off the wire here --
+    # the same reading ``test_bridge_serialization_keeps_objects_on_the_wire``
+    # takes through ``is_no_explicit_null``.
+    expected = {key: value for key, value in dimensions.items() if value is not None}
     assert (
         result.targeting_overlay.model_dump(mode="json", exclude_unset=True, exclude_none=False)
-        == dimensions
+        == expected
     )
 
 
