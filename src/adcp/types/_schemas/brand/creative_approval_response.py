@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import FailedResponse
 
@@ -59,7 +60,7 @@ class CreativeApproved(CreativeApprovalResponse):
     rights_id: str
     creative_id: Annotated[str | None, Field(description="Echo of the buyer's creative identifier"), OmittedNotNull] = None
     creative_url: Annotated[HostedUrl | None, OmittedNotNull] = None
-    approved_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    approved_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     conditions: Annotated[list[str] | None, Field(description="Conditions on the approval (e.g., 'approved for NL market only')"), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

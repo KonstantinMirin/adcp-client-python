@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -68,8 +69,8 @@ class CatalogsItem(AdCPBaseModel):
     items_pending: Annotated[NonNegativeInt | None, Field(description='Number of items pending platform review. Common for product catalogs where items must pass content policy checks.'), OmittedNotNull] = None
     items_rejected: Annotated[NonNegativeInt | None, Field(description='Number of items rejected by the platform. Check item_issues for rejection reasons.'), OmittedNotNull] = None
     item_issues: Annotated[list[ItemIssuesItem] | None, Field(description='Per-item issues reported by the platform (rejections, warnings). Only present when the platform performs item-level review.'), OmittedNotNull] = None
-    last_synced_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the most recent sync was accepted by the platform'), OmittedNotNull] = None
-    next_fetch_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the platform will next fetch the feed URL. Only present for URL-based catalogs with update_frequency.'), OmittedNotNull] = None
+    last_synced_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp of when the most recent sync was accepted by the platform'), OmittedNotNull] = None
+    next_fetch_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp of when the platform will next fetch the feed URL. Only present for URL-based catalogs with update_frequency.'), OmittedNotNull] = None
     changes: Annotated[list[str] | None, Field(description="Field names that were modified (only present when action='updated')"), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description="Validation or processing errors (only present when action='failed')"), OmittedNotNull] = None
     warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this catalog'), OmittedNotNull] = None

@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import AcceptancePolicyRequirementId, StrMinLen1
 
 from ..core.ext import ExtensionObject
@@ -170,7 +171,7 @@ class AcceptancePolicyRequirementFormatRestriction(AcceptancePolicyRequirement):
         UniqueItems('format_ids'),
     )
     kind: Literal['format_restriction']
-    format_ids: Annotated[list[StrMinLen1] | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    format_ids: Annotated[list[StrMinLen1] | None, Field(deprecated=True, description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 
@@ -180,8 +181,8 @@ class AcceptancePolicyRequirementTimeRestriction(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/14')
     kind: Literal['time_restriction']
-    starts_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    ends_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    starts_at: Annotated[WireDatetime | None, OmittedNotNull] = None
+    ends_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 

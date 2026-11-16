@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
@@ -43,8 +44,8 @@ class ObjStartEnd(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-adjustment.json', pointer='#/properties/accounting_period')
-    start: AwareDatetime
-    end: AwareDatetime
+    start: WireDatetime
+    end: WireDatetime
 
 
 class ReportingAdjustment(AdCPBaseModel):
@@ -65,8 +66,8 @@ class ReportingAdjustment(AdCPBaseModel):
     accounting_period: Annotated[ObjStartEnd, Field(description='Period derived from the pinned billing calendar and correction policy. It is evidence metadata only: it does not authorize reopening books or altering invoices.')]
     control_total_deltas: Annotated[list[ReportingControlTotal], Field(description="Signed deltas to apply to the named official control totals. Names and units use the adjusted revision's pinned report definition. Names MUST be unique.", json_schema_extra={'uniqueItems': True}, min_length=1)]
     canonical_adjustment_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, Field(description='SHA-256 of the RFC 8785 JCS serialization of this adjustment with canonical_adjustment_sha256 omitted. Reconciled Billing consumers recompute this digest before accepting or rejecting the adjustment.'), OmittedNotNull] = None
-    correction_observed_at: AwareDatetime
-    created_at: AwareDatetime
+    correction_observed_at: WireDatetime
+    created_at: WireDatetime
 
 
 AccountingPeriod = ObjStartEnd

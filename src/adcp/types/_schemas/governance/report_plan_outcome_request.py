@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import GovernanceContext, StrMaxLen255, StrMinLen1MaxLen255, ZipAssetDigest
 from adcp.types.envelopes import AdcpRequest
 
@@ -43,7 +44,7 @@ class SellerResponse(AdCPBaseModel):
     committed_budget: Annotated[NonNegativeFloat | None, Field(description='Buyer-reported seller amount retained for reconciliation and audit. It is never ledger authority: the governance agent derives the reserved commitment from its own approved intent check, or from the matching purchase execution check when one exists. A report above that authorized amount is rejected; a lower report does not restore headroom.'), OmittedNotNull] = None
     packages: Annotated[list[PackagesItem] | None, Field(description='Confirmed packages with actual budget and targeting.'), OmittedNotNull] = None
     planned_delivery: Annotated[PlannedDelivery | None, Field(description="What the seller said it will deliver. When seller-side governance is not configured, this is the governance agent's only view of the seller's delivery parameters."), OmittedNotNull] = None
-    creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 deadline for creative submission.'), OmittedNotNull] = None
+    creative_deadline: Annotated[WireDatetime | None, Field(description='ISO 8601 deadline for creative submission.'), OmittedNotNull] = None
 
 
 class Delivery(AdCPBaseModel):
@@ -59,7 +60,7 @@ class Delivery(AdCPBaseModel):
     )
     observation_id: Annotated[StrMinLen1MaxLen255, Field(description='Stable buyer-issued identifier for this observation.')]
     source: Annotated[Source, Field(description='Whether the buyer is forwarding the seller statement it received or reporting an independently measured observation. A forwarded seller statement is not independent evidence.')]
-    observed_at: AwareDatetime
+    observed_at: WireDatetime
     seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.'), OmittedNotNull] = None
     seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEnd, Field(description='Start and end timestamps for the reporting window.')]

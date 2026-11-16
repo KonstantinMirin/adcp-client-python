@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl
 
 
@@ -81,7 +82,7 @@ class SIIdentity(AdCPBaseModel):
         Approximation(document='sponsored-intelligence/si-identity.json', pointer='#/properties/privacy_policy_acknowledged/properties/brand_policy_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     consent_granted: Annotated[StrictBool, Field(description='Whether user consented to share identity')]
-    consent_timestamp: Annotated[AwareDatetime | None, Field(description='When consent was granted (ISO 8601)'), OmittedNotNull] = None
+    consent_timestamp: Annotated[WireDatetime | None, Field(description='When consent was granted (ISO 8601)'), OmittedNotNull] = None
     consent_scope: Annotated[list[ConsentScopeItem] | None, Field(description='What data was consented to share'), OmittedNotNull] = None
     privacy_policy_acknowledged: Annotated[PrivacyPolicyAcknowledged | None, Field(description='Brand privacy policy acknowledgment'), OmittedNotNull] = None
     user: Annotated[User | None, Field(description='User data (only present if consent_granted is true)'), OmittedNotNull] = None

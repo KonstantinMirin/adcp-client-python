@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMinLen1
 
 
@@ -74,7 +75,7 @@ class ReportingCoverage(AdCPBaseModel):
         UniqueItems('unknown_package_ids'),
     )
     status: Status
-    evaluated_at: AwareDatetime
+    evaluated_at: WireDatetime
     media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(description='Exact media-buy denominator, including unsupported and unknown buys. An empty array is an explicitly evaluated zero-buy scope.', json_schema_extra={'uniqueItems': True})]
     fully_covered_media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]
     partially_covered_media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(json_schema_extra={'uniqueItems': True})]

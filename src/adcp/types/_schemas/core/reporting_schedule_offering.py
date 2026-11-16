@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     PeriodDuration,
     ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd,
@@ -55,7 +56,7 @@ class ReportingScheduleOffering(AdCPBaseModel):
     alignment: ReportingScheduleAlignment
     period_anchor_policy: Annotated[PeriodAnchorPolicy | None, Field(description='For billing_cycle only. fixed requires the advertised anchor and timezone; configurable lets each authorized account configuration select them.'), OmittedNotNull] = None
     period_timezone_policy: Annotated[PeriodTimezonePolicy | None, Field(description="For source_timezone only. fixed advertises one exact upstream IANA timezone; account_resolved requires the seller to resolve and echo the account's upstream reporting timezone during configuration."), OmittedNotNull] = None
-    period_anchor: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    period_anchor: Annotated[WireDatetime | None, OmittedNotNull] = None
     period_timezone: Annotated[StrMinLen1MaxLen255 | None, OmittedNotNull] = None
     delivery_sla: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
 

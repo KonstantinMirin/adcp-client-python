@@ -73,6 +73,9 @@ def make_client(
     )
     client._capabilities = GetAdcpCapabilitiesResponse.model_validate(
         {
+            # `status` as below: required by core/protocol-envelope.json, which this
+            # document composes via allOf.
+            "status": "completed",
             "adcp": {"major_versions": [3], "idempotency": {"supported": False}},
             "supported_protocols": ["media_buy"],
             "account": {"supported_billing": ["agent"], **account_caps},
@@ -100,6 +103,9 @@ def sync_result(*, status="active", action="created", **extras):
     body = validate_union(
         SyncAccountsResponse,
         {
+            # The ENVELOPE's `status`, required by core/protocol-envelope.json one
+            # `allOf` up.  The `status` inside each row is the ACCOUNT's own.
+            "status": "completed",
             "accounts": [
                 {
                     **KEY,
@@ -108,7 +114,7 @@ def sync_result(*, status="active", action="created", **extras):
                     "status": status,
                     **extras,
                 }
-            ]
+            ],
         },
     )
     return TaskResult(status=TaskStatus.COMPLETED, data=body)
@@ -312,7 +318,7 @@ async def test_sync_rows_match_identity_instead_of_response_order():
         {**second, "action": "created", "account_id": "B", "status": "payment_required"},
         {**KEY, "action": "created", "account_id": "A", "status": "active"},
     ]
-    body = validate_union(SyncAccountsResponse, {"accounts": rows})
+    body = validate_union(SyncAccountsResponse, {"status": "completed", "accounts": rows})
     client.adapter.sync_accounts = AsyncMock(
         return_value=TaskResult(status=TaskStatus.COMPLETED, data=body)
     )
@@ -337,7 +343,10 @@ async def test_ambiguous_sync_identity_never_marks_an_account_provisioned():
     partial = {name: value for name, value in KEY.items() if name != "currency"}
     body = validate_union(
         SyncAccountsResponse,
-        {"accounts": [{**partial, "action": "created", "account_id": "A", "status": "active"}]},
+        {
+            "status": "completed",
+            "accounts": [{**partial, "action": "created", "account_id": "A", "status": "active"}],
+        },
     )
     client.adapter.sync_accounts = AsyncMock(
         return_value=TaskResult(status=TaskStatus.COMPLETED, data=body)
@@ -391,6 +400,7 @@ async def test_list_accounts_learns_complete_key():
     body = validate_union(
         ListAccountsResponse,
         {
+            "status": "completed",
             "accounts": [
                 {
                     **KEY,
@@ -398,7 +408,7 @@ async def test_list_accounts_learns_complete_key():
                     "name": "Acme",
                     "status": "active",
                 }
-            ]
+            ],
         },
     )
     client.adapter.list_accounts = AsyncMock(
@@ -433,7 +443,12 @@ async def test_cold_list_accounts_repairs_status_without_effective_timezone_key(
     )
     body = validate_union(
         ListAccountsResponse,
-        {"accounts": [{**KEY, "account_id": "seller-handle", "name": "Acme", "status": "active"}]},
+        {
+            "status": "completed",
+            "accounts": [
+                {**KEY, "account_id": "seller-handle", "name": "Acme", "status": "active"}
+            ],
+        },
     )
     client.adapter.list_accounts = AsyncMock(
         return_value=TaskResult(status=TaskStatus.COMPLETED, data=body)
@@ -825,7 +840,7 @@ async def test_default_policy_does_not_warn_for_list_accounts():
     client.adapter.list_accounts = AsyncMock(
         return_value=TaskResult(
             status=TaskStatus.COMPLETED,
-            data=validate_union(ListAccountsResponse, {"accounts": []}),
+            data=validate_union(ListAccountsResponse, {"status": "completed", "accounts": []}),
         )
     )
     client.adapter._parse_response = lambda raw, _type: raw

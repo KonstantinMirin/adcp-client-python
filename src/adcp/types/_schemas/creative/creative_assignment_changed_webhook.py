@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -36,14 +37,14 @@ class CreativeAssignmentChangedWebhook(AdCPBaseModel):
     idempotency_key: IdempotencyKey
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identity for this logical assignment change across re-emissions.')]
     notification_type: Literal['creative.assignment_changed']
-    fired_at: AwareDatetime
+    fired_at: WireDatetime
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: str
     media_buy_id: str
     package_id: str
     creative_id: str
     change_kind: ChangeKind
-    observed_at: AwareDatetime
+    observed_at: WireDatetime
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

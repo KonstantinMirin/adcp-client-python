@@ -3,13 +3,14 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import AwareDatetime, Field
+from pydantic import Field
 
 from adcp.types._base import SchemaRef, strict_alias
+from adcp.types._wire import WireDatetime
 
 __adcp_schema__ = SchemaRef(document='core/start-timing.json', pointer='#')
 
-StartTiming = Annotated[Literal['asap'] | AwareDatetime, Field(description="Campaign start timing: 'asap' or ISO 8601 date-time")]
+StartTiming = Annotated[Literal['asap'] | WireDatetime, Field(description="Campaign start timing: 'asap' or ISO 8601 date-time")]
 
 
 strict_validate = strict_alias(__adcp_schema__, "StartTiming", StartTiming)

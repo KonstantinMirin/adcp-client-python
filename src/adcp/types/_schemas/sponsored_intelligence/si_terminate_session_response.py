@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpResponse
 
@@ -33,7 +34,7 @@ class AcpHandoff(AdCPBaseModel):
     checkout_url: Annotated[HostedUrl | None, Field(description="Brand's ACP checkout endpoint. Hosts MUST validate this is HTTPS before opening."), OmittedNotNull] = None
     checkout_token: Annotated[str | None, Field(description='Opaque token for the checkout flow. The host passes this to the checkout endpoint to correlate the SI session with the transaction.'), OmittedNotNull] = None
     payload: Annotated[dict[str, Any] | None, Field(description='Rich checkout context to pass to the ACP endpoint (product details, applied offers, pricing). Alternative to checkout_token for integrations that need structured data.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this handoff data expires. Hosts should initiate checkout before this time.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When this handoff data expires. Hosts should initiate checkout before this time.'), OmittedNotNull] = None
 
 
 class Action(StrEnum):

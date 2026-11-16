@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -89,10 +90,10 @@ class ReportingObligation(AdCPBaseModel):
     reporting_profile: StrMinLen1MaxLen128
     account_id: StrMinLen1
     media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(description='Exact frozen media-buy denominator resolved for this period, including buys with zero rows. An empty array is the definitive zero-buy set; omission is never used to mean all, empty, or unknown.', json_schema_extra={'uniqueItems': True})]
-    scope_resolved_at: Annotated[AwareDatetime, Field(description='Instant at which the configured scope was resolved and frozen for this obligation. For all_media_buys, include every caller-authorized account media buy whose effective flight overlaps the half-open period and was known by this cutoff. Later-created or backdated buys do not rewrite this obligation.')]
+    scope_resolved_at: Annotated[WireDatetime, Field(description='Instant at which the configured scope was resolved and frozen for this obligation. For all_media_buys, include every caller-authorized account media buy whose effective flight overlaps the half-open period and was known by this cutoff. Later-created or backdated buys do not rewrite this obligation.')]
     coverage: Annotated[ReportingCoverage, Field(description='Immutable effective coverage of the exact selected offering at this period boundary. Delivery health is evaluated separately over the covered denominator.')]
     period: ObjStartEndSourceTimezone
-    expected_at: AwareDatetime
+    expected_at: WireDatetime
     schedule: Annotated[ReportingSchedule, Field(description='Resolved immutable schedule generation that created this obligation.')]
     destination_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Immutable caller-owned destination generation selected by this account-authorized obligation. The account/configuration join—not possession of this reusable reference—authorizes disclosure. Present when and only when the obligation’s configuration selects a managed-delivery offering; Core (API-delivered) obligations omit every destination and materialization field.'), OmittedNotNull] = None
     required_finality: ReportingFinality
@@ -112,7 +113,7 @@ class ReportingObligation(AdCPBaseModel):
     accepted_adjustment_receipt_count: Annotated[NonNegativeInt | None, Field(description='Number of accepted adjustment receipts. Reconciled Billing buyers do not post an adjustment until their exact digest is accepted.'), OmittedNotNull] = None
     pending_adjustment_count: Annotated[NonNegativeInt | None, Field(description='Number of applicable adjustments without an accepted receipt. Reconciled Billing complete/healthy requires zero.'), OmittedNotNull] = None
     issues: list[ReportingStatusIssue]
-    resource_retained_until: Annotated[AwareDatetime | None, Field(description='Minimum time through which at least one verified materialization for a completed obligation remains readable. Managed-delivery only; Core revisions are retained per status_retention_days and readable through the existing API transports.'), OmittedNotNull] = None
+    resource_retained_until: Annotated[WireDatetime | None, Field(description='Minimum time through which at least one verified materialization for a completed obligation remains readable. Managed-delivery only; Core revisions are retained per status_retention_days and readable through the existing API transports.'), OmittedNotNull] = None
 
 
 __all__ = ["ReportingObligation"]

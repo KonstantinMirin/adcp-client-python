@@ -38,7 +38,7 @@ class CanonicalFormatImageCarousel(CanonicalFormatBase):
     min_cards: Annotated[MinCards | None, Field(description='Minimum card count (typical: 2 or 3).'), OmittedNotNull] = None
     max_cards: Annotated[StrictInt | None, Field(description='Maximum card count (typical: 6, 10, or 35 depending on platform).'), OmittedNotNull, SchemaIntegral] = None
     allowed_card_media_asset_types: Annotated[list[AllowedCardMediaAssetTypesItem] | None, Field(description='Asset types each card\'s `media` field may carry. Default: [\'image\']. Polymorphic carousels (Meta) allow [\'image\', \'video\']. Renamed from `allowed_card_asset_types` to disambiguate that this constrains the card\'s media payload, not the card-asset itself (which is always asset_type: "card").'), OmittedNotNull] = None
-    allowed_card_asset_types: Annotated[list[AllowedCardAssetTypesItem] | None, Field(description='DEPRECATED — alias for `allowed_card_media_asset_types`. Kept for back-compat; prefer the new field name. Removed in 5.0.'), OmittedNotNull] = None
+    allowed_card_asset_types: Annotated[list[AllowedCardAssetTypesItem] | None, Field(deprecated=True, description='DEPRECATED — alias for `allowed_card_media_asset_types`. Kept for back-compat; prefer the new field name. Removed in 5.0.'), OmittedNotNull] = None
     card_image_max_file_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
     card_video_max_file_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None
     card_video_max_duration_ms: Annotated[IntMin1 | None, OmittedNotNull] = None

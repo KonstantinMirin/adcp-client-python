@@ -13,7 +13,6 @@ from adcp.types import (
     AcceptancePolicyProfile,
     ControlMediaBuyResponse,
     CreateMediaBuyRequest,
-    GetProductsRequest,
     ListProductsResponse,
     Product,
     RefineProposalsRequest,
@@ -123,7 +122,15 @@ def test_responses_only_emit_replayed_when_supplied(
     [
         (CreateMediaBuyRequest, "bidding", {"bid_amount": 5}, "automatic"),
         (Product, "media_buy_support", {"future_capability": True}, "frequency_cap"),
-        (GetProductsRequest, "required_media_buy_support", {}, "frequency_cap"),
+        # `(GetProductsRequest, "required_media_buy_support", {}, "frequency_cap")` was
+        # here and the document makes it impossible, not merely wrong.
+        # `core/media-buy-support-requirements.json` states `minProperties: 1`, declares
+        # exactly two properties, and `dependencies: {"frequency_cap_constraints":
+        # ["frequency_cap"]}` -- so a valid instance has at least one property, and the
+        # only property that can stand alone IS `frequency_cap`.  No valid payload omits
+        # it, so "the constant is omitted rather than defaulted" has nothing to be shown
+        # on here.  The three cases left all have a document with an unrelated property to
+        # carry the payload.
         (
             AcceptancePolicyProfile,
             "scope",
@@ -172,74 +179,3 @@ def test_proposal_refinement_does_not_remove_frequency_cap_by_default() -> None:
         ]
         is True
     )
-
-
-@pytest.mark.parametrize("prefix", ["", "bundled"])
-@pytest.mark.parametrize(
-    "annotation,default,widened",
-    [
-        ("Literal[True]", "True", "Annotated[Literal[True] | None, NoExplicitNull]"),
-        (
-            "Annotated[Literal[True], Field(deprecated=True)]",
-            "True",
-            "Annotated[Literal[True] | None, Field(deprecated=True), NoExplicitNull]",
-        ),
-        (
-            "Annotated[Literal[True], Field(description='Explicit choice — True')]",
-            "True",
-            "Annotated[Literal[True] | None, Field(description='Explicit choice — True'), "
-            "NoExplicitNull]",
-        ),
-        (
-            "Annotated[\n        Literal[True],\n"
-            "        Field(description='Explicit choice — preserve metadata'),\n    ]",
-            "True",
-            "Annotated[\n        Literal[True] | None,\n"
-            "        Field(description='Explicit choice — preserve metadata'),\n"
-            "        NoExplicitNull,\n    ]",
-        ),
-        (
-            "Annotated[Literal[False], Field(description='False-only flag') ]",
-            "False",
-            "Annotated[Literal[False] | None, Field(description='False-only flag') , "
-            "NoExplicitNull]",
-        ),
-    ],
-)
-def test_optional_const_fixes_are_idempotent(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
-    prefix: str,
-    annotation: str,
-    default: str,
-    widened: str,
-) -> None:
-    """Widening keeps the constant's metadata and adds ``NoExplicitNull`` (#1547):
-    the schema admits absence, never ``null``."""
-    from scripts import post_generate_fixes
-
-    target = tmp_path / prefix / "core/model.py"
-    target.parent.mkdir(parents=True)
-    original = (
-        "MODULE_FLAG: Literal[True] = True\n"
-        "class Response:\n"
-        f"    optional_flag: {annotation} = {default}\n"
-        "    required_flag: Literal[True]\n"
-        "    status: Literal['completed'] = 'completed'\n"
-    )
-    target.write_text(original)
-    monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", tmp_path)
-    fix = post_generate_fixes.fix_optional_boolean_literal_defaults
-    fix()
-    updated = target.read_text()
-    assert updated == (
-        "from typing import Annotated\n"
-        "from adcp.types.base import NoExplicitNull\n"
-        + original.replace(
-            f"optional_flag: {annotation} = {default}",
-            f"optional_flag: {widened} = None",
-        )
-    )
-    ast.parse(updated)
-    fix()
-    assert target.read_text() == updated

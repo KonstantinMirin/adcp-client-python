@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictInt
+from pydantic import ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import SchemaIntegral
 
 from ..core.ext import ExtensionObject
@@ -38,9 +39,9 @@ class PropertyListChangedWebhook(AdCPBaseModel):
     list_id: Annotated[str, Field(description='ID of the property list that changed')]
     list_name: Annotated[str | None, Field(description='Name of the property list'), OmittedNotNull] = None
     change_summary: Annotated[ChangeSummary | None, Field(description='Summary of changes to the resolved list'), OmittedNotNull] = None
-    resolved_at: Annotated[AwareDatetime, Field(description='When the list was re-resolved')]
-    cache_valid_until: Annotated[AwareDatetime | None, Field(description='When the consumer should refresh from the governance agent'), OmittedNotNull] = None
-    signature: Annotated[str, Field(description='Deprecated 3.x compatibility marker. Property-list webhooks previously required this field but did not define an implementable signature algorithm, signed bytes, or key-discovery contract. RFC 9421 signatures are carried in the Signature and Signature-Input HTTP headers and bind the complete payload through Content-Digest. New 3.2 senders MUST set this field to the literal value `rfc9421`; receivers MUST accept any string from an older 3.x sender and MUST ignore it when authenticating a delivery. The field remains required through 3.x for schema compatibility and is removed in 4.0.')]
+    resolved_at: Annotated[WireDatetime, Field(description='When the list was re-resolved')]
+    cache_valid_until: Annotated[WireDatetime | None, Field(description='When the consumer should refresh from the governance agent'), OmittedNotNull] = None
+    signature: Annotated[str, Field(deprecated=True, description='Deprecated 3.x compatibility marker. Property-list webhooks previously required this field but did not define an implementable signature algorithm, signed bytes, or key-discovery contract. RFC 9421 signatures are carried in the Signature and Signature-Input HTTP headers and bind the complete payload through Content-Digest. New 3.2 senders MUST set this field to the literal value `rfc9421`; receivers MUST accept any string from an older 3.x sender and MUST ignore it when authenticating a delivery. The field remains required through 3.x for schema compatibility and is removed in 4.0.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

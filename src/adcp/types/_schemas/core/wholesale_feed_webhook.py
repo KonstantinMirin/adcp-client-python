@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId
 
 from ..media_buy.get_products_response import CacheScope
@@ -44,7 +45,7 @@ class WholesaleFeedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same webhook fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[str, Field(description='Stable identifier for this logical wholesale feed event. MUST equal event.event_id. Re-emissions of the same logical event reuse this value under a new idempotency_key.', json_schema_extra={'format': 'uuid'})]
     notification_type: Annotated[WholesaleFeedEventType, Field(description='Wholesale feed notification type discriminator. MUST match event.event_type.')]
-    fired_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller initiated this webhook fire. Distinct from event.created_at, which is when the seller observed or recorded the feed change.')]
+    fired_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller initiated this webhook fire. Distinct from event.created_at, which is when the seller observed or recorded the feed change.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Identifies which notification_configs[] entry is receiving this fire. Echoed from the registered subscriber_id.')]
     account_id: Annotated[str, Field(description='Seller account identifier for the account scope that registered this webhook through sync_accounts.accounts[].notification_configs[]. Required because wholesale feed webhooks are account-anchored notifications.')]
     wholesale_feed_version: Annotated[str, Field(description='Opaque post-change version token for the affected wholesale feed. Store it only after applying the event. A stale mirror repairs with its last applied version; uncertain or bulk repair omits the conditional token.')]

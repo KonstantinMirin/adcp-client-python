@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 
 from ..common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from ..core.ext import ExtensionObject
@@ -62,7 +63,7 @@ class HostReceipt(AdCPBaseModel):
     )
     status: Annotated[HostReceiptStatus, Field(description='Whether the host accepted the declared sponsored context for use.')]
     accepted_context_use: Annotated[SIContextUse | None, Field(description="Use mode the host accepted. When host_receipt.status is accepted, this MUST match the declaration's context_use; a host that cannot honor the declared use mode rejects the sponsored context instead of down-scoping it."), OmittedNotNull] = None
-    received_at: Annotated[AwareDatetime, Field(description='When the host received the sponsored context.')]
+    received_at: Annotated[WireDatetime, Field(description='When the host received the sponsored context.')]
     host_surface: Annotated[str | None, Field(description='Host-defined surface or placement where the context was accepted, such as an assistant session, search result page, or comparison module.'), OmittedNotNull] = None
     disclosure_commitment: Annotated[DisclosureCommitment | None, Field(description='How the host committed to handle the declared disclosure obligation. Required when host_receipt.status is accepted.'), OmittedNotNull] = None
     rejection_reason: Annotated[str | None, Field(description='Optional explanation when status is rejected, for example unsupported context_use or inability to satisfy the disclosure obligation.'), OmittedNotNull] = None

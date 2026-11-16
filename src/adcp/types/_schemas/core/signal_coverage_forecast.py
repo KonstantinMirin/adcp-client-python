@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 
 from ..enums.forecast_method import ForecastMethod
 from .country_code import CountryCode
@@ -129,8 +130,8 @@ class SignalCoverageForecast(AdCPBaseModel):
     scope: Annotated[Scope, Field(description='Explicit denominator for the coverage forecast. This identifies the inventory, product, account, or custom universe that coverage_rate values are relative to. Additional seller-specific qualifiers are allowed for scopes such as line item type, ad server, inventory class, country, or flight window.')]
     bucket_semantics: Annotated[BucketSemantics, Field(description="'exclusive' means the returned signal-value buckets do not overlap with each other. 'overlapping' means one impression or user can appear in multiple returned buckets, so coverage_rate values may sum above 1.0. This field describes overlap among returned buckets; bucket_completeness declares whether the returned buckets cover the full denominator.")]
     bucket_completeness: Annotated[BucketCompleteness, Field(description="'complete' means the returned buckets cover the declared denominator. For complete + exclusive forecasts, count metrics and coverage_rate values can be treated as a full partition, subject to metric additivity rules. 'partial' means omitted denominator share represents undisclosed, other, or unsupported buckets; buyers MUST NOT infer totals by summing returned points.")]
-    generated_at: Annotated[AwareDatetime | None, Field(description='When this coverage forecast was computed.'), OmittedNotNull] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='When this coverage forecast expires.'), OmittedNotNull] = None
+    generated_at: Annotated[WireDatetime | None, Field(description='When this coverage forecast was computed.'), OmittedNotNull] = None
+    valid_until: Annotated[WireDatetime | None, Field(description='When this coverage forecast expires.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

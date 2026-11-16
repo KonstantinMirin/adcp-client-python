@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._wire import WireDatetime
 
 
 class DatetimeRange(AdCPBaseModel):
@@ -16,8 +17,8 @@ class DatetimeRange(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/datetime-range.json', pointer='#')
-    start: Annotated[AwareDatetime, Field(description='Start timestamp (inclusive), ISO 8601')]
-    end: Annotated[AwareDatetime, Field(description='End timestamp (inclusive), ISO 8601')]
+    start: Annotated[WireDatetime, Field(description='Start timestamp (inclusive), ISO 8601')]
+    end: Annotated[WireDatetime, Field(description='End timestamp (inclusive), ISO 8601')]
 
 
 __all__ = ["DatetimeRange"]

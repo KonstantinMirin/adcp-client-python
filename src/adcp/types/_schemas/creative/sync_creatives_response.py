@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -73,7 +74,7 @@ class CreativesItem(AdCPBaseModel):
     warnings: Annotated[list[str] | None, Field(description='Non-fatal warnings about this creative'), OmittedNotNull] = None
     macro_resolution_results: Annotated[list[MacroResolutionResult] | None, Field(description="Per-token result for declared macros. Sellers include this on accepted items when macro declarations were evaluated, and may include it alongside a failed item's structured errors."), OmittedNotNull] = None
     preview_url: Annotated[HostedUrl | None, Field(description='Preview URL for generative creatives (only present for generative formats)'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when preview link expires (only present when preview_url exists)'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when preview link expires (only present when preview_url exists)'), OmittedNotNull] = None
     assigned_to: Annotated[list[str] | None, Field(description='Package IDs this creative was successfully assigned to (only present when assignments were requested)'), OmittedNotNull] = None
     assignment_errors: Annotated[dict[str, AssignmentErrorsValue] | None, Field(description='Assignment errors by package ID (only present when assignment failures occurred)'), OmittedNotNull] = None
 

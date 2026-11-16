@@ -1460,7 +1460,7 @@ _ADMITTED: dict[str, Row] = {
                 ),
             ),
             Position.PROP: Cell(
-                Effect.ANNOTATION, False, None, " → `Field(deprecated=True)`."
+                Effect.ANNOTATION, True, None, " → `Field(deprecated=True)`."
             ),
         },
     ),

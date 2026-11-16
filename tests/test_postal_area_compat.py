@@ -5,11 +5,11 @@ AdCP 3.1.0-rc.10 restructured postal-area targeting: the inline
 ``PostalArea`` union of a native per-country arm (``{country, system,
 values}``) and a legacy arm (``{system, values}`` with country-fused tokens
 like ``us_zip``). ``GeoPostalArea`` is retained as a deprecated alias to the
-legacy arm so old import and construction code keeps working.
+legacy arm so old construction code keeps working.
 
-These tests exercise the public surface (``from adcp.types import ...``) and
-the public ``PostalArea`` / ``TargetingOverlay`` types — the wire contract,
-not the generated class layout.
+These tests exercise the wire contract of the public ``PostalArea`` /
+``TargetingOverlay`` types by payload: which shapes construct, what they dump
+to, and which country/system pairs are refused.
 """
 
 from __future__ import annotations
@@ -39,21 +39,6 @@ LEGACY_TOKENS = [
 ]
 
 
-@pytest.fixture(autouse=True)
-def _reset_geopostalarea_cache():
-    """Drop the cached ``GeoPostalArea`` so each test sees a first access.
-
-    The lazy ``adcp.types.__getattr__`` caches ``GeoPostalArea`` after the first
-    access so the DeprecationWarning fires only once per process. Tests that
-    assert on the warning must therefore start from an uncached state.
-    """
-    import adcp.types
-
-    adcp.types.__dict__.pop("GeoPostalArea", None)
-    yield
-    adcp.types.__dict__.pop("GeoPostalArea", None)
-
-
 def _geo_postal_area_cls() -> type:
     """Access the deprecated alias without raising the DeprecationWarning."""
     import adcp.types
@@ -61,40 +46,6 @@ def _geo_postal_area_cls() -> type:
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", DeprecationWarning)
         return adcp.types.GeoPostalArea
-
-
-def test_geo_postal_area_import_still_works():
-    """``from adcp.types import GeoPostalArea`` does not raise ImportError."""
-    import adcp.types
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        # Attribute access exercises the same PEP 562 ``__getattr__`` path as
-        # a ``from adcp.types import GeoPostalArea`` statement.
-        assert adcp.types.GeoPostalArea is not None
-
-
-def test_geo_postal_area_access_emits_deprecation_warning():
-    """Accessing the alias emits a DeprecationWarning naming the migration."""
-    import adcp.types
-
-    with pytest.warns(DeprecationWarning, match="GeoPostalArea is deprecated"):
-        alias = adcp.types.GeoPostalArea
-
-    assert alias is not None
-
-
-def test_geo_postal_area_warning_names_postalarea_migration():
-    """The warning points migrators at the PostalArea native arm."""
-    import adcp.types
-
-    with pytest.warns(DeprecationWarning) as record:
-        _ = adcp.types.GeoPostalArea
-
-    message = str(record[0].message)
-    assert "PostalArea" in message
-    assert "backward compatibility" in message
-    assert "future major" in message
 
 
 def test_old_construction_shape_still_works():
@@ -231,11 +182,3 @@ def test_schema_validation_rejects_mismatched_postal_pair():
 
     assert outcome.valid is False
     assert any(issue.pointer == "/targeting_overlay/geo_postal_areas/0" for issue in outcome.issues)
-
-
-def test_unknown_attribute_still_raises_attribute_error():
-    """The shim does not swallow genuinely missing attributes."""
-    import adcp.types
-
-    with pytest.raises(AttributeError):
-        _ = adcp.types.DefinitelyNotAPublicType

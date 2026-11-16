@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat
+from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
@@ -439,7 +440,7 @@ class SignalDefinition(AdCPBaseModel):
     art9_basis: Annotated[Art9Basis | None, Field(description='GDPR Article 9 basis when restricted_attributes is non-empty and the signal is used in jurisdictions where Article 9 applies. Required by policy for applicable use cases rather than universally required at schema level because sensitivity and lawful basis are jurisdiction-relative.'), OmittedNotNull] = None
     modeling: Annotated[Modeling | None, Field(description="Modeling disclosure for modeled data signals. Required when methodology is 'modeled' or audience_expansion is true. This describes data modeling and intentionally does not reuse creative provenance, which is content/render oriented."), OmittedNotNull] = None
     data_subject_rights: Annotated[DataSubjectRights | None, Field(description='Per-signal data-subject-rights routing. Inline on the signal because upstream source, rights routing, and response commitments can differ by segment or may be unavailable from a public provider document for custom/private signals. This is a contact/routing reference, not a machine-callable AdCP API.'), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.'), OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, Field(description='When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.'), OmittedNotNull] = None
     dts_compliant_version: Annotated[str | None, Field(description='IAB Data Transparency Standard version this signal definition self-attests as satisfying, when applicable.'), OmittedNotNull] = None
 
 

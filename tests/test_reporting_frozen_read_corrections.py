@@ -74,6 +74,17 @@ async def test_delivery_only_adjustments_require_each_accepted_current_leaf(
     accepted = evidence in {"accepted", "accepted-leaf"}
     if declare_pending:
         owner["pending_adjustment_count"] = int(not accepted)
+    else:
+        # AND THE OMISSION HAS TO BE MADE.  `_response` supplies
+        # `pending_adjustment_count=0` because `core/reporting-obligation.json`
+        # allOf[7] states: if reconciliation_mode == "consumer_receipt" and health is
+        # healthy/complete, then it is required and pinned `const: 0`.  This owner is
+        # `delivery_only`, so that conditional does not fire and the field is the
+        # optional count this parametrization means the seller to omit -- but it was
+        # still riding along from the base fixture.  Leaving the inherited `0` in place
+        # DECLARES "no pending adjustments" over a history that has one, which is
+        # LEDGER_COUNT_MISMATCH and a true answer to a different question.
+        owner.pop("pending_adjustment_count", None)
     validator = get_named_validator("core/reporting-obligation.json", version="3.2.0-rc.6")
     assert validator is not None
     assert list(validator.iter_errors(owner)) == []
@@ -178,27 +189,64 @@ async def test_ownerless_revisionless_status_does_not_certify_multiple_obligatio
     assert ledger.consumer_statuses[0].reporting_revision_id is None
 
 
-@pytest.mark.parametrize("explicit", [False, True])
-@pytest.mark.parametrize("binding", ["owner", "revision"])
-async def test_exact_status_binding_counts_once_even_when_logical_keys_match(explicit, binding):
-    raw = _distinct_histories(2)
+def _status_bound_to(raw: dict[str, Any], *, owner: bool) -> dict[str, Any]:
     status = _with_status(_history())["consumer_statuses"][0]
     status["reporting_revision_id"] = raw["revisions"][0]["reporting_revision_id"]
-    if binding == "owner":
+    if owner:
         status["reporting_obligation_id"] = raw["periods"][0]["reporting_obligation_id"]
     else:
-        # Pure already-typed legacy tolerance; rc6 received-status wire still
-        # requires the owner, and these tests claim no mounted compatibility.
         status.pop("reporting_obligation_id")
     raw["consumer_statuses"] = [status]
     raw["periods"][0].update(
         consumer_status_count=1, current_consumer_status_id=status["reporting_status_id"]
     )
     raw["periods"][1]["consumer_status_count"] = 0
+    return status
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+async def test_exact_status_binding_counts_once_even_when_logical_keys_match(explicit):
+    raw = _distinct_histories(2)
+    _status_bound_to(raw, owner=True)
     result = evaluate_reporting_ledger(
         await _load_distinct(raw, explicit), expected_periods=[], now=NOW
     )
     assert result.definitive, result.obligations
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+async def test_a_received_status_without_its_owner_is_not_readable(explicit):
+    """The ``binding="revision"`` half of the test above, as the document answers it.
+
+    It read the owner-less status as "pure already-typed legacy tolerance", and its
+    own comment said "rc6 received-status wire still requires the owner".  It does,
+    and the requiredness is a CONJUNCTION rather than the node's own ``required``
+    list: ``core/reporting-consumer-status.json`` names only
+    ``['reporting_status_id', 'delivery_config_id', 'delivery_config_version',
+    'report_definition_id', 'period', 'consumer_status', 'status_as_of']`` at its
+    root, and ``allOf[0]`` adds ``if consumer_status == "received" then required:
+    ['reporting_obligation_id', 'reporting_revision_id',
+    'observed_revision_content_sha256']``.
+
+    So a revision-only binding is not a tolerance the wire can exercise: asked
+    directly, the document's own validator points at ``allOf/0/then/required``, and
+    the read refuses the page rather than reaching the binding code at all.  Every
+    other ``consumer_status`` either requires the owner (``revision_missing``,
+    ``unreadable``, ``content_mismatch``) or forbids owner and revision together
+    (``obligation_missing``).
+    """
+    raw = _distinct_histories(2)
+    status = _status_bound_to(raw, owner=False)
+
+    validator = get_named_validator("core/reporting-consumer-status.json", version="3.2.0-rc.6")
+    assert validator is not None
+    assert [list(error.absolute_schema_path) for error in validator.iter_errors(status)] == [
+        ["allOf", 0, "then", "required"]
+    ]
+
+    with pytest.raises(ReportingReconciliationError) as error:
+        await _load_distinct(raw, explicit)
+    assert error.value.code == "STATUS_READ_FAILED"
 
 
 @pytest.mark.parametrize("explicit", [False, True])

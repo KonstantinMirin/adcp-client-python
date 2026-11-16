@@ -209,6 +209,7 @@ def fields(
             , kind=Kind.VERDICT)
         spelled[fname] = key
         is_distinct = key in distinct
+        is_deprecated = bool(child.annotations.get("deprecated"))
         if key in reuse:
             # Bound under its own name and not onto ``held``: ``held`` above is the NAMES
             # nothing declares (``undeclared``'s reading) and this is a decided
@@ -222,6 +223,7 @@ def fields(
             # invites, and the base decided this type at its own pointer.
             field_type = reused.type
             is_distinct = reused.distinct
+            is_deprecated = is_deprecated or reused.deprecated
         else:
             # **§4's nested name rule as a HOP and not as a name** (§7): what this
             # records is the structural fact -- this child hangs off the class at
@@ -300,6 +302,19 @@ def fields(
                 mod.drops[at] = stated
             else:
                 default = stated
+        # §6's ``deprecated`` row at ``Position.PROP``: " → ``Field(deprecated=True)``".
+        # **METADATA AND NOT ABSENCE**: a document stating a property with
+        # ``deprecated: true`` STATES that property, so the field is emitted either way
+        # and what the keyword adds is the annotation saying what it is.  Dropping it
+        # made the class carry 110 of the bundle's facts nowhere -- not on the field, not
+        # in ``json_schema_extra``, and not in our own ``model_json_schema()``.
+        #
+        # Read off ``annotations`` like ``default`` above it, and taken from the REUSED
+        # field on the reuse path for the same reason its type and ``distinct`` are: the
+        # base decided the property at its own pointer, and a composed class that keeps
+        # the narrowing and loses the metadata is the measured defect
+        # (``core/postal-area-support.json`` marks 11 legacy postal aliases deprecated and
+        # ``core/positive-postal-area-support.json`` narrows each to ``const: true``).
         built.append(
             ir.Field(
                 name=fname,
@@ -309,6 +324,7 @@ def fields(
                 default=default,
                 description=described,
                 distinct=is_distinct,
+                deprecated=is_deprecated,
             )
         )
     # **A required name NO declaration declares is a required field of type ``Any``**,
@@ -963,6 +979,7 @@ def lower_object(
         extras=node.extras,
         bases=bases,
     )
+
 
 
 def _typed_by_a_base(

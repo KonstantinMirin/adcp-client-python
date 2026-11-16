@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen1000, ZipAssetDigest
 from adcp.types.envelopes import AdcpRequest
 
@@ -49,7 +50,7 @@ class Evidence(AdCPBaseModel):
     evidence_id: Annotated[StrMinLen1MaxLen255, Field(description="Immutable identifier in the authenticated seller's namespace. Reuse with different adjustment evidence is a conflict.")]
     evidence_type: EvidenceType
     digest: ZipAssetDigest
-    issued_at: AwareDatetime
+    issued_at: WireDatetime
 
 
 class ReportPlanAdjustmentRequest(AdCPVersionEnvelope, AdcpRequest):
@@ -81,7 +82,7 @@ class ReportPlanAdjustmentRequest(AdCPVersionEnvelope, AdcpRequest):
     adjustment_type: Annotated[AdjustmentType | None, Field(description='Commercial meaning. Verified decommitments restore headroom in every mode; verified refunds and credits restore it only in verified_net_cost mode; makegoods never restore cash headroom.'), OmittedNotNull] = None
     amount: Annotated[Amount | None, Field(description='Positive adjustment amount in the plan currency.'), OmittedNotNull] = None
     reason: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Human-readable reason retained in the audit trail.'), OmittedNotNull] = None
-    effective_at: Annotated[AwareDatetime | None, Field(description="When the seller's adjustment became effective."), OmittedNotNull] = None
+    effective_at: Annotated[WireDatetime | None, Field(description="When the seller's adjustment became effective."), OmittedNotNull] = None
     evidence: Annotated[Evidence | None, Field(description='Integrity-bound commercial source record supplied by the seller. Its evidence_type must correspond to adjustment_type.'), OmittedNotNull] = None
     idempotency_key: Annotated[IdempotencyKey, Field(description='Caller-generated retry key. Exact replays return the original report or review; reuse with another payload is rejected.')]
     context: Annotated[ContextObject | None, OmittedNotNull] = None

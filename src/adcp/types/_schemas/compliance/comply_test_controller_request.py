@@ -5,10 +5,11 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     FloatMin0Max100,
@@ -183,7 +184,7 @@ class Params(AdCPBaseModel):
     catalog_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Catalog operated on by catalog_item_availability_probe.'), OmittedNotNull] = None
     catalog_generation: Annotated[StrMinLen1MaxLen255 | None, Field(description='Catalog incarnation operated on by catalog_item_availability_probe.'), OmittedNotNull] = None
     item_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Catalog item operated on by catalog_item_availability_probe.'), OmittedNotNull] = None
-    target_time: Annotated[AwareDatetime | None, Field(description='Deterministic sandbox clock target used by catalog_item_availability_probe advance_time.'), OmittedNotNull] = None
+    target_time: Annotated[WireDatetime | None, Field(description='Deterministic sandbox clock target used by catalog_item_availability_probe advance_time.'), OmittedNotNull] = None
     status: Annotated[str | None, Field(description="Target status for the resource. Type depends on scenario: creative-status for force_creative_status, account-status for force_account_status, media-buy-status for force_media_buy_status. For force_session_status, must be 'complete' or 'terminated'."), OmittedNotNull] = None
     rejection_reason: Annotated[str | None, Field(description='Reason for rejection. Used by force_creative_status and force_media_buy_status when status = rejected.'), OmittedNotNull] = None
     purge_kind: Annotated[PurgeKind | None, Field(description='Purge mode for force_creative_purge. soft retains a list_creatives tombstone; hard removes the creative entirely.'), OmittedNotNull] = None
@@ -215,7 +216,7 @@ class Params(AdCPBaseModel):
     message: Annotated[StrMaxLen2000 | None, Field(description='Optional human-readable explanation surfaced on the next forced operation response. Used by force_create_media_buy_arm, force_get_products_arm, force_get_signals_arm, and force_get_creative_features_arm for the submitted arm. Plain text only.'), OmittedNotNull] = None
     reason: Annotated[StrMinLen1MaxLen2000 | None, Field(description="Deterministic buyer-facing reason the seller MUST emit on the next get_products response when force_get_products_arm uses arm 'rejected'. Plain text only; MUST NOT expose confidential internal rules, inventory identifiers, credentials, or stack traces."), OmittedNotNull] = None
     suggestions: Annotated[list[StrMinLen1MaxLen1000] | None, Field(description="Optional deterministic alternatives the seller MUST emit on the next get_products rejection. Used only by force_get_products_arm with arm 'rejected'.", max_length=20, min_length=1), OmittedNotNull] = None
-    format_id: Annotated[str | None, Field(description='**DEPRECATED 3.x compatibility fixture.** Legacy named-format ID to seed for seed_creative_format scenarios. The seller MUST expose it through the deprecated list_creative_formats projection for the duration of the compliance session. Canonical 3.2 scenarios seed creative.supported_formats capabilities instead.'), OmittedNotNull] = None
+    format_id: Annotated[str | None, Field(deprecated=True, description='**DEPRECATED 3.x compatibility fixture.** Legacy named-format ID to seed for seed_creative_format scenarios. The seller MUST expose it through the deprecated list_creative_formats projection for the duration of the compliance session. Canonical 3.2 scenarios seed creative.supported_formats capabilities instead.'), OmittedNotNull] = None
     vendor: Annotated[BrandReference | None, Field(description="Measurement vendor whose catalog is being seeded. Used by seed_measurement_catalog. The seller MUST treat `metrics[]` as this vendor's `get_adcp_capabilities.measurement.metrics[]` snapshot for the duration of the compliance session."), OmittedNotNull] = None
     metrics: Annotated[list[MetricsItem] | None, Field(description='Measurement catalog entries to seed for the vendor. Used by seed_measurement_catalog. Shape mirrors `get_adcp_capabilities.measurement.metrics[]`; each metric_id is unique within the seeded vendor catalog.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     tool: Annotated[str | None, Field(description="Tool name whose upstream dependency to affect. Used by force_upstream_unavailable. The seller marks the named upstream as unreachable for subsequent calls to this tool within the compliance session. Sellers MAY accept a wildcard ('*') to affect all tools."), OmittedNotNull] = None

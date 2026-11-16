@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 
 from ..enums.indicator_type import IndicatorType
 from .ext import ExtensionObject
@@ -25,7 +26,7 @@ class Indicator(AdCPBaseModel):
         UniqueItems('scope'),
     )
     type: IndicatorType
-    detected_at: Annotated[AwareDatetime | None, Field(description='When the seller first detected the current uninterrupted occurrence of this indicator. Keep this value stable while the condition remains present. If the condition clears and is later detected again, use the new detection time. Optional because some upstream platforms expose current assessments without an original detection timestamp.'), OmittedNotNull] = None
+    detected_at: Annotated[WireDatetime | None, Field(description='When the seller first detected the current uninterrupted occurrence of this indicator. Keep this value stable while the condition remains present. If the condition clears and is later detected again, use the new detection time. Optional because some upstream platforms expose current assessments without an original detection timestamp.'), OmittedNotNull] = None
     scope: Annotated[list[IndicatorScope] | None, Field(description='Optional narrower publisher or placement scope within the enclosing media buy, package, or package–creative assignment. Omit only when the seller evaluated and asserts the indicator across the whole enclosing resource/relationship. When partial indicators_evaluated_scope is declared, every returned indicator MUST include scope and every entry MUST fall within that coverage. This is scope, not source: the responding seller remains the source.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, Field(description='Seller- or provider-specific detail such as scores, thresholds, evaluation windows, methodology identifiers, or upstream attribution. Core consumers must not need ext to understand the broad meaning of type.'), OmittedNotNull] = None
 

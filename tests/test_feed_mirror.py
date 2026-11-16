@@ -121,6 +121,20 @@ def make_webhook(
     }
     if previous is not None:
         body["previous_wholesale_feed_version"] = previous
+    #: `core/wholesale-feed-webhook.json` states
+    #:     if   notification_type in [product.created, product.updated,
+    #:                                product.priced, product.removed]
+    #:     then required: ["product_payload_view"]
+    #: so the key is required on a product.* fire and absent on any other, which is why
+    #: it is derived here rather than defaulted: supplying it unconditionally would put a
+    #: key on fires the document does not state it for.
+    #:
+    #: The VALUE follows the payload, which is the document's own reading of it --
+    #: "canonical uses canonical_product/canonical_pricing_options and legacy uses
+    #: product/pricing_options".
+    if str(body["notification_type"]).startswith("product."):
+        payload = event.get("payload") or {}
+        body["product_payload_view"] = "canonical" if "canonical_product" in payload else "legacy"
     return WholesaleFeedWebhook.model_validate(body)
 
 
@@ -152,7 +166,10 @@ class StubClient:
         idx = len(self.product_requests)
         self.product_requests.append(request)
         body = self._products[idx] if idx < len(self._products) else {"products": []}
-        body = {"cache_scope": "public", **body}
+        # `status` as `cache_scope`: a default the case may override.  It is required by
+        # `core/protocol-envelope.json`, which these documents compose via `allOf`, so
+        # requiredness is the conjunction of the node's own and its ancestors'.
+        body = {"status": "completed", "cache_scope": "public", **body}
         return TaskResult(
             status=TaskStatus.COMPLETED,
             success=True,
@@ -163,7 +180,10 @@ class StubClient:
         idx = len(self.signal_requests)
         self.signal_requests.append(request)
         body = self._signals[idx] if idx < len(self._signals) else {"signals": []}
-        body = {"cache_scope": "public", **body}
+        # `status` as `cache_scope`: a default the case may override.  It is required by
+        # `core/protocol-envelope.json`, which these documents compose via `allOf`, so
+        # requiredness is the conjunction of the node's own and its ancestors'.
+        body = {"status": "completed", "cache_scope": "public", **body}
         return TaskResult(
             status=TaskStatus.COMPLETED,
             success=True,

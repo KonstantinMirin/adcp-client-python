@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
 
@@ -113,7 +114,7 @@ class ResultsItemFinalizedProposal(CanonicalProposal):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-response.json', pointer='#/properties/results/items/oneOf/2/properties/proposal')
     proposal_status: Annotated[Literal['committed'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
-    expires_at: Annotated[AwareDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
+    expires_at: Annotated[WireDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
     parent_proposal_id: Annotated[StrMinLen1MaxLen255, Field(description="Immediate predecessor this snapshot was forked from. Every proposal produced by refine_proposals carries it, equal to the request's source proposal_id, so negotiation lineage is reconstructible from proposals alone.")]
 
 

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 
 class Action(AdCPBaseModel):
@@ -31,7 +32,7 @@ class A2UIUserAction(AdCPBaseModel):
     surfaceId: Annotated[str, Field(description='ID of the surface where the action occurred')]
     componentId: Annotated[str, Field(description='ID of the component that triggered the action')]
     action: Annotated[Action, Field(description='The action that was triggered')]
-    timestamp: Annotated[AwareDatetime | None, Field(description='When the action occurred'), OmittedNotNull] = None
+    timestamp: Annotated[WireDatetime | None, Field(description='When the action occurred'), OmittedNotNull] = None
 
 
 A2UiUserAction = A2UIUserAction

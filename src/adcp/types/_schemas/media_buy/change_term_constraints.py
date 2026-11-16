@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 
 from ..core.currency_code import CurrencyCode
 from ..core.duration import Duration
@@ -59,8 +60,8 @@ class FlightChangeConstraints(MediaBuyChangeTermConstraints):
     )
     kind: Literal['flight']
     max_change: Annotated[Duration | None, Field(description='Maximum extension, shortening, or shift in the direction named by the action.'), OmittedNotNull] = None
-    earliest_result: Annotated[AwareDatetime | None, Field(description='Earliest resulting start or end timestamp accepted for this action.'), OmittedNotNull] = None
-    latest_result: Annotated[AwareDatetime | None, Field(description='Latest resulting start or end timestamp accepted for this action.'), OmittedNotNull] = None
+    earliest_result: Annotated[WireDatetime | None, Field(description='Earliest resulting start or end timestamp accepted for this action.'), OmittedNotNull] = None
+    latest_result: Annotated[WireDatetime | None, Field(description='Latest resulting start or end timestamp accepted for this action.'), OmittedNotNull] = None
     minimum_notice: Annotated[Duration | None, Field(description='Minimum elapsed notice before the requested flight change may take effect.'), OmittedNotNull] = None
 
 
@@ -88,8 +89,8 @@ class EffectiveTimingConstraints(MediaBuyChangeTermConstraints):
     )
     kind: Literal['effective_timing']
     minimum_notice: Annotated[Duration | None, Field(description='Minimum elapsed notice before pause, resume, cancellation, or another operational action may take effect.'), OmittedNotNull] = None
-    earliest_effective_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    latest_effective_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    earliest_effective_at: Annotated[WireDatetime | None, OmittedNotNull] = None
+    latest_effective_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 MediaBuyChangeTermConstraints._branch_models = (BudgetChangeConstraints, FlightChangeConstraints, PackageCountConstraints, EffectiveTimingConstraints,)

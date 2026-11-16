@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -41,7 +42,7 @@ class ReportingLedgerChangedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Random per distinct fire and stable across transport retries, scoped to the authenticated sender.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable per committed ledger record; re-emissions reuse it.')]
     notification_type: Literal['reporting.ledger_changed']
-    fired_at: AwareDatetime
+    fired_at: WireDatetime
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1
     change_kind: ChangeKind

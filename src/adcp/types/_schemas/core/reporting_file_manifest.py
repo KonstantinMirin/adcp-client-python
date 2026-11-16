@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId
 
 from .reporting_consumer_status import ObjStartEndSourceTimezone
@@ -39,7 +40,7 @@ class ReportingFileManifest(AdCPBaseModel):
     total_size_bytes: NonNegativeInt
     row_count: NonNegativeInt
     control_totals: Annotated[list[ReportingControlTotal], Field(json_schema_extra={'uniqueItems': True})]
-    created_at: AwareDatetime
+    created_at: WireDatetime
 
 
 __all__ = ["ReportingFileManifest"]

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max100, IntMin1
 
 from ..enums.pacing import Pacing
@@ -31,8 +32,8 @@ class ProductAllocation(AdCPBaseModel):
     rationale: Annotated[str | None, Field(description='Explanation of why this product and allocation are recommended'), OmittedNotNull] = None
     sequence: Annotated[IntMin1 | None, Field(description='Optional ordering hint for multi-line-item plans (1-based)'), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description="Categorical tags for this allocation (e.g., 'desktop', 'german', 'mobile') - useful for grouping/filtering allocations by dimension"), OmittedNotNull] = None
-    start_time: Annotated[AwareDatetime | None, Field(description='Recommended flight start date/time for this allocation in ISO 8601 format. Allows publishers to propose per-flight scheduling within a proposal. When omitted, the allocation applies to the full campaign date range.'), OmittedNotNull] = None
-    end_time: Annotated[AwareDatetime | None, Field(description='Recommended flight end date/time for this allocation in ISO 8601 format. Allows publishers to propose per-flight scheduling within a proposal. When omitted, the allocation applies to the full campaign date range.'), OmittedNotNull] = None
+    start_time: Annotated[WireDatetime | None, Field(description='Recommended flight start date/time for this allocation in ISO 8601 format. Allows publishers to propose per-flight scheduling within a proposal. When omitted, the allocation applies to the full campaign date range.'), OmittedNotNull] = None
+    end_time: Annotated[WireDatetime | None, Field(description='Recommended flight end date/time for this allocation in ISO 8601 format. Allows publishers to propose per-flight scheduling within a proposal. When omitted, the allocation applies to the full campaign date range.'), OmittedNotNull] = None
     daypart_targets: Annotated[list[DaypartTarget] | None, Field(description="Recommended time windows for this allocation in spot-plan proposals. Each entry's timezone defaults to inventory_local when omitted, and entries MAY use different clocks.", min_length=1), OmittedNotNull] = None
     forecast: Annotated[DeliveryForecast | None, Field(description='Forecasted delivery metrics for this allocation'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

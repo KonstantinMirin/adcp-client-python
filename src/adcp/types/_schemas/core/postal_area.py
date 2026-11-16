@@ -172,7 +172,7 @@ class PostalAreaWithFusedSystem(PostalArea):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/1')
-    system: Annotated[CountryFusedPostalCodeSystem, Field(description="Deprecated country-fused postal code system (e.g., 'us_zip', 'gb_outward'). Prefer country + postal-system.")]
+    system: Annotated[CountryFusedPostalCodeSystem, Field(deprecated=True, description="Deprecated country-fused postal code system (e.g., 'us_zip', 'gb_outward'). Prefer country + postal-system.")]
     values: Annotated[list[str], Field(description='Postal codes within the legacy system.', min_length=1)]
 
 

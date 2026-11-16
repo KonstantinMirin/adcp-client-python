@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import CanonicalProposalTermsDigest, StrMinLen1, StrMinLen1MaxLen255
 
 from ..enums.channels import MediaChannel
@@ -58,8 +59,8 @@ class PlannedDelivery(AdCPBaseModel):
     proposal_terms_digest: Annotated[CanonicalProposalTermsDigest | None, Field(description='Digest of the proposal commercial_terms. The governance agent compares it to the digest bound during the intent check.'), OmittedNotNull] = None
     geo: Annotated[Geo | None, Field(description='Geographic targeting the seller will apply.'), OmittedNotNull] = None
     channels: Annotated[list[MediaChannel] | None, Field(description='Channels the seller will deliver on.'), OmittedNotNull] = None
-    start_time: Annotated[AwareDatetime | None, Field(description='Actual flight start the seller will use.'), OmittedNotNull] = None
-    end_time: Annotated[AwareDatetime | None, Field(description='Actual flight end the seller will use.'), OmittedNotNull] = None
+    start_time: Annotated[WireDatetime | None, Field(description='Actual flight start the seller will use.'), OmittedNotNull] = None
+    end_time: Annotated[WireDatetime | None, Field(description='Actual flight end the seller will use.'), OmittedNotNull] = None
     frequency_cap: Annotated[FrequencyCap | None, Field(description='Frequency cap the seller will apply.'), OmittedNotNull] = None
     audience_summary: Annotated[str | None, Field(description='Human-readable summary of the audience the seller will target.'), OmittedNotNull] = None
     audience_targeting: Annotated[list[AudienceSelector] | None, Field(description='Structured audience targeting the seller will activate. Each entry is either a signal reference or a descriptive criterion. When present, governance agents MUST use this for bias/fairness validation and SHOULD ignore audience_summary for validation purposes. The audience_summary field is a human-readable rendering of this array, not an independent declaration.', min_length=1), OmittedNotNull] = None

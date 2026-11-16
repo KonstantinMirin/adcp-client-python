@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import MeasurementSource
 
 from ..enums.demographic_system import DemographicSystem
@@ -32,8 +33,8 @@ class DeliveryForecast(AdCPBaseModel):
     demographic: Annotated[str | None, Field(description='Target demographic code within the specified demographic_system. For Nielsen: P18-49, M25-54, W35+. For BARB: ABC1 Adults, 16-34. For AGF: E 14-49.'), OmittedNotNull] = None
     measurement_source: Annotated[MeasurementSource | None, Field(description='Third-party measurement provider whose data was used to produce this forecast. Distinct from demographic_system, which specifies demographic notation — measurement_source identifies whose data produced the forecast numbers. Should be present when measured_impressions is used. Lowercase slug format.'), OmittedNotNull] = None
     reach_unit: Annotated[ReachUnit | None, Field(description='Unit of measurement for reach and audience_size metrics in this forecast. Required for cross-channel forecast comparison.'), OmittedNotNull] = None
-    generated_at: Annotated[AwareDatetime | None, Field(description='When this forecast was computed'), OmittedNotNull] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='When this forecast expires. After this time, the forecast should be refreshed. Forecast expiry does not affect proposal executability.'), OmittedNotNull] = None
+    generated_at: Annotated[WireDatetime | None, Field(description='When this forecast was computed'), OmittedNotNull] = None
+    valid_until: Annotated[WireDatetime | None, Field(description='When this forecast expires. After this time, the forecast should be refreshed. Forecast expiry does not affect proposal executability.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

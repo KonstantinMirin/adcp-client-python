@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen16
 from adcp.types.envelopes import AdcpResponse
 
@@ -42,7 +43,7 @@ class ProposalsItem(CanonicalProposal):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/properties/proposals/items')
     proposal_status: Annotated[Literal['draft'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
-    expires_at: Annotated[AwareDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
+    expires_at: Annotated[WireDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
 
 
 class IncompleteItem(AdCPBaseModel):
@@ -105,7 +106,7 @@ class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     )
     kind: Literal['legacy_create']
     continuation_token: Annotated[StrMinLen16, Field(description='Opaque, short-lived coordinator token bound to the caller principal, account, and complete observed product/pricing payload. It is not a seller-issued feed fence.')]
-    continuation_expires_at: Annotated[AwareDatetime, Field(description='Absolute expiry of the single-use compatibility continuation.')]
+    continuation_expires_at: Annotated[WireDatetime, Field(description='Absolute expiry of the single-use compatibility continuation.')]
     source_adcp_version: Annotated[SourceAdcpVersion, Field(description='Established AdCP version actually negotiated with the peer. This provenance is required; the coordinator MUST NOT infer stronger guarantees from the label.')]
     product_ids: Annotated[list[StrMinLen1], Field(description='Exact products bound to this continuation. A follow-up MUST select a non-empty subset and MUST NOT substitute an ID from another discovery result.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     losses: Annotated[Annotated[list[LossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Guarantees that the established create_media_buy continuation cannot provide. The coordinator MUST fail before mutation unless the caller explicitly accepts every listed loss.', json_schema_extra={'uniqueItems': True}, min_length=2)]
@@ -140,7 +141,7 @@ class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse)
     proposals: Annotated[list[ProposalsItem] | None, Field(min_length=1), OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct] | None, Field(min_length=1), OmittedNotNull] = None
     incomplete: Annotated[list[IncompleteItem] | None, Field(description='Usable partial discovery result retained from the established get_products response. Absence means the source response did not declare an incomplete scope; it does not authorize an adapter to infer missing proposal terms.', min_length=1), OmittedNotNull] = None
-    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate | None, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.'), OmittedNotNull] = None
+    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate | None, Field(deprecated=True, description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.'), OmittedNotNull] = None
     targeting_resolution: Annotated[ProductDiscoveryTargetingResolution | None, Field(description='Response-level confirmation of structured targeting interpreted from explicit hard requirements in the brief. Sellers MUST emit this when that interpretation materially affects eligibility, pricing, or forecasting; otherwise it remains a best practice. Product-specific changes to explicit criteria.targeting_overlay values remain on Product.targeting_resolution.'), OmittedNotNull] = None
     status: Annotated[Status | None, OmittedNotNull] = None
     task_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
@@ -179,7 +180,7 @@ class RequestProposalsResponseProductsAvailableCompleted(RequestProposalsRespons
     outcome: Literal[Outcome.PRODUCTS_AVAILABLE]
     status: Annotated[Literal['completed'] | None, OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
-    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate, Field(description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
+    purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate, Field(deprecated=True, description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
 
 
 class RequestProposalsResponseRejectedCompleted(RequestProposalsResponse):

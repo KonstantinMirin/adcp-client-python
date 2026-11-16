@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -64,7 +65,7 @@ class IndicatorsChangedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Random fire identifier reused across retries. Receivers dedupe within the authenticated sender scope.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identity for this logical snapshot change across re-emissions. A later semantic change receives a new value.')]
     notification_type: Literal['indicators.changed']
-    fired_at: AwareDatetime
+    fired_at: WireDatetime
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: str
     relationship_kind: Annotated[RelationshipKind, Field(description='Identifies which indicator-bearing snapshot changed.')]
@@ -73,7 +74,7 @@ class IndicatorsChangedWebhook(AdCPBaseModel):
     creative_id: Annotated[str | None, OmittedNotNull] = None
     change_kind: Annotated[ChangeKind, Field(description='Coarse invalidation reason. Buyers MUST reread rather than applying this value as state. invalidated is emitted when a material creative-content update retires the prior evaluation and the relationship becomes unknown until reevaluated. assignment_removed is emitted to indicator subscribers when deletion retires keys for a package–creative relationship.')]
     changed_indicator_types: Annotated[list[IndicatorType], Field(description='Types known to be affected. This is a reread hint, not a complete current set.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    observed_at: Annotated[AwareDatetime, Field(description='When the seller observed the semantic snapshot change.')]
+    observed_at: Annotated[WireDatetime, Field(description='When the seller observed the semantic snapshot change.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -81,8 +82,8 @@ class CreateMediaBuySuccess(CreateMediaBuyResponse):
     account: Annotated[Account | None, Field(description='Account billed for this media buy. Includes advertiser, billing proxy (if any), and rate card applied.'), OmittedNotNull] = None
     invoice_recipient: Annotated[BusinessEntity | None, Field(description='Per-buy invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only).'), OmittedNotNull] = None
     media_buy_status: Annotated[MediaBuyStatus | None, Field(description="Initial media buy status. Either 'pending_creatives' (awaiting creative assets), 'pending_start' (ready to serve, waiting for flight date), 'active' (immediate activation), or 'paused' (created with delivery held after all activation prerequisites are satisfied). This field carries the media buy lifecycle state; top-level `status` is reserved for the protocol-envelope TaskStatus (`completed` on synchronous success)."), OmittedNotNull] = None
-    confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this media buy was committed by the seller. Stable after it is set; do not update on later pause/resume/status/reporting transitions. May be null in deferred or manual-approval flows until seller commitment occurs.')]
-    creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for creative upload deadline'), OmittedNotNull] = None
+    confirmed_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when this media buy was committed by the seller. Stable after it is set; do not update on later pause/resume/status/reporting transitions. May be null in deferred or manual-approval flows until seller commitment occurs.')]
+    creative_deadline: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp for creative upload deadline'), OmittedNotNull] = None
     revision: Annotated[IntMin1, Field(description='Initial revision number for this media buy. Use in subsequent update_media_buy requests intended to change state for optimistic concurrency.')]
     currency: Annotated[CurrencyCode | None, Field(description='Single ISO 4217 currency code for total_budget, package budget constraints, and canonical BiddingPolicy monetary fields. Every selected pricing option MUST declare this currency; packages needing another currency belong in another media buy. In proposal mode the seller derives it from total_budget.currency; in explicit-package mode the seller derives or validates one common pricing-option currency. Matches subsequent get_media_buys responses.'), OmittedNotNull] = None
     total_budget: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate lifetime budget, denominated in currency. The request encodes total_budget as an object {amount, currency}; this response flattens amount and promotes currency to its sibling field. Present for proposal and seller-optimized modes, and when supplied or deterministically derived in fixed explicit-package mode. Matches subsequent get_media_buys responses.'), OmittedNotNull] = None
@@ -92,7 +93,7 @@ class CreateMediaBuySuccess(CreateMediaBuyResponse):
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Accepted cross-package allocation configuration. Omitted means fixed allocation for legacy buys.'), OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Accepted aggregate media-buy pacing strategy.'), OmittedNotNull] = None
     bidding: Annotated[Bidding | None, Field(description='Accepted media-buy-authored bidding policy with goal binding and monetary denomination preserved. Packages that inherit it omit package.bidding; explicit package policies, including `{automatic:true}`, remain at package scope.'), OmittedNotNull] = None
-    valid_actions: Annotated[list[MediaBuyValidAction] | None, Field(description='Flat-vocabulary actions the buyer can perform on this media buy after creation. Saves a round-trip to get_media_buys. Deprecated in favor of `available_actions[]`, which carries mode, optional SLA, and in 3.2 an optional change_term_id. Sellers SHOULD populate both during the 3.x deprecation window; consumers MUST prefer `available_actions[]` when both are present. Removed in 4.0.'), OmittedNotNull] = None
+    valid_actions: Annotated[list[MediaBuyValidAction] | None, Field(deprecated=True, description='Flat-vocabulary actions the buyer can perform on this media buy after creation. Saves a round-trip to get_media_buys. Deprecated in favor of `available_actions[]`, which carries mode, optional SLA, and in 3.2 an optional change_term_id. Sellers SHOULD populate both during the 3.x deprecation window; consumers MUST prefer `available_actions[]` when both are present. Removed in 4.0.'), OmittedNotNull] = None
     available_actions: Annotated[list[MediaBuyAvailableAction] | None, Field(description='Structured per-buy resolution of actions available immediately after creation. Authoritative — see `get-media-buys-response.json` for full semantics.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     packages: Annotated[list[Package], Field(description='Array of created packages with complete state information')]
     planned_delivery: Annotated[PlannedDelivery | None, Field(description="The seller's interpreted delivery parameters. Describes what the seller will actually run -- geo, channels, flight dates, frequency caps, and budget. Present when the account has governance_agents or when the seller chooses to provide delivery transparency."), OmittedNotNull] = None

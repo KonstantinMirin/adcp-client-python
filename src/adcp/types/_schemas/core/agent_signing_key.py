@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 
 class AgentSigningKey(AdCPBaseModel):
@@ -25,7 +26,7 @@ class AgentSigningKey(AdCPBaseModel):
     y: Annotated[str | None, Field(description='Base64url-encoded public key y coordinate for EC keys.'), OmittedNotNull] = None
     n: Annotated[str | None, Field(description='Base64url-encoded RSA modulus.'), OmittedNotNull] = None
     e: Annotated[str | None, Field(description='Base64url-encoded RSA public exponent.'), OmittedNotNull] = None
-    revoked_at: Annotated[AwareDatetime | None, Field(description='Optional revocation timestamp. When present, verifiers MUST reject any signature produced with this key whose signing epoch (or equivalent time reference) is at or after this timestamp. The key may continue to appear in the trust anchor during a grace period so caches that have not yet refreshed still find the key and can evaluate the revocation marker. Keys past their revocation can be removed once the cache TTL (recommended: 5 minutes) has elapsed across all verifiers.'), OmittedNotNull] = None
+    revoked_at: Annotated[WireDatetime | None, Field(description='Optional revocation timestamp. When present, verifiers MUST reject any signature produced with this key whose signing epoch (or equivalent time reference) is at or after this timestamp. The key may continue to appear in the trust anchor during a grace period so caches that have not yet refreshed still find the key and can evaluate the revocation marker. Keys past their revocation can be removed once the cache TTL (recommended: 5 minutes) has elapsed across all verifiers.'), OmittedNotNull] = None
 
 
 __all__ = ["AgentSigningKey"]

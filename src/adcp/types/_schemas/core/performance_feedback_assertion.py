@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatGt0Lt1, HostedUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen100, StrMinLen1MaxLen255
 
 from ..enums.feedback_source import FeedbackSource
@@ -65,16 +66,16 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
     performance_index: Annotated[NonNegativeFloat, Field(description='Normalized decision signal where 1.0 equals the named baseline, values below 1.0 underperform it, and values above 1.0 outperform it. Compact-contract producers (baseline present) MUST use observed divided by baseline for higher-is-better ratio metrics and baseline divided by observed for lower-is-better ratio metrics such as cost per acquisition.')]
     baseline: Annotated[PerformanceBaseline | None, Field(description='Expectation represented by performance_index = 1.0. Compact-contract producers MUST populate this field; it remains optional in the schema so existing 3.x request payloads remain valid.'), OmittedNotNull] = None
     metric: Annotated[PerformanceFeedbackMetric | None, Field(description='Metric this assertion describes. Omit only for holistic feedback that is not attributable to one metric.'), OmittedNotNull] = None
-    metric_type: Annotated[MetricType | None, Field(description='Deprecated legacy metric classification retained for existing request payloads. New implementations SHOULD use metric; when both are present consumers MUST use metric for dispatch.'), OmittedNotNull] = None
+    metric_type: Annotated[MetricType | None, Field(deprecated=True, description='Deprecated legacy metric classification retained for existing request payloads. New implementations SHOULD use metric; when both are present consumers MUST use metric for dispatch.'), OmittedNotNull] = None
     producer: Annotated[BrandReference | None, Field(description='Brand that produced the analysis. The receiving orchestrator gateway verifies this reference against authenticated caller identity and preserves it during seller fan-out.'), OmittedNotNull] = None
-    vendor: Annotated[BrandReference | None, Field(description='Deprecated alias for producer retained for previously documented request payloads. When both are present consumers use producer.'), OmittedNotNull] = None
+    vendor: Annotated[BrandReference | None, Field(deprecated=True, description='Deprecated alias for producer retained for previously documented request payloads. When both are present consumers use producer.'), OmittedNotNull] = None
     feedback_source: Annotated[FeedbackSource | None, Field(description='Legacy categorical source hint retained for existing request payloads.'), OmittedNotNull] = None
     methodology: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-scoped methodology identifier such as geo_incrementality, media_mix_model, or deterministic_attribution.'), OmittedNotNull] = None
     methodology_version: Annotated[StrMinLen1MaxLen100 | None, Field(description='Producer-defined version of the methodology used for this assertion.'), OmittedNotNull] = None
     study_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque producer-assigned study or model-run reference. Receivers use it for correlation only and MUST NOT interpret it as an experiment-execution instruction.'), OmittedNotNull] = None
     evidence: Annotated[Evidence | None, Field(description='Small inline evidence summary used to weight the assertion without transporting the full study.'), OmittedNotNull] = None
     evidence_ref: Annotated[HostedUrl | None, Field(description='Provider-hosted evidence or result reference for parties authorized to inspect the full study.'), OmittedNotNull] = None
-    as_of: Annotated[AwareDatetime | None, Field(description='When the producer computed this assertion.'), OmittedNotNull] = None
+    as_of: Annotated[WireDatetime | None, Field(description='When the producer computed this assertion.'), OmittedNotNull] = None
     final: Annotated[StrictBool | None, Field(description='Whether the producer expects this assertion to be revised as data matures.'), OmittedNotNull] = None
     supersedes_feedback_id: Annotated[StrMinLen1 | None, Field(description='Receiver-issued feedback_id of the earlier assertion this one replaces at the same hop.'), OmittedNotNull] = None
 

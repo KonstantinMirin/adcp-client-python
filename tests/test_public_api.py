@@ -6,6 +6,8 @@ provides all essential types and they work correctly with JSON data.
 
 from __future__ import annotations
 
+from typing import Literal
+
 import pytest
 
 
@@ -17,7 +19,6 @@ def test_core_domain_types_are_exported():
         "Product",
         "Format",
         "MediaBuy",
-        "MediaBuyPackage",
         "Property",
         "Creative",
         "CreativeApproval",
@@ -31,55 +32,159 @@ def test_core_domain_types_are_exported():
         assert hasattr(adcp, type_name), f"{type_name} not exported from adcp package"
 
 
+def test_a_media_buys_package_is_named_by_the_document_that_declares_it():
+    """`MediaBuyPackage` is a word with no document behind it.
+
+    ``adcp.types._adapter.__adcp_refused__`` records it as
+    DOCUMENT-NO-WORD-NO-IDENTITY: upstream declared it at
+    ``media_buy.get_media_buys_response.Package``, an INNER declaration of
+    ``media-buy/get-media-buys-response.json`` at
+    ``#/properties/media_buys/items/properties/packages/items``. That node is
+    emitted and exported, at the domain surface its own document path names, so
+    the subject is reachable — under the spelling the pointer derives and not
+    under a flat word.
+    """
+    import adcp
+    import adcp.types.media_buy as media_buy
+    from adcp.types._adapter import __adcp_refused__
+
+    assert "MediaBuyPackage" in __adcp_refused__
+    assert not hasattr(adcp, "MediaBuyPackage")
+
+    packages_item = media_buy.GetMediaBuysResponseMediaBuysItemPackagesItem
+    assert packages_item.__adcp_schema__.document == "media-buy/get-media-buys-response.json"
+    assert (
+        packages_item.__adcp_schema__.pointer
+        == "#/properties/media_buys/items/properties/packages/items"
+    )
+
+
+#: ``core/assets/asset-union.json``'s own arm order, ``#/oneOf/0`` .. ``#/oneOf/20``:
+#: the ``asset_type`` each arm pins, the branch class emitted for it, and the
+#: ``core/assets/*.json`` root the arm ``$ref``s. Every arm is a bare ``$ref``, so the
+#: asset's own class is a BASE of the branch and the branch carries the union's pointer.
+#:
+#: Twenty-one, not twenty. ``#/oneOf/4`` is ``display-tag-asset.json``, not deprecated,
+#: ``const: "display_tag"`` — a wire value upstream's hand-written ``AssetInstance``
+#: union omitted, which is why that name has no counterpart here and this list is one
+#: arm wider than the set it replaces.
+ASSET_UNION_ARMS = (
+    ("image", "AssetVariantImage", "ImageAsset"),
+    ("video", "AssetVariantVideo", "VideoAsset"),
+    ("audio", "AssetVariantAudio", "AudioAsset"),
+    ("vast", "AssetVariantVast", "VASTAsset"),
+    ("display_tag", "AssetVariantDisplayTag", "DisplayTagAsset"),
+    ("text", "AssetVariantText", "TextAsset"),
+    ("url", "AssetVariantUrl", "URLAsset"),
+    ("html", "AssetVariantHtml", "HTMLAsset"),
+    ("javascript", "AssetVariantJavascript", "JavaScriptAsset"),
+    ("zip", "AssetVariantZip", "ZipAsset"),
+    ("webhook", "AssetVariantWebhook", "WebhookAsset"),
+    ("css", "AssetVariantCss", "CSSAsset"),
+    ("daast", "AssetVariantDaast", "DAASTAsset"),
+    ("markdown", "AssetVariantMarkdown", "MarkdownAsset"),
+    ("brief", "AssetVariantBrief", "BriefAsset"),
+    ("catalog", "AssetVariantCatalog", "CatalogAsset"),
+    ("published_post", "AssetVariantPublishedPost", "PublishedPostAsset"),
+    ("card", "AssetVariantCard", "CardAsset"),
+    ("pixel_tracker", "AssetVariantPixelTracker", "PixelTrackerAsset"),
+    ("vast_tracker", "AssetVariantVastTracker", "VASTTrackerAsset"),
+    ("daast_tracker", "AssetVariantDaastTracker", "DAASTTrackerAsset"),
+)
+
+
 def test_complete_asset_union_is_exported():
-    """Every registry-backed asset variant is available on stable import paths."""
-    from typing import get_args
+    """Every arm of ``core/assets/asset-union.json`` is on a stable import path.
 
-    from pydantic import TypeAdapter, ValidationError
+    The assets are ``core/assets/*.json`` documents, so the domain surface that
+    publishes them is ``adcp.types.core`` — not ``adcp.types.creative``, which
+    serves the ``creative/`` documents. The flat ``adcp`` and ``adcp.types``
+    namespaces bind the upstream spellings on top of that.
+    """
+    from adcp.types import core
 
+    assert len(ASSET_UNION_ARMS) == 21
+
+    for asset_type, branch_name, root_name in ASSET_UNION_ARMS:
+        assert hasattr(core, root_name), f"{root_name} not exported from adcp.types.core"
+        assert hasattr(core, branch_name), f"{branch_name} not exported from adcp.types.core"
+        branch = getattr(core, branch_name)
+        root = getattr(core, root_name)
+        # The branch IS the union and IS the asset: both halves of a bare-`$ref` arm.
+        assert issubclass(branch, core.AssetVariant)
+        assert issubclass(branch, root)
+        assert branch.__adcp_schema__.document == "core/assets/asset-union.json"
+        assert branch.model_fields["asset_type"].annotation == Literal[asset_type]
+
+
+def test_upstream_asset_spellings_resolve_to_the_documents_own_class():
+    """The flat namespaces keep upstream's asset words, bound to our document roots."""
     import adcp
     from adcp import types
-    from adcp.types import creative
+    from adcp.types import core
 
-    asset_types = [
-        "ImageContent",
-        "VideoContent",
-        "AudioContent",
-        "TextContent",
-        "HtmlContent",
-        "UrlContent",
-        "CssContent",
-        "JavascriptContent",
-        "MarkdownAsset",
-        "VastAsset",
-        "DaastAsset",
-        "BriefAsset",
-        "CatalogAsset",
-        "WebhookContent",
-        "ZipAsset",
-        "PublishedPostAsset",
-        "CardAsset",
-        "PixelTrackerAsset",
-        "VastTrackerAsset",
-        "DaastTrackerAsset",
-    ]
-    for type_name in asset_types:
-        assert hasattr(adcp, type_name), f"{type_name} not exported from adcp"
-        assert hasattr(types, type_name), f"{type_name} not exported from adcp.types"
-        assert hasattr(creative, type_name), f"{type_name} not exported from adcp.types.creative"
+    upstream_spellings = {
+        "ImageContent": "ImageAsset",
+        "VideoContent": "VideoAsset",
+        "AudioContent": "AudioAsset",
+        "TextContent": "TextAsset",
+        "HtmlContent": "HTMLAsset",
+        "UrlContent": "URLAsset",
+        "CssContent": "CSSAsset",
+        "JavascriptContent": "JavaScriptAsset",
+        "MarkdownAsset": "MarkdownAsset",
+        "VastAsset": "VASTAsset",
+        "DaastAsset": "DAASTAsset",
+        "BriefAsset": "BriefAsset",
+        "CatalogAsset": "CatalogAsset",
+        "WebhookContent": "WebhookAsset",
+        "ZipAsset": "ZipAsset",
+        "PublishedPostAsset": "PublishedPostAsset",
+        "CardAsset": "CardAsset",
+        "PixelTrackerAsset": "PixelTrackerAsset",
+        "VastTrackerAsset": "VASTTrackerAsset",
+        "DaastTrackerAsset": "DAASTTrackerAsset",
+    }
+    roots = {root for _, _, root in ASSET_UNION_ARMS}
+    assert set(upstream_spellings.values()) <= roots
 
-    assert adcp.AssetVariant is types.AssetVariant
-    assert adcp.AssetInstance is types.AssetInstance
-    assert adcp.AssetInstanceType is types.AssetInstanceType
+    for spelling, root_name in upstream_spellings.items():
+        assert hasattr(adcp, spelling), f"{spelling} not exported from adcp"
+        assert hasattr(types, spelling), f"{spelling} not exported from adcp.types"
+        assert getattr(adcp, spelling) is getattr(types, spelling)
+        assert getattr(types, spelling) is getattr(core, root_name)
 
-    union = get_args(types.AssetInstance)[0]
-    assert set(get_args(union)) == {getattr(types, type_name) for type_name in asset_types}
 
-    adapter = TypeAdapter(types.AssetInstance)
-    with pytest.raises(ValidationError, match="union_tag_invalid"):
-        adapter.validate_python({"asset_type": "not_registered"})
-    with pytest.raises(ValidationError, match="union_tag_not_found"):
-        adapter.validate_python({})
+def test_asset_union_root_selects_the_branch_and_refuses_an_unregistered_type():
+    """Hand the payload to the root; the branch is constructed, or nothing is.
+
+    Upstream pinned these two refusals on pydantic's own discriminated-union
+    codes (``union_tag_invalid``, ``union_tag_not_found``). The document states
+    the choice as a 21-arm ``oneOf``, so the refusal carried here is the
+    ``oneOf`` rule's, reported at the discriminator the document names. The
+    error TYPE and the named field are what this asserts.
+    """
+    from pydantic import ValidationError
+
+    from adcp.types import core
+
+    asset = core.AssetVariant.model_validate(
+        {
+            "asset_type": "image",
+            "asset_id": "hero",
+            "url": "https://cdn.example.com/hero.png",
+            "width": 300,
+            "height": 250,
+        }
+    )
+    assert isinstance(asset, core.AssetVariantImage)
+    assert isinstance(asset, core.ImageAsset)
+    assert asset.__adcp_schema__.pointer == "#/oneOf/0"
+
+    for payload in ({"asset_type": "not_registered"}, {}):
+        with pytest.raises(ValidationError) as exc:
+            core.AssetVariant.model_validate(payload)
+        assert [(e["type"], e["loc"]) for e in exc.value.errors()] == [("oneOf", ("asset_type",))]
 
 
 def test_wholesale_feed_notification_types_are_stably_exported():
@@ -169,12 +274,6 @@ def test_semantic_aliases_are_exported():
         "UrlPreviewRender",
         "HtmlPreviewRender",
         "BothPreviewRender",
-        # VAST assets
-        "UrlVastAsset",
-        "InlineVastAsset",
-        # DAAST assets
-        "UrlDaastAsset",
-        "InlineDaastAsset",
         # Response variants
         "CreateMediaBuySuccessResponse",
         "CreateMediaBuyErrorResponse",
@@ -184,6 +283,41 @@ def test_semantic_aliases_are_exported():
 
     for type_name in aliases:
         assert hasattr(adcp, type_name), f"{type_name} not exported from adcp package"
+
+
+def test_vast_and_daast_delivery_branches_are_named_by_their_documents():
+    """The two delivery arms are branch classes of their own document's root.
+
+    ``UrlVastAsset``, ``InlineVastAsset``, ``UrlDaastAsset`` and
+    ``InlineDaastAsset`` are upstream's words for one BRANCH of a document whose
+    root is emitted here, and all four are recorded in the refusal table of the
+    module that would have bound them, ``adcp.types.aliases``.
+    ``core/assets/vast-asset.json`` and
+    ``core/assets/daast-asset.json`` are each a 2-arm ``oneOf`` on
+    ``delivery_type``, so the branch is reached under the name the document's own
+    root and arm derive.
+    """
+    from adcp.types import core
+    from adcp.types._base import SchemaRef
+    from adcp.types.aliases import __adcp_refused__
+
+    for upstream_word in ("UrlVastAsset", "InlineVastAsset", "UrlDaastAsset", "InlineDaastAsset"):
+        assert upstream_word in __adcp_refused__
+
+    branches = {
+        "core/assets/vast-asset.json": (core.VASTAsset, core.VASTAssetUrl, core.VASTAssetInline),
+        "core/assets/daast-asset.json": (
+            core.DAASTAsset,
+            core.DAASTAssetUrl,
+            core.DAASTAssetInline,
+        ),
+    }
+    for document, (root, url_branch, inline_branch) in branches.items():
+        assert root.__adcp_schema__ == SchemaRef(document=document, pointer="#")
+        assert url_branch.__adcp_schema__ == SchemaRef(document=document, pointer="#/oneOf/0")
+        assert inline_branch.__adcp_schema__ == SchemaRef(document=document, pointer="#/oneOf/1")
+        assert issubclass(url_branch, root)
+        assert issubclass(inline_branch, root)
 
 
 def test_client_types_are_exported():
@@ -235,20 +369,37 @@ def test_product_has_expected_public_fields():
 
 
 def test_format_has_expected_public_fields():
-    """Root Format is the canonical declaration surface."""
+    """Root Format is the canonical declaration surface.
+
+    ``core/product-format-declaration.json`` declares `format_kind` and `params`
+    in NONE of its top-level ``properties`` — only in each of the 16 ``oneOf``
+    branches, where ``format_kind`` is a ``const`` and ``params`` the ``$ref``
+    that const selects. The root's ``required: ['format_kind', 'params']`` is
+    satisfied by whichever branch the payload picks, so the base class carries
+    the declaration-wide properties and every branch carries the pair.
+    """
     from adcp import Format
 
-    expected_fields = [
-        "format_kind",
-        "params",
-        "format_option_id",
-        "format_shape",
-        "format_schema",
-    ]
-
     model_fields = Format.model_fields
-    for field_name in expected_fields:
+    for field_name in ["format_option_id", "format_shape", "format_schema"]:
         assert field_name in model_fields, f"Format missing field: {field_name}"
+
+    branches = Format.__subclasses__()
+    assert len(branches) == 16
+    for branch in branches:
+        for field_name in ["format_kind", "params"]:
+            assert field_name in branch.model_fields, f"{branch.__name__} missing {field_name}"
+            assert branch.model_fields[field_name].is_required()
+
+
+def test_format_root_selects_the_branch_its_format_kind_names():
+    """``format_kind`` is the document's ``discriminator``; the root reads it."""
+    from adcp import Format
+    from adcp.types import core
+
+    declaration = Format.model_validate({"format_kind": "image", "params": {}})
+    assert isinstance(declaration, core.ImageFormatDeclaration)
+    assert declaration.__adcp_schema__.pointer == "#/oneOf/0"
 
 
 def test_format_excludes_legacy_named_format_fields():
@@ -361,7 +512,11 @@ def test_public_api_types_deserialize_from_json():
     """Public API types can be deserialized from JSON."""
     from adcp import CreateMediaBuySuccessResponse
 
+    # `status` is required by core/protocol-envelope.json, which this
+    # document composes via allOf. Upstream's generator dropped
+    # allOf-composed required fields, so their fixtures omit it.
     json_data = {
+        "status": "completed",
         "media_buy_id": "mb_456",
         "buyer_ref": "ref_789",
         "packages": [],
@@ -555,19 +710,33 @@ def test_no_public_all_repeats_a_name() -> None:
     ``RootModel`` population once disagreed by exactly one such repeat.
     """
     import importlib
+    import pkgutil
 
-    import adcp.types.domains
+    from adcp.types import _surface
+
+    # The domain surface is ``adcp.types.<domain>``, and ``adcp.types._surface``
+    # is the compiler's own aggregator package -- one module per domain, which
+    # the public module of that domain composes with a star re-export. Reading
+    # the package is what keeps the list from being a second spelling of it.
+    # ``adcp.types.domains`` is no longer such a list: it is a prefix-substituting
+    # mirror of the per-DOCUMENT tree ``adcp.types._schemas`` and names no
+    # domains at all. ``adcp.types._eager`` is gone with the lazy-facade split.
+    domains = sorted(
+        module.name
+        for module in pkgutil.iter_modules(_surface.__path__)
+        if not module.name.startswith("_")
+    )
+    assert domains, "no domain aggregator modules found under adcp.types._surface"
 
     modules = [
         "adcp",
         "adcp.types",
-        "adcp.types._eager",
         "adcp.types._generated",
         "adcp.types.aliases",
         "adcp.types.legacy",
         "adcp.types.capabilities",
         "adcp.types.error_details",
-        *(f"adcp.types.domains.{domain}" for domain in adcp.types.domains.DOMAINS),
+        *(f"adcp.types.{domain}" for domain in domains),
     ]
     repeated = {}
     for module_path in modules:

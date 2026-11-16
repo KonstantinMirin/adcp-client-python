@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import AccountChangeRecordedWebhookSubscriberId, StrMinLen1MaxLen255
 
 from .agent_notification_config_state import AgentNotificationConfigState
@@ -24,7 +25,7 @@ class RetiredDestinationsItem(AdCPBaseModel):
     )
     destination_id: AccountChangeRecordedWebhookSubscriberId
     destination_refs: Annotated[list[StrMinLen1MaxLen255], Field(description='Retained generation references of the revoked destination, newest first, still resolvable for retained reporting history but ineligible for delivery and for new bindings.', json_schema_extra={'uniqueItems': True}, max_length=32, min_length=1)]
-    revoked_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    revoked_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 class PrincipalState(AdCPBaseModel):

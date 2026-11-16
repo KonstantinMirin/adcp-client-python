@@ -41,8 +41,8 @@ class ListCreativeFormatsResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnve
         Approximation(document='creative/list-creative-formats-response.json', pointer='#/properties/creative_agents/items/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='creative/list-creative-formats-response.json', pointer='#/properties/creative_agents/items/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    formats: Annotated[list[LegacyFormat], Field(description='Deprecated named-format definitions projected for older 3.x callers. Canonical creative capabilities are declared by get_adcp_capabilities creative.supported_formats[].')]
-    creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(description='Deprecated recursive discovery projection retained only for historical 3.x responses. New buyers use registry reverse lookup and direct get_adcp_capabilities confirmation.'), OmittedNotNull] = None
+    formats: Annotated[list[LegacyFormat], Field(deprecated=True, description='Deprecated named-format definitions projected for older 3.x callers. Canonical creative capabilities are declared by get_adcp_capabilities creative.supported_formats[].')]
+    creative_agents: Annotated[list[CreativeAgentsItem] | None, Field(deprecated=True, description='Deprecated recursive discovery projection retained only for historical 3.x responses. New buyers use registry reverse lookup and direct get_adcp_capabilities confirmation.'), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings'), OmittedNotNull] = None
     pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None

@@ -92,7 +92,7 @@ async def test_native_versions_preserve_decoded_value_and_require_exact_path_evi
     await store.commit_materialization(outcome)
     view = await store.get_materialization(s.attempt.key)
     projected = ReportingMaterialization.model_validate(view.to_wire())
-    assert projected.resource.native_version_ref.root == native
+    assert projected.resource.native_version_ref == native
     with pytest.raises(LedgerConflictError) as error:
         await store.record_revision_receipt(s.receipt)
     assert error.value.code == "RECEIPT_EVIDENCE_MISMATCH"

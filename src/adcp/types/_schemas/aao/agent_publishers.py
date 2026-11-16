@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrDomainName
 
 from ..core.domain_name import DomainName
@@ -56,7 +57,7 @@ class PublisherEntry(AdCPBaseModel):
     property_ids: Annotated[list[str] | None, Field(description="Canonical list of `property_id`s under THIS `publisher_domain` that the agent's selectors resolve to. Present iff the request included `?include=properties`; absent otherwise. The set is the same population `properties_authorized` counts, surfaced as IDs so consumers can run full set-diff against a federated fetch (count-equality is not set-equality — a publisher rotating N properties leaves the count unchanged but the set entirely different). Per-publisher scope; never network-wide. Order is unspecified; consumers should treat as a set."), OmittedNotNull] = None
     signing_keys_pinned: Annotated[StrictBool | None, Field(description="Whether the publisher's adagents.json entry for this agent pins `signing_keys[]`. When true, the agent's signed responses MUST verify against the pinned key set regardless of the agent's own JWKS. Operators should treat true as a signal that their published JWKS must match the publisher's pin."), OmittedNotNull] = None
     status: Annotated[Status, Field(description="Lifecycle state for this publisher → agent edge. v1: `authorized` (selector resolves to ≥ 1 property under this publisher) and `revoked` (this publisher_domain newly appears in a parent file's `revoked_publisher_domains[]`; emitted as a tombstone on the next sync after revocation lands, then dropped). Future states (`unbound`, `pending`) deferred — the directory does not have the crawler state to emit them honestly.")]
-    last_verified_at: Annotated[AwareDatetime, Field(description="When the directory last fetched and validated this publisher's adagents.json. Distinct from the envelope's `directory_indexed_at` — `last_verified_at` is per-publisher freshness, the envelope value is the most recent refresh in the result set.")]
+    last_verified_at: Annotated[WireDatetime, Field(description="When the directory last fetched and validated this publisher's adagents.json. Distinct from the envelope's `directory_indexed_at` — `last_verified_at` is per-publisher freshness, the envelope value is the most recent refresh in the result set.")]
 
 
 class AAODirectoryAgentPublishersInverseLookupResponse(AdCPBaseModel):
@@ -72,7 +73,7 @@ class AAODirectoryAgentPublishersInverseLookupResponse(AdCPBaseModel):
         Approximation(document='aao/agent-publishers.json', pointer='#/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     agent_url: Annotated[HostedUrl, Field(description='Canonicalized echo of the agent_url that was looked up. Lowercase host, default port stripped, trailing slash on path component normalized — matches the canonicalization the SDK applies in `verify_agent_authorization`.')]
-    directory_indexed_at: Annotated[AwareDatetime | None, Field(description="When the directory last completed a refresh of any publisher in this result. Provenance anchor for the consumer's own cache. NULL on empty pages — there's no per-publisher anchor to report; consumers SHOULD treat a null value as 'no freshness assertion for this response' and not advance their own cache freshness.")]
+    directory_indexed_at: Annotated[WireDatetime | None, Field(description="When the directory last completed a refresh of any publisher in this result. Provenance anchor for the consumer's own cache. NULL on empty pages — there's no per-publisher anchor to report; consumers SHOULD treat a null value as 'no freshness assertion for this response' and not advance their own cache freshness.")]
     publishers: Annotated[list[PublisherEntry], Field(description='Publishers whose adagents.json authorizes this agent. Empty array is a valid response (the directory has indexed this agent but no current authorizations resolve).')]
     next_cursor: Annotated[str | None, Field(description="Opaque pagination cursor. Absent or null on the terminal page. Stable across the directory's refresh cycle for the lifetime of the cursor."), OmittedWhenNone] = None
 

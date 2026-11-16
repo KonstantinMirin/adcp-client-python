@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMinLen1MaxLen256
 
 from ..enums.action_source import ActionSource
@@ -35,7 +36,7 @@ class Event(AdCPBaseModel):
     )
     event_id: Annotated[StrMinLen1MaxLen256, Field(description='Unique identifier for deduplication (scoped to event_type + event_source_id)')]
     event_type: Annotated[EventType, Field(description='Standard event type')]
-    event_time: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the event occurred')]
+    event_time: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the event occurred')]
     user_match: Annotated[UserMatch | None, Field(description='User identifiers for attribution matching'), OmittedNotNull] = None
     custom_data: Annotated[EventCustomData | None, Field(description='Event-specific data (value, currency, items, etc.)'), OmittedNotNull] = None
     action_source: Annotated[ActionSource | None, Field(description='Where the event originated'), OmittedNotNull] = None

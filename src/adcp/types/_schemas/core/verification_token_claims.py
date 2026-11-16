@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import AdcpVersion, HostedUrl, StrMinLen1
 
 from .registry_event import GradingProfile
@@ -67,7 +68,7 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
     verified_specialisms: Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     verification_modes: Annotated[list[VerificationMode], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     grading_profile: Annotated[VerificationTokenGradingProfile | None, Field(description='Grading policy that produced the badge. Absence on a historical token means Legacy; verification_modes remains an independent evidence axis.'), OmittedNotNull] = None
-    first_failing_spec_at: Annotated[AwareDatetime | None, Field(description='Start of the current Strict Spec failure episode. Omitted when no Strict Spec failure clock is active. The registry remains authoritative for real-time status.'), OmittedNotNull] = None
+    first_failing_spec_at: Annotated[WireDatetime | None, Field(description='Start of the current Strict Spec failure episode. Omitted when no Strict Spec failure clock is active. The registry remains authoritative for real-time status.'), OmittedNotNull] = None
     adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
     protocol_version: Annotated[str | None, OmittedNotNull] = None
 

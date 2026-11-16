@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict
+from pydantic import ConfigDict
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 from ..enums.available_metric import AvailableMetric
 from .brand_key import BrandKey
@@ -34,7 +35,7 @@ class CanonicalReportingCommitmentStandard(CanonicalReportingCommitment):
     scope: Literal['standard']
     metric_id: AvailableMetric
     qualifier: Annotated[CanonicalMetricQualifier | None, OmittedNotNull] = None
-    effective_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    effective_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 class CanonicalReportingCommitmentVendor(CanonicalReportingCommitment):
@@ -46,7 +47,7 @@ class CanonicalReportingCommitmentVendor(CanonicalReportingCommitment):
     vendor: BrandKey
     metric_id: VendorMetricID
     qualifier: Annotated[CanonicalMetricQualifier | None, OmittedNotNull] = None
-    effective_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    effective_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 CanonicalReportingCommitment._branch_models = (CanonicalReportingCommitmentStandard, CanonicalReportingCommitmentVendor,)

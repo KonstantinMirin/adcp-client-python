@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, Field
+from pydantic import Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMinLen1MaxLen500
 
 from .agent_encryption_key import AgentEncryptionKey
@@ -25,7 +26,7 @@ class AuthorizedAgentBaseFields(AdCPBaseModel):
     authorized_for: Annotated[StrMinLen1MaxLen500, Field(description='Human-readable description of what this agent is authorized to do — what it sells (for sales/property agents) or what data it provides (for signal agents). The variant the entry uses (`property_ids`, `signal_tags`, etc.) tells consumers which inflection applies; this field carries the operator-supplied label.')]
     signing_keys: Annotated[list[AgentSigningKey] | None, Field(description='Optional publisher-attested public signing keys for this agent. Use these as the trust anchor for verifying signed agent responses instead of relying on key discovery from the agent domain alone.', min_length=1), OmittedNotNull] = None
     encryption_keys: Annotated[list[AgentEncryptionKey] | None, Field(description='X25519 public keys for TMPX exposure token encryption. Each key identifies a cluster master that can decrypt TMPX tokens. Used with HPKE mode_base — read replicas encrypt with this public key, only the master can decrypt.', min_length=1), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='Optional ISO 8601 timestamp indicating when this `authorized_agents[]` entry last changed. Independent of the file-level `last_updated`. Lets validators perform a partial walk by skipping entries whose `last_updated` is older than their indexed value. Advisory — consumers MAY ignore and re-index the full file.'), OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, Field(description='Optional ISO 8601 timestamp indicating when this `authorized_agents[]` entry last changed. Independent of the file-level `last_updated`. Lets validators perform a partial walk by skipping entries whose `last_updated` is older than their indexed value. Advisory — consumers MAY ignore and re-index the full file.'), OmittedNotNull] = None
 
 
 __all__ = ["AuthorizedAgentBaseFields"]

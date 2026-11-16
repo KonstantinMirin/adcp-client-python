@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import AccountAuthorizationAllowedTasksItem, StrMaxLen500
 
 from ..enums.impairment_offline_state import ImpairmentOfflineState
@@ -56,7 +57,7 @@ class Impairment(AdCPBaseModel):
     transition: Annotated[Transition, Field(description='The resource-level status transition that triggered this impairment.')]
     reason_code: Annotated[ImpairmentReasonCode, Field(description='Categorical reason for the offline transition. Drives buyer-side remediation logic.')]
     reason: Annotated[StrMaxLen500 | None, Field(description='Human-readable explanation. Supplements reason_code with seller-specific detail.'), OmittedNotNull] = None
-    observed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller observed the resource transition to its offline state.')]
+    observed_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller observed the resource transition to its offline state.')]
     remediation: Annotated[StrMaxLen500 | None, Field(description='Action the buyer can take to clear the impairment, if any. Free text. Absent when no buyer-side remediation is possible (e.g., seller-initiated withdrawal pending re-publication).'), OmittedNotNull] = None
 
 

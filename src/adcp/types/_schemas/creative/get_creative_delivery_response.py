@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1
 from adcp.types.envelopes import AdcpResponse
 
@@ -30,8 +31,8 @@ class ReportingPeriod(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#/properties/reporting_period')
-    start: Annotated[AwareDatetime, Field(description='ISO 8601 start timestamp')]
-    end: Annotated[AwareDatetime, Field(description='ISO 8601 end timestamp')]
+    start: Annotated[WireDatetime, Field(description='ISO 8601 start timestamp')]
+    end: Annotated[WireDatetime, Field(description='ISO 8601 end timestamp')]
     timezone: Annotated[str | None, Field(description="IANA timezone identifier for the reporting period (e.g., 'America/New_York', 'UTC'). Platforms report in their native timezone."), OmittedNotNull] = None
 
 
@@ -42,7 +43,7 @@ class CreativesItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#/properties/creatives/items')
     creative_id: Annotated[str, Field(description='Creative identifier')]
     media_buy_id: Annotated[str | None, Field(description="Publisher's media buy identifier for this creative. Present when the request spanned multiple media buys, so the buyer can correlate each creative to its media buy."), OmittedNotNull] = None
-    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named format of this creative. New responses use `format_kind` and optional `format_option_ref`.'), OmittedNotNull] = None
+    format_id: Annotated[FormatReferenceStructuredObject | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named format of this creative. New responses use `format_kind` and optional `format_option_ref`.'), OmittedNotNull] = None
     format_kind: Annotated[CanonicalFormatKind | None, Field(description='Canonical format kind delivered for this creative.'), OmittedNotNull] = None
     format_option_ref: Annotated[FormatOptionReference | None, Field(description='Portable reference to the product or publisher format option used for delivery, when disambiguation is required.'), OmittedNotNull] = None
     totals: Annotated[DeliveryMetrics | None, Field(description='Aggregate delivery metrics across all variants of this creative'), OmittedNotNull] = None
@@ -62,7 +63,7 @@ class Pagination(AdCPBaseModel):
     offset: Annotated[NonNegativeInt, Field(description='Number of creatives skipped')]
     has_more: Annotated[StrictBool, Field(description='Whether more creatives are available beyond this page')]
     total_count: Annotated[NonNegativeInt | None, Field(description='Total number of creatives matching the request filters. Canonical field name (matches `PaginationResponse.total_count`). Sellers SHOULD populate this and the deprecated `total` field identically until 4.0; buyers SHOULD prefer this field.'), OmittedNotNull] = None
-    total: Annotated[NonNegativeInt | None, Field(description='**Deprecated** — use `total_count` instead. Retained as a legacy alias for 3.x backward compatibility; removed in AdCP 4.0. Sellers populating this field MUST also populate `total_count` with the same value.'), OmittedNotNull] = None
+    total: Annotated[NonNegativeInt | None, Field(deprecated=True, description='**Deprecated** — use `total_count` instead. Retained as a legacy alias for 3.x backward compatibility; removed in AdCP 4.0. Sellers populating this field MUST also populate `total_count` with the same value.'), OmittedNotNull] = None
 
 
 class GetCreativeDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):

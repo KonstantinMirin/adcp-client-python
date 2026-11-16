@@ -23,7 +23,7 @@ class DAASTAssetRequirements(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('daast_version', 'daast_versions'),)),
     )
-    daast_version: Annotated[DAASTVersion | None, Field(description='Deprecated one-element alias for `daast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.'), OmittedNotNull] = None
+    daast_version: Annotated[DAASTVersion | None, Field(deprecated=True, description='Deprecated one-element alias for `daast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.'), OmittedNotNull] = None
     daast_versions: Annotated[DaastVersions | None, Field(description='Accepted DAAST version set for this asset requirement.'), OmittedNotNull] = None
 
 

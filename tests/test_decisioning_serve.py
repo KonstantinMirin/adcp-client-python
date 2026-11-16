@@ -368,7 +368,8 @@ def test_create_passes_in_production_with_custom_durable_registry() -> None:
     with patch.dict(os.environ, {"ADCP_ENV": "production"}):
         os.environ.pop("ADCP_DECISIONING_ALLOW_INMEMORY_TASKS", None)
         handler, executor, registry = create_adcp_server_from_platform(
-            platform, registry=custom_reg  # type: ignore[arg-type]
+            platform,
+            registry=custom_reg,  # type: ignore[arg-type]
         )
     assert registry is custom_reg
     executor.shutdown(wait=True)
@@ -426,7 +427,8 @@ def test_create_raises_when_registry_missing_is_durable_marker() -> None:
         os.environ.pop("ADCP_DECISIONING_ALLOW_INMEMORY_TASKS", None)
         with pytest.raises(AdcpError) as exc_info:
             create_adcp_server_from_platform(
-                platform, registry=_BareRegistry()  # type: ignore[arg-type]
+                platform,
+                registry=_BareRegistry(),  # type: ignore[arg-type]
             )
     assert exc_info.value.code == "INVALID_REQUEST"
     assert "is_durable" in str(exc_info.value)
@@ -710,23 +712,52 @@ async def test_platform_property_filter_boot_and_wire_call(
     import socket
     from unittest.mock import AsyncMock
 
-    from adcp.decisioning.capabilities import Features, MediaBuy
+    from adcp.decisioning.capabilities import MediaBuy
     from adcp.decisioning.validate_capabilities import validate_capabilities_response_shape_async
     from adcp.server.mcp_tools import create_tool_caller
     from adcp.types import GetProductsResponse
+    from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyFeatures
 
+    # `adcp.decisioning.capabilities.Features` is the SIGNALS features node,
+    # `protocol/get-adcp-capabilities-response.json#/properties/signals/properties/features`
+    # -- one declared property, `catalog_signals`. The node this populates is
+    # `#/properties/media_buy/properties/features`, an `allOf` of
+    # `core/media-buy-features.json` and four `if`/`then` conditions, emitted as
+    # `GetAdCPCapabilitiesResponseMediaBuyFeatures` and a subclass of
+    # `adcp.types.core.MediaBuyFeatures`. The two words are both "features" and
+    # neither node is the other, so `MediaBuy.features` refuses a signals instance
+    # by type.
+    #
+    # `canonical_creatives` is stated by neither document -- searched, and
+    # `core/media-buy-features.json` declares ten properties, none of them that
+    # one. It round-trips because that document states
+    # `additionalProperties: {type: boolean}`, so a boolean extra is part of the
+    # document and is retained; `adcp.canonical_formats.canonical_creatives_capability`
+    # is what reads it back.
     class _PropertyListPlatform(_SalesPlatformWithRequiredMethods):
         capabilities = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
             supported_billing=["operator"],
             media_buy=MediaBuy(
-                features=Features(property_list_filtering=True, canonical_creatives=True)
+                features=GetAdCPCapabilitiesResponseMediaBuyFeatures(
+                    property_list_filtering=True, canonical_creatives=True
+                )
             ),
         )
 
         def get_products(self, req, ctx):
             assert req.property_list.list_id == "approved"
-            payload = {"products": [], "property_list_applied": True, "seller_extra": "retained"}
+            # `status` is required by core/protocol-envelope.json, which
+            # media-buy/get-products-response.json composes via allOf. Upstream's
+            # generator dropped allOf-composed required fields, so their fixtures
+            # omit it -- and the dict shape never noticed, because nothing
+            # validates a dict on the way out.
+            payload = {
+                "status": "completed",
+                "products": [],
+                "property_list_applied": True,
+                "seller_extra": "retained",
+            }
             return (
                 GetProductsResponse.model_validate(payload)
                 if response_shape == "model"

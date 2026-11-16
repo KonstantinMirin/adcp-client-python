@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -84,8 +85,8 @@ class CanonicalProposal(AdCPBaseModel):
     opportunity_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Buyer planning cycle associated with this proposal. Revisions inherit it; it does not participate in proposal identity.'), OmittedNotNull] = None
     base_media_buy_revision: Annotated[IntMin1 | None, OmittedNotNull] = None
     proposal_status: Annotated[ProposalStatus, Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
-    accepted_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.'), OmittedNotNull] = None
+    accepted_at: Annotated[WireDatetime | None, OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.'), OmittedNotNull] = None
     name: StrMinLen1MaxLen500
     description: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
     brief_alignment: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None

@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 from ..core.ext import ExtensionObject
 from ..core.property_id import PropertyID
@@ -36,7 +37,7 @@ class PropertyFeatureResult(AdCPBaseModel):
     property: Annotated[str | PropertyID, Field(description='The property these features apply to')]
     features: Annotated[dict[str, PropertyFeatureValue] | None, Field(description='Map of feature_id to feature value'), OmittedNotNull] = None
     coverage_status: Annotated[CoverageStatus, Field(description='Whether this property is covered by this governance agent: covered (has data), not_covered (not measured), pending (measurement in progress)')]
-    last_evaluated: Annotated[AwareDatetime | None, Field(description='When features were last evaluated for this property'), OmittedNotNull] = None
+    last_evaluated: Annotated[WireDatetime | None, Field(description='When features were last evaluated for this property'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

@@ -24,7 +24,7 @@ class VASTAssetRequirements(AdCPBaseModel):
         ForbiddenGroups((('vast_version', 'vast_versions'),)),
         UniqueItems('vast_versions'),
     )
-    vast_version: Annotated[VASTVersion | None, Field(description='Deprecated one-element alias for `vast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.'), OmittedNotNull] = None
+    vast_version: Annotated[VASTVersion | None, Field(deprecated=True, description='Deprecated one-element alias for `vast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.'), OmittedNotNull] = None
     vast_versions: Annotated[list[VASTVersion] | None, Field(description='Accepted VAST version set for this asset requirement.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for the alternative MediaFile renditions in each applicable resolved InLine linear creative.'), OmittedNotNull] = None
 

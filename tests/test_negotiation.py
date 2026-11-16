@@ -57,6 +57,12 @@ class _PollResponse(BaseModel):
 def _terms() -> dict:
     return {
         "brand": {"domain": "buyer.example"},
+        # media-buy/refine-proposals-response.json states the purchase item as an
+        # allOf, and allOf[1] requires
+        # ['product_id', 'pricing_option_id', 'pricing', 'start_time', 'end_time'] --
+        # the "Product Purchase" conjunct's own required names only the first two.
+        # Its x-adcp-validation.verifier_constraints.accepted_snapshot_terms says it
+        # in prose: "each purchase MUST carry resolved start_time and end_time".
         "purchases": [
             {
                 "product_id": "p1",
@@ -68,6 +74,8 @@ def _terms() -> dict:
                     "currency": "USD",
                     "fixed_price": 4.5,
                 },
+                "start_time": "2026-09-01T00:00:00Z",
+                "end_time": "2026-09-30T00:00:00Z",
             }
         ],
         "start_time": "2026-09-01T00:00:00Z",
@@ -128,7 +136,13 @@ def _response(*, proposal: dict | None = None) -> dict:
 def test_compute_terms_digest_matches_pinned_jcs_vector() -> None:
     terms = _terms()
 
-    assert compute_terms_digest(terms) == ("sha256:UUCtve7iK5_ipfee66eVUICUjfEW01lykFwf9GJw-jY")
+    # The vector is over ``_terms()``, so it moved when the purchase gained the
+    # resolved start_time/end_time that refine-proposals-response.json's purchase
+    # allOf[1] requires.  RFC 8785 of the fixture is
+    # {"brand":{"domain":"buyer.example"},"end_time":"2026-09-30T00:00:00Z",
+    #  "purchases":[{"end_time":"2026-09-30T00:00:00Z","impressions":1000,...}],
+    #  "start_time":"2026-09-01T00:00:00Z","total_budget":{"amount":100,...}}
+    assert compute_terms_digest(terms) == ("sha256:l5azjnEA9jCR8zQOCWWVWKGa5MDqrRP_OgfDG18M9Tc")
     assert compute_terms_digest(dict(reversed(list(terms.items())))) == compute_terms_digest(terms)
 
 

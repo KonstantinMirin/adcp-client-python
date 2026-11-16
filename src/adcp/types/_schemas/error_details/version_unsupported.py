@@ -20,7 +20,7 @@ class VersionUnsupportedDetails(AdCPVersionEnvelope):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/version-unsupported.json', pointer='#')
     supported_versions: Annotated[list[AdCPVersionEnvelopeAdcpVersion], Field(description='Release-precision versions the seller speaks. Authoritative — buyers SHOULD select a value from this list and retry.', min_length=1)]
-    supported_majors: Annotated[list[IntMin1] | None, Field(description='DEPRECATED in favor of `supported_versions`. Major versions the seller supports. Servers SHOULD emit both through 3.x; removed in 4.0.'), OmittedNotNull] = None
+    supported_majors: Annotated[list[IntMin1] | None, Field(deprecated=True, description='DEPRECATED in favor of `supported_versions`. Major versions the seller supports. Servers SHOULD emit both through 3.x; removed in 4.0.'), OmittedNotNull] = None
     build_version: Annotated[VersionUnsupportedDetailsBuildVersion | None, Field(description="Optional advisory: full semver build identifier of the seller's deployment (MAJOR.MINOR.PATCH plus optional pre-release and build-metadata segments per semver §9–§10), for incident triage. Buyers MUST NOT use this field for negotiation."), OmittedNotNull] = None
 
 

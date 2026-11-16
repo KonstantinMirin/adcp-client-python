@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -79,10 +80,10 @@ class UpdateMediaBuySuccess(UpdateMediaBuyResponse):
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Post-update cross-package allocation configuration when affected by the update.'), OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Post-update aggregate pacing when affected by the update.'), OmittedNotNull] = None
     bidding: Annotated[Bidding | None, Field(description='Post-update media-buy-authored bidding policy when affected by the update, preserving explicit automatic mode, scope-specific goal binding, and media-buy-currency denomination. Omitted when the authored media-buy block was cleared.'), OmittedNotNull] = None
-    implementation_date: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when changes take effect (null if pending approval)'), OmittedWhenNone] = None
+    implementation_date: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when changes take effect (null if pending approval)'), OmittedWhenNone] = None
     invoice_recipient: Annotated[BusinessEntity | None, Field(description='Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only).'), OmittedNotNull] = None
     affected_packages: Annotated[list[Package] | None, Field(description='Array of full Package objects showing complete post-update state for each modified package. This includes every active package whose budget was proportionally changed by a fixed-mode total_budget update. This is a state snapshot, not a sparse delta: sellers MUST NOT return package_id-only stubs. Campaign-level updates that do not modify packages may return an empty array.'), OmittedNotNull] = None
-    valid_actions: Annotated[list[MediaBuyValidAction] | None, Field(description='Flat-vocabulary actions the buyer can perform after this update. Saves a round-trip to get_media_buys. Deprecated in favor of `available_actions[]`, which carries mode, optional SLA, and in 3.2 an optional change_term_id. Sellers SHOULD populate both during the 3.x deprecation window; consumers MUST prefer `available_actions[]` when both are present. Removed in 4.0.'), OmittedNotNull] = None
+    valid_actions: Annotated[list[MediaBuyValidAction] | None, Field(deprecated=True, description='Flat-vocabulary actions the buyer can perform after this update. Saves a round-trip to get_media_buys. Deprecated in favor of `available_actions[]`, which carries mode, optional SLA, and in 3.2 an optional change_term_id. Sellers SHOULD populate both during the 3.x deprecation window; consumers MUST prefer `available_actions[]` when both are present. Removed in 4.0.'), OmittedNotNull] = None
     available_actions: Annotated[list[MediaBuyAvailableAction] | None, Field(description='Structured per-buy resolution of actions available after this update. Authoritative — see `get-media-buys-response.json` for full semantics.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     warnings: Annotated[list[Warning] | None, Field(description='Optional non-blocking observations accompanying this successful update. The requested update was still applied. Continuing conditions also appear on get_media_buys as current resource state.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None

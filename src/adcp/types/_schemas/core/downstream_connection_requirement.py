@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMinLen1
 
 
@@ -108,7 +109,7 @@ class DownstreamConnectionRequirement(AdCPBaseModel):
     resource_ref: Annotated[ResourceRef | None, Field(description='Optional opaque provider-native resource hint, such as a platform account id, profile URL, handle, channel id, post id, or post URL. This is a hint for routing authorization, not proof that authorization exists.'), OmittedNotNull] = None
     authorization_url: Annotated[HostedUrl | None, Field(description='Seller-hosted or provider-hosted URL where a human can complete or restore this downstream connection.'), OmittedNotNull] = None
     authorization_instructions: Annotated[str | None, Field(description='Human-readable instructions for completing or restoring this downstream connection.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='Expiration time for the downstream grant, when known.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='Expiration time for the downstream grant, when known.'), OmittedNotNull] = None
 
 
 __all__ = ["DownstreamConnectionRequirement"]

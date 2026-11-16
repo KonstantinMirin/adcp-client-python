@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import (
     AdCPBaseModel,
@@ -16,6 +16,7 @@ from adcp.types._base import (
     SchemaRef,
 )
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrFormatUuid
 
 from ..adagents import DelegationType
@@ -123,7 +124,7 @@ class RegistryEvent(BranchDispatchMixin, AdCPBaseModel):
     entity_id: Annotated[str, Field(description='Primary identifier for the changed entity. For property.* events this is the property_rid; for agent.* events this is the agent_url; for publisher.adagents_changed this is the publisher domain; for authorization.* events this is the authorization row id or a stable agent/publisher composite.')]
     payload: Annotated[dict[str, Any], Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
     actor: Annotated[str, Field(description='Internal producer label for audit and debugging, such as pipeline:crawler or trigger:caa_emit_event. Consumers MUST treat this as informational and not as an authorization principal.')]
-    created_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the registry emitted the event. Advisory only; consumers MUST order and cursor by event_id.')]
+    created_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the registry emitted the event. Advisory only; consumers MUST order and cursor by event_id.')]
 
 
 class Classification(StrEnum):
@@ -241,7 +242,7 @@ class RegistryEventPropertyStalePropertyPayload(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/3/properties/payload')
     property_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
-    last_resolved_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    last_resolved_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     reason: Annotated[str | None, OmittedNotNull] = None
 
 
@@ -263,7 +264,7 @@ class RegistryEventPropertyReactivatedPropertyPayload(PropertyPayload):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/4/properties/payload')
-    reactivated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    reactivated_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     property_rid: Annotated[str, Field(json_schema_extra={'format': 'uuid'})]
 
 
@@ -443,14 +444,14 @@ class AgentProfilePayload(AdCPBaseModel):
     markets: Annotated[list[CountryCode] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     categories: Annotated[StringArray | None, OmittedNotNull] = None
     category_taxonomy: Annotated[str | None, OmittedWhenNone] = None
-    format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Named-format profile projection. Use canonical `format_kinds` and `format_option_refs`.'), OmittedNotNull] = None
+    format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(deprecated=True, description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Named-format profile projection. Use canonical `format_kinds` and `format_option_refs`.'), OmittedNotNull] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     tags: Annotated[StringArray | None, OmittedNotNull] = None
     delivery_types: Annotated[StringArray | None, OmittedNotNull] = None
     property_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     publisher_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     has_tmp: Annotated[StrictBool | None, OmittedNotNull] = None
-    updated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    updated_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 class RegistryEventAgentDiscoveredAgentPayload(AgentProfilePayload):
@@ -704,7 +705,7 @@ class PublisherAdagentsPayload(AdCPBaseModel):
         Approximation(document='core/registry-event.json', pointer='#/$defs/publisherAdagentsPayload/properties/agents_removed/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     publisher_domain: Annotated[DomainName | None, OmittedNotNull] = None
-    domain: Annotated[DomainName | None, Field(description='Legacy alias for publisher_domain retained for early feed examples.'), OmittedNotNull] = None
+    domain: Annotated[DomainName | None, Field(deprecated=True, description='Legacy alias for publisher_domain retained for early feed examples.'), OmittedNotNull] = None
     properties_added: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     properties_removed: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     agents_added: Annotated[list[HostedUrl] | None, OmittedNotNull] = None
@@ -813,14 +814,14 @@ class AuthorizationPayload(AdCPBaseModel):
     delegation_type: Annotated[DelegationType | None, OmittedNotNull] = None
     exclusive: Annotated[StrictBool | None, OmittedNotNull] = None
     signing_keys: Annotated[list[AgentSigningKey] | None, Field(description='Publisher-attested signing keys copied from adagents.json when the registry has them. Advisory in feed events; verifiers MUST re-fetch the authoritative publisher artifact before treating keys as a trust anchor.', min_length=1), OmittedNotNull] = None
-    effective_from: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    effective_until: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    effective_from: Annotated[WireDatetime | None, OmittedNotNull] = None
+    effective_until: Annotated[WireDatetime | None, OmittedNotNull] = None
     evidence: Annotated[Evidence | None, OmittedNotNull] = None
     disputed: Annotated[StrictBool | None, OmittedNotNull] = None
     created_by: Annotated[str | None, OmittedWhenNone] = None
-    expires_at: Annotated[AwareDatetime | None, OmittedWhenNone] = None
-    created_at: Annotated[AwareDatetime | None, OmittedWhenNone] = None
-    updated_at: Annotated[AwareDatetime | None, OmittedWhenNone] = None
+    expires_at: Annotated[WireDatetime | None, OmittedWhenNone] = None
+    created_at: Annotated[WireDatetime | None, OmittedWhenNone] = None
+    updated_at: Annotated[WireDatetime | None, OmittedWhenNone] = None
     override_applied: Annotated[StrictBool | None, OmittedNotNull] = None
     override_reason: Annotated[str | None, OmittedWhenNone] = None
 

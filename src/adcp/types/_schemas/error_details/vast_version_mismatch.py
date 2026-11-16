@@ -62,7 +62,7 @@ class VASTVersionMismatchDetails(BranchDispatchMixin, AdCPBaseModel):
     product_vast_versions: Annotated[list[VASTVersion] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     seller_vast_versions: Annotated[list[VASTVersion] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     format_option_ref: Annotated[FormatOptionReference | None, Field(description='Selected option reference when the product option is addressable. Omitted for a unique id-less product option.'), OmittedNotNull] = None
-    supported_versions: Annotated[list[VASTVersion] | None, Field(description='Deprecated 3.x compatibility field. For an acceptance mismatch, this is the effective product/seller intersection when known. Modern emitters use the typed sets and mismatch_reason.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    supported_versions: Annotated[list[VASTVersion] | None, Field(deprecated=True, description='Deprecated 3.x compatibility field. For an acceptance mismatch, this is the effective product/seller intersection when known. Modern emitters use the typed sets and mismatch_reason.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
 class AssetOutsideAcceptedVersionIntersection(VASTVersionMismatchDetails):
@@ -98,7 +98,7 @@ class SupportedVersionsCompatibilityDetails(VASTVersionMismatchDetails):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('mismatch_reason',),)),
     )
-    supported_versions: Annotated[list[VASTVersion], Field(description='Deprecated 3.x compatibility field. For an acceptance mismatch, this is the effective product/seller intersection when known. Modern emitters use the typed sets and mismatch_reason.', json_schema_extra={'uniqueItems': True}, min_length=1)]
+    supported_versions: Annotated[list[VASTVersion], Field(deprecated=True, description='Deprecated 3.x compatibility field. For an acceptance mismatch, this is the effective product/seller intersection when known. Modern emitters use the typed sets and mismatch_reason.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
 VASTVersionMismatchDetails._branch_models = (AssetOutsideAcceptedVersionIntersection, InspectedDocumentVersionMismatch, SupportedVersionsCompatibilityDetails,)

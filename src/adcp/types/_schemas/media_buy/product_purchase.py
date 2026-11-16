@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, NotValue, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen100, StrMinLen1
 
 from ..core.audience_evidence_pin import AudienceEvidencePin
@@ -43,10 +44,10 @@ DailyBudgetCap = Annotated[NonNegativeFloat, Field(description="Optional hard da
 MinSpendTarget = Annotated[NonNegativeFloat, Field(description='Soft lifetime spend target for seller-optimized allocation. Requires advertised media_buy.features.seller_optimized_min_spend_targets; otherwise rejected with UNSUPPORTED_FEATURE before any over-subscription validation.')]
 
 
-StartTime = Annotated[Annotated[AwareDatetime, AfterValidator(NotValue(('asap',)))], Field(description='Resolved package flight start. On direct-purchase input, omission inherits the MediaBuy start; accepted proposal snapshots carry the resolved timestamp.')]
+StartTime = Annotated[Annotated[WireDatetime, AfterValidator(NotValue(('asap',)))], Field(description='Resolved package flight start. On direct-purchase input, omission inherits the MediaBuy start; accepted proposal snapshots carry the resolved timestamp.')]
 
 
-EndTime = Annotated[AwareDatetime, Field(description='Resolved package flight end. On direct-purchase input, omission inherits the MediaBuy end; accepted proposal snapshots carry the resolved timestamp.')]
+EndTime = Annotated[WireDatetime, Field(description='Resolved package flight end. On direct-purchase input, omission inherits the MediaBuy end; accepted proposal snapshots carry the resolved timestamp.')]
 
 
 OptimizationGoals = Annotated[list[CanonicalOptimizationGoal], Field(min_length=1)]

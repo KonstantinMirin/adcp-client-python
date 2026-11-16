@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AdCPVersionEnvelopeAdcpVersion,
     HostedUrl,
@@ -53,7 +54,7 @@ class Attestation(AdCPBaseModel):
     verification_level: Annotated[VerificationLevel | None, Field(description='Credential strength (e.g. World ID Orb = biometric unique-human; Device = weaker; Document = passport/NFC).'), OmittedNotNull] = None
     signal_binding: Annotated[str | None, Field(description='Hash of the signal the proof commits to. The receiver MUST verify it matches the context the receiver expects (e.g. a buyer-issued nonce or the request_id) and that the attestation is within its freshness window; this, plus nullifier-reuse tracking, is the replay defense.'), OmittedNotNull] = None
     proof: Annotated[dict[str, Any], Field(description="Scheme-specific verifiable proof material. Opaque to this schema; validated by the scheme's verifier. MUST carry only scheme-defined verification material — never page context or additional user identifiers.")]
-    expires_at: Annotated[AwareDatetime | None, Field(description='Attestation validity horizon. Receivers MUST reject when past.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='Attestation validity horizon. Receivers MUST reject when past.'), OmittedNotNull] = None
 
 
 class IdentitiesItem(AdCPBaseModel):
@@ -77,7 +78,7 @@ class Consent(AdCPBaseModel):
     gdpr: Annotated[StrictBool | None, Field(description='Whether GDPR applies to this request.'), OmittedNotNull] = None
     tcf_consent: Annotated[str | None, Field(description='IAB TCF v2.2 consent string. Present when gdpr is true.'), OmittedNotNull] = None
     gpp: Annotated[str | None, Field(description='IAB Global Privacy Platform string.'), OmittedNotNull] = None
-    us_privacy: Annotated[str | None, Field(description='US Privacy string (CCPA). Deprecated in favor of GPP but still widely used.'), OmittedNotNull] = None
+    us_privacy: Annotated[str | None, Field(deprecated=True, description='US Privacy string (CCPA). Deprecated in favor of GPP but still widely used.'), OmittedNotNull] = None
 
 
 class SealedCredentialsItem(AdCPBaseModel):
@@ -105,7 +106,7 @@ class IdentityMatchRequest(AdCPBaseModel):
     )
     schema_: Annotated[HostedUrl | None, Field(alias='$schema', description='Optional schema URI for validation. Ignored at runtime.'), OmittedNotNull] = None
     adcp_version: Annotated[AdCPVersionEnvelopeAdcpVersion | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin. Inlined here (rather than via core/version-envelope.json allOf) so this schema can keep `additionalProperties: false` — the privacy boundary on this endpoint is contract-bearing.'), OmittedNotNull] = None
-    adcp_major_version: Annotated[IntMin1Max99 | None, Field(description='DEPRECATED in favor of adcp_version. Removed in 4.0. Inlined alongside adcp_version to preserve strict-mode on this endpoint.'), OmittedNotNull] = None
+    adcp_major_version: Annotated[IntMin1Max99 | None, Field(deprecated=True, description='DEPRECATED in favor of adcp_version. Removed in 4.0. Inlined alongside adcp_version to preserve strict-mode on this endpoint.'), OmittedNotNull] = None
     type: Annotated[Literal['identity_match_request'], Field(description='Message type discriminator for deserialization.')]
     protocol_version: Annotated[str | None, Field(description='TMP protocol version. Allows receivers to handle semantic differences across versions.'), OmittedNotNull] = '1.0'
     request_id: Annotated[str, Field(description='Unique request identifier. MUST NOT correlate with any context match request_id.')]

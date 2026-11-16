@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpResponse
 
@@ -36,7 +37,7 @@ class SIGetOfferingResponseOffering(AdCPBaseModel):
     title: Annotated[str | None, Field(description='Offering title'), OmittedNotNull] = None
     summary: Annotated[str | None, Field(description='Brief summary of the offering'), OmittedNotNull] = None
     tagline: Annotated[str | None, Field(description='Short promotional tagline'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this offering expires'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When this offering expires'), OmittedNotNull] = None
     availability_status: Annotated[OfferingAvailabilityStatus | None, Field(description="Machine-readable availability state for the offering. Optional; when omitted, derive availability from the top-level 'available' boolean and 'unavailable_reason'."), OmittedNotNull] = None
     price_hint: Annotated[str | None, Field(description="Price indication (e.g., 'from $199', '50% off')"), OmittedNotNull] = None
     image_url: Annotated[HostedUrl | None, Field(description='Hero image for the offering'), OmittedNotNull] = None
@@ -85,7 +86,7 @@ class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     available: Annotated[StrictBool, Field(description='Whether the offering is currently available')]
     offering_token: Annotated[str | None, Field(description="Token to pass to si_initiate_session for session continuity. Brand stores the full query context server-side (products shown, order, context) so they can resolve references like 'the second one' when the session starts."), OmittedNotNull] = None
     ttl_seconds: Annotated[NonNegativeInt | None, Field(description='How long this offering information is valid (seconds). Host should re-fetch after TTL expires.'), OmittedNotNull] = None
-    checked_at: Annotated[AwareDatetime | None, Field(description='When this offering information was retrieved'), OmittedNotNull] = None
+    checked_at: Annotated[WireDatetime | None, Field(description='When this offering information was retrieved'), OmittedNotNull] = None
     offering: Annotated[SIGetOfferingResponseOffering | None, Field(description='Offering details'), OmittedNotNull] = None
     matching_products: Annotated[list[MatchingProductsItem] | None, Field(description='Products matching the request context. Only included if include_products was true.'), OmittedNotNull] = None
     sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for the sponsored context carried by this offering response. When present, it applies to the returned offering and matching_products package as a whole unless a future extension narrows the declaration to individual items. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before using it.'), OmittedNotNull] = None

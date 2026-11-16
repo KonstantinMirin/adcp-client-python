@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
@@ -60,8 +61,8 @@ class ReportingReceipt(AdCPBaseModel):
     observed_native_version_ref: Annotated[ReportingNativeVersionReference | None, OmittedNotNull] = None
     consumer_commit_ref: Annotated[StrMinLen1MaxLen512 | None, Field(description='Optional non-secret consumer checkpoint, transaction, or load identifier. It is evidence for operations, not authorization or a credential.'), OmittedNotNull] = None
     rejection_codes: Annotated[list[ReportingAdjustmentReceiptRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    observed_at: AwareDatetime
-    received_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    observed_at: WireDatetime
+    received_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 __all__ = ["ReportingReceipt"]

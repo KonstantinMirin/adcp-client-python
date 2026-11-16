@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat
+from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max1
 
 from ..core.ext import ExtensionObject
@@ -23,8 +24,8 @@ class CreativeFeatureResult(AdCPBaseModel):
     value: Annotated[StrictBool | StrictFloat | str, Field(description='The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.')]
     unit: Annotated[str | None, Field(description="Unit of measurement for quantitative values (e.g., 'percentage', 'score')"), OmittedNotNull] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for this value (0-1)'), OmittedNotNull] = None
-    measured_at: Annotated[AwareDatetime | None, Field(description='When this feature was evaluated'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this evaluation expires and should be refreshed'), OmittedNotNull] = None
+    measured_at: Annotated[WireDatetime | None, Field(description='When this feature was evaluated'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When this evaluation expires and should be refreshed'), OmittedNotNull] = None
     methodology_version: Annotated[str | None, Field(description='Version of the methodology used to evaluate this feature'), OmittedNotNull] = None
     details: Annotated[dict[str, Any] | None, Field(description='Additional vendor-specific details about this evaluation'), OmittedNotNull] = None
     policy_id: Annotated[str | None, Field(description='Optional attribution — when this feature was evaluated for the purpose of a specific policy, policy_id references the authorizing PolicyEntry. Creative agents and sellers populate when the measurement was motivated by a specific policy; do NOT populate when the feature is a generic measurement (carbon score, brand consistency) unrelated to any policy. See /docs/governance/policy-attribution.'), OmittedNotNull] = None

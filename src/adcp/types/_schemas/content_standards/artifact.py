@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictInt, TypeAdapter
+from pydantic import ConfigDict, Field, StrictInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AssetsItemContent,
     AssetsItemHeadingLevel,
@@ -93,7 +94,7 @@ class AssetAccessServiceAccount(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/$defs/asset_access/oneOf/1')
     method: Literal['service_account']
     provider: Annotated[Provider, Field(description='Cloud provider')]
-    credentials: Annotated[dict[str, Any] | None, Field(description="Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead."), OmittedNotNull] = None
+    credentials: Annotated[dict[str, Any] | None, Field(deprecated=True, description="Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead."), OmittedNotNull] = None
 
 
 class AssetAccessSignedUrl(AdCPBaseModel):
@@ -276,11 +277,11 @@ class Artifact(AdCPBaseModel):
     property_rid: Annotated[str, Field(description='Stable property identifier from the property catalog. Globally unique across the ecosystem.')]
     artifact_id: Annotated[str, Field(description="Identifier for this artifact within the property. The property owner defines the scheme (e.g., 'article_12345', 'episode_42_segment_3', 'post_abc123').")]
     variant_id: Annotated[str | None, Field(description="Identifies a specific variant of this artifact. Use for A/B tests, translations, or temporal versions. Examples: 'en', 'es-MX', 'v2', 'headline_test_b'. The combination of artifact_id + variant_id must be unique."), OmittedNotNull] = None
-    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format reference. Use `format_kind` for canonical artifact media classification.'), OmittedNotNull] = None
+    format_id: Annotated[FormatReferenceStructuredObject | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named-format reference. Use `format_kind` for canonical artifact media classification.'), OmittedNotNull] = None
     format_kind: Annotated[CanonicalFormatKind | None, Field(description='Optional canonical media/creative kind associated with this artifact.'), OmittedNotNull] = None
     url: Annotated[HostedUrl | None, Field(description='Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).'), OmittedNotNull] = None
-    published_time: Annotated[AwareDatetime | None, Field(description='When the artifact was published (ISO 8601 format)'), OmittedNotNull] = None
-    last_update_time: Annotated[AwareDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)'), OmittedNotNull] = None
+    published_time: Annotated[WireDatetime | None, Field(description='When the artifact was published (ISO 8601 format)'), OmittedNotNull] = None
+    last_update_time: Annotated[WireDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)'), OmittedNotNull] = None
     assets: Annotated[list[AssetsItemText | AssetsItemImage | AssetsItemVideo | AssetsItemAudio], Field(description='Artifact assets in document flow order - text blocks, images, video, audio', max_length=200)]
     metadata: Annotated[Metadata | None, Field(description='Rich metadata extracted from the artifact'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.'), OmittedNotNull] = None

@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMinLen1MaxLen255
 
 from .catalog_item_availability_error import CatalogItemAvailabilityError
@@ -64,8 +65,8 @@ class CatalogItemAvailabilityUpdateResult(AdCPBaseModel):
     status: Annotated[Status, Field(description='applied means the requested overlay transition completed, including replacement or removal of an existing expires_at; unchanged means the item was already in the requested buyer-availability state with the same expiry; failed means no transition was applied.')]
     availability: Annotated[Availability | None, Field(description='Persisted buyer-authored state after an applied or unchanged result.'), OmittedNotNull] = None
     overlay_revision: Annotated[NonNegativeInt | None, Field(description="Persisted state revision after an applied or unchanged result. Applied increments the request's expected_overlay_revision exactly once; unchanged preserves it."), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='Persisted expiry after this update, present only for a suppressed state with an expiry.'), OmittedNotNull] = None
-    applied_at: Annotated[AwareDatetime | None, Field(description='Seller timestamp when the buyer-availability state took effect. Required for applied. Optional for unchanged when the seller knows the timestamp of the already-persisted state.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='Persisted expiry after this update, present only for a suppressed state with an expiry.'), OmittedNotNull] = None
+    applied_at: Annotated[WireDatetime | None, Field(description='Seller timestamp when the buyer-availability state took effect. Required for applied. Optional for unchanged when the seller knows the timestamp of the already-persisted state.'), OmittedNotNull] = None
     errors: Annotated[list[CatalogItemAvailabilityError] | None, Field(description='Why this item update failed. Required when status is failed.', min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

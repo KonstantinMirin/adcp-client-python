@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl
 
 from ..enums.right_use import RightUse
@@ -27,7 +28,7 @@ class GenerationCredential(AdCPBaseModel):
     provider: Annotated[str, Field(description="LLM or generation service provider identifier (e.g., 'midjourney', 'elevenlabs', 'stability')")]
     rights_key: Annotated[str, Field(description='Scoped API key or token for generating rights-cleared content. The provider validates this key at generation time to verify the caller is authorized.')]
     uses: Annotated[list[RightUse], Field(description='Which rights uses this credential covers', min_length=1)]
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this credential expires. Key lifetime is determined by the provider.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When this credential expires. Key lifetime is determined by the provider.'), OmittedNotNull] = None
     endpoint: Annotated[HostedUrl | None, Field(description="Provider API endpoint to use with this credential, if different from the provider's default"), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

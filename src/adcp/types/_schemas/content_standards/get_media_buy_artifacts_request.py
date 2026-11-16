@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, Field, StrictBool
+from pydantic import Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.envelopes import AdcpRequest
 
 from ..collection.get_collection_list_request import ObjMaxResultsCursor
@@ -20,8 +21,8 @@ class TimeRange(AdCPBaseModel):
     Filter to specific time period
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-request.json', pointer='#/properties/time_range')
-    start: Annotated[AwareDatetime | None, Field(description='Start of time range (inclusive)'), OmittedNotNull] = None
-    end: Annotated[AwareDatetime | None, Field(description='End of time range (exclusive)'), OmittedNotNull] = None
+    start: Annotated[WireDatetime | None, Field(description='Start of time range (inclusive)'), OmittedNotNull] = None
+    end: Annotated[WireDatetime | None, Field(description='End of time range (exclusive)'), OmittedNotNull] = None
 
 
 class GetMediaBuyArtifactsRequest(AdCPVersionEnvelope, AdcpRequest):

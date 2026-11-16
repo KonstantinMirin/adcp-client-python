@@ -49,12 +49,33 @@ AGGREGATE_SELECTORS = (
 
 
 @pytest.mark.parametrize("field", AGGREGATE_SELECTORS)
-def test_explicit_aggregate_selectors_are_forbidden_even_when_null(field):
+def test_explicit_aggregate_selectors_read_as_absent_when_null(field):
+    """An explicit ``None`` is ABSENCE, so the selector is not present to be forbidden.
+
+    §2's first decision: "a Python ``None`` is ABSENCE; a JSON ``null`` is a value", and
+    ``model_validate({"field": None})`` reads as *not supplied*.  So the forbid rule --
+    which fires on the key being PRESENT -- does not fire, and the model accepts.
+
+    This asked for a refusal, which was the reading before that decision.  The document
+    does refuse ``{"include_window_breakdown": null}``, because JSON Schema's ``required``
+    is about key presence and the key IS there -- but the SDK never sends that payload:
+    the dump omits a ``None``, so what reaches the wire is the exact request without the
+    selector, which the document admits.  Asserted below rather than argued.
+    """
     raw = {**exact_request(), field: None}
     before = deepcopy(raw)
-    with pytest.raises(ValidationError, match="exact revision requests forbid aggregate selectors"):
-        GetMediaBuyDeliveryRequest.model_validate(raw)
+    request = GetMediaBuyDeliveryRequest.model_validate(raw)
     assert raw == before
+    assert field not in request.model_dump(mode="json", exclude_none=True, exclude_unset=True)
+    # `exclude_unset=True` and not a bare `exclude_none=True`, and the difference is
+    # adcp-client-python-u7qa: the document states `default: false` for the aggregate
+    # selectors AND forbids their presence in exact mode, so the materialised default
+    # makes the default dump document-INVALID.  Measured:
+    #   model_dump(mode="json", exclude_none=True)                     document REFUSES
+    #   model_dump(mode="json", exclude_none=True, exclude_unset=True) document accepts
+    validator = get_named_validator("media-buy/get-media-buy-delivery-request.json")
+    sent = request.model_dump(mode="json", exclude_none=True, exclude_unset=True)
+    assert not list(validator.iter_errors(sent))
 
 
 @pytest.mark.parametrize("field", ["include_package_daily_breakdown", "include_window_breakdown"])
@@ -62,8 +83,14 @@ def test_explicit_aggregate_selectors_are_forbidden_even_when_null(field):
 def test_exact_mode_rejects_explicit_boolean_flags_without_mutation(field, flag):
     raw = {**exact_request(), field: flag}
     before = deepcopy(raw)
-    with pytest.raises(ValidationError, match="exact revision requests forbid aggregate selectors"):
+    # The TYPE and the named field, not upstream's sentence.  The rule fires correctly --
+    # measured, both `True` and `False` are refused -- and reports the document's own
+    # reason, "forbidden when reporting_revision_id", at `type="not"`, which is the
+    # keyword the document states it with (`allOf[1].then.not`).
+    with pytest.raises(ValidationError) as refused:
         GetMediaBuyDeliveryRequest.model_validate(raw)
+    assert [e["type"] for e in refused.value.errors()] == ["not"]
+    assert field in str(refused.value)
     assert raw == before
 
 
@@ -95,8 +122,12 @@ def test_aggregate_defaults_and_explicit_flags_are_preserved(flags):
 
 
 def test_pagination_requires_an_exact_revision():
-    with pytest.raises(ValidationError, match="pagination requires reporting_revision_id"):
+    # As above: the type and the named key.  Ours reports "required when pagination" at
+    # `type="required"`, which is the conditional the document states.
+    with pytest.raises(ValidationError) as refused:
         GetMediaBuyDeliveryRequest.model_validate({"pagination": {"max_results": 100}})
+    assert [e["type"] for e in refused.value.errors()] == ["required"]
+    assert "reporting_revision_id" in str(refused.value)
 
 
 def test_exact_request_subclasses_and_nesting_preserve_the_selected_mode():

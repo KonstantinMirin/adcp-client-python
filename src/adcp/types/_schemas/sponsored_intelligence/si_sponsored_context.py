@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 from ..core.brand_ref import BrandReference
 from ..core.domain_name import DomainName
@@ -144,7 +145,7 @@ class SISponsoredContext(AdCPBaseModel):
     paying_principal: Annotated[PayingPrincipal, Field(description="Economic accountability fact: the brand that funded or sponsored this context, with optional account/operator context. This identifies who paid for the sponsored context; it is distinct from the host's later receipt and use commitment.")]
     context_use: Annotated[SIContextUse, Field(description='Declared host-side use mode for this sponsored context.')]
     disclosure_obligation: Annotated[DisclosureObligation, Field(description='Disclosure obligation the receiving host must either accept and satisfy or reject before using this sponsored context. This is a declared obligation and audit input, not a protocol-level legal determination.')]
-    declared_at: Annotated[AwareDatetime | None, Field(description='When this sponsored-context declaration was made.'), OmittedNotNull] = None
+    declared_at: Annotated[WireDatetime | None, Field(description='When this sponsored-context declaration was made.'), OmittedNotNull] = None
     declared_by: Annotated[DeclaredBy | None, Field(description='Agent or service that attached the declaration.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

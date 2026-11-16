@@ -6,13 +6,11 @@ import time
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
 from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Adcp as AdcpInfo,
 )
 from adcp.types.domains.protocol.get_adcp_capabilities_response import (
     Execution,
-    ExtensionsSupportedItem,
     GetAdcpCapabilitiesResponse,
     Idempotency,
     MediaBuy,
@@ -55,7 +53,16 @@ def _make_capabilities(
     if "media_buy" in protocol_list:
         mb_kwargs: dict = {}
         if media_buy_features is not None:
-            mb_kwargs["features"] = MediaBuyFeatures(**media_buy_features)
+            # The MAPPING and not `MediaBuyFeatures(...)`, so the field builds its own
+            # class.  `media_buy.features` is not `core/media-buy-features.json`: the
+            # document states `allOf: [{$ref: core/media-buy-features.json}, {if/then},
+            # {if/then}, ...]`, so the node is that document CONJOINED with conditionals
+            # -- `catalog_item_availability_updates: true` requires `catalog_management:
+            # true`, and so on.  A narrower subject gets its own class
+            # (`GetAdCPCapabilitiesResponseMediaBuyFeatures`), which is why handing it a
+            # sibling model instance is refused.  The previous emission inlined the
+            # reference into one class, and these two spellings were the same object.
+            mb_kwargs["features"] = media_buy_features
         if targeting is not None:
             mb_kwargs["execution"] = Execution(targeting=Targeting(**targeting))
         media_buy = MediaBuy(**mb_kwargs)
@@ -69,7 +76,11 @@ def _make_capabilities(
 
     extensions_supported = None
     if extensions is not None:
-        extensions_supported = [ExtensionsSupportedItem(root=e) for e in extensions]
+        # The STRINGS themselves.  `ExtensionsSupportedItem` is not a class here: a
+        # constrained scalar item emits as `Annotated[str, pattern=...]`, so there is
+        # nothing to call and no `root` to pass -- the constraint rides the annotation and
+        # pydantic enforces it on the plain value.
+        extensions_supported = list(extensions)
 
     return GetAdcpCapabilitiesResponse(
         # `status` is required by core/protocol-envelope.json, which this

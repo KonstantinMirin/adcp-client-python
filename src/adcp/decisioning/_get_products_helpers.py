@@ -57,9 +57,54 @@ _FieldSelection = GetProductsField | ProductResponseField | _RequestOnlyField
 #: All schema-required Product fields.  The projection must keep these
 #: regardless of what the buyer requested — they cannot be None and the
 #: model cannot be constructed without them.
+def _names_a_rule_needs(model: type) -> frozenset[str]:
+    """Every field name the model's own rules mention.
+
+    **PER-FIELD REQUIREDNESS IS NOT ALL THE REQUIREDNESS THERE IS**, and projecting on it
+    alone produced a Product the document refuses.  `core/product.json` states an `anyOf`
+    over `required: ['format_ids']` and `required: ['format_options']` -- "Products MUST
+    carry `format_ids`, `format_options`, or both during the 3.x migration window" -- which
+    lowers to
+
+        RequiredGroups(groups=(('format_ids',), ('format_options',)), combinator='anyOf')
+
+    Neither member is individually required, so neither appeared in a set built from
+    `is_required()`, both were dropped, and :func:`_project_product_fields`'s own
+    revalidation then failed with "none of these groups is present, the document requires
+    at least one".
+
+    `ConditionalRequired.require` has the same exposure one step along: keeping a trigger
+    and dropping the field it requires breaks the rule just as surely.
+
+    **ONLY WHAT PRESENCE DECIDES, which is narrower than "every name a rule mentions".**
+    Collecting every name was the first attempt and it was wrong: it pulled in each
+    `UniqueItems(key=...)` -- `catalog_types`, `video_placement_types`,
+    `sponsored_placement_types` and the rest -- and an ABSENT array satisfies
+    `uniqueItems` trivially, so keeping those protects nothing and silently widens the
+    projection the buyer asked to narrow.  By the same reading a `forbid` name and a
+    `when` trigger are both safe to drop: dropping a forbidden field cannot break a
+    prohibition, and dropping a trigger stops the conditional firing at all.
+    """
+    names: set[str] = set()
+    for rule in getattr(model, "_adcp_rules", ()) or ():
+        for group in getattr(rule, "groups", ()) or ():
+            names.update(group)
+        names.update(getattr(rule, "require", ()) or ())
+    return frozenset(names)
+
+
 _REQUIRED_PRODUCT_FIELDS: frozenset[str] = frozenset(
     k for k, v in Product.model_fields.items() if v.is_required()
 )
+
+#: Names a RULE binds, which is a DIFFERENT set from the one above and kept apart from it.
+#:
+#: :data:`_REQUIRED_PRODUCT_FIELDS` means "cannot be None and the model cannot be
+#: constructed without them", and callers assert exactly that of it.  A group member is
+#: not that: `core/product.json` needs `format_ids` OR `format_options`, so neither is
+#: individually non-None and folding them into that set makes the claim false.  What they
+#: share is only that PROJECTION MUST NOT DROP THEM, which is what this set is for.
+_RULE_BOUND_PRODUCT_FIELDS: frozenset[str] = _names_a_rule_needs(Product)
 
 #: Every string value in the GetProductsField enum (the buyer selection
 #: surface, 30 values).
@@ -88,7 +133,12 @@ def _project_product_fields(
     ``if params.fields:`` enforces this).
     """
     requested = frozenset(f.value for f in fields)
-    keep_declared = _REQUIRED_PRODUCT_FIELDS | requested | _NON_ENUM_PRODUCT_FIELDS
+    keep_declared = (
+        _REQUIRED_PRODUCT_FIELDS
+        | _RULE_BOUND_PRODUCT_FIELDS
+        | requested
+        | _NON_ENUM_PRODUCT_FIELDS
+    )
 
     if response.products is None:
         return response

@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
     IoAcceptanceSignatory,
@@ -34,7 +35,7 @@ class IoAcceptance(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/accept-proposal-request.json', pointer='#/properties/io_acceptance')
     io_id: StrMinLen1
-    accepted_at: AwareDatetime
+    accepted_at: WireDatetime
     signatory: IoAcceptanceSignatory
     signature_id: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 

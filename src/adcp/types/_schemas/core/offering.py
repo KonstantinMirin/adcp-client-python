@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import GeoForecastDimensionCode, HostedUrl
 
 from ..enums.metro_system import MetroAreaSystem
@@ -56,8 +57,8 @@ class Offering(AdCPBaseModel):
     name: Annotated[str, Field(description="Human-readable offering name (e.g., 'Winter Sale', 'Free Trial', 'Enterprise Platform')")]
     description: Annotated[str | None, Field(description="Description of what's being offered"), OmittedNotNull] = None
     tagline: Annotated[str | None, Field(description='Short promotional tagline for the offering'), OmittedNotNull] = None
-    valid_from: Annotated[AwareDatetime | None, Field(description='When the offering becomes available. If not specified, offering is immediately available.'), OmittedNotNull] = None
-    valid_to: Annotated[AwareDatetime | None, Field(description='When the offering expires. If not specified, offering has no expiration.'), OmittedNotNull] = None
+    valid_from: Annotated[WireDatetime | None, Field(description='When the offering becomes available. If not specified, offering is immediately available.'), OmittedNotNull] = None
+    valid_to: Annotated[WireDatetime | None, Field(description='When the offering expires. If not specified, offering has no expiration.'), OmittedNotNull] = None
     checkout_url: Annotated[HostedUrl | None, Field(description="URL for checkout/purchase flow when the brand doesn't support agentic checkout."), OmittedNotNull] = None
     landing_url: Annotated[HostedUrl | None, Field(description="Landing page URL for this offering. For catalog-driven creatives, this is the per-item click-through destination that platforms map to the ad's link-out URL. Every offering in a catalog should have a landing_url unless the format provides its own destination logic."), OmittedNotNull] = None
     assets: Annotated[list[OfferingAssetGroup] | None, Field(description='Structured asset groups for this offering. Each group carries a typed pool of creative assets (headlines, images, videos, etc.) identified by a group ID that matches format-level vocabulary.'), OmittedNotNull] = None

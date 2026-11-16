@@ -2030,6 +2030,29 @@ def property_declarations(
     return out
 
 
+def _least_for(declaration: Any) -> Any:
+    """The smallest value a property declaration admits, for the ``oneOf`` draw above.
+
+    Type-directed and deliberately crude: this is not :func:`codegen.verify.witness`'s
+    builder and must not become it.  Its only job is to put a value the OTHER ARM accepts
+    under a key that arm requires, so the payload matches two arms; where the guess is
+    wrong the candidate stops matching that arm and is dropped by ``conforms``, costing a
+    draw and never a false accusation.
+    """
+    word = declaration.get("type") if isinstance(declaration, Mapping) else None
+    if isinstance(word, list):
+        word = word[0] if word else None
+    return {
+        "array": [],
+        "object": {},
+        "string": "",
+        "integer": 0,
+        "number": 0,
+        "boolean": True,
+        "null": None,
+    }.get(word, 1)
+
+
 def _far_side(facts: Mapping[str, Any], instance: Any) -> Iterator[tuple[Any, str, str]]:
     """One value on the FAR side of each boundary ``facts`` states, from ``instance``.
 
@@ -2087,6 +2110,47 @@ def _far_side(facts: Mapping[str, Any], instance: Any) -> Iterator[tuple[Any, st
             if keyword in facts and facts[keyword] is not True:
                 yield ({**instance, _ALIEN_KEY: 1}, keyword,
                        f"adds the undeclared key {_ALIEN_KEY!r}")
+        #: **TWO ARMS AT ONCE, which is the one thing a per-keyword draw cannot reach.**
+        #: ``oneOf`` admits an instance satisfying EXACTLY ONE arm, so a payload matching
+        #: two is refused by the combinator -- and that is not any keyword's boundary, so
+        #: no other draw here produces it.  Measured, six documents were green on every
+        #: check while accepting such a payload:
+        #:
+        #:     content-standards/list-content-standards-response.json
+        #:     {"status": "completed", "standards": [], "errors": [...]}
+        #:     -> the document REFUSES ("is valid under each of ...")
+        #:     -> our class ACCEPTED it, silently picking the error arm
+        #:
+        #: and the same at calibrate-content, create-content-standards,
+        #: get-content-standards, get-media-buy-artifacts and validate-content-delivery.
+        #: ``docs/plan/10l30-census.py`` found them because it compares arms PAIRWISE;
+        #: this draw is that reading brought inside the checks, so the 17 pairs over 10
+        #: unions it verified become gradeable rather than needing a census to see.
+        #:
+        #: The value for an added key is read off the other arm's own declaration, because
+        #: a key whose value the arm refuses leaves the payload matching ONE arm and the
+        #: candidate is then dropped by :func:`refused_witnesses`'s ``conforms`` screen --
+        #: silently, which is the failure mode to avoid: it would look like coverage.
+        arms = facts.get("oneOf")
+        if isinstance(arms, list) and len(arms) > 1:
+            for index, other in enumerate(arms):
+                if not isinstance(other, dict):
+                    continue
+                needs = other.get("required")
+                if not isinstance(needs, list) or not needs:
+                    continue
+                declared = other.get("properties")
+                added = {
+                    key: _least_for(
+                        declared.get(key) if isinstance(declared, dict) else None
+                    )
+                    for key in needs
+                    if key not in instance
+                }
+                if not added:
+                    continue
+                yield ({**instance, **added}, "oneOf",
+                       f"adds arm {index}'s required keys, so two arms match at once")
         depends = facts.get("dependencies")
         if isinstance(depends, dict):
             for trigger, needs in depends.items():

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -28,8 +29,8 @@ class GetPropertyListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRespons
     list: Annotated[PropertyList, Field(description='The property list metadata (always returned)')]
     identifiers: Annotated[list[Identifier] | None, Field(description='Resolved identifiers that passed filters (if resolve=true). Cache these locally for real-time use.'), OmittedNotNull] = None
     pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
-    resolved_at: Annotated[AwareDatetime | None, Field(description='When the list was resolved'), OmittedNotNull] = None
-    cache_valid_until: Annotated[AwareDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated identifiers.'), OmittedNotNull] = None
+    resolved_at: Annotated[WireDatetime | None, Field(description='When the list was resolved'), OmittedNotNull] = None
+    cache_valid_until: Annotated[WireDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated identifiers.'), OmittedNotNull] = None
     coverage_gaps: Annotated[dict[str, list[Identifier]] | None, Field(description="Properties included in the list despite missing feature data. Only present when a feature_requirement has if_not_covered='include'. Maps feature_id to list of identifiers not covered for that feature."), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

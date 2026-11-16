@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrCurrencyCode
 
 from .ext import ExtensionObject
@@ -57,8 +58,8 @@ class FlightItem(AdCPBaseModel):
     airline: Annotated[str | None, Field(description='Airline name or IATA airline code.'), OmittedNotNull] = None
     price: Annotated[Price | None, Field(description='Ticket price or starting fare.'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Route description or promotional text.'), OmittedNotNull] = None
-    departure_time: Annotated[AwareDatetime | None, Field(description='Departure date and time (ISO 8601).'), OmittedNotNull] = None
-    arrival_time: Annotated[AwareDatetime | None, Field(description='Arrival date and time (ISO 8601).'), OmittedNotNull] = None
+    departure_time: Annotated[WireDatetime | None, Field(description='Departure date and time (ISO 8601).'), OmittedNotNull] = None
+    arrival_time: Annotated[WireDatetime | None, Field(description='Arrival date and time (ISO 8601).'), OmittedNotNull] = None
     image_url: Annotated[HostedUrl | None, Field(description='Promotional image URL (typically a destination photo).'), OmittedNotNull] = None
     url: Annotated[HostedUrl | None, Field(description='Booking page URL for this route.'), OmittedNotNull] = None
     tags: Annotated[list[str] | None, Field(description="Tags for filtering (e.g., 'direct', 'red-eye', 'business-class').", min_length=1), OmittedNotNull] = None

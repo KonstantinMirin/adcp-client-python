@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrIdempotencyKey
 from adcp.types.envelopes import AdcpResponse
 
@@ -25,7 +26,7 @@ class RecordedReportingConsumerStatusConsumerStatus(ReportingConsumerStatus):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#/properties/results/items/oneOf/0/properties/consumer_status')
-    recorded_at: Annotated[AwareDatetime, Field(description='When the seller durably recorded this immutable statement.')]
+    recorded_at: Annotated[WireDatetime, Field(description='When the seller durably recorded this immutable statement.')]
 
 
 class RecordedReportingConsumerStatus(AdCPBaseModel):

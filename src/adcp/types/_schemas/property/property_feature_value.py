@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat
+from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max1
 
 from ..core.ext import ExtensionObject
@@ -22,8 +23,8 @@ class PropertyFeatureValue(AdCPBaseModel):
     value: Annotated[StrictBool | StrictFloat | str, Field(description='The feature value. Type depends on feature definition: boolean for binary, number for quantitative, string for categorical.')]
     unit: Annotated[str | None, Field(description="Unit of measurement for quantitative values (e.g., 'gCO2e/1000_impressions', 'percentage')"), OmittedNotNull] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Confidence score for this value (0-1)'), OmittedNotNull] = None
-    measured_at: Annotated[AwareDatetime | None, Field(description='When this specific value was measured'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this certification/value expires (for time-limited certifications)'), OmittedNotNull] = None
+    measured_at: Annotated[WireDatetime | None, Field(description='When this specific value was measured'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When this certification/value expires (for time-limited certifications)'), OmittedNotNull] = None
     methodology_version: Annotated[str | None, Field(description='Version of the methodology used to calculate this value'), OmittedNotNull] = None
     details: Annotated[dict[str, Any] | None, Field(description='Additional vendor-specific details about this measurement'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

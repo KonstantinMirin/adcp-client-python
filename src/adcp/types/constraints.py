@@ -73,12 +73,13 @@ from __future__ import annotations
 
 from typing import Annotated, TypeVar
 
-from pydantic import AnyUrl, BeforeValidator, Field, StrictInt, UrlConstraints
+from pydantic import BeforeValidator, Field, StrictInt, UrlConstraints
 from pydantic import HttpUrl as HttpUrl
 from pydantic import StrictBool as StrictBool
 from pydantic import StrictFloat as StrictFloat
 
 from adcp.types._scalar import as_json_schema_integer
+from adcp.types._wire import WireAnyUrl
 
 K = TypeVar("K")
 T = TypeVar("T")
@@ -88,9 +89,9 @@ SchemaIntegral = BeforeValidator(as_json_schema_integer)
 
 SchemaInt = Annotated[StrictInt, SchemaIntegral]
 
-HostedUrl = Annotated[AnyUrl, UrlConstraints(host_required=True)]
+HostedUrl = Annotated[WireAnyUrl, UrlConstraints(host_required=True)]
 
-AdCPUrl = Annotated[HttpUrl, UrlConstraints(allowed_schemes=["https"])]
+AdCPUrl = Annotated[WireAnyUrl, UrlConstraints(max_length=2083, allowed_schemes=["https"])]
 AcceptancePolicyProfileRegionAliases = Annotated[str, Field(pattern='^[A-Z][A-Z0-9_-]*$')]
 AcceptancePolicyRequirementId = Annotated[str, Field(pattern='^[a-z][a-z0-9_.:-]*$')]
 AcceptedGovernanceAgentsAnyOfItemAgentUrl = Annotated[str, Field(json_schema_extra={'format': 'uri'}, max_length=2048, pattern='^https://[^/?#@]+(?:/[^?#]*)?$')]

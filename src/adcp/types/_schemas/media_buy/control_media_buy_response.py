@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, StrMaxLen2000, StrMinLen1
 from adcp.types.envelopes import AdcpResponse
 
@@ -56,7 +57,7 @@ class ControlApplied(ControlMediaBuyResponse):
     media_buy_id: StrMinLen1
     revision: IntMin1
     media_buy_status: Annotated[MediaBuyStatus | None, OmittedNotNull] = None
-    implementation_date: Annotated[AwareDatetime | None, OmittedWhenNone] = None
+    implementation_date: Annotated[WireDatetime | None, OmittedWhenNone] = None
     affected_package_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     available_actions: Annotated[list[CanonicalMediaBuyAction] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     warnings: Annotated[list[WarningsItem] | None, Field(description='Non-blocking observations about this completed control. The control was still applied exactly as represented. Continuing conditions also appear as indicators on get_media_buys.', min_length=1), OmittedNotNull] = None

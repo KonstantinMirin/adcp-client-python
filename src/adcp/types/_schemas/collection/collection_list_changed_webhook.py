@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictInt
+from pydantic import ConfigDict, Field, StrictInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import SchemaIntegral
 
 from ..core.ext import ExtensionObject
@@ -38,8 +39,8 @@ class CollectionListChangedWebhook(AdCPBaseModel):
     list_id: Annotated[str, Field(description='ID of the collection list that changed')]
     list_name: Annotated[str | None, Field(description='Name of the collection list'), OmittedNotNull] = None
     change_summary: Annotated[ChangeSummary | None, Field(description='Summary of changes to the resolved list'), OmittedNotNull] = None
-    resolved_at: Annotated[AwareDatetime, Field(description='When the list was re-resolved')]
-    cache_valid_until: Annotated[AwareDatetime | None, Field(description='When the consumer should refresh from the governance agent'), OmittedNotNull] = None
+    resolved_at: Annotated[WireDatetime, Field(description='When the list was re-resolved')]
+    cache_valid_until: Annotated[WireDatetime | None, Field(description='When the consumer should refresh from the governance agent'), OmittedNotNull] = None
     signature: Annotated[str, Field(description='HMAC-SHA256 webhook signature over {unix_timestamp}.{raw_http_body_bytes} using the secret exchanged out-of-band when the seller registered with the governance agent. Recipients MUST verify against the X-ADCP-Signature and X-ADCP-Timestamp headers using timing-safe comparison and MUST reject requests where |now - timestamp| > 300 seconds. The body copy of this field is a convenience only — the headers are authoritative. See docs/building/by-layer/L1/security#webhook-security.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

@@ -135,7 +135,7 @@ class ContextMatchRequest(AdCPBaseModel):
     )
     schema_: Annotated[HostedUrl | None, Field(alias='$schema', description='Optional schema URI for validation. Ignored at runtime.'), OmittedNotNull] = None
     adcp_version: Annotated[AdCPVersionEnvelopeAdcpVersion | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin. Inlined here (rather than via core/version-envelope.json allOf) so this schema can keep `additionalProperties: false` — the privacy boundary on this endpoint is contract-bearing.'), OmittedNotNull] = None
-    adcp_major_version: Annotated[IntMin1Max99 | None, Field(description='DEPRECATED in favor of adcp_version. Removed in 4.0. Inlined alongside adcp_version to preserve strict-mode on this endpoint.'), OmittedNotNull] = None
+    adcp_major_version: Annotated[IntMin1Max99 | None, Field(deprecated=True, description='DEPRECATED in favor of adcp_version. Removed in 4.0. Inlined alongside adcp_version to preserve strict-mode on this endpoint.'), OmittedNotNull] = None
     type: Annotated[Literal['context_match_request'], Field(description='Message type discriminator for deserialization.')]
     protocol_version: Annotated[str | None, Field(description='TMP protocol version. Allows receivers to handle semantic differences across versions.'), OmittedNotNull] = '1.0'
     request_id: Annotated[str, Field(description='Unique request identifier. MUST NOT correlate with any identity match request_id.')]

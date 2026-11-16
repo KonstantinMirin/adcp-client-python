@@ -106,7 +106,13 @@ def response_for(
                 results.append({"result": result, kind: {**item, "received_at": RECEIVED}})
     if reverse:
         results.reverse()
-    return SyncReportingReceiptsResponse.model_validate({"results": results})
+    # The envelope's own `status`, required by `core/protocol-envelope.json` which this
+    # document composes via `allOf` -- and pinned to the single literal `"completed"`
+    # here, so it is not merely required but fixed.  Requiredness is a conjunction of the
+    # node's own `required` and every ancestor's that applies to the same instance; the
+    # previous generator dropped the `allOf`-composed half, which is why fixtures were
+    # written without it.
+    return SyncReportingReceiptsResponse.model_validate({"status": "completed", "results": results})
 
 
 class ReceiptClient:

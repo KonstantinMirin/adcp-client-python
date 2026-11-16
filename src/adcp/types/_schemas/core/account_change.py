@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictInt
+from pydantic import ConfigDict, Field, StrictBool, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeChangedPathsItem,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -152,8 +153,8 @@ class AccountChange(AdCPBaseModel):
         Approximation(document='core/account-change.json', pointer='#/properties/ext', keyword='maxProperties', kind='WIDENED', rung='KEYWORD', fact=20, attribution='docs/plan/rebuild-plan.md §5 objects/maxProperties'),
     )
     change_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable seller-generated identifier for this logical change. Retries and notification re-emissions reuse this identifier.')]
-    recorded_at: Annotated[AwareDatetime, Field(description='Time the seller committed or durably observed the change. Feed order is defined by the cursor, not by this timestamp.')]
-    occurred_at: Annotated[AwareDatetime | None, Field(description='Upstream business time when the change occurred, only when the seller can establish it reliably.'), OmittedNotNull] = None
+    recorded_at: Annotated[WireDatetime, Field(description='Time the seller committed or durably observed the change. Feed order is defined by the cursor, not by this timestamp.')]
+    occurred_at: Annotated[WireDatetime | None, Field(description='Upstream business time when the change occurred, only when the seller can establish it reliably.'), OmittedNotNull] = None
     batch_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Optional stable identifier grouping records produced by one committed operation or one external-source ingestion batch. Each independently repairable authoritative identity still receives its own record; batch_id does not change cursor ordering or notification identity.'), OmittedNotNull] = None
     resource: Annotated[Resource, Field(description='Stable identity of the changed resource. Resource types are open for forward compatibility. account_id is always present; resource_id identifies the changed entity and parent_ids supplies any IDs needed to disambiguate nested resources.')]
     action: Annotated[ListAccountChangesRequestResourceTypesItem, Field(description='Material change action. Standard values are created, discovered, updated, status_changed, linked, unlinked, deleted, and purged. Future standard or vendor-namespaced values are allowed; receivers MUST treat unknown values as generic invalidations.')]

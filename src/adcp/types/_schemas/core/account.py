@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     HostedUrl,
     IntMin1,
@@ -59,7 +60,7 @@ class ObjUrlMessageExpiresAt(AdCPBaseModel):
     )
     url: Annotated[HostedUrl | None, Field(description='URL where the human can complete the required action (credit application, legal agreement, add funds).'), OmittedNotNull] = None
     message: Annotated[str, Field(description="Human-readable description of what's needed.")]
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this setup link expires.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When this setup link expires.'), OmittedNotNull] = None
 
 
 class ObjUrl(AdCPBaseModel):
