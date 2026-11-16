@@ -71,7 +71,9 @@ def test_explicit_media_buy_selector_survives_public_request_serialization():
     assert raw == before
 
 
-@pytest.mark.parametrize("scope", [{"all_media_buys": True}, {"media_buy_ids": ["shared-media-buy"]}])
+@pytest.mark.parametrize(
+    "scope", [{"all_media_buys": True}, {"media_buy_ids": ["shared-media-buy"]}]
+)
 def test_scope_modes_round_trip_without_mutating_inputs_or_field_presence(scope):
     raw = onboarding_request(scope)
     before = deepcopy(raw)
@@ -127,7 +129,9 @@ def test_malformed_or_conflicting_explicit_scopes_fail_closed(scope):
     assert raw == before
 
 
-@pytest.mark.parametrize("scope", [{"all_media_buys": True}, {"media_buy_ids": ["shared-media-buy"]}])
+@pytest.mark.parametrize(
+    "scope", [{"all_media_buys": True}, {"media_buy_ids": ["shared-media-buy"]}]
+)
 def test_scope_subclasses_inside_an_ordinary_pydantic_parent(scope):
     scope_type = ReportingDeliveryConfiguration.model_fields["scope"].annotation
 
@@ -148,7 +152,9 @@ def test_scope_subclasses_inside_an_ordinary_pydantic_parent(scope):
     assert parent.scope.all_media_buys is (True if "all_media_buys" in expected else None)
 
 
-@pytest.mark.parametrize("scope", [{"media_buy_ids": ["shared-media-buy"]}, {"all_media_buys": True}])
+@pytest.mark.parametrize(
+    "scope", [{"media_buy_ids": ["shared-media-buy"]}, {"all_media_buys": True}]
+)
 def test_read_only_scope_mappings_follow_the_same_selector_contract(scope):
     scope_type = ReportingDeliveryConfiguration.model_fields["scope"].annotation
     wrapped = MappingProxyType(scope)

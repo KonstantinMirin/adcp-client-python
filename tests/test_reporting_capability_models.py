@@ -72,7 +72,21 @@ def test_core_attributes_schema_and_json_round_trip_do_not_synthesize_promises(g
         assert type(None) in get_args(field.annotation)
         assert getattr(value, name) is None
         assert schema["properties"][name]["default"] is None
-        assert {"type": "null"} in schema["properties"][name]["anyOf"]
+        # §2's first decision: a Python `None` is ABSENCE, a JSON `null` is a VALUE.
+        # The document states each promise as a bare `const` outside `required`, and
+        # a type that does not admit `null` permits exactly one way of not supplying
+        # it -- leaving it out.  So the emitted JSON Schema offers the `const` alone
+        # and NO null branch, and the two input routes come apart below.  What stood
+        # here asked for `{"type": "null"}` in an `anyOf`, which is the previous
+        # emission's bare `Optional[...]` rendering: it advertised `null` as a legal
+        # wire value at every optional non-nullable property in the tree.
+        assert "anyOf" not in schema["properties"][name]
+        assert schema["properties"][name]["const"] == PROMISES[name]
+        assert model.model_validate({**capability(**flags), name: None}).model_dump() == (
+            value.model_dump()
+        )
+        with pytest.raises(ValidationError):
+            model.model_validate_json(json.dumps({**capability(**flags), name: None}))
     for raw in (
         value.model_dump(),
         value.model_dump(mode="json"),
@@ -175,12 +189,23 @@ def test_reconciled_billing_requires_a_receipt_task(graph, managed):
             cls.model_validate(body)
 
 
+#: `#/allOf/3`: ``if managed_delivery const true -> then required
+#: ['resource_retention_days', 'authorization_revocation_seconds']`` -- measured as
+#: ``ConditionalRequired(when=Match(key='managed_delivery', allowed=(True,)),
+#: require=('resource_retention_days', 'authorization_revocation_seconds'))``.  The
+#: tier flag OWES the two windows, so a fixture raising it owes them too; what stood
+#: here raised the flag alone, which the document refuses.
+MANAGED_WINDOWS = {"resource_retention_days": 30, "authorization_revocation_seconds": 0}
+
+
 @pytest.mark.parametrize("field", PROMISES)
 def test_each_explicit_supported_literal_survives_without_implying_other_promises(graph, field):
     model, envelope = graph
-    flags = {"managed_delivery": True} if field == "readiness_notification" else {}
+    flags = (
+        {"managed_delivery": True, **MANAGED_WINDOWS} if field == "readiness_notification" else {}
+    )
     if field == "receipt_task":
-        flags = {"managed_delivery": True, "reconciled_billing": True}
+        flags = {"managed_delivery": True, "reconciled_billing": True, **MANAGED_WINDOWS}
     raw = capability(**flags, **{field: PROMISES[field]})
     for cls, body in ((model, raw), (envelope, response(raw))):
         value = cls.model_validate(body)
