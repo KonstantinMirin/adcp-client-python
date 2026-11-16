@@ -45,6 +45,13 @@ def _terms(amount: float = 100) -> dict:
                 },
                 "pricing_option_id": "po-1",
                 "impressions": 20_000,
+                # media-buy/commercial-terms.json states
+                # properties.purchases.items.allOf[1].required =
+                # ["product_id", "pricing_option_id", "pricing", "start_time", "end_time"],
+                # so a purchase carries its own flight even though
+                # media-buy/product-purchase.json alone does not require one.
+                "start_time": "2026-09-01T00:00:00Z",
+                "end_time": "2026-09-30T00:00:00Z",
             }
         ],
         "total_budget": {"amount": amount, "currency": "USD"},
@@ -106,7 +113,12 @@ def test_seller_preflight_uses_typed_unsupported_dimension_details() -> None:
 
 def test_seller_preflight_reports_batch_validation_before_policy() -> None:
     request = _request()
-    request["refinements"].append(dict(request["refinements"][0]))
+    # media-buy/refine-proposals-request.json states `uniqueItems: true` on
+    # `refinements`, so a byte-identical second entry is refused by the request SCHEMA and
+    # never reaches the batch policy. The clause this test is about is the document's
+    # separate "proposal_id values MUST be unique", which needs two DISTINCT entries that
+    # name the same proposal.
+    request["refinements"].append(dict(request["refinements"][0], ask="Please revise it again."))
 
     with pytest.raises(AdcpError) as exc_info:
         preflight_refinement_batch_or_raise(request, None)
@@ -393,7 +405,14 @@ async def test_platform_handler_preflights_before_adopter_callback() -> None:
     class Platform(DecisioningPlatform):
         capabilities = DecisioningCapabilities(
             media_buy=MediaBuy.model_validate(
-                {"proposal_refinement": {"supported_dimensions": ["total_budget"]}}
+                {
+                    # get-adcp-capabilities-response.json states, at
+                    # properties.media_buy.allOf[0], if/then: declaring
+                    # `proposal_refinement` requires `lifecycle_tools`, and requires it
+                    # to contain "refine_proposals".
+                    "lifecycle_tools": ["refine_proposals"],
+                    "proposal_refinement": {"supported_dimensions": ["total_budget"]},
+                }
             )
         )
         accounts = SingletonAccounts(account_id="seller")
