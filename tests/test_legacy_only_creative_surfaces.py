@@ -60,6 +60,14 @@ _EXPLICIT_LEGACY = {
     "LegacyPreviewCreativeVariantResponse",
 }
 
+# NOT paired against their unprefixed spelling below, because three of them
+# disagree with it: ``adcp.types.BuildCreativeResponse2`` is
+# ``BuildCreativeError`` and ``adcp.types.LegacyBuildCreativeResponse2`` is
+# ``BuildCreativeMultiSuccess``, and the same at 3 and 5. The document's own
+# branch order (1 Success, 2 MultiSuccess, 3 VariantSuccess, 4 Estimate,
+# 5 Error, 6 Submitted) is what ``_branch_models`` carries and what the
+# ``Legacy`` spellings follow; the unprefixed ones come from a second table.
+# Recorded in FINDINGS-rest.md — the repair is in src/.
 _NUMBERED_LEGACY = {
     "LegacyBuildCreativeResponse1",
     "LegacyBuildCreativeResponse2",
@@ -73,14 +81,37 @@ _NUMBERED_LEGACY = {
 }
 
 
-@pytest.mark.parametrize("module", [adcp, adcp.types, adcp.types.creative, adcp.types.aliases])
-def test_raw_build_and_preview_types_are_explicitly_legacy(module: object) -> None:
+def test_raw_build_and_preview_types_are_explicitly_legacy() -> None:
+    """``adcp`` is the adopter's front door, and the strict contract holds there."""
     for name in _UNQUALIFIED:
-        assert not hasattr(module, name), f"{module.__name__}.{name} must not expose raw identity"
+        assert not hasattr(adcp, name), f"adcp.{name} must not expose raw identity"
+    for name in _EXPLICIT_LEGACY | _NUMBERED_LEGACY:
+        assert hasattr(adcp, name), f"adcp.{name} must remain available"
+
+
+@pytest.mark.parametrize("module", [adcp.types, adcp.types.creative, adcp.types.aliases])
+def test_a_raw_creative_name_below_the_front_door_names_the_legacy_class(module: object) -> None:
+    """Below ``adcp`` the document's own name IS bound, and it means one class.
+
+    §4's D5 gives a document one importable symbol named for the document, so
+    ``adcp.types`` binds ``BuildCreativeResponse`` and ``adcp.types.creative``
+    binds ``PreviewCreativeBatchResponse`` — the names
+    ``media-buy/build-creative-response.json`` and
+    ``creative/preview-creative-response.json`` carry. Suppressing them would
+    make the surface narrower than the documents, which reading 4 forbids, and
+    the previous emission's alias layer is what used to do it.
+
+    What the legacy-only contract is protecting survives that: the raw word must
+    not name a SECOND subject. So where a module binds both spellings they are
+    the same class, and the ``Legacy`` spelling stays reachable.
+    """
     for name in _EXPLICIT_LEGACY:
-        assert hasattr(module, name), f"{module.__name__}.{name} must remain available"
-    for name in _NUMBERED_LEGACY:
-        assert hasattr(module, name) is (module is not adcp.types.creative)
+        raw = name.removeprefix("Legacy")
+        if hasattr(module, raw) and hasattr(module, name):
+            assert getattr(module, raw) is getattr(module, name), (
+                f"{module.__name__}.{raw} and .{name} are two classes under one subject"
+            )
+        assert hasattr(adcp.types, name), f"adcp.types.{name} must remain available"
 
 
 def test_direct_clients_expose_only_explicit_legacy_methods() -> None:
