@@ -95,18 +95,42 @@ def setup() -> tuple[Any, Any, Any, Any]:
     return _setup()
 
 
-def _documents() -> list[str]:
-    """Every document the tree states a pair for, for ``parametrize`` at collection.
+def _pair_ids() -> list[tuple[int, str]]:
+    """``(index into found, "document#pointer")`` for every pair, for ``parametrize``.
 
-    Costs ``harness.pairs`` once per worker at import.  That is 4.3 s against a per-pair
-    loop of ~420 s, and it is what buys one test per document rather than one test for
-    the whole tree.
+    **PER PAIR AND NOT PER DOCUMENT, because a group cannot split the document that is
+    the long pole.**  Per-document groups took the grade from 430 s to 134 s and then
+    stopped: only 10 of 16 workers did any work, because the tail is a single document
+    whose own pairs are the expensive ones.  Measured, the heaviest hold
+    ``protocol/get-adcp-capabilities-response.json`` 86 pairs, ``brand.json`` 68,
+    ``core/format.json`` 56, ``core/async-response-data.json`` 47 -- so the work that
+    could not be spread is concentrated in a handful of documents and splitting THEM is
+    the remaining win.
+
+    The index is the selector and the ``document#pointer`` is the id a reader sees.
+    ``harness.pairs`` returns a stable order, so an index means the same pair on every
+    worker; nothing is keyed on it beyond this call.
+
+    THE COST OF SPLITTING is memo locality: ``Construction._memo`` is per WORKER, so
+    pairs of one document landing on different workers rebuild that document's shared
+    subtrees once per worker.  Whether that costs more than the balance buys is a
+    measurement and not a guess -- if the wall clock rises, per-document was right and
+    this goes back.
     """
     from codegen import harness
     from codegen.emit import PACKAGE
 
     found, _ = harness.pairs(importlib.import_module(PACKAGE))
-    return sorted({p.ref.document for p in found})
+    #: The CLASS is in the id because a pointer is not unique: §4 emits one class per
+    #: SUBJECT and a union's base and branches all stamp the same node, so
+    #: ``core/creative-representation.json#/allOf/0`` names both
+    #: ``CreativeRepresentationFormatId`` and ``...FormatKind``.  Without it pytest
+    #: disambiguates by appending ``_0``, which made the failing set differ from the
+    #: artifact's by one row and said nothing about why.
+    return [
+        (i, f"{p.ref.document}{p.ref.pointer} {getattr(p.model, '__name__', '?')}")
+        for i, p in enumerate(found)
+    ]
 
 
 def pytest_generate_tests(metafunc: Any) -> None:
@@ -119,29 +143,29 @@ def pytest_generate_tests(metafunc: Any) -> None:
     outside the fresh tree".  Measured: the module would not collect, and the gate beside
     it collected fine, which is what said the fault was here and not environmental.
     """
-    if "document" in metafunc.fixturenames:
+    if "pair_index" in metafunc.fixturenames:
+        #: No ``xdist_group``: every pair is independent, so ``--dist load`` may place
+        #: each one anywhere.  A group per document was the previous shape and is what
+        #: pinned a document's pairs to one worker.
         metafunc.parametrize(
-            "document",
-            [pytest.param(d, marks=pytest.mark.xdist_group(name=d)) for d in _documents()],
+            "pair_index",
+            [pytest.param(i, id=name) for i, name in _pair_ids()],
         )
 
 
-def test_every_pair_of_this_document_passes(document: str, setup: Any) -> None:
-    """Every pair of ``document`` passes all six checks, and none of them is absent.
+def test_this_pair_passes(pair_index: int, setup: Any) -> None:
+    """This pair passes all six checks, and none of them is absent.
 
-    One test per document and a GROUP per document, so ``--dist loadgroup`` may place
-    them on any worker: the single global ``GRADED_REPORTS_GROUP`` is what pinned the
-    whole grade to one worker before this.
+    One test per PAIR, so ``pytest -n auto`` may place any pair on any worker.
     """
     from codegen.__main__ import graded_rows
 
     found, identity_of, construction, formats = setup
     rows = graded_rows(
-        found,
+        [found[pair_index]],
         identity_of=identity_of,
         construction=construction,
         formats=formats,
-        only=document,
     )
     bad = [r for r in rows if "\tverdict=pass" not in r]
     assert not bad, f"{len(bad)} of {len(rows)} pairs:\n" + "\n".join(
