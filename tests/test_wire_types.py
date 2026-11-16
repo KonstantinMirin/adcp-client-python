@@ -256,10 +256,20 @@ def test_audience_evidence_attributes_are_still_typed() -> None:
 
 
 def test_audience_evidence_is_exported_from_adcp_types() -> None:
+    import importlib
+
     import adcp.types
 
     assert adcp.types.AudienceEvidence is AudienceEvidence
-    assert AudienceEvidence.__module__ == "adcp.types.domains.core.audience_evidence"
+    # ``adcp.types.domains`` is a ``sys.meta_path`` MIRROR here: it binds
+    # ``adcp.types.domains.<rest>`` to the module ``adcp.types._schemas.<rest>``
+    # already is, by one prefix substitution. So the domain path is a supported
+    # import and the class is the same object, but ``__module__`` reads the
+    # module's own ``__name__``, which is the ``_schemas`` one.
+    domain = importlib.import_module("adcp.types.domains.core.audience_evidence")
+    assert domain is importlib.import_module("adcp.types._schemas.core.audience_evidence")
+    assert domain.AudienceEvidence is AudienceEvidence
+    assert AudienceEvidence.__module__ == "adcp.types._schemas.core.audience_evidence"
 
 
 def test_model_dump_as_received_leaves_off_what_the_document_omitted() -> None:
