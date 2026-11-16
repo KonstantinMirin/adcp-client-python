@@ -16,6 +16,7 @@ from pydantic import ValidationError
 
 from adcp.protocols.mcp import MCPAdapter
 from adcp.types import (
+    AssetVariantImage,
     CanonicalFormatKind,
     CreativeManifest,
     CreativeVariant,
@@ -151,26 +152,27 @@ def test_delivery_manifest_cannot_bypass_strict_input(model, input_model, reuse_
 def test_delivery_variant_cannot_bypass_strict_input(model, input_model):
     """The variant level of the same obligation, split the same way.
 
-    The variant level of the same thing. See
-    ``test_delivery_manifest_cannot_bypass_strict_input``: no model refuses the
-    kind, a dump retains it through either variant class, and an instance is
-    accepted or refused by ordinary class rules.
+    The branch that expected a ``model_type`` refusal cannot fire, for the reason
+    ``test_delivery_manifest_cannot_bypass_strict_input`` already records one level
+    up: measured, ``CreativeVariant is WireCreativeVariant`` and
+    ``LegacyGetCreativeDeliveryResponse is GetCreativeDeliveryResponse``.  A
+    ``Legacy*`` name IS the generated class (`tests/test_legacy_surface_names_every_arm.py`
+    holds that as object identity against ``adcp.types``) and the domain path is an
+    address rather than a second type, so the condition
+    ``input_model is not CreativeVariant`` was never true and the instance handed to
+    ``model_validate`` is already an instance of the class it is handed to.
+
+    What remains measurable is the obligation #1241 actually asked for: the kind
+    survives the WIRE route, which is the route a reader of a delivery response takes.
+    A constraint the input model states is still enforced on that route --
+    ``test_delivery_variants_keep_non_kind_constraints`` grades it.
     """
     response = model.model_validate(delivery_payload())
     variant = response.creatives[0].variants[1]
     dumped = variant.model_dump(mode="json")
 
     assert input_model.model_validate(dumped).manifest.format_kind == OTHER_KIND
-
-    if input_model is not CreativeVariant and model is GetCreativeDeliveryResponse:
-        assert input_model.model_validate(variant).manifest.format_kind == OTHER_KIND
-    else:
-        with pytest.raises(ValidationError) as error:
-            input_model.model_validate(variant)
-        assert error.value.errors()[0]["type"] == "model_type"
-    # See the note in test_delivery_manifest_cannot_bypass_strict_input: phase 2 made
-    # the canonical models real subclasses, so the old ``not isinstance`` check is
-    # false by construction. The two ``pytest.raises`` above carry the obligation.
+    assert input_model.model_validate(variant).manifest.format_kind == OTHER_KIND
 
 
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
@@ -251,42 +253,118 @@ def test_delivery_manifest_normalizes_standalone_assets(model):
     # `asset_type` is required by core/assets/image-asset.json. Upstream's generator dropped
     #   declared and allOf-composed `required`, so their fixtures omit it.
     # asset_type="image" -- `const` in the document: 'image'.
-    image = ImageContent(
+    #
+    # AND THE SLOT TAKES THE UNION ARM, NOT THE REFERENCED DOCUMENT'S CLASS.
+    # core/creative-manifest.json states the slot value as
+    #   properties.assets.patternProperties['^[a-z0-9_]+$'].oneOf =
+    #     [ $ref asset-union.json, {type: array, items: $ref asset-union.json, minItems: 1} ]
+    # so the class addressing that position is the union's image arm,
+    # `AssetVariantImage` at core/assets/asset-union.json#/oneOf/0.  That arm is a bare
+    # `$ref` to image-asset.json and the emission keeps the subject identity as
+    # inheritance -- `issubclass(AssetVariantImage, ImageContent)` holds, asserted below --
+    # so naming the arm loses nothing.  An `ImageContent` instance is refused here with
+    # `model_type`, because the parent is not an instance of the child.
+    image = AssetVariantImage(
         asset_type="image",
         url="https://example.com/image.png",
         width=300,
         height=250,
     )
+    assert isinstance(image, ImageContent)
     payload["creatives"][0]["variants"][1]["manifest"]["assets"] = {"image_main": image}
     response = model.model_validate(payload)
     assets = response.model_dump(mode="json")["creatives"][0]["variants"][1]["manifest"]["assets"]
     assert assets["image_main"]["url"] == "https://example.com/image.png"
 
 
-def test_delivery_keeps_legacy_identity_only_on_legacy_surface():
+@pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
+def test_delivery_keeps_legacy_identity_on_both_spellings(model):
+    """``core/creative-manifest.json``'s root `oneOf` is the whole of the rule, and
+    it is about the PAYLOAD rather than about which name read it.
+
+    Arm 0 is "Named-format manifest", `deprecated: true`, `required: ['format_id']`
+    with `not: {required: ['format_kind']}`; arm 1 is "Canonical-format manifest",
+    `required: ['format_kind']` with `not: {required: ['format_id']}`.  So a manifest
+    carrying `format_id` and no `format_kind` is ADMITTED -- deprecation is metadata
+    and not absence -- and it parses to `NamedFormatManifest`.
+
+    What stood here asserted that the canonical NAME refuses it while the `Legacy*`
+    name accepts it.  Measured, `LegacyGetCreativeDeliveryResponse is
+    GetCreativeDeliveryResponse`: a `Legacy*` name IS the generated class, held as
+    object identity by `tests/test_legacy_surface_names_every_arm.py`.  One class
+    cannot answer two ways, and the document gives it nothing to answer two ways
+    about -- `format_id` is not on a removal schedule (CLAUDE.md measures 9 sites
+    `deprecated: true` with no target and 3 not marked at all).
+    """
     payload = delivery_payload()
     manifest = payload["creatives"][0]["variants"][1]["manifest"]
     manifest.pop("format_kind")
     manifest["format_id"] = {"agent_url": "https://seller.example", "id": "legacy-banner"}
-    legacy = LegacyGetCreativeDeliveryResponse.model_validate(payload)
-    wire = legacy.model_dump(mode="json")
+
+    response = model.model_validate(payload)
+    read = response.creatives[0].variants[1].manifest
+    assert type(read).__name__ == "NamedFormatManifest"
+    wire = response.model_dump(mode="json")
     assert wire["creatives"][0]["variants"][1]["manifest"]["format_id"]["id"] == "legacy-banner"
-    with pytest.raises(ValidationError, match="legacy creative identity"):
-        GetCreativeDeliveryResponse.model_validate(payload)
 
 
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
-def test_delivery_keeps_optional_manifest_and_kind_defaults(model):
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda manifest: manifest.pop("format_kind"),
+        lambda manifest: manifest.__setitem__(
+            "format_id", {"agent_url": "https://seller.example", "id": "legacy-banner"}
+        ),
+    ],
+    ids=["neither", "both"],
+)
+def test_delivery_refuses_a_manifest_that_is_neither_arm_or_both(model, mutate):
+    """Each arm's `not` makes the identity an exclusive OR: a manifest carrying
+    both `format_id` and `format_kind`, or neither, satisfies no arm."""
     payload = delivery_payload()
-    variants = payload["creatives"][0]["variants"]
-    variants[0].pop("manifest")
-    # Was ``variants[1]["manifest"].pop("format_kind")``. Dropping the key leaves a
-    # manifest with neither ``format_id`` nor ``format_kind``, which
-    # core/creative-manifest.json's root oneOf forbids and #1368's
-    # enforce_root_required_groups now holds at runtime. An explicit null is the
-    # schema-valid way to state the same thing: the group is keyed on the field being
-    # present, not on it being non-null.
-    variants[1]["manifest"]["format_kind"] = None
+    mutate(payload["creatives"][0]["variants"][1]["manifest"])
+
+    with pytest.raises(ValidationError) as error:
+        model.model_validate(payload)
+
+    assert any(
+        item["loc"][-1] == "manifest" and item["type"] == "oneOf" for item in error.value.errors()
+    )
+
+
+@pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
+def test_delivery_keeps_the_manifest_optional(model):
+    """``manifest`` is absent from the variant's own ``required``, so a variant may
+    carry none and reads back as ``None``."""
+    payload = delivery_payload()
+    payload["creatives"][0]["variants"][0].pop("manifest")
+
     response = model.model_validate(payload)
     assert response.creatives[0].variants[0].manifest is None
-    assert response.creatives[0].variants[1].manifest.format_kind is None
+    assert response.creatives[0].variants[1].manifest.format_kind == OTHER_KIND
+
+
+@pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
+def test_delivery_refuses_an_explicitly_null_format_kind(model):
+    """A null is not the schema-valid way to spell "no kind".
+
+    What stood here set ``format_kind = None`` and expected it to read back as
+    ``None``, on the reading that the root ``oneOf`` keys on the key being PRESENT.
+    It does -- and that is only half the conjunction.  Arm 1 also applies the
+    property's own schema, and ``core/canonical-format-kind.json`` is a closed
+    ``enum`` of 16 strings that admits no ``null`` (rebuild-plan.md §6: the
+    document's accepted set is the closed ``enum`` and a closed ``StrEnum`` is
+    faithful to it).  So the canonical arm refuses the value while the named arm
+    refuses the absent ``format_id``, and the refusal lands on ``format_kind``
+    with the enum's own 16 members.
+    """
+    payload = delivery_payload()
+    payload["creatives"][0]["variants"][1]["manifest"]["format_kind"] = None
+
+    with pytest.raises(ValidationError) as error:
+        model.model_validate(payload)
+
+    assert any(
+        item["loc"][-1] == "format_kind" and item["type"] == "enum" for item in error.value.errors()
+    )
