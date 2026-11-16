@@ -319,6 +319,14 @@ async def test_request_proposals_filters_without_breaking_bound_references(
     request = RequestProposalsRequest.model_validate(
         {
             "idempotency_key": "proposal-request-1234",
+            # `media-buy/request-proposals-request.json` states a root `anyOf` over
+            # `required: ['brand']` and an `account` carrying `brand` + `operator`, so a
+            # brand source is NOT optional here.  `core/canonical-account-ref.json`'s
+            # `account_id` branch is `additionalProperties: false`, which leaves the
+            # top-level `brand` as the only branch an id-keyed account can take -- and the
+            # root `allOf`'s `not` is quiet, because it fires only where the account
+            # carries `brand` + `operator` beside a top-level one.
+            "brand": {"domain": "buyer.example.com"},
             "account": {"account_id": "account"},
             "brief": "News",
             "criteria": {
