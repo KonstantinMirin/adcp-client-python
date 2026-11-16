@@ -198,6 +198,20 @@ def _obligation(identifier: str = "obligation-billing") -> dict[str, object]:
         "schedule": {
             "period_duration": "P1M",
             "alignment": "billing_cycle",
+            # `core/reporting-schedule.json` states
+            #   if   alignment == "billing_cycle"
+            #   then required: ["period_anchor", "period_timezone"]
+            # so with this alignment the two are required, though neither is in the
+            # node's own root `required` -- requiredness is the conjunction of the node's
+            # own and every ancestor's and conditional's that applies to the instance.
+            #
+            # Omitting them did not surface as a missing-field error: `_reconcile` wraps
+            # the status read in `except Exception` and answers the generic
+            # `STATUS_READ_FAILED`, so the real cause only appears at DEBUG level and 71
+            # assertions in tests/test_reporting_frozen_read_safety.py compared
+            # `STATUS_READ_FAILED` against the specific code they expected.
+            "period_anchor": "2026-09-01T00:00:00Z",
+            "period_timezone": "UTC",
             "delivery_sla": "P1D",
         },
         "destination_ref": f"destination-{identifier}",
@@ -263,7 +277,19 @@ def _response(receipts: list[dict[str, object]] | None = None) -> dict[str, obje
         accepted_receipts = [receipt for receipt in receipts if receipt.get("status") == "accepted"]
         item.update(receipt_count=len(receipts), accepted_receipt_count=len(accepted_receipts))
         if accepted_receipts:
-            item.update(reconciliation_status="accepted", health="complete")
+            # `core/reporting-obligation.json` allOf[7] states
+            #   if   reconciliation_mode == "consumer_receipt" and health in
+            #        ["healthy", "complete"]
+            #   then required: [..., "accepted_receipt_count", "pending_adjustment_count"]
+            #        with pending_adjustment_count pinned `const: 0`
+            # and this is the branch that moves `health` into that set, so the two fields
+            # the conditional adds have to travel with it.  `0` is not a choice here: the
+            # document pins the value.
+            item.update(
+                reconciliation_status="accepted",
+                health="complete",
+                pending_adjustment_count=0,
+            )
         else:
             item.update(reconciliation_status="rejected", health="waiting")
     return {
