@@ -14,6 +14,7 @@ import json
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from adcp import FeedMirror
 from adcp.decisioning import AdcpError
@@ -370,7 +371,21 @@ def test_preconditions_reject_with_the_offending_field(
 ) -> None:
     # The schema rejects the same request, so the helper and the wire agree.
     assert not validate_request(tool, request_body).valid
-    request = MODELS[tool].model_validate(request_body) if as_model else request_body
+    if not as_model:
+        request: Any = request_body
+    else:
+        try:
+            request = MODELS[tool].model_validate(request_body)
+        except ValidationError as refused:
+            # The MODEL refuses it before the helper is reached, which is the
+            # third agreeing voice rather than a gap: the request documents
+            # state ``dependencies`` on ``if_pricing_version`` -- it requires
+            # ``if_wholesale_feed_version`` -- and §5 lowers that keyword to a
+            # rule. The helper is graded on the dict route, where the document
+            # leaves the payload constructible.
+            assert [error["type"] for error in refused.errors()] == ["dependencies"]
+            assert [error["loc"] for error in refused.errors()] == [(field,)]
+            return
     with pytest.raises(AdcpError) as raised:
         check_feed_preconditions(request)
     assert raised.value.code == "INVALID_REQUEST"
