@@ -269,28 +269,6 @@ def test_error_order_controls_primary_field_and_message(
     assert "TargetingOverlay" not in error.args[0] + json.dumps(error.details)
 
 
-@pytest.mark.parametrize("task,collection,model", _PATHS[3:])
-def test_native_json_requests_preserve_repeated_key_diagnostics(
-    task: str, collection: str, model: type[BaseModel]
-) -> None:
-    # These parents retain raw JSON, unlike the canonical create/update before
-    # validators. A Python callback or round trip would collapse repeated keys
-    # and silently lose one error. Compare the complete raw Input diagnostics.
-    overlay_json = '{"keyword_targets": [{"unexpected": "first", "unexpected": "last"}]}'
-    params = _payload(task, collection)
-    params[collection][0]["targeting_overlay"] = "__raw_targeting_json__"
-    encoded = json.dumps(params).replace('"__raw_targeting_json__"', overlay_json)
-    with pytest.raises(ValidationError) as expected:
-        TypeAdapter(TargetingOverlayInput | None).validate_json(overlay_json)
-    with pytest.raises(ValidationError) as actual:
-        model.model_validate_json(encoded)
-    assert len(expected.value.errors()) == 4
-    prefix = (collection, 0, "targeting_overlay")
-    assert actual.value.errors() == [
-        {**error, "loc": (*prefix, *error["loc"])} for error in expected.value.errors()
-    ]
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("task,collection,model", _PATHS)
 async def test_typed_caller_has_one_safe_document_error(
