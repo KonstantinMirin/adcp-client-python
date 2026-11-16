@@ -43,25 +43,51 @@ def _make_request(product_ids: list[str] | None):
     """Build a minimal CreateMediaBuyRequest with the given product ids.
 
     Passing None simulates a proposal_id-driven request (no packages).
+
+    ``media-buy/create-media-buy-request.json`` offers three COMPLETE allocation
+    modes in an ``anyOf``, and each one FORBIDS the other's deciding key:
+
+      anyOf[0] ExplicitPackagesWithFixedAllocation          required ['packages'],
+                                                            packages[].budget,
+                                                            not required ['proposal_id']
+      anyOf[1] ExplicitPackagesWithSellerOptimizedAllocation required ['packages',
+                                                            'total_budget',
+                                                            'budget_allocation']
+      anyOf[2] CommittedProposalExecution                    required ['proposal_id',
+                                                            'total_budget'], not
+                                                            required ['packages',
+                                                            'budget_allocation',
+                                                            'frequency_cap']
+
+    So the key the chosen mode forbids is not WRITTEN, rather than written as
+    ``None``: ``packages`` for mode 2 and ``proposal_id`` for mode 0. Mode 0's
+    ``not: {required: ['proposal_id']}`` and mode 2's ``not`` over ``packages``
+    are what refuse a request carrying both keys, whatever the second one holds.
+
+    ``total_budget`` is ``media-buy/change-term-constraints.json#/definitions/money``
+    — ``required ['amount', 'currency']`` — and not a bare number.
     """
     from adcp.types import CreateMediaBuyRequest
 
-    packages = None
-    if product_ids is not None:
-        packages = [
+    envelope: dict[str, object] = {
+        "idempotency_key": "test-key-12345678",
+        "account": {"account_id": "acct_test"},
+        "brand": {"domain": "example.com"},
+        "start_time": "2026-06-01T00:00:00Z",
+        "end_time": "2026-07-01T00:00:00Z",
+    }
+    if product_ids is None:
+        # Mode 2: the proposal carries the allocation, so no `packages` key.
+        envelope["proposal_id"] = "prop-123"
+        envelope["total_budget"] = {"amount": 1000.0, "currency": "USD"}
+    else:
+        # Mode 0: each package carries its own fixed `budget`, and no `proposal_id`.
+        envelope["packages"] = [
             {"product_id": pid, "budget": 1000.0, "pricing_option_id": "cpm_flat"}
             for pid in product_ids
         ]
 
-    return CreateMediaBuyRequest(
-        idempotency_key="test-key-12345678",
-        account={"account_id": "acct_test"},
-        brand={"domain": "example.com"},
-        start_time="2026-06-01T00:00:00Z",
-        end_time="2026-07-01T00:00:00Z",
-        packages=packages,
-        proposal_id=None if product_ids is not None else "prop-123",
-    )
+    return CreateMediaBuyRequest(**envelope)
 
 
 def _make_handler(

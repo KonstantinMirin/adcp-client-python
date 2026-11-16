@@ -112,6 +112,14 @@ def _live(
 
 
 def _commercial_terms(*change_terms: dict[str, Any]) -> dict[str, Any]:
+    # A purchase's requiredness is a CONJUNCTION. `media-buy/commercial-terms.json`
+    # declares `purchases.items` as an `allOf` of `media-buy/product-purchase.json`
+    # and a bare `required: ['product_id', 'pricing_option_id', 'pricing',
+    # 'start_time', 'end_time']` conjunct -- so `start_time` and `end_time` are
+    # required HERE while `product-purchase.json`'s own node leaves them optional
+    # ("omission inherits the MediaBuy start"). Both are `format: date-time`, and
+    # the purchase's `start_time` additionally carries `not: {const: "asap"}`, so
+    # the envelope's "asap" is not a value a purchase may repeat.
     return {
         "brand": {"domain": "example.com"},
         "purchases": [
@@ -123,6 +131,8 @@ def _commercial_terms(*change_terms: dict[str, Any]) -> dict[str, Any]:
                     "pricing_model": "cpm",
                     "currency": "USD",
                 },
+                "start_time": "2026-06-01T00:00:00Z",
+                "end_time": "2026-12-01T00:00:00Z",
             }
         ],
         "start_time": "asap",
@@ -441,20 +451,55 @@ def test_materialize_cannot_expand_status_scope_or_constraint_kind() -> None:
 
 
 @pytest.mark.parametrize(
-    "constraint_type",
+    ("constraint_type", "kind", "bounds"),
     [
-        "BudgetChangeConstraints",
-        "FlightChangeConstraints",
-        "PackageCountChangeConstraints",
-        "EffectiveTimingChangeConstraints",
+        (
+            "BudgetChangeConstraints",
+            "budget",
+            ("max_delta_amount", "max_delta_percent", "min_result_amount", "max_result_amount"),
+        ),
+        (
+            "FlightChangeConstraints",
+            "flight",
+            ("max_change", "earliest_result", "latest_result", "minimum_notice"),
+        ),
+        (
+            "PackageCountChangeConstraints",
+            "package_count",
+            ("max_additions", "max_removals", "max_result_count"),
+        ),
+        (
+            "EffectiveTimingChangeConstraints",
+            "effective_timing",
+            ("minimum_notice", "earliest_effective_at", "latest_effective_at"),
+        ),
     ],
 )
-def test_generated_constraint_models_require_a_portable_bound(constraint_type: str) -> None:
+def test_generated_constraint_models_require_a_portable_bound(
+    constraint_type: str, kind: str, bounds: tuple[str, ...]
+) -> None:
+    """Each arm of ``media-buy/change-term-constraints.json`` states TWO facts.
+
+    ``required: ['kind']`` and an ``anyOf`` over one-key ``required`` groups — the
+    portable bounds. An empty payload breaks both, and the document's own first
+    answer is the missing ``kind``: the ``anyOf`` rule is an after-validator and
+    cannot run on a payload the field layer already refused. So the two are asked
+    separately, each by its own error TYPE and location rather than by a message.
+    """
     from adcp import types
 
     model = getattr(types, constraint_type)
-    with pytest.raises(ValidationError, match="portable constraint bound"):
-        model()
+
+    with pytest.raises(ValidationError) as missing_kind:
+        model.model_validate({})
+    assert [(e["type"], e["loc"]) for e in missing_kind.value.errors()] == [("missing", ("kind",))]
+
+    with pytest.raises(ValidationError) as missing_bound:
+        model.model_validate({"kind": kind})
+    errors = missing_bound.value.errors()
+    assert [(e["type"], e["loc"]) for e in errors] == [("anyOf", ())]
+    for bound in bounds:
+        assert bound in errors[0]["msg"]
 
 
 def test_generated_canonical_action_requires_action_field() -> None:
@@ -466,43 +511,115 @@ def test_generated_canonical_action_requires_action_field() -> None:
         )
 
 
-def test_generated_change_term_rejects_incompatible_constraint_kind() -> None:
+def test_generated_change_term_admits_an_incompatible_constraint_kind() -> None:
+    """``constraint_action_compatibility`` is `x-adcp-validation`, so the model admits it.
+
+    ``media-buy/change-term.json`` states the kind/action table under
+    ``x-adcp-validation.verifier_constraints`` — an extension keyword, not a JSON
+    Schema one. §6 of ``docs/plan/rebuild-plan.md`` takes the decision by name:
+    *"`x-adcp-validation` constrains in intent and not in the document, so a model
+    enforcing it would be narrower than its document"* (upstream
+    ``adcontextprotocol/adcp#8472``). A generated class refusing `kind: budget` on
+    `action: pause` would be that narrowing.
+
+    The enforcement is the SDK layer's, where the verifier lives, and the
+    document's own ``on_violation: reject_proposal`` is what it answers to.
+    """
     from adcp.types import MediaBuyChangeTerm
 
-    with pytest.raises(ValidationError, match="incompatible with action"):
-        MediaBuyChangeTerm.model_validate(
-            {
-                "term_id": "right_pause",
-                "action": "pause",
-                "service_mode": "self_serve",
-                "constraints": {"kind": "budget", "max_delta_percent": 10},
-            }
+    term = MediaBuyChangeTerm.model_validate(
+        {
+            "term_id": "right_pause",
+            "action": "pause",
+            "service_mode": "self_serve",
+            "constraints": {"kind": "budget", "max_delta_percent": 10},
+        }
+    )
+    assert term.constraints.kind == "budget"
+
+    # The verifier's answer to the same pair, at the layer that holds it.
+    assert (
+        evaluate_action_constraints(
+            "pause", {"kind": "budget", "max_delta_percent": 10}, ActionIntent()
+        )[0].outcome
+        is ConstraintOutcome.unknown
+    )
+
+    with pytest.raises(MediaBuyActionError, match="constraint_action_mismatch"):
+        materialize_change_terms(
+            [
+                {
+                    "action": "pause",
+                    "modes": ["self_serve"],
+                    "constraints": {"kind": "budget", "max_delta_percent": 5},
+                }
+            ],
+            [{"action": "pause", "term_id": "right_pause"}],
         )
 
 
-def test_generated_commercial_terms_reject_duplicate_rights_and_bad_currency() -> None:
+def test_generated_commercial_terms_admit_duplicate_rights_and_a_foreign_currency() -> None:
+    """Both of these are `x-adcp-validation` and prose, and neither is a keyword.
+
+    ``media-buy/commercial-terms.json`` says *"Entries are uniquely keyed by
+    action"* in ``change_terms``'s ``description``, and states
+    ``constraint_currency`` — *"Every monetary constraint currency equals the
+    commercial terms purchase currency"* — under ``x-adcp-validation``. §6's
+    decision on ``x-adcp-validation`` covers the second and a ``description``
+    constrains nothing at all, so the generated class admits both payloads. The
+    refusals live where the verifier does: ``materialize_change_terms`` for the
+    duplicate action, ``evaluate_action_constraints`` for the currency.
+    """
     from adcp.types import CommercialTerms
 
-    with pytest.raises(ValidationError, match="uniquely keyed by action"):
-        CommercialTerms.model_validate(
-            _commercial_terms(
-                _term("pause", term_id="right-a"),
-                _term("pause", term_id="right-b"),
-            )
+    duplicated = CommercialTerms.model_validate(
+        _commercial_terms(
+            _term("pause", term_id="right-a"),
+            _term("pause", term_id="right-b"),
+        )
+    )
+    assert [term.term_id for term in duplicated.change_terms] == ["right-a", "right-b"]
+    assert {term.action for term in duplicated.change_terms} == {"pause"}
+
+    with pytest.raises(MediaBuyActionError, match="duplicate_action"):
+        materialize_change_terms(
+            [{"action": "pause", "modes": ["self_serve"]}],
+            [
+                {"action": "pause", "term_id": "right-a"},
+                {"action": "pause", "term_id": "right-b"},
+            ],
         )
 
-    with pytest.raises(ValidationError, match="currency must match purchases"):
-        CommercialTerms.model_validate(
-            _commercial_terms(
-                _term(
-                    "increase_budget",
-                    constraints={
-                        "kind": "budget",
-                        "max_delta_amount": {"amount": 100, "currency": "EUR"},
-                    },
-                )
+    foreign = CommercialTerms.model_validate(
+        _commercial_terms(
+            _term(
+                "increase_budget",
+                constraints={
+                    "kind": "budget",
+                    "max_delta_amount": {"amount": 100, "currency": "EUR"},
+                },
             )
         )
+    )
+    assert foreign.purchases[0].pricing.currency == "USD"
+    assert foreign.change_terms[0].constraints.max_delta_amount.currency == "EUR"
+
+    violated = evaluate_action_constraints(
+        "increase_budget",
+        {"kind": "budget", "max_delta_amount": {"amount": 100, "currency": "EUR"}},
+        ActionIntent(current_amount=1000, result_amount=1050, currency="USD"),
+    )
+    assert [check.outcome for check in violated] == [ConstraintOutcome.violated]
+    # Same bound in the purchases' own currency: satisfied, so the verdict above is
+    # the currency's and not the amount's.
+    assert [
+        check.outcome
+        for check in evaluate_action_constraints(
+            "increase_budget",
+            {"kind": "budget", "max_delta_amount": {"amount": 100, "currency": "USD"}},
+            ActionIntent(current_amount=1000, result_amount=1050, currency="USD"),
+        )
+    ] == [ConstraintOutcome.satisfied]
 
     with pytest.raises(MediaBuyActionError, match="constraint_action_mismatch"):
         materialize_change_terms(
