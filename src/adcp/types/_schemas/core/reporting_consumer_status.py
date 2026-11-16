@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -28,8 +29,8 @@ class ObjStartEndSourceTimezone(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-consumer-status.json', pointer='#/properties/period')
-    start: AwareDatetime
-    end: AwareDatetime
+    start: WireDatetime
+    end: WireDatetime
     source_timezone: StrMinLen1
 
 
@@ -110,13 +111,13 @@ class ReportingConsumerStatus(AdCPBaseModel):
     reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Exact revision successfully consumed or found unreadable. Omitted when no required revision was available.'), OmittedNotNull] = None
     observed_revision_content_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, Field(description='revision_content_sha256 independently recomputed from the exact consumed Core revision binding. Required for received and content_mismatch, where it proves which exact revision content the consumer read; unlike a Reconciled Billing receipt it carries no materialization evidence, row totals, canonical digest, or billing acceptance.'), OmittedNotNull] = None
     consumer_status: Annotated[ConsumerStatus, Field(description='received means the exact revision content was successfully consumed; obligation_missing means the independently expected period was absent from the seller ledger; revision_missing means the obligation existed but no required revision was available after expected_at; unreadable means a named revision was advertised but its exact content could not be consumed; content_mismatch means the exact revision content was read but contradicts a fact the accepted configuration generation already fixed, named by the closed mismatch_code. None of these values reconciles billing evidence, and content_mismatch in particular is not a measurement dispute.')]
-    status_as_of: Annotated[AwareDatetime, Field(description='When the consumer established this status. For received, this is when the named revision first became consumable to this consumer; sellers use it as buyer-attributed arrival evidence rather than silently substituting publication time.')]
+    status_as_of: Annotated[WireDatetime, Field(description='When the consumer established this status. For received, this is when the named revision first became consumable to this consumer; sellers use it as buyer-attributed arrival evidence rather than silently substituting publication time.')]
     mismatch_code: Annotated[MismatchCode | None, Field(description="Closed reason the consumed revision contradicts the accepted configuration generation. Each value is decidable from the obligation, the pinned report definition, and the revision itself, with no reference to either party's own measurement. scope_media_buy_missing: a media buy frozen in the obligation's media_buy_ids denominator is absent from the revision and is not represented by an explicit zero row, so the revision cannot distinguish zero delivery from an omitted buy. coverage_short: the revision covers fewer packages than the obligation's frozen coverage.covered_package_ids claims. metric_missing: a metric named in the pinned report definition's metrics[].name is absent from the revision. schema_nonconformant: rows do not validate against the reporting profile's pinned schema_uri and schema_sha256. currency_mismatch: a value's unit disagrees with the unit the pinned report definition fixed for that metric, or a control total's unit disagrees with the profile-defined unit for that name. period_mismatch: the revision carries a time dimension declared by the pinned grain whose values fall outside the obligation's half-open period. Precedence when more than one applies: schema_nonconformant is used only when the failure is structural validation against the pinned schema; a metric that is simply absent uses metric_missing even when the pinned schema declares it required. Each names a contract fact already fixed by the accepted generation, never a difference of opinion about counts. Agents dispatch on this value, not on prose."), OmittedNotNull] = None
     failure_code: Annotated[FailureCode | None, Field(description='Typed reason a named revision was unreadable. Agents dispatch on this value, not prose or provider response bodies.'), OmittedNotNull] = None
     consumer_commit_ref: Annotated[ConsumerCommitRef | None, Field(description='Optional opaque, non-secret consumer checkpoint, transaction, or load reference. It is operational evidence, not authorization, a credential, a URL, or instructions; receivers compare or display it as inert text and never dereference or execute it.'), OmittedNotNull] = None
     seller_ledger_snapshot_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Optional seller-issued get_reporting_status snapshot on which this statement was based. It is evidence context, not consumer authority over that snapshot.'), OmittedNotNull] = None
-    seller_ledger_as_of: Annotated[AwareDatetime | None, Field(description='ledger_as_of echoed from seller_ledger_snapshot_id. Present if and only if seller_ledger_snapshot_id is present.'), OmittedNotNull] = None
-    recorded_at: Annotated[AwareDatetime | None, Field(description='When the seller durably recorded this immutable statement.'), OmittedNotNull] = None
+    seller_ledger_as_of: Annotated[WireDatetime | None, Field(description='ledger_as_of echoed from seller_ledger_snapshot_id. Present if and only if seller_ledger_snapshot_id is present.'), OmittedNotNull] = None
+    recorded_at: Annotated[WireDatetime | None, Field(description='When the seller durably recorded this immutable statement.'), OmittedNotNull] = None
 
 
 Period = ObjStartEndSourceTimezone

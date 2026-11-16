@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 from ..enums.feedback_source import FeedbackSource
 from ..enums.metric_type import MetricType
@@ -48,8 +49,8 @@ class PerformanceFeedback(AdCPBaseModel):
     feedback_source: Annotated[FeedbackSource, Field(description='Source of the performance data')]
     vendor: Annotated[BrandReference | None, Field(description="Vendor that produced this feedback. SHOULD be populated when `feedback_source` is `third_party_measurement` or `verification_partner` AND a single attesting vendor exists — without it, the row is unattributed and consumers can't verify authorization, resolve metric definitions, or route disputes. OMIT for blended outputs where no single vendor owns the result: MMM mixes (Nielsen MMM, Analytic Partners, in-house mix models combining multiple vendor inputs), multi-touch attribution outputs that join across vendors, and clean-room outputs (LiveRamp, Habu, AWS Clean Rooms) where the clean room is not the measurement source. For these cases, leave `vendor` absent and use the response's narrative payload to describe provenance. Optional for `buyer_attribution` and `platform_analytics` (those sources are implicit from context). The vendor's `brand.json` `agents[type='measurement']` is the discovery anchor; metric definitions live on the agent's `get_adcp_capabilities.measurement.metrics[]` block. Same identity discipline as `vendor_metric_value.vendor` and `performance-standard.vendor`."), OmittedNotNull] = None
     status: Annotated[Status, Field(description='Processing status of the performance feedback')]
-    submitted_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when feedback was submitted')]
-    applied_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when feedback was applied to optimization algorithms'), OmittedNotNull] = None
+    submitted_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when feedback was submitted')]
+    applied_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when feedback was applied to optimization algorithms'), OmittedNotNull] = None
 
 
 __all__ = ["PerformanceFeedback"]

@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictInt, TypeAdapter
+from pydantic import ConfigDict, Field, StrictInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AssetsItemContent,
     AssetsItemHeadingLevel,
@@ -279,8 +280,8 @@ class Artifact(AdCPBaseModel):
     format_id: Annotated[FormatReferenceStructuredObject | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named-format reference. Use `format_kind` for canonical artifact media classification.'), OmittedNotNull] = None
     format_kind: Annotated[CanonicalFormatKind | None, Field(description='Optional canonical media/creative kind associated with this artifact.'), OmittedNotNull] = None
     url: Annotated[HostedUrl | None, Field(description='Optional URL for this artifact (web page, podcast feed, video page). Not all artifacts have URLs (e.g., Instagram content, podcast segments, TV scenes).'), OmittedNotNull] = None
-    published_time: Annotated[AwareDatetime | None, Field(description='When the artifact was published (ISO 8601 format)'), OmittedNotNull] = None
-    last_update_time: Annotated[AwareDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)'), OmittedNotNull] = None
+    published_time: Annotated[WireDatetime | None, Field(description='When the artifact was published (ISO 8601 format)'), OmittedNotNull] = None
+    last_update_time: Annotated[WireDatetime | None, Field(description='When the artifact was last modified (ISO 8601 format)'), OmittedNotNull] = None
     assets: Annotated[list[AssetsItemText | AssetsItemImage | AssetsItemVideo | AssetsItemAudio], Field(description='Artifact assets in document flow order - text blocks, images, video, audio', max_length=200)]
     metadata: Annotated[Metadata | None, Field(description='Rich metadata extracted from the artifact'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this artifact. Serves as the default provenance for all assets within this artifact — individual assets can override with their own provenance.'), OmittedNotNull] = None

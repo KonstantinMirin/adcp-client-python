@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMinLen1
 
 from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
@@ -66,8 +67,8 @@ class PropertyListApplication(InventoryListApplication):
     effect: Annotated[PropertyListApplicationEffect, Field(description='Whether matching properties were retained as an allowlist or removed as a blocklist.')]
     agent_url: Annotated[HostedUrl, Field(description='Agent URL from the effective property-list targeting reference.')]
     list_id: Annotated[StrMinLen1, Field(description='Identifier from the effective property-list targeting reference.')]
-    resolved_at: Annotated[AwareDatetime, Field(description='Timestamp identifying the complete resolved-list snapshot the seller evaluated. If the list response supplied resolved_at, the seller MUST copy it; otherwise the seller records when it completed assembling the snapshot, including all fetched pages.')]
-    evaluated_at: Annotated[AwareDatetime, Field(description="When the seller intersected that snapshot with this product's then-current inventory.")]
+    resolved_at: Annotated[WireDatetime, Field(description='Timestamp identifying the complete resolved-list snapshot the seller evaluated. If the list response supplied resolved_at, the seller MUST copy it; otherwise the seller records when it completed assembling the snapshot, including all fetched pages.')]
+    evaluated_at: Annotated[WireDatetime, Field(description="When the seller intersected that snapshot with this product's then-current inventory.")]
     summary: Annotated[PropertyListApplicationSummary, Field(description="Partition of every entry in the resolved list snapshot against this product's common pre-list inventory baseline.")]
 
 
@@ -106,8 +107,8 @@ class CollectionListApplication(InventoryListApplication):
     effect: Annotated[CollectionListApplicationEffect, Field(description='Whether matching collections were retained as an allowlist or removed as a blocklist.')]
     agent_url: Annotated[HostedUrl, Field(description='Agent URL from the effective collection-list targeting reference.')]
     list_id: Annotated[StrMinLen1, Field(description='Identifier from the effective collection-list targeting reference.')]
-    resolved_at: Annotated[AwareDatetime, Field(description='Timestamp identifying the complete resolved-list snapshot the seller evaluated. If the list response supplied resolved_at, the seller MUST copy it; otherwise the seller records when it completed assembling the snapshot, including all fetched pages.')]
-    evaluated_at: Annotated[AwareDatetime, Field(description="When the seller intersected that snapshot with this product's then-current inventory.")]
+    resolved_at: Annotated[WireDatetime, Field(description='Timestamp identifying the complete resolved-list snapshot the seller evaluated. If the list response supplied resolved_at, the seller MUST copy it; otherwise the seller records when it completed assembling the snapshot, including all fetched pages.')]
+    evaluated_at: Annotated[WireDatetime, Field(description="When the seller intersected that snapshot with this product's then-current inventory.")]
     summary: Annotated[CollectionListApplicationSummary, Field(description="Partition of every entry in the resolved list snapshot against this product's common pre-list inventory baseline.")]
 
 

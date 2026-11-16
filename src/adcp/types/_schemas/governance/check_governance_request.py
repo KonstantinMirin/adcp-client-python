@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     CheckGovernanceRequestDeliveryMetricsAudienceDistributionCumulativeIndices,
     ConsultationContext,
@@ -85,7 +86,7 @@ class CheckGovernanceRequestDeliveryMetrics(AdCPBaseModel):
     statement_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Stable seller-issued identifier for this immutable delivery statement.'), OmittedNotNull] = None
     statement_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 digest of RFC 8785 JCS over {seller_reference, delivery_metrics}, excluding statement_digest itself. The authenticated submission binds the seller to this digest.'), OmittedNotNull] = None
     sequence: Annotated[IntMin1 | None, Field(description='Monotonically increasing sequence for this governed action. A statement ID or sequence cannot be reused with different content.'), OmittedNotNull] = None
-    issued_at: Annotated[AwareDatetime | None, Field(description='When the seller issued the canonical statement.'), OmittedNotNull] = None
+    issued_at: Annotated[WireDatetime | None, Field(description='When the seller issued the canonical statement.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEnd, Field(description='Start and end timestamps for the reporting window.')]
     spend: Annotated[NonNegativeFloat | None, Field(description='Total spend during the reporting period.'), OmittedNotNull] = None
     cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Total spend since the governed action started.'), OmittedNotNull] = None

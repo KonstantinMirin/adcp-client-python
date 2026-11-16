@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field
+from pydantic import AfterValidator, ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen16
 from adcp.types.envelopes import AdcpResponse
 
@@ -42,7 +43,7 @@ class ProposalsItem(CanonicalProposal):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/properties/proposals/items')
     proposal_status: Annotated[Literal['draft'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
-    expires_at: Annotated[AwareDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
+    expires_at: Annotated[WireDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
 
 
 class IncompleteItem(AdCPBaseModel):
@@ -105,7 +106,7 @@ class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     )
     kind: Literal['legacy_create']
     continuation_token: Annotated[StrMinLen16, Field(description='Opaque, short-lived coordinator token bound to the caller principal, account, and complete observed product/pricing payload. It is not a seller-issued feed fence.')]
-    continuation_expires_at: Annotated[AwareDatetime, Field(description='Absolute expiry of the single-use compatibility continuation.')]
+    continuation_expires_at: Annotated[WireDatetime, Field(description='Absolute expiry of the single-use compatibility continuation.')]
     source_adcp_version: Annotated[SourceAdcpVersion, Field(description='Established AdCP version actually negotiated with the peer. This provenance is required; the coordinator MUST NOT infer stronger guarantees from the label.')]
     product_ids: Annotated[list[StrMinLen1], Field(description='Exact products bound to this continuation. A follow-up MUST select a non-empty subset and MUST NOT substitute an ID from another discovery result.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     losses: Annotated[Annotated[list[LossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Guarantees that the established create_media_buy continuation cannot provide. The coordinator MUST fail before mutation unless the caller explicitly accepts every listed loss.', json_schema_extra={'uniqueItems': True}, min_length=2)]

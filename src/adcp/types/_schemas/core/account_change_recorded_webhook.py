@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -47,11 +48,11 @@ class AccountChangeRecordedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated delivery key stable across retries of one fire. Deliberate re-emission uses a new key.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Logical notification identifier. Always equals change_id; retries and deliberate re-emissions of the same change retain it.')]
     notification_type: Literal['account.change_recorded']
-    fired_at: AwareDatetime
+    fired_at: WireDatetime
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1MaxLen255
     change_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    recorded_at: AwareDatetime
+    recorded_at: WireDatetime
     resource: Annotated[Resource, Field(description='Resource identity copied from the corresponding account change record.')]
     action: StrMinLen1MaxLen100
     through_cursor: Annotated[StrMinLen1MaxLen4096 | None, Field(description='Optional advisory checkpoint at or after this change. It is a drain target, not a cursor the receiver may install without reading every intervening page.'), OmittedNotNull] = None

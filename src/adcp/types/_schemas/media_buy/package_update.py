@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, NotValue, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen500
 
 from ..core.bidding_policy import BiddingPolicy
@@ -44,8 +45,8 @@ class PackageUpdate(AdCPBaseModel):
     bidding: Annotated[BiddingPolicy | None, Field(description='Replace the complete package-authored bidding policy. An object replaces any prior package block and remains a complete override of the media-buy default. `{automatic:true}` explicitly selects provider automatic bidding at package scope. null clears the package-authored block so the package inherits media-buy bidding; if the media-buy block is also absent, provider automatic delivery applies. Monetary fields use the media-buy currency and require the package pricing option to declare that currency. During legacy migration, null MAY accompany bid_price or monetary optimization-goal targets; only a non-null canonical bidding object conflicts with those representations.'), OmittedWhenNone] = None
     impressions: Annotated[NonNegativeFloat | None, Field(description='Updated impression goal for this package'), OmittedNotNull] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Replace this package's hard daily cap; null removes it. Numeric changes apply immediately with current-day package spend counted. A cap below that spend pauses the package for the day; the aggregate cap remains independently binding."), OmittedWhenNone] = None
-    start_time: Annotated[Annotated[AwareDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Updated flight start date/time for this package in ISO 8601 format. Must fall within the media buy's date range."), OmittedNotNull] = None
-    end_time: Annotated[AwareDatetime | None, Field(description="Updated flight end date/time for this package in ISO 8601 format. Must fall within the media buy's date range."), OmittedNotNull] = None
+    start_time: Annotated[Annotated[WireDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Updated flight start date/time for this package in ISO 8601 format. Must fall within the media buy's date range."), OmittedNotNull] = None
+    end_time: Annotated[WireDatetime | None, Field(description="Updated flight end date/time for this package in ISO 8601 format. Must fall within the media buy's date range."), OmittedNotNull] = None
     paused: Annotated[StrictBool | None, Field(description='Pause/resume specific package (true = paused, false = active)'), OmittedNotNull] = None
     canceled: Annotated[Literal[True] | None, Field(description='Cancel this specific package. Cancellation is irreversible — canceled packages stop delivery and cannot be reactivated. When true, package cancellation takes precedence over sibling fields on this package: the seller applies only canceled and cancellation_reason for this package and SHOULD return a structured warning naming ignored sibling fields. Root fields and other package updates still participate in the same atomic update when root canceled is absent. Sellers MAY reject with NOT_CANCELLABLE.'), OmittedNotNull] = None
     cancellation_reason: Annotated[StrMaxLen500 | None, Field(description='Reason for canceling this package.'), OmittedNotNull] = None

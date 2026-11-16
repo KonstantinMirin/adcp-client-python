@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.right_type import RightType
@@ -116,8 +117,8 @@ class RightsConstraint(AdCPBaseModel):
     rights_id: Annotated[str, Field(description='Rights grant identifier from the acquire_rights response')]
     rights_agent: Annotated[RightsAgent, Field(description='The agent that granted these rights')]
     rights_holder: Annotated[BrandReference | None, Field(description='Canonical BrandRef for the rights holder that issued the grant through an authorized rights agent. Required whenever attestation_refs is present. Evaluators first match this exact BrandRef against local issuer policy, then resolve the authoritative brand.json and bind the credential verification key to exactly one matching agents[] entry with type rights. Sibling-brand agents are never authority. Legacy unattested constraints may omit this field but remain machine-unverified.'), OmittedNotNull] = None
-    valid_from: Annotated[AwareDatetime | None, Field(description='Start of the rights validity period'), OmittedNotNull] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='End of the rights validity period. Creative should not be served after this time.'), OmittedNotNull] = None
+    valid_from: Annotated[WireDatetime | None, Field(description='Start of the rights validity period'), OmittedNotNull] = None
+    valid_until: Annotated[WireDatetime | None, Field(description='End of the rights validity period. Creative should not be served after this time.'), OmittedNotNull] = None
     uses: Annotated[list[RightUse], Field(description='Rights uses covered by this constraint', min_length=1)]
     countries: Annotated[list[CountryCode] | None, Field(description='Countries where this creative may be served under these rights (ISO 3166-1 alpha-2). If omitted, no country restriction. When both countries and excluded_countries are present, the effective set is countries minus excluded_countries.'), OmittedNotNull] = None
     excluded_countries: Annotated[list[CountryCode] | None, Field(description='Countries excluded from rights availability (ISO 3166-1 alpha-2). Use when the grant is worldwide except specific markets.'), OmittedNotNull] = None

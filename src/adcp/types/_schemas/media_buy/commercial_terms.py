@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen500
 
 from ..core.bidding_policy import BiddingPolicy
@@ -50,7 +51,7 @@ class CancellationTerms(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/commercial-terms.json', pointer='#/properties/cancellation_terms')
-    effective_at: AwareDatetime
+    effective_at: WireDatetime
     fee: Annotated[Money | None, OmittedNotNull] = None
     reason: Annotated[StrMinLen1MaxLen500 | None, OmittedNotNull] = None
 
@@ -69,7 +70,7 @@ class CommercialTerms(AdCPBaseModel):
     advertiser_industry: Annotated[AdvertiserIndustry | None, OmittedNotNull] = None
     purchases: Annotated[list[PurchasesItem], Field(description='Exact canonical product, pricing, format, catalog, budget, targeting, bidding, optimization, resolved flight, measurement, and performance terms in the commercial envelope.', min_length=1)]
     start_time: StartTiming
-    end_time: AwareDatetime
+    end_time: WireDatetime
     total_budget: Annotated[Money | None, OmittedNotNull] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate daily spend ceiling accepted as part of these terms. It bounds total spend without creating purchase allocations.'), OmittedNotNull] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Hard MediaBuy-level cap accepted as part of these terms. One counter aggregates exposures across every purchase; purchase targeting caps remain independently binding.'), OmittedNotNull] = None

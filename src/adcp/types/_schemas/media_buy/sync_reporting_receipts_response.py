@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrIdempotencyKey
 from adcp.types.envelopes import AdcpResponse
 
@@ -26,7 +27,7 @@ class RecordedReportingReceiptReceipt(ReportingReceipt):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/0/properties/receipt')
-    received_at: AwareDatetime
+    received_at: WireDatetime
 
 
 class RecordedReportingReceipt(AdCPBaseModel):
@@ -58,7 +59,7 @@ class RecordedReportingAdjustmentReceiptAdjustmentReceipt(ReportingAdjustmentRec
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/2/properties/adjustment_receipt')
-    received_at: AwareDatetime
+    received_at: WireDatetime
 
 
 class RecordedReportingAdjustmentReceipt(AdCPBaseModel):

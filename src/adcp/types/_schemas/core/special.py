@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 from ..enums.special_category import SpecialCategory
 
@@ -20,8 +21,8 @@ class Special(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/special.json', pointer='#')
     name: Annotated[str, Field(description="Name of the event (e.g., 'Olympics 2028', 'Super Bowl LXI')")]
     category: Annotated[SpecialCategory | None, Field(description='Category of the event'), OmittedNotNull] = None
-    starts: Annotated[AwareDatetime | None, Field(description='When the event starts (ISO 8601)'), OmittedNotNull] = None
-    ends: Annotated[AwareDatetime | None, Field(description='When the event ends (ISO 8601). Omit for single-day events.'), OmittedNotNull] = None
+    starts: Annotated[WireDatetime | None, Field(description='When the event starts (ISO 8601)'), OmittedNotNull] = None
+    ends: Annotated[WireDatetime | None, Field(description='When the event ends (ISO 8601). Omit for single-day events.'), OmittedNotNull] = None
 
 
 __all__ = ["Special"]

@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -50,10 +51,10 @@ class PrincipalChangedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identifier for this logical principal-state transition. Re-emissions of the same transition reuse this value under a new idempotency_key; a later distinct transition receives a new id.')]
     notification_type: Annotated[Literal['principal.changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`.")]
-    fired_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Distinct from `changed_at`, which is when the seller recorded the state transition.')]
+    fired_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Distinct from `changed_at`, which is when the seller recorded the state transition.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description="Identifies which caller-scoped notification_configs[] entry is receiving this fire. Echoed verbatim from the entry's subscriber_id.")]
     agent_url: Annotated[HostedUrl, Field(description='Canonical seller agent URL whose principal state changed. Receivers connected to multiple agents use this to select which principal record to re-read.')]
-    changed_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller recorded the principal-state transition.')]
+    changed_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller recorded the principal-state transition.')]
     reason: Annotated[Reason, Field(description='Coarse reason for the invalidation. Advisory routing/debug metadata; receivers MUST re-read get_principal rather than inferring the new state from the reason.')]
     destination_id: Annotated[AccountChangeRecordedWebhookSubscriberId | None, Field(description='Optional advisory hint naming the affected reporting destination for destination-scoped reasons. Receivers MAY use it for selective handling but MUST still treat the get_principal read as authoritative.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -40,12 +41,12 @@ class CreativePurgedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identifier for this purge event. Receivers correlate fires by this id; a single creative can only be purged once, so a new id implies a different creative or (rare) a re-emission of the same purge after retention-driven snapshot loss.')]
     notification_type: Annotated[Literal['creative.purged'], Field(description='Fixed notification type discriminator.')]
-    fired_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Sellers MUST fire `creative.purged` immediately after purge — coalescence is not permitted on this notification type.')]
+    fired_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Sellers MUST fire `creative.purged` immediately after purge — coalescence is not permitted on this notification type.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Identifies which `notification_configs[]` entry on the recipient account is receiving this fire.')]
     account_id: Annotated[str, Field(description="Seller's identifier for the account that owned the purged creative.")]
     creative_id: Annotated[str, Field(description="Seller's identifier for the purged creative. After a `soft` purge this id resolves on `list_creatives` (with `include_purged: true`) for the seller's tombstone retention window; after a `hard` purge no record remains.")]
     purge_kind: Annotated[PurgeKind, Field(description="`soft` — tombstone retained on `list_creatives` (with `include_purged: true`) for the seller's retention window (default 30 days, MUST match the `webhook_activity[]` retention rule). `hard` — no tombstone; the seller MUST NOT retain or echo the asset content elsewhere. `hard` is reserved for legal erasure or equivalent compelled destruction; sellers SHOULD default to `soft`.")]
-    purged_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the seller observed the destruction. Distinct from `fired_at`.')]
+    purged_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller observed the destruction. Distinct from `fired_at`.')]
     reason_code: Annotated[CreativeEventReasonCode, Field(description='Categorical reason for the purge. Typical values: `retention_expired`, `legal_erasure`, `takedown_request`. Receivers MUST treat unknown reason codes as forward-compatible additions.')]
     reason_detail: Annotated[StrMaxLen500 | None, Field(description='Human-readable supplement. Sellers MUST NOT include third-party PII or the asset content in this field — the field is meant for operational context, not asset preservation.'), OmittedNotNull] = None
     initiator: Annotated[Initiator, Field(description='Who initiated the purge. `seller` — explicit decision (legal team, content policy, takedown handler). `system` — automated retention sweep, storage policy enforcement. `buyer` never appears on this event — buyer-initiated destruction (if and when supported) is acknowledged on the `sync_creatives` response path.')]

@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat, StrictInt
+from pydantic import ConfigDict, Field, StrictBool, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, SchemaIntegral
 from adcp.types.envelopes import AdcpResponse
 
@@ -90,8 +91,8 @@ class ValidatePropertyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, Ad
     aggregate: Annotated[Aggregate | None, Field(description='Optional aggregate measurements computed by the governance agent. Format and meaning are agent-specific.'), OmittedNotNull] = None
     authorization_summary: Annotated[AuthorizationSummary | None, Field(description='Aggregate authorization statistics. Only present if any records included sales_agent_url.'), OmittedNotNull] = None
     results: Annotated[list[ValidationResult], Field(description='Per-record validation results. By default only includes non_compliant and unknown records. Set include_compliant=true to include all records.')]
-    validated_at: Annotated[AwareDatetime, Field(description='Timestamp when validation was performed')]
-    list_resolved_at: Annotated[AwareDatetime | None, Field(description='Timestamp of the property list resolution used for validation'), OmittedNotNull] = None
+    validated_at: Annotated[WireDatetime, Field(description='Timestamp when validation was performed')]
+    list_resolved_at: Annotated[WireDatetime | None, Field(description='Timestamp of the property list resolution used for validation'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

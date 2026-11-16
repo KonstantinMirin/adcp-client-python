@@ -4,19 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import (
-    AwareDatetime,
-    ConfigDict,
-    Field,
-    NonNegativeFloat,
-    NonNegativeInt,
-    StrictBool,
-    StrictFloat,
-    StrictInt,
-)
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     FloatGt0,
     FloatMin0Max1,
@@ -123,7 +115,7 @@ class EscalationsItem(AdCPBaseModel):
     check_id: Annotated[str, Field(description='The escalated governance check.')]
     reason: Annotated[str, Field(description='Why it was escalated.')]
     resolution: Annotated[str | None, Field(description="How it was resolved (e.g., 'approved_by_human', 'rejected_by_human')."), OmittedNotNull] = None
-    resolved_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 resolution timestamp.'), OmittedNotNull] = None
+    resolved_at: Annotated[WireDatetime | None, Field(description='ISO 8601 resolution timestamp.'), OmittedNotNull] = None
 
 
 class EscalationRateTrend(StrEnum):
@@ -244,7 +236,7 @@ class Delivery(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/get-plan-audit-logs-response.json', pointer='#/properties/plans/items/properties/entries/items/properties/delivery')
     observation_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Stable buyer-issued identifier for this observation.'), OmittedNotNull] = None
     source: Annotated[Source | None, Field(description='Whether the buyer is forwarding the seller statement it received or reporting an independently measured observation. A forwarded seller statement is not independent evidence.'), OmittedNotNull] = None
-    observed_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    observed_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.'), OmittedNotNull] = None
     seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEnd | None, Field(description='Start and end timestamps for the reporting window.'), OmittedNotNull] = None
@@ -314,7 +306,7 @@ class Evidence(AdCPBaseModel):
     evidence_id: str
     evidence_type: EvidenceType
     digest: ZipAssetDigest
-    issued_at: AwareDatetime
+    issued_at: WireDatetime
 
 
 class EntriesItem(AdCPBaseModel):
@@ -333,7 +325,7 @@ class EntriesItem(AdCPBaseModel):
     )
     id: Annotated[str, Field(description='Entry identifier.')]
     type: Annotated[EntriesItemType, Field(description='Entry type.')]
-    timestamp: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp.')]
+    timestamp: Annotated[WireDatetime, Field(description='ISO 8601 timestamp.')]
     plan_id: Annotated[str | None, Field(description='Plan this entry belongs to. Present when querying multiple plans or a portfolio.'), OmittedNotNull] = None
     caller: Annotated[HostedUrl | None, Field(description='URL of the agent that made the request. Resolved from the credentials used on the governance callback.'), OmittedNotNull] = None
     tool: Annotated[str | None, Field(description='The AdCP tool (present for check entries).'), OmittedNotNull] = None
@@ -353,7 +345,7 @@ class EntriesItem(AdCPBaseModel):
     amount: Annotated[Amount | None, Field(description='Adjustment amount and currency (present for adjustment entries).'), OmittedNotNull] = None
     headroom_restored: Annotated[NonNegativeFloat | None, Field(description='Current-obligation headroom restored by this adjustment. Zero for audit-only types.'), OmittedNotNull] = None
     reason: Annotated[str | None, Field(description='Seller-supplied adjustment reason.'), OmittedNotNull] = None
-    effective_at: Annotated[AwareDatetime | None, Field(description="When the seller's adjustment became effective."), OmittedNotNull] = None
+    effective_at: Annotated[WireDatetime | None, Field(description="When the seller's adjustment became effective."), OmittedNotNull] = None
     committed_budget: Annotated[StrictFloat | None, Field(description='Governance-authorized budget reserved (present for completed outcome entries).'), OmittedNotNull] = None
     reported_committed_budget: Annotated[NonNegativeFloat | None, Field(description='Caller-reported seller amount retained for reconciliation. Never ledger authority.'), OmittedNotNull] = None
     seller_reference: Annotated[str | None, Field(description='Seller resource identifier retained on an outcome entry.'), OmittedNotNull] = None
@@ -370,7 +362,7 @@ class EntriesItem(AdCPBaseModel):
     verified_amount: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     evidence: Annotated[Evidence | None, OmittedNotNull] = None
     reviewed_by: Annotated[HostedUrl | None, OmittedNotNull] = None
-    reviewed_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    reviewed_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     review_reason: Annotated[str | None, OmittedNotNull] = None
 
 

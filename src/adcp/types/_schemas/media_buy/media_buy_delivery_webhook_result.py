@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, StrMaxLen50, StrMinLen1
 
 from ..core.attribution_window import AttributionWindow
@@ -44,8 +45,8 @@ class ObjStartEndTimezone(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-delivery-webhook-result.json', pointer='#/properties/reporting_period')
-    start: AwareDatetime
-    end: AwareDatetime
+    start: WireDatetime
+    end: WireDatetime
     timezone: Annotated[StrMinLen1 | None, Field(description="Reporting timezone applied to this report, as 'UTC' or an IANA timezone identifier. Same meaning as get_media_buy_delivery reporting_period.timezone. Sellers SHOULD return it whenever every reported media buy shares one reporting timezone."), OmittedNotNull] = None
 
 
@@ -102,7 +103,7 @@ class ByPackageItem(DeliveryMetrics):
     delivery_status: Annotated[DeliveryStatus | None, Field(description="System-reported operational state of this package. Reflects actual delivery state independent of buyer pause control. 'not_delivering' means zero impressions were recorded for the entire reporting_period while the package was in-flight. Sellers SHOULD only report 'not_delivering' once the package's data is_final for the period — a provisional (is_final: false) zero may still be measurement catching up, not genuine non-delivery."), OmittedNotNull] = None
     paused: Annotated[StrictBool | None, OmittedNotNull] = None
     is_final: Annotated[StrictBool | None, OmittedNotNull] = None
-    finalized_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    finalized_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     measurement_window: Annotated[StrMaxLen50 | None, OmittedNotNull] = None
     supersedes_window: Annotated[StrMaxLen50 | None, OmittedNotNull] = None
     metric_values: Annotated[list[PackageDeliveryMetricValue] | None, Field(description='Qualified standard delivery values for this package. Each entry is the delivered counterpart to a standard-scope package.committed_metrics or by_package[].missing_metrics row, using the same atomic key (scope, metric_id, qualifier). Sellers report one row per full qualifier set at package grain; when a metric appears here, its flat scalar counterpart on the package MUST be omitted to avoid two sources of truth. Vendor-scope values continue to use vendor_metric_values. Buyers reconcile rows directly and perform any compatible cross-package aggregation themselves.'), OmittedNotNull] = None
@@ -120,10 +121,10 @@ class MediaBuyDeliveriesItem(AdCPBaseModel):
     media_buy_id: Annotated[str, Field(description="Seller's media buy identifier.")]
     currency: Annotated[CurrencyCode | None, Field(description="ISO 4217 denomination for monetary values in this media-buy delivery row, including totals, package spend, and currency-denominated package rates. Sellers SHOULD populate this field whenever all monetary values in the row share one currency. For AdCP-authored buys it MUST equal the media-buy currency, and every by_package[].currency MUST equal it. For a legacy or externally created mixed-currency buy, omit this field and all monetary or money-derived values from row totals; report those values only at package level with each package's own currency. AdCP does not perform currency conversion."), OmittedNotNull] = None
     status: Annotated[Status, Field(description="Current media buy lifecycle or reporting status. This is distinct from the webhook envelope's top-level task status.")]
-    expected_availability: Annotated[AwareDatetime | None, Field(description='When delayed data is expected to be available. Present when status is reporting_delayed.'), OmittedNotNull] = None
+    expected_availability: Annotated[WireDatetime | None, Field(description='When delayed data is expected to be available. Present when status is reporting_delayed.'), OmittedNotNull] = None
     is_adjusted: Annotated[StrictBool | None, Field(description='Indicates this row contains updated data for a previously reported period.'), OmittedNotNull] = None
     is_final: Annotated[StrictBool | None, Field(description="Whether this row's delivery data is final for the reporting period."), OmittedNotNull] = None
-    finalized_at: Annotated[AwareDatetime | None, Field(description='Timestamp when this row became final. Present only when is_final is true.'), OmittedNotNull] = None
+    finalized_at: Annotated[WireDatetime | None, Field(description='Timestamp when this row became final. Present only when is_final is true.'), OmittedNotNull] = None
     pricing_model: Annotated[PricingModel | None, OmittedNotNull] = None
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan. Authoritative for seller-optimized buys.'), OmittedNotNull] = None
     totals: Totals
@@ -145,7 +146,7 @@ class MediaBuyDeliveryWebhookResult(AdCPBaseModel):
     partial_data: Annotated[StrictBool | None, Field(description='Indicates if any media buys in this webhook have missing or delayed data.'), OmittedNotNull] = None
     unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status when partial_data is true.'), OmittedNotNull] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number for this reporting webhook stream.'), OmittedNotNull] = None
-    next_expected_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for the next expected notification. Omitted on final notifications.'), OmittedNotNull] = None
+    next_expected_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp for the next expected notification. Omitted on final notifications.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEndTimezone, Field(description="Period covered by the delivery report. start and end are instants on the reporting timezone's period boundaries (the products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC.")]
     currency: Annotated[CurrencyCode | None, Field(deprecated=True, description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. Optional legacy report-wide ISO 4217 currency code. It may be used only when every monetary value in the report has that denomination. A report can contain media buys with different currencies, so buyers MUST NOT interpret this field as an aggregation currency or evidence of currency conversion. Prefer media_buy_deliveries[].currency when present and package-level currency otherwise.'), OmittedNotNull] = None
     attribution_window: Annotated[AttributionWindow | None, Field(description='Attribution methodology and lookback windows used for conversion metrics in this report.'), OmittedNotNull] = None

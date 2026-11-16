@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictFloat
+from pydantic import ConfigDict, Field, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl
 
 from ..enums.restricted_attribute import RestrictedAttribute
@@ -51,7 +52,7 @@ class SignalListing(AdCPBaseModel):
     name: Annotated[str | None, Field(description="Human-readable signal name. Required when signal_ref.scope is 'product'. For data_provider and signal_source refs, this is optional contextual display text; the referenced definition or source remains authoritative."), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Detailed signal description. For data_provider and signal_source refs, this is optional contextual display text and MUST NOT replace the referenced definition.'), OmittedNotNull] = None
     methodology_url: Annotated[HostedUrl | None, Field(description='Optional link to published methodology, media-kit, or data documentation. For data_provider and signal_source refs, this SHOULD match or supplement the referenced definition.'), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='When this listing record was last updated. This indicates freshness of the listing record, not an attestation that the underlying data or model was refreshed at that time.'), OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, Field(description='When this listing record was last updated. This indicates freshness of the listing record, not an attestation that the underlying data or model was refreshed at that time.'), OmittedNotNull] = None
     value_type: Annotated[SignalValueType | None, Field(description="The data type of this signal's values. Required when signal_ref.scope is 'product'."), OmittedNotNull] = None
     categories: Annotated[list[str] | None, Field(description="Valid values for categorical signals. Present when value_type is 'categorical'.", min_length=1), OmittedNotNull] = None
     range: Annotated[ObjMinMax | None, Field(description="Valid range for numeric signals. Present when value_type is 'numeric'."), OmittedNotNull] = None

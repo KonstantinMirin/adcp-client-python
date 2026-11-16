@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -37,7 +38,7 @@ class ReportingDeliveryReadyWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Stable across transport retries of this fire; new for a later re-emission.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable for this logical materialization-ready event across re-emissions.')]
     notification_type: Literal['reporting.delivery_ready']
-    fired_at: AwareDatetime
+    fired_at: WireDatetime
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1
     delivery_config_id: AccountChangeRecordedWebhookSubscriberId
@@ -46,7 +47,7 @@ class ReportingDeliveryReadyWebhook(AdCPBaseModel):
     reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     readiness: Readiness
     finality: ReportingFinality
-    data_through: AwareDatetime | None
+    data_through: WireDatetime | None
     feed_purpose: ReportingFeedPurpose
 
 

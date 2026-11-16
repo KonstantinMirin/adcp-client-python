@@ -489,6 +489,13 @@ def selected() -> tuple[ReportingObligation, ReportingRevision]:
             "schedule": {
                 "period_duration": "P1M",
                 "alignment": "billing_cycle",
+                # `core/reporting-schedule.json` states
+                #   if   alignment == "billing_cycle"
+                #   then required: ["period_anchor", "period_timezone"]
+                # so this alignment carries both.  Neither is in the node's own root
+                # `required`, which is why reading one node does not show it.
+                "period_anchor": "2026-09-01T00:00:00Z",
+                "period_timezone": "UTC",
                 "delivery_sla": "P1D",
             },
             "destination_ref": "destination-1",

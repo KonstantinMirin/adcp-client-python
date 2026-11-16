@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId, Token
 
 from ..enums.adcp_protocol import AdCPProtocol
@@ -33,7 +34,7 @@ class MCPWebhookPayload(AdCPBaseModel):
     task_type: Annotated[TaskType, Field(description='Type of AdCP operation that triggered this webhook. Enables webhook handlers to route to appropriate processing logic.')]
     protocol: Annotated[AdCPProtocol | None, Field(description='AdCP protocol this task belongs to. Helps classify the operation type at a high level.'), OmittedNotNull] = None
     status: Annotated[TaskStatus, Field(description='Current task status. Webhooks are triggered for status changes after initial submission.')]
-    timestamp: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when this logical webhook delivery was first generated. Every retry under the same idempotency_key MUST repeat this exact body value, along with every other payload member; only transport/signature metadata such as a fresh RFC 9421 nonce or created parameter may change between attempts.')]
+    timestamp: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when this logical webhook delivery was first generated. Every retry under the same idempotency_key MUST repeat this exact body value, along with every other payload member; only transport/signature metadata such as a fresh RFC 9421 nonce or created parameter may change between attempts.')]
     message: Annotated[str | None, Field(description='Human-readable summary of the current task state. Provides context about what happened and what action may be needed.'), OmittedNotNull] = None
     context_id: Annotated[str | None, Field(description='Compatibility metadata copied from the originating response when present. This value alone is not continuation authority and MUST NOT be used to resume input-required or auth-required work or to select session state.'), OmittedNotNull] = None
     token: Annotated[Token | None, Field(description='Authentication token echoed verbatim from [`PushNotificationConfig.token`](/schemas/core/push-notification-config.json). Receivers that configured a token MUST compare it to this value to validate request authenticity, and SHOULD use a constant-time equality check to mitigate timing attacks. Absent when no token was configured at registration. Length bounds mirror the config-side field — receivers MAY reject payloads whose token length falls outside the configured range as a defensive check, provided the length check is performed only after the configured token is known to exist for this subscription, and the length comparison is not used as a fast-path to short-circuit the constant-time compare on equal-length inputs. Receivers MUST NOT treat absence as an authenticity failure when no token was configured.'), OmittedNotNull] = None

@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, NotValue, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen100, StrMaxLen500
 
 from ..enums.canceled_by import CanceledBy
@@ -48,10 +49,10 @@ class Cancellation(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package.json', pointer='#/properties/cancellation')
-    canceled_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when this package was canceled.')]
+    canceled_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when this package was canceled.')]
     canceled_by: Annotated[CanceledBy, Field(description='Which party initiated the package cancellation.')]
     reason: Annotated[StrMaxLen500 | None, Field(description='Reason the package was canceled.'), OmittedNotNull] = None
-    acknowledged_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller acknowledged the cancellation. Confirms inventory has been released and billing stopped. Absent until the seller processes the cancellation.'), OmittedNotNull] = None
+    acknowledged_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when the seller acknowledged the cancellation. Confirms inventory has been released and billing stopped. Absent until the seller processes the cancellation.'), OmittedNotNull] = None
 
 
 class Package(AdCPBaseModel):
@@ -98,13 +99,13 @@ class Package(AdCPBaseModel):
     format_ids_to_provide: Annotated[list[FormatReferenceStructuredObject] | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named-format projection of formats_to_provide retained for older 3.x peers. New sellers emit canonical formats_to_provide declarations.'), OmittedNotNull] = None
     format_ids_pending: Annotated[list[FormatReferenceStructuredObject] | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named-format projection of formats_pending retained for older 3.x peers. New sellers emit canonical formats_pending declarations. An empty emitted array means every projected requirement is covered. Absence means legacy readiness was not reported and MUST NOT be interpreted as full coverage.'), OmittedNotNull] = None
     optimization_goals: Annotated[list[OptimizationGoal] | None, Field(description='Optimization targets for this package. The seller optimizes delivery toward these goals in priority order. Common pattern: event goals (purchase, install) as primary targets at priority 1; metric goals (clicks, views) as secondary proxy signals at priority 2+.', min_length=1), OmittedNotNull] = None
-    start_time: Annotated[Annotated[AwareDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Flight start date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's start_time. Sellers SHOULD always include the resolved value in responses, even when inherited."), OmittedNotNull] = None
-    end_time: Annotated[AwareDatetime | None, Field(description="Flight end date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's end_time. Sellers SHOULD always include the resolved value in responses, even when inherited."), OmittedNotNull] = None
+    start_time: Annotated[Annotated[WireDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Flight start date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's start_time. Sellers SHOULD always include the resolved value in responses, even when inherited."), OmittedNotNull] = None
+    end_time: Annotated[WireDatetime | None, Field(description="Flight end date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's end_time. Sellers SHOULD always include the resolved value in responses, even when inherited."), OmittedNotNull] = None
     paused: Annotated[StrictBool | None, Field(description='Whether this package is paused by the buyer. Paused packages do not deliver impressions. Defaults to false.'), OmittedNotNull] = False
     canceled: Annotated[StrictBool | None, Field(description='Whether this package has been canceled. Canceled packages stop delivery and cannot be reactivated. Defaults to false.'), OmittedNotNull] = False
     cancellation: Annotated[Cancellation | None, Field(description='Cancellation metadata. Present only when canceled is true.'), OmittedNotNull] = None
     agency_estimate_number: Annotated[StrMaxLen100 | None, Field(description="Agency estimate or authorization number for this package. Echoed from the buyer's request. When present on the package, takes precedence over the media buy-level estimate number."), OmittedNotNull] = None
-    creative_deadline: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp for creative upload or change deadline for this package. After this deadline, creative changes are rejected. When absent, the media buy's creative_deadline applies."), OmittedNotNull] = None
+    creative_deadline: Annotated[WireDatetime | None, Field(description="ISO 8601 timestamp for creative upload or change deadline for this package. After this deadline, creative changes are rejected. When absent, the media buy's creative_deadline applies."), OmittedNotNull] = None
     context: Annotated[ContextObject | None, Field(description='Opaque package-level correlation data echoed unchanged in responses, webhooks, and read surfaces. Buyers targeting mixed seller populations SHOULD include a per-package correlation value here, commonly context.buyer_ref, so responses from legacy sellers that do not echo product_id can still be mapped back to the requested product or line item. Sellers MUST preserve this object unchanged and MUST NOT parse it for business logic.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

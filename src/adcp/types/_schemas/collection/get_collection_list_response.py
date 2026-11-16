@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.content_rating import ContentRating
@@ -47,8 +48,8 @@ class GetCollectionListResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRespo
     list: Annotated[CollectionList, Field(description='The collection list metadata (always returned)')]
     collections: Annotated[list[CollectionsItem] | None, Field(description='Resolved collections that passed filters (if resolve=true). Each entry contains identification and key metadata for seller matching.'), OmittedNotNull] = None
     pagination: Annotated[PaginationResponse | None, OmittedNotNull] = None
-    resolved_at: Annotated[AwareDatetime | None, Field(description='When the list was resolved'), OmittedNotNull] = None
-    cache_valid_until: Annotated[AwareDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated collections.'), OmittedNotNull] = None
+    resolved_at: Annotated[WireDatetime | None, Field(description='When the list was resolved'), OmittedNotNull] = None
+    cache_valid_until: Annotated[WireDatetime | None, Field(description='Cache expiration timestamp. Re-fetch the list after this time to get updated collections.'), OmittedNotNull] = None
     coverage_gaps: Annotated[dict[str, list[IdentifiersItem]] | None, Field(description="Collections included in the list despite missing metadata for a filtered dimension. Maps dimension name (e.g., 'genre', 'content_rating') to arrays of distribution identifiers for collections not covered. Only present when filters are applied and some collections lack the filtered metadata."), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

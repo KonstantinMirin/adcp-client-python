@@ -5,10 +5,11 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     FloatMin0Max100,
@@ -183,7 +184,7 @@ class Params(AdCPBaseModel):
     catalog_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Catalog operated on by catalog_item_availability_probe.'), OmittedNotNull] = None
     catalog_generation: Annotated[StrMinLen1MaxLen255 | None, Field(description='Catalog incarnation operated on by catalog_item_availability_probe.'), OmittedNotNull] = None
     item_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Catalog item operated on by catalog_item_availability_probe.'), OmittedNotNull] = None
-    target_time: Annotated[AwareDatetime | None, Field(description='Deterministic sandbox clock target used by catalog_item_availability_probe advance_time.'), OmittedNotNull] = None
+    target_time: Annotated[WireDatetime | None, Field(description='Deterministic sandbox clock target used by catalog_item_availability_probe advance_time.'), OmittedNotNull] = None
     status: Annotated[str | None, Field(description="Target status for the resource. Type depends on scenario: creative-status for force_creative_status, account-status for force_account_status, media-buy-status for force_media_buy_status. For force_session_status, must be 'complete' or 'terminated'."), OmittedNotNull] = None
     rejection_reason: Annotated[str | None, Field(description='Reason for rejection. Used by force_creative_status and force_media_buy_status when status = rejected.'), OmittedNotNull] = None
     purge_kind: Annotated[PurgeKind | None, Field(description='Purge mode for force_creative_purge. soft retains a list_creatives tombstone; hard removes the creative entirely.'), OmittedNotNull] = None

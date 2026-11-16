@@ -4,10 +4,11 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max1, GeoForecastDimensionCode, IntMin1
 
 from ..enums.audio_distribution_type import AudioDistributionType
@@ -45,8 +46,8 @@ class AvailabilityHorizon(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/availability_horizon')
-    start_time: Annotated[AwareDatetime, Field(description='Inclusive horizon start (RFC 3339 date-time with timezone offset).')]
-    end_time: Annotated[AwareDatetime, Field(description='Exclusive horizon end (RFC 3339 date-time with timezone offset). MUST be after start_time.')]
+    start_time: Annotated[WireDatetime, Field(description='Inclusive horizon start (RFC 3339 date-time with timezone offset).')]
+    end_time: Annotated[WireDatetime, Field(description='Exclusive horizon end (RFC 3339 date-time with timezone offset). MUST be after start_time.')]
 
 
 class RequiredFeatures(CanonicalMediaBuyFeatures):

@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
@@ -122,7 +123,7 @@ class AudienceEvidence(AdCPBaseModel):
     measurement_window: DateRange
     sample_size: Annotated[IntMin1 | None, Field(description='Number of observations or respondents underlying the estimate, when applicable.'), OmittedNotNull] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description="Provider-defined confidence score in [0,1]. Consumers MUST compare scores only when the provider's methodology makes them comparable."), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime, Field(description='When the provider last produced or refreshed this immutable snapshot.')]
+    last_updated: Annotated[WireDatetime, Field(description='When the provider last produced or refreshed this immutable snapshot.')]
     methodology_url: Annotated[HTTPSURL | None, Field(description='Documentation for interpreting the methodology. It is disclosure, not executable routing.'), OmittedNotNull] = None
     attestation_refs: Annotated[list[AttestationRefsItem] | None, Field(description="Optional portable attestations about this exact evidence snapshot. Each subject MUST be resource type https://adcontextprotocol.org/claims/subjects/audience-evidence, subject.id MUST equal snapshot_id, and subject.content_digest MUST equal this evidence object's content_digest. Buyer references do not override evaluator issuer or resolver policy.", max_length=10, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

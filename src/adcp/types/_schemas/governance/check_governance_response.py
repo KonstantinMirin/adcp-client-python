@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     ConsultationContext,
     FloatMin0Max1,
@@ -88,7 +89,7 @@ class DeliveryStatement(AdCPBaseModel):
     statement_id: str
     statement_digest: ZipAssetDigest
     sequence: IntMin1
-    issued_at: AwareDatetime
+    issued_at: WireDatetime
     seller_reference: str
     reporting_period: ObjStartEnd
     cumulative_spend: NonNegativeFloat
@@ -145,8 +146,8 @@ class CheckGovernanceResponse(AdCPVersionEnvelope, AdcpResponse):
     findings: Annotated[list[FindingsItem] | None, Field(description="Specific issues found during the governance check. Present when verdict is 'denied' or 'conditions'. MAY also be present on 'approved' for informational findings (e.g., budget approaching limit)."), OmittedNotNull] = None
     conditions: Annotated[list[ConditionsItem] | None, Field(description="Intent-phase counterproposal. Present only when verdict is 'conditions'. It does not authorize execution and MUST NOT be returned for execution or lifecycle checks. Each field path is rooted at the complete check_governance request arguments, so both payload.* and proposed_commitment.* can be addressed. After applying conditions, the caller MUST re-call check_governance with the adjusted parameters and receive approved before proceeding."), OmittedNotNull] = None
     consultation_context: Annotated[ConsultationContext | None, Field(description='Opaque negotiation handle present only with modern conditions responses. It carries no authorization and MUST NOT be sent to a downstream service. The governance agent MUST bind it server-side to the authenticated principal, caller, plan, tool, purchase type, and target audience, and reject a re-check if any binding changes. The buyer returns it only on the adjusted intent re-check.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description="When this approval expires. In the cross-role shape, present only when verdict is 'approved'. Deprecated legacy conditions responses may also carry it for 3.x compatibility. The caller must act before this time or re-call check_governance. A lapsed approval is no approval."), OmittedNotNull] = None
-    next_check: Annotated[AwareDatetime | None, Field(description='When the seller should next call check_governance with delivery metrics. Present when the governance agent expects ongoing delivery reporting.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description="When this approval expires. In the cross-role shape, present only when verdict is 'approved'. Deprecated legacy conditions responses may also carry it for 3.x compatibility. The caller must act before this time or re-call check_governance. A lapsed approval is no approval."), OmittedNotNull] = None
+    next_check: Annotated[WireDatetime | None, Field(description='When the seller should next call check_governance with delivery metrics. Present when the governance agent expects ongoing delivery reporting.'), OmittedNotNull] = None
     delivery_statement: Annotated[DeliveryStatement | None, Field(description='Canonical seller-attributed delivery statement retained by governance. Present on delivery execution checks. The buyer binds any later observation to this exact statement through report_plan_outcome.'), OmittedNotNull] = None
     categories_evaluated: Annotated[list[str] | None, Field(description="Governance categories evaluated during this check. Each value is an **agent-internal** label (e.g., `budget_authority`, `regulatory_compliance`, or any internal-reviewer key the agent's policy model defines) — not a protocol-level enum. Since one governance agent per account composes all specialist review behind its single endpoint, `categories_evaluated` is how that internal decomposition surfaces to auditors. Consumers MUST treat values as opaque labels for display and audit, not as a machine-level contract."), OmittedNotNull] = None
     policies_evaluated: Annotated[list[str] | None, Field(description="Policy IDs evaluated during this check. Includes registry policy IDs (resolved via the policy registry) and any inline `policy_id`s declared in the plan's `custom_policies`."), OmittedNotNull] = None

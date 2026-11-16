@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import (
@@ -16,6 +16,7 @@ from adcp.types._runtime import (
     Rule,
     UniqueItems,
 )
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     CanonicalProductCatalogMatchMatchedGtinsItem,
     FloatGt0,
@@ -342,7 +343,7 @@ class Product(AdCPBaseModel):
     conversion_tracking: Annotated[ConversionTracking | None, Field(description="Conversion event tracking for this product. Presence indicates the product supports optimization_goals with kind: 'event'. Seller-level capabilities (supported event types, UID types, attribution windows) are declared in get_adcp_capabilities."), OmittedNotNull] = None
     catalog_match: Annotated[CatalogMatch | None, Field(description='When the buyer provides a catalog on get_products, indicates which catalog items are eligible for this product. Only present for products where catalog matching is relevant (e.g., sponsored product listings, job boards, hotel ads).'), OmittedNotNull] = None
     brief_relevance: Annotated[str | None, Field(description='Explanation of why this product matches the brief (only included when brief is provided)'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='Expiration timestamp. Required for request-specific configured products whose targeting resolution, price, forecast, inventory, or terms are time-bound. After this time, a seller that still recognizes the issued configured ID within the authenticated account and referenced discovery/refinement lineage rejects create_media_buy with PRODUCT_EXPIRED and the buyer re-runs get_products. Once the seller no longer retains an expiry tombstone, or whenever the ID belongs to another account or lineage, PRODUCT_NOT_FOUND applies instead; sellers are not required to retain tombstones indefinitely and MUST NOT disclose cross-tenant existence through error choice.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='Expiration timestamp. Required for request-specific configured products whose targeting resolution, price, forecast, inventory, or terms are time-bound. After this time, a seller that still recognizes the issued configured ID within the authenticated account and referenced discovery/refinement lineage rejects create_media_buy with PRODUCT_EXPIRED and the buyer re-runs get_products. Once the seller no longer retains an expiry tombstone, or whenever the ID belongs to another account or lineage, PRODUCT_NOT_FOUND applies instead; sellers are not required to retain tombstones indefinitely and MUST NOT disclose cross-tenant existence through error choice.'), OmittedNotNull] = None
     product_card: Annotated[ProductCard | None, Field(description='Optional standard visual card for displaying this product in user interfaces (catalog browsers, dashboards, agent UIs). Distinct from `format` — product_card describes the UI rendering of the product itself, not the ad creative the product accepts. Typed inline; no format_id indirection. Receivers render the card directly from these fields.'), OmittedNotNull] = None
     product_card_detailed: Annotated[ProductCardDetailed | None, Field(description='Optional detailed card with hero + carousel + structured specifications, for rich product presentation (media-kit-style pages, full product detail views). Distinct from `format` — describes the UI rendering of the product itself, not the ad creative the product accepts. Typed inline; no format_id indirection.'), OmittedNotNull] = None
     collections: Annotated[list[CollectionsItem] | None, Field(description='Collections available in this product. Each entry references collections declared in an adagents.json by domain and collection ID. Buyers resolve full collection objects from the referenced adagents.json. Product selectors must name explicit collection_ids — the domain-only bulk-grant selector form is for authorization scoping, not product composition.', min_length=1), OmittedNotNull] = None

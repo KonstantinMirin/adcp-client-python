@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -51,7 +52,7 @@ class Transition(AdCPBaseModel):
     )
     from_: Annotated[From, Field(alias='from', description='Prior status — restricted to the states from which a seller/system-initiated transition can fire. For initial review outcomes the prior status is `pending_review`; for processing outcomes it is `processing`; for seller re-review, post-approval revocation, recoverable suspension, and seller-initiated archive it is `approved`; for recovery from a dependency/authorization outage or terminal escalation after a suspension it is `suspended`.')]
     to: Annotated[CreativeStatus, Field(description='New status.')]
-    observed_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when the seller observed the transition. Distinct from `fired_at` — `fired_at` reflects when the webhook was emitted, which may lag `observed_at` by up to the seller's coalescence window. **Ordering with `media-buy.impairment`:** when a creative transition also causes a media-buy impairment (e.g., `approved → suspended` or `approved → rejected` while assignments exist), the `creative.status_changed` and `impairment` fires are not ordered — buyers MUST NOT assume one arrives before the other. Reconcile via the snapshot (`list_creatives` and `get_media_buys`) when the two fires reference the same `creative_id`.")]
+    observed_at: Annotated[WireDatetime, Field(description="ISO 8601 timestamp when the seller observed the transition. Distinct from `fired_at` — `fired_at` reflects when the webhook was emitted, which may lag `observed_at` by up to the seller's coalescence window. **Ordering with `media-buy.impairment`:** when a creative transition also causes a media-buy impairment (e.g., `approved → suspended` or `approved → rejected` while assignments exist), the `creative.status_changed` and `impairment` fires are not ordered — buyers MUST NOT assume one arrives before the other. Reconcile via the snapshot (`list_creatives` and `get_media_buys`) when the two fires reference the same `creative_id`.")]
 
 
 class CreativeStatusChangedWebhook(AdCPBaseModel):
@@ -71,7 +72,7 @@ class CreativeStatusChangedWebhook(AdCPBaseModel):
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity. Distinct from `notification_id` — same `notification_id` under two different `idempotency_key` values is a re-emission signal (snapshot-and-log Rule 1).')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description="Stable identifier for this logical transition event, used by buyers to correlate fires to current snapshot state. Stable across re-emissions of the same transition (e.g., the seller re-fires after the buyer's endpoint was unreachable); a fresh transition on the same creative receives a new id. Charset matches `idempotency_key` so the value is safe to log, embed in dashboard URLs, and pass into LLM prompts without escaping.")]
     notification_type: Annotated[Literal['creative.status_changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`.")]
-    fired_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when the seller initiated this fire. Distinct from when the transition was observed (`transition.observed_at`) — fires MAY be coalesced or delayed up to the seller's declared coalescence window for `creative.status_changed`.")]
+    fired_at: Annotated[WireDatetime, Field(description="ISO 8601 timestamp when the seller initiated this fire. Distinct from when the transition was observed (`transition.observed_at`) — fires MAY be coalesced or delayed up to the seller's declared coalescence window for `creative.status_changed`.")]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description="Identifies which `notification_configs[]` entry on the recipient account is receiving this fire. Echoed verbatim from the entry's `subscriber_id`. Required so multi-subscriber accounts can route by endpoint.")]
     account_id: Annotated[str, Field(description="Seller's identifier for the account this creative belongs to. Echoed so multi-account buyers can route without re-resolving via `list_accounts`.")]
     creative_id: Annotated[str, Field(description="Seller's identifier for the creative whose status changed. References the same id space as `list_creatives` / `sync_creatives` responses.")]

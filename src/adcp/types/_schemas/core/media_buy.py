@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
     IntMin1,
@@ -39,7 +40,7 @@ class ObjCanceledAtCanceledByReason(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/media-buy.json', pointer='#/properties/cancellation')
-    canceled_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when this media buy was canceled.')]
+    canceled_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when this media buy was canceled.')]
     canceled_by: Annotated[CanceledBy, Field(description="Which party initiated the cancellation. 'buyer' when canceled through control_media_buy or the 3.x update_media_buy facade; 'seller' when the seller cancels (e.g., policy violation, inventory withdrawal).")]
     reason: Annotated[StrMaxLen500 | None, Field(description='Reason provided when the media buy was canceled.'), OmittedNotNull] = None
 
@@ -78,7 +79,7 @@ class MediaBuy(AdCPBaseModel):
     health: Annotated[MediaBuyHealth | None, Field(description="Aggregate health based on open impairments[]. Orthogonal to status — a paused, pending, or active buy can each be impaired. Defaults to 'ok' when impairments[] is empty.", json_schema_extra={'default': 'ok'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(MediaBuyHealth).validate_python('ok'))
     impairments: Annotated[list[Impairment] | None, Field(description="Open impairments — upstream dependency state changes that affect delivery for at least one package on this buy. Empty when health is 'ok'. Sellers MUST add an entry on next sync/poll response after a referenced resource transitions to an offline state, and MUST remove the entry (flipping health to 'ok' when the array empties) when the resource returns to a serviceable state. Staleness budget: the snapshot MUST reflect the impairment within 5 minutes of impairment.observed_at regardless of buyer poll cadence — sellers cannot rely on rare buyer polls to defer write propagation. See impairment.coherence assertion for the cross-resource invariant."), OmittedNotNull] = None
     rejection_reason: Annotated[str | None, Field(description="Reason provided by the seller when status is 'rejected'. Present only when status is 'rejected'."), OmittedNotNull] = None
-    confirmed_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller committed to this media buy. May be null until seller commitment occurs in deferred/manual approval flows. Once populated, remains stable through later pause, resume, activation, completion, cancellation, and reporting transitions.')]
+    confirmed_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when the seller committed to this media buy. May be null until seller commitment occurs in deferred/manual approval flows. Once populated, remains stable through later pause, resume, activation, completion, cancellation, and reporting transitions.')]
     cancellation: Annotated[ObjCanceledAtCanceledByReason | None, Field(description="Cancellation metadata. Present only when status is 'canceled'."), OmittedNotNull] = None
     total_budget: Annotated[NonNegativeFloat, Field(description='Hard aggregate lifetime budget amount')]
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Current hard aggregate spend ceiling per calendar day. Sellers MUST echo this whenever an aggregate daily cap is set. It bounds total media-buy spend without allocating or reserving spend for packages.'), OmittedNotNull] = None
@@ -91,10 +92,10 @@ class MediaBuy(AdCPBaseModel):
     packages: Annotated[list[Package], Field(description='Array of packages within this media buy')]
     context: Annotated[ContextObject | None, Field(description='Opaque media-buy-level correlation data echoed unchanged from the create_media_buy request. Sellers MUST include persisted context on read surfaces such as get_media_buys when the media buy was created through AdCP with context, so buyers can reconcile seller-assigned media_buy_id values with their own tracking state. Sellers MAY omit context for media buys created outside AdCP or created without context. Sellers MUST NOT parse this object for business logic.'), OmittedNotNull] = None
     invoice_recipient: Annotated[BusinessEntity | None, Field(description="Per-buy override for who receives the invoice. When provided, the seller invoices this entity instead of the account's default billing_entity. The seller MUST validate the invoice recipient is authorized for this account. When governance_agents are configured, the seller MUST include invoice_recipient in the check_governance request."), OmittedNotNull] = None
-    creative_deadline: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp for creative upload deadline'), OmittedNotNull] = None
+    creative_deadline: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp for creative upload deadline'), OmittedNotNull] = None
     revision: Annotated[IntMin1, Field(description='Monotonically increasing optimistic concurrency token. Incremented on every mutating state change or update; reads, validation-only calls, and exact idempotency replays do not increment it. Callers SHOULD include this in update_media_buy requests intended to change state — when provided, sellers MUST reject with CONFLICT if the revision does not match the current value, and MUST enforce that comparison atomically with the write.')]
-    created_at: Annotated[AwareDatetime | None, Field(description='Creation timestamp'), OmittedNotNull] = None
-    updated_at: Annotated[AwareDatetime | None, Field(description='Last update timestamp'), OmittedNotNull] = None
+    created_at: Annotated[WireDatetime | None, Field(description='Creation timestamp'), OmittedNotNull] = None
+    updated_at: Annotated[WireDatetime | None, Field(description='Last update timestamp'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

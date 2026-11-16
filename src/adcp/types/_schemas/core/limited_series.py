@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1
 
 
@@ -18,8 +19,8 @@ class LimitedSeries(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/limited-series.json', pointer='#')
     total_installments: Annotated[IntMin1, Field(description='Planned number of installments in the series')]
-    starts: Annotated[AwareDatetime | None, Field(description='When the series begins (ISO 8601)'), OmittedNotNull] = None
-    ends: Annotated[AwareDatetime | None, Field(description='When the series ends (ISO 8601)'), OmittedNotNull] = None
+    starts: Annotated[WireDatetime | None, Field(description='When the series begins (ISO 8601)'), OmittedNotNull] = None
+    ends: Annotated[WireDatetime | None, Field(description='When the series ends (ISO 8601)'), OmittedNotNull] = None
 
 
 __all__ = ["LimitedSeries"]

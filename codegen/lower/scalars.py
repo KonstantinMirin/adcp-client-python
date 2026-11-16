@@ -113,7 +113,13 @@ from codegen.schema import nodes
 #: node; ``uri`` is ``constraints.url_type``, which reads the document's own
 #: ``pattern``.
 FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
-    "date-time": lambda node: "pydantic.AwareDatetime",
+    #: ``WireDatetime`` and not ``AwareDatetime``: same parser, same accepted set --
+    #: measured, both refuse a naive ``2026-09-02T00:00:00`` and accept the aware
+    #: spellings -- and it serializes the text it was parsed from, where ``AwareDatetime``
+    #: rewrites ``2026-10-01T00:00:00.000+00:00`` to ``2026-10-01T00:00:00Z`` and changes
+    #: the digested bytes (#1610).  It SUBCLASSES ``datetime.datetime``, so ``.year``,
+    #: ``.tzinfo``, arithmetic and ``isinstance`` are unchanged for a consumer.
+    "date-time": lambda node: "adcp.types._wire.WireDatetime",
     "date": lambda node: "datetime.date",
     "uri": constraints_module.url_type,
 }

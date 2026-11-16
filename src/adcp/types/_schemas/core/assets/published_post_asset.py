@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl
 
 from ..provenance import Provenance
@@ -61,8 +62,8 @@ class ReferenceAuthorization(AdCPBaseModel):
         Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization/properties/authorization_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     status: Annotated[Status, Field(description='Current seller-observed authorization state. `authorized`: seller can serve the referenced post. `pending`: additional creator/account action is required. `expired` or `revoked`: authorization previously existed but no longer permits serving. `not_required`: the seller can legally and technically serve without a separate identity authorization. `unknown`: seller has not checked or cannot disclose the state.')]
-    checked_at: Annotated[AwareDatetime | None, Field(description='When the seller last checked the authorization state.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When the authorization expires, if the platform exposes an expiry.'), OmittedNotNull] = None
+    checked_at: Annotated[WireDatetime | None, Field(description='When the seller last checked the authorization state.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When the authorization expires, if the platform exposes an expiry.'), OmittedNotNull] = None
     authorization_url: Annotated[HostedUrl | None, Field(description='Optional URL the buyer or creator can use to complete authorization.'), OmittedNotNull] = None
     authorization_instructions: Annotated[str | None, Field(description='Human-readable instructions for completing or restoring authorization.'), OmittedNotNull] = None
 
@@ -91,7 +92,7 @@ class PublishedPostAsset(AdCPBaseModel):
     platform: Annotated[str | None, Field(description="Optional platform or publisher namespace for the referenced post. Informational unless the seller's product declaration or platform extension narrows the accepted values."), OmittedNotNull] = None
     platform_post_id: Annotated[str | None, Field(description='Optional platform-native post identifier when a URL alone is not stable or not available. Buyers SHOULD include `platform` when using `platform_post_id` without `post_url`, unless the product or format declaration already narrows the platform. Platform-specific identifier semantics belong in platform_extensions; this field is only an opaque reference.'), OmittedNotNull] = None
     identity_ref: Annotated[IdentityRef | None, Field(description='Optional identity hint for the authoring handle/page/channel that owns the post. Sellers MUST verify authorization from platform state; buyers MUST NOT use this object as proof of authorization.'), OmittedNotNull] = None
-    published_at: Annotated[AwareDatetime | None, Field(description='When the referenced post was originally published, if known.'), OmittedNotNull] = None
+    published_at: Annotated[WireDatetime | None, Field(description='When the referenced post was originally published, if known.'), OmittedNotNull] = None
     reference_authorization: Annotated[ReferenceAuthorization | None, Field(description='Server-emitted, seller-observed authorization state for the referenced post or identity. Sellers MAY return this object on read surfaces. On write requests, sellers MUST ignore buyer-supplied `reference_authorization.status` and other authorization-state claims unless a platform extension explicitly defines a signed proof shape and the seller verifies that proof.'), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this reference asset, overrides manifest-level provenance.'), OmittedNotNull] = None
 

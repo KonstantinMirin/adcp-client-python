@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, Field, StrictBool
+from pydantic import Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.context import ContextObject
@@ -19,7 +20,7 @@ class RecordsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/validate-content-delivery-request.json', pointer='#/properties/records/items')
     record_id: Annotated[str, Field(description='Unique identifier for this delivery record')]
     media_buy_id: Annotated[str | None, Field(description='Media buy this record belongs to (when batching across multiple buys)'), OmittedNotNull] = None
-    timestamp: Annotated[AwareDatetime | None, Field(description='When the delivery occurred'), OmittedNotNull] = None
+    timestamp: Annotated[WireDatetime | None, Field(description='When the delivery occurred'), OmittedNotNull] = None
     artifact: Annotated[Artifact, Field(description='Artifact where ad was delivered')]
     country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred'), OmittedNotNull] = None
     channel: Annotated[str | None, Field(description='Channel type (e.g., display, video, audio, social)'), OmittedNotNull] = None

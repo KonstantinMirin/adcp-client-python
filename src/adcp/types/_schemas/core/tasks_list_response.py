@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 from ..enums.sort_direction import SortDirection
 from ..enums.task_status import TaskStatus
@@ -80,9 +81,9 @@ class TasksItem(AdCPBaseModel):
     task_type: Annotated[TaskType, Field(description='Type of AdCP operation')]
     domain: Annotated[Domain, Field(description='AdCP domain this task belongs to')]
     status: Annotated[TaskStatus, Field(description='Current task status')]
-    created_at: Annotated[AwareDatetime, Field(description='When the task was initially created (ISO 8601)')]
-    updated_at: Annotated[AwareDatetime, Field(description='When the task was last updated (ISO 8601)')]
-    completed_at: Annotated[AwareDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)'), OmittedNotNull] = None
+    created_at: Annotated[WireDatetime, Field(description='When the task was initially created (ISO 8601)')]
+    updated_at: Annotated[WireDatetime, Field(description='When the task was last updated (ISO 8601)')]
+    completed_at: Annotated[WireDatetime | None, Field(description='When the task completed (ISO 8601, only for completed/failed/canceled tasks)'), OmittedNotNull] = None
     has_webhook: Annotated[StrictBool | None, Field(description='Whether this task has webhook configuration'), OmittedNotNull] = None
 
 

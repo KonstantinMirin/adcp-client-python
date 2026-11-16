@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMaxLen255, StrMaxLen500, TermsTotalBudgetCurrency
 
 
@@ -46,8 +47,8 @@ class Terms(AdCPBaseModel):
     advertiser: Annotated[StrMaxLen500 | None, Field(description='Advertiser name or identifier'), OmittedNotNull] = None
     publisher: Annotated[StrMaxLen500 | None, Field(description='Publisher name or identifier'), OmittedNotNull] = None
     total_budget: Annotated[TotalBudget | None, Field(description='Total committed budget'), OmittedNotNull] = None
-    flight_start: Annotated[AwareDatetime | None, Field(description='Campaign start date'), OmittedNotNull] = None
-    flight_end: Annotated[AwareDatetime | None, Field(description='Campaign end date'), OmittedNotNull] = None
+    flight_start: Annotated[WireDatetime | None, Field(description='Campaign start date'), OmittedNotNull] = None
+    flight_end: Annotated[WireDatetime | None, Field(description='Campaign end date'), OmittedNotNull] = None
     payment_terms: Annotated[TermsPaymentTerms | None, Field(description='Payment terms'), OmittedNotNull] = None
 
 

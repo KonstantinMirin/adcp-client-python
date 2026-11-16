@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AcceptancePolicyProfileRegionAliases,
     AccountAuthorizationAllowedTasksItem,
@@ -74,8 +75,8 @@ class AcceptancePolicyRule(AdCPBaseModel):
     requirements: Annotated[list[AcceptancePolicyRequirement] | None, Field(min_length=1), OmittedNotNull] = None
     policy_ids: Annotated[list[StrMinLen1] | None, Field(description='Registry policies that define the exact obligations behind this coarse rule.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     description: Annotated[StrMinLen1MaxLen1000 | None, Field(description='Display-only explanation. Matchers MUST NOT interpret this text as executable instructions or use it to override typed fields.'), OmittedNotNull] = None
-    effective_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    effective_at: Annotated[WireDatetime | None, OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

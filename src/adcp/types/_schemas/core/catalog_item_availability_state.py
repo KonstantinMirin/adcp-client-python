@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMinLen1MaxLen255
 
 from .catalog_item_availability_error import CatalogItemAvailabilityError
@@ -57,8 +58,8 @@ class CatalogItemAvailabilityState(AdCPBaseModel):
     status: Annotated[Status, Field(description='found returns current state; failed means the reference could not be read.')]
     availability: Annotated[Availability | None, Field(description='Current buyer-authored overlay state. active does not imply seller approval or delivery eligibility.'), OmittedNotNull] = None
     overlay_revision: Annotated[NonNegativeInt | None, Field(description='Current optimistic-concurrency token. Revision 0 is the initial active state. Every applied suppress, applied restore, and automatic expiry increments it exactly once; unchanged updates, reads, and idempotent replays do not increment it.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='Current automatic expiry, present only while availability is suppressed with an expiry.'), OmittedNotNull] = None
-    updated_at: Annotated[AwareDatetime | None, Field(description='Seller timestamp of the state represented by overlay_revision.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='Current automatic expiry, present only while availability is suppressed with an expiry.'), OmittedNotNull] = None
+    updated_at: Annotated[WireDatetime | None, Field(description='Seller timestamp of the state represented by overlay_revision.'), OmittedNotNull] = None
     errors: Annotated[list[CatalogItemAvailabilityError] | None, Field(min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

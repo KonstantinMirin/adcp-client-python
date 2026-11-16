@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._wire import WireDatetime
 
 
 class TimeForecastDimension(AdCPBaseModel):
@@ -17,8 +18,8 @@ class TimeForecastDimension(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-dimension-time.json', pointer='#')
     kind: Annotated[Literal['time'], Field(description='Dimension family discriminator.')]
-    start_time: Annotated[AwareDatetime, Field(description='Inclusive window start (RFC 3339 date-time with timezone offset).')]
-    end_time: Annotated[AwareDatetime, Field(description='Exclusive window end (RFC 3339 date-time with timezone offset). MUST be after start_time.')]
+    start_time: Annotated[WireDatetime, Field(description='Inclusive window start (RFC 3339 date-time with timezone offset).')]
+    end_time: Annotated[WireDatetime, Field(description='Exclusive window end (RFC 3339 date-time with timezone offset). MUST be after start_time.')]
 
 
 __all__ = ["TimeForecastDimension"]

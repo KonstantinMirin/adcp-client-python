@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import (
     AdCPBaseModel,
@@ -14,6 +14,7 @@ from adcp.types._base import (
     SchemaRef,
 )
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen1MaxLen64, StrMinLen1MaxLen255, StrMinLen1MaxLen2048
 from adcp.types.envelopes import AdcpResponse
 
@@ -66,15 +67,15 @@ class Scope(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/properties/scope/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'all_accessible_media_buys': {'const': False}}, 'required': ['all_accessible_media_buys']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    period_start: AwareDatetime
-    period_end: AwareDatetime
+    period_start: WireDatetime
+    period_end: WireDatetime
     scope_closed: Annotated[StrictBool, Field(description='True only when no new obligation can enter this evaluated scope.')]
     media_buy_ids: Annotated[list[ReportingMediaBuyId] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     all_accessible_media_buys: Annotated[StrictBool, Field(description='True when media_buy_ids was omitted and the scope covers all caller-accessible account buys.')]
     delivery_config_generations: Annotated[list[DeliveryConfigGenerationsItem], Field(description='Exact independently reconciled configuration generations in the denominator.', json_schema_extra={'uniqueItems': True})]
     feed_purposes: Annotated[list[ReportingFeedPurpose], Field(json_schema_extra={'uniqueItems': True})]
     finality: Annotated[list[ReportingFinality], Field(json_schema_extra={'uniqueItems': True})]
-    ledger_retained_from: Annotated[AwareDatetime, Field(description='Earliest period boundary for which anti-entropy metadata is retained for every selected configuration generation.')]
+    ledger_retained_from: Annotated[WireDatetime, Field(description='Earliest period boundary for which anti-entropy metadata is retained for every selected configuration generation.')]
     coverage_complete: Annotated[StrictBool, Field(description='Whether the requested horizon is fully inside retained ledger coverage. False means health cannot prove completeness for the whole requested horizon.')]
 
 
@@ -122,14 +123,14 @@ class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
     )
     view: Annotated[ReportingStatusView | None, OmittedNotNull] = None
     ledger_snapshot_id: Annotated[StrMinLen1MaxLen255 | None, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value."), OmittedNotNull] = None
-    ledger_as_of: Annotated[AwareDatetime | None, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.'), OmittedNotNull] = None
+    ledger_as_of: Annotated[WireDatetime | None, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.'), OmittedNotNull] = None
     changes_checkpoint: Annotated[StrMinLen1MaxLen2048 | None, Field(description='Opaque durable incremental-repair checkpoint for this periods snapshot. Consumers persist it only after consuming every page, then send it as changes_after. It is bound to authenticated caller, account, and filters and MUST order every committed obligation, revision, adjustment, materialization, consumer status statement, revision receipt, and adjustment receipt without gaps.'), OmittedNotNull] = None
     account_id: Annotated[StrMinLen1 | None, Field(description='Resolved seller/storefront account identifier.'), OmittedNotNull] = None
     scope: Annotated[Scope | None, Field(description='Exact denominator evaluated for summary or periods health. complete is valid only when scope_closed is true.'), OmittedNotNull] = None
     health: Annotated[ReportingHealth | None, OmittedNotNull] = None
     coverage: Annotated[ReportingCoverage | None, Field(description='Aggregated effective coverage for the exact selected scope. This remains independent of reporting health and finality so a fresh covered subset cannot look like complete campaign reporting.'), OmittedNotNull] = None
-    data_through: Annotated[AwareDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.'), OmittedWhenNone] = None
-    next_expected_at: Annotated[AwareDatetime | None, Field(description='Next obligation due time for an open scope. In a complete summary (view: summary, health: complete), the nearest future period start, strictly after ledger_as_of, across all active committed configuration generations in scope.delivery_config_generations. Sellers MUST populate it when such a scheduled period exists outside the closed evaluated scope, and omit it when none exists. This complete-scope projection applies only to summary responses. It is derived from the configuration schedule and does not represent an open obligation in the evaluated scope; its presence does not indicate that the scope is still open. Projecting it MUST NOT create, expose, lease, count, or alter an obligation whose period has not closed, or change obligation_counts, scope, or coverage. Obligation expected_at remains period.end plus schedule.delivery_sla; get_media_buy_delivery.next_expected_at remains the next webhook notification time.'), OmittedNotNull] = None
+    data_through: Annotated[WireDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.'), OmittedWhenNone] = None
+    next_expected_at: Annotated[WireDatetime | None, Field(description='Next obligation due time for an open scope. In a complete summary (view: summary, health: complete), the nearest future period start, strictly after ledger_as_of, across all active committed configuration generations in scope.delivery_config_generations. Sellers MUST populate it when such a scheduled period exists outside the closed evaluated scope, and omit it when none exists. This complete-scope projection applies only to summary responses. It is derived from the configuration schedule and does not represent an open obligation in the evaluated scope; its presence does not indicate that the scope is still open. Projecting it MUST NOT create, expose, lease, count, or alter an obligation whose period has not closed, or change obligation_counts, scope, or coverage. Obligation expected_at remains period.end plus schedule.delivery_sla; get_media_buy_delivery.next_expected_at remains the next webhook notification time.'), OmittedNotNull] = None
     obligation_counts: Annotated[ObligationCounts | None, OmittedNotNull] = None
     issues: Annotated[list[ReportingStatusIssue] | None, OmittedNotNull] = None
     periods: Annotated[list[ReportingObligation] | None, OmittedNotNull] = None
@@ -171,10 +172,10 @@ class SummaryView(SuccessfulLookup):
     view: Annotated[Literal[ReportingStatusView.SUMMARY], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
     coverage: Annotated[ReportingCoverage, Field(description='Aggregated effective coverage for the exact selected scope. This remains independent of reporting health and finality so a fresh covered subset cannot look like complete campaign reporting.')]
-    data_through: Annotated[AwareDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.')]
+    data_through: Annotated[WireDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.')]
     health: ReportingHealth
     issues: list[ReportingStatusIssue]
-    ledger_as_of: Annotated[AwareDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
+    ledger_as_of: Annotated[WireDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
     ledger_snapshot_id: Annotated[StrMinLen1MaxLen255, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value.")]
     obligation_counts: ObligationCounts
     scope: Annotated[Scope, Field(description='Exact denominator evaluated for summary or periods health. complete is valid only when scope_closed is true.')]
@@ -202,7 +203,7 @@ class PeriodsView(SuccessfulLookup):
     view: Annotated[Literal[ReportingStatusView.PERIODS], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     pagination: PeriodsViewPagination
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
-    ledger_as_of: Annotated[AwareDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
+    ledger_as_of: Annotated[WireDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
     ledger_snapshot_id: Annotated[StrMinLen1MaxLen255, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value.")]
     materializations: list[ReportingMaterialization]
     periods: list[ReportingObligation]
@@ -222,7 +223,7 @@ class RevisionView(SuccessfulLookup):
     view: Annotated[Literal[ReportingStatusView.REVISION], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
     pagination: RevisionViewPagination
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
-    ledger_as_of: Annotated[AwareDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
+    ledger_as_of: Annotated[WireDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
     ledger_snapshot_id: Annotated[StrMinLen1MaxLen255, Field(description="Opaque identity of the seller's consistent reporting-ledger snapshot. Every page reached from one periods cursor MUST return the same value.")]
     materializations: list[ReportingMaterialization]
     receipts: Annotated[list[ReportingReceipt], Field(description="Authenticated caller's durable reconciliation receipts. Receipts from another consumer principal are never disclosed.")]

@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     AgentReportingDestinationFileTransferDestinationTransport,
@@ -65,12 +66,12 @@ class ReportingMaterialization(AdCPBaseModel):
     transport: Annotated[AgentReportingDestinationFileTransferDestinationTransport | None, OmittedNotNull] = None
     attempt: IntMin1
     status: Annotated[Status, Field(description='Lifecycle of this attempt. pending may transition once to available, delivered, or failed; terminal evidence is immutable. Staleness is evaluated in get_reporting_status health, not stored as a materialization state.')]
-    ready_at: Annotated[AwareDatetime | None, Field(description='When consumer-path or destination verification completed.'), OmittedNotNull] = None
-    failed_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    ready_at: Annotated[WireDatetime | None, Field(description='When consumer-path or destination verification completed.'), OmittedNotNull] = None
+    failed_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     failure_code: Annotated[ReportingAdjustmentReceiptRejectionCode | None, Field(description='Stable safe failure classification. MUST NOT include credentials or provider response bodies.'), OmittedNotNull] = None
     resource: Annotated[ReportingResource | None, OmittedNotNull] = None
     verification: Annotated[ReportingVerification | None, OmittedNotNull] = None
-    created_at: AwareDatetime
+    created_at: WireDatetime
 
 
 __all__ = ["ReportingMaterialization"]

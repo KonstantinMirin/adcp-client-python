@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
@@ -53,7 +54,7 @@ class CanonicalAudienceEvidence(AdCPBaseModel):
     measurement_window: DateRange
     sample_size: Annotated[IntMin1 | None, OmittedNotNull] = None
     confidence: Annotated[FloatMin0Max1 | None, OmittedNotNull] = None
-    last_updated: AwareDatetime
+    last_updated: WireDatetime
     methodology_url: Annotated[HTTPSURL | None, OmittedNotNull] = None
     attestation_digests: Annotated[list[ZipAssetDigest] | None, Field(description='Portable-attestation reference digests available through the evidence provider; credential bodies are not inlined into product discovery.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

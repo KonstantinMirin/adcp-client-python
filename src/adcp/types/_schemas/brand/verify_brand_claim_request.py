@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     BrandDiscoveryAgentId,
     StrMaxLen50,
@@ -40,7 +41,7 @@ class VerifySubsidiaryClaimClaim(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/0/properties/claim')
     subsidiary_domain: Annotated[str, Field(description='Domain of the leaf brand whose `house_domain` claim is being verified.', json_schema_extra={'format': 'hostname'})]
     subsidiary_brand_id: Annotated[BrandDiscoveryAgentId | None, Field(description='Stable brand identifier the leaf uses for itself. Optional but recommended.'), OmittedNotNull] = None
-    observed_at: Annotated[AwareDatetime | None, Field(description="When the caller observed the leaf's claim."), OmittedNotNull] = None
+    observed_at: Annotated[WireDatetime | None, Field(description="When the caller observed the leaf's claim."), OmittedNotNull] = None
 
 
 class VerifySubsidiaryClaim(VerifyBrandClaimRequest):
@@ -62,7 +63,7 @@ class VerifyParentClaimClaim(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/1/properties/claim')
     parent_domain: Annotated[str, Field(description="Domain of the house claimed as this brand's parent.", json_schema_extra={'format': 'hostname'})]
     claimant_says: Annotated[str | None, Field(description='Optional context — what the claimant published or said. Helps the agent disambiguate competing claims.'), OmittedNotNull] = None
-    observed_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    observed_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 class VerifyParentClaim(VerifyBrandClaimRequest):

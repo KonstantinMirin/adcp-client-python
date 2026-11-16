@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
@@ -48,8 +49,8 @@ class ReportingAdjustmentReceipt(AdCPBaseModel):
     status: Status
     observed_adjustment_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest recomputed from the adjustment using its canonical evidence rule.')]
     rejection_codes: Annotated[list[ReportingAdjustmentRejectionCode] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    observed_at: AwareDatetime
-    received_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    observed_at: WireDatetime
+    received_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 __all__ = ["ReportingAdjustmentReceipt", "ReportingAdjustmentRejectionCode"]

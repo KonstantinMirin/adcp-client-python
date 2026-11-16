@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
 
 from adcp.types._base import (
     AdCPBaseModel,
@@ -14,6 +14,7 @@ from adcp.types._base import (
     SchemaRef,
 )
 from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max100, HostedUrl, IntMin1, StrMaxLen2000
 from adcp.types.envelopes import AdcpRequest
 
@@ -137,7 +138,7 @@ class DelegationsItem(AdCPBaseModel):
     authority: Annotated[DelegationAuthority, Field(description='Authority level granted to this agent.')]
     budget_limit: Annotated[BudgetLimit | None, Field(description="Maximum budget this agent can commit. When omitted, the agent can commit up to the plan's total budget."), OmittedNotNull] = None
     markets: Annotated[list[str] | None, Field(description='ISO 3166-1/3166-2 codes this agent is authorized for. When omitted, the agent can operate in all plan markets.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this delegation expires. After expiration, the governance agent denies actions from this agent.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When this delegation expires. After expiration, the governance agent denies actions from this agent.'), OmittedNotNull] = None
 
 
 class TotalBudgetCap(AdCPBaseModel):

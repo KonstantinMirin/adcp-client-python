@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     IntMin1,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
@@ -24,8 +25,8 @@ class ReportingReliabilityMeasurementPeriod(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-reliability-statistics.json', pointer='#/definitions/ReportingReliabilityMeasurementPeriod')
-    start: AwareDatetime
-    end: AwareDatetime
+    start: WireDatetime
+    end: WireDatetime
 
 
 class LatencyPercentiles(AdCPBaseModel):
@@ -66,7 +67,7 @@ class Evidence(AdCPBaseModel):
         NegatedConditional((Match('basis', True, ('third_party_attestation',)),), require=(), forbid=('attestation_uri', 'attestation_sha256')),
     )
     basis: Basis
-    generated_at: AwareDatetime
+    generated_at: WireDatetime
     attestation_uri: Annotated[ReportingCanonicalContentDigestCanonicalizationUri | None, OmittedNotNull] = None
     attestation_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256 | None, OmittedNotNull] = None
 

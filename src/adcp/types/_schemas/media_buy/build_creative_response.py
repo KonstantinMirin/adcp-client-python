@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import (
     AdCPBaseModel,
@@ -16,6 +16,7 @@ from adcp.types._base import (
     SchemaRef,
 )
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     HostedUrl,
@@ -94,7 +95,7 @@ class BuildCreativeSuccessPreview(AdCPBaseModel):
     )
     previews: Annotated[list[BuildCreativeSuccessPreviewPreviewsItem], Field(description='Array of preview variants. Each preview corresponds to an input set from preview_inputs, or a single default preview if no inputs were provided.', min_length=1)]
     interactive_url: Annotated[HostedUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when preview URLs expire. May differ from the manifest's expires_at.")]
+    expires_at: Annotated[WireDatetime, Field(description="ISO 8601 timestamp when preview URLs expire. May differ from the manifest's expires_at.")]
 
 
 class BuildCreativeSuccess(BuildCreativeResponse):
@@ -113,7 +114,7 @@ class BuildCreativeSuccess(BuildCreativeResponse):
     build_variant_id: Annotated[str | None, Field(description='Leaf handle for this produced creative — present when the agent supports refinement (creative.supports_refinement). Pass it as refine_from_build_variant_id to refine this build. Same namespace as BuildCreativeVariantSuccess leaves; distinct from served variant_id / preview_id. On the canonical promotion path, this value becomes the creative_id when the produced leaf is trafficked or added to the library.'), OmittedNotNull] = None
     recipe_hash: Annotated[str | None, Field(description='Optional agent-computed, opaque, agent-scoped identity for the build-determining inputs that produced this creative. Stable for identical inputs as defined by the agent, and comparable only within the same agent. ETag-style semantics: the protocol defines the field and contract, not the hash algorithm or canonical input set. Identifies generative-input identity, not output equality, legal/disclosure equivalence, or the build-to-delivery join.'), OmittedNotNull] = None
     sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when generated asset URLs in the manifest expire. Set to the earliest expiration across all generated assets. Re-build the creative after this time to get fresh URLs.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when generated asset URLs in the manifest expire. Set to the earliest expiration across all generated assets. Re-build the creative after this time to get fresh URLs.'), OmittedNotNull] = None
     preview: Annotated[BuildCreativeSuccessPreview | None, Field(description='Preview renders included when the request set include_preview to true and the agent supports it. Contains the same content fields as a preview_creative single response (previews, interactive_url, expires_at) minus the response_type discriminator, so clients can reuse the same preview rendering logic.'), OmittedNotNull] = None
     preview_error: Annotated[Error | None, Field(description="When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Distinguishes 'agent does not support inline preview' (preview and preview_error both absent) from 'preview generation failed' (preview absent, preview_error present). Omitted when preview succeeded or was not requested."), OmittedNotNull] = None
     pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this build. Present when the creative agent charges for its services. Pass this in report_usage to identify which pricing option was applied.'), OmittedNotNull] = None
@@ -160,7 +161,7 @@ class BuildCreativeMultiSuccessPreview(AdCPBaseModel):
     )
     previews: Annotated[list[BuildCreativeMultiSuccessPreviewPreviewsItem], Field(description='Array of preview entries, one per requested capability. Array order matches creative_manifests. Canonical responses use capability_id for explicit correlation.', min_length=1)]
     interactive_url: Annotated[HostedUrl | None, Field(description='Optional URL to an interactive testing page that shows all format previews with controls to switch between them.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime, Field(description="ISO 8601 timestamp when preview URLs expire. May differ from the manifest's expires_at.")]
+    expires_at: Annotated[WireDatetime, Field(description="ISO 8601 timestamp when preview URLs expire. May differ from the manifest's expires_at.")]
 
 
 class BuildCreativeMultiSuccess(BuildCreativeResponse):
@@ -177,7 +178,7 @@ class BuildCreativeMultiSuccess(BuildCreativeResponse):
     )
     creative_manifests: Annotated[list[CreativeManifest], Field(description='Array of generated canonical creative manifests, one per requested capability. Each manifest carries format_kind and any applicable format_option_ref.', min_length=1)]
     sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the earliest generated asset URL expires across all manifests. Re-build after this time to get fresh URLs.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when the earliest generated asset URL expires across all manifests. Re-build after this time to get fresh URLs.'), OmittedNotNull] = None
     preview: Annotated[BuildCreativeMultiSuccessPreview | None, Field(description='Preview renders included when the request set include_preview to true and the agent supports it. Contains one default preview per requested format. preview_inputs is ignored for multi-format requests.'), OmittedNotNull] = None
     preview_error: Annotated[Error | None, Field(description='When include_preview was true in the request but preview generation failed. Uses the standard error structure with code, message, and recovery classification. Omitted when preview succeeded or was not requested.'), OmittedNotNull] = None
     pricing_option_id: Annotated[str | None, Field(description='Which rate card pricing option was applied for this build. Represents the total cost of the entire multi-format build call. Present when the creative agent charges for its services.'), OmittedNotNull] = None
@@ -302,7 +303,7 @@ class BuildCreativeVariantSuccess(BuildCreativeResponse):
     budget_status: Annotated[BudgetStatus | None, Field(description='`complete` (default; absent == complete for back-compat) means the agent produced everything requested. `capped` means a `max_spend` ceiling stopped production early: every returned leaf is real/billed, and an advisory `BUDGET_CAP_REACHED` entry in `errors[]` is the authoritative cap signal. The leaf-granular shortfall is `leaves_returned` < `leaves_total` (do NOT rely on items_returned < items_total — that is also the normal max_creatives-sampling signal and does not capture a mid-item or variant-only cap). This is a successful partial build, not a failure.', json_schema_extra={'default': 'complete'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(BudgetStatus).validate_python('complete'))
     errors: Annotated[list[Error] | None, Field(description='Advisory (non-terminal) entries on an otherwise-successful build — e.g. a `BUDGET_CAP_REACHED` notice when `budget_status` is `capped`. Terminal failures use the BuildCreativeError shape, not this field.'), OmittedNotNull] = None
     sandbox: Annotated[StrictBool | None, Field(description='When true, this response contains simulated data from sandbox mode.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the earliest generated asset URL expires across all variants. Re-build after this time to get fresh URLs.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when the earliest generated asset URL expires across all variants. Re-build after this time to get fresh URLs.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -363,7 +364,7 @@ class BuildCreativeEstimate(BuildCreativeResponse):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/3')
     mode: Annotated[Literal['estimate'], Field(description='Echoes the request mode; discriminates this dry-run envelope from the producing shapes.')]
     estimate: Annotated[Estimate, Field(description='Projected cost for what mode:"execute" would have produced.')]
-    expires_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp after which this estimate's inputs/prices may no longer hold."), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description="ISO 8601 timestamp after which this estimate's inputs/prices may no longer hold."), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

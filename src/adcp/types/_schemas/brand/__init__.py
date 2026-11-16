@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, StrictFloat, StrictInt, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AuthorizedOperatorBrandsItem,
     BrandAgentEntryId,
@@ -94,9 +95,9 @@ class AuthoritativeLocationRedirect(BrandDiscovery):
     schema_: Annotated[str | None, Field(alias='$schema'), OmittedNotNull] = None
     authoritative_location: Annotated[HTTPSURL, Field(description='HTTPS URL of the authoritative brand.json file')]
     redirect_reason: Annotated[AuthoritativeLocationRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'."), OmittedNotNull] = None
-    redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.'), OmittedNotNull] = None
+    redirect_effective_at: Annotated[WireDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.'), OmittedNotNull] = None
     note: Annotated[str | None, Field(description='Optional human-readable rationale for the redirect.'), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 HouseRedirectRedirectReason = AuthoritativeLocationRedirectRedirectReason
@@ -114,9 +115,9 @@ class HouseRedirect(BrandDiscovery):
     house: Annotated[DomainName, Field(description='House domain to fetch brand portfolio from')]
     region: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code if this is a regional domain'), OmittedNotNull] = None
     redirect_reason: Annotated[HouseRedirectRedirectReason | None, Field(description="Optional structured signal indicating why this redirect was put in place. Consumers SHOULD use this to inform cache TTL decisions: 'acquisition' / 'divestiture' / 'rebrand' / 'consolidation' suggest the resolved target is in transition and consumers SHOULD shorten cache TTL until stable. 'regional' / 'legacy' suggest a stable redirect with no special cache handling needed. Free-text rationale belongs in 'note'."), OmittedNotNull] = None
-    redirect_effective_at: Annotated[AwareDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.'), OmittedNotNull] = None
+    redirect_effective_at: Annotated[WireDatetime | None, Field(description='Optional timestamp when this redirect became effective. Caches MUST treat any entry cached before this timestamp as stale and re-fetch through the redirect.'), OmittedNotNull] = None
     note: Annotated[str | None, Field(description='Optional human-readable rationale for the redirect.'), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 class BrandAgentEntry(AdCPBaseModel):
@@ -198,7 +199,7 @@ class BrandAgent(BrandDiscovery):
     brand_agent: Annotated[BrandDiscoveryBrandAgent | None, Field(deprecated=True), OmittedNotNull] = None
     contact: Annotated[BrandDiscoveryContact | None, OmittedNotNull] = None
     data_subject_contestation: Annotated[DataSubjectContestation | None, OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 LocalizedName = Annotated[dict[str, StrMinLen1], Field(description="A localized name using the legacy underscore-separated language/region key convention (for example 'en_US', 'fr_CA', or 'zh_CN') and a name value. Bare language codes such as 'en' are also accepted for backwards compatibility. These keys are not AdCP locale-tag values: a bridge to /schemas/core/locale-tag.json replaces '_' with '-', applies the AdCP canonical wire profile, and validates the result rather than passing the key through unchanged.", max_length=1, min_length=1)]
@@ -558,7 +559,7 @@ class ProductCatalog(AdCPBaseModel):
     feed_url: Annotated[HostedUrl, Field(description='URL to product catalog feed')]
     feed_format: Annotated[FeedFormat | None, Field(description='Format of the product feed'), OmittedNotNull] = None
     categories: Annotated[list[str] | None, Field(description='Product categories available in the catalog'), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='When the product catalog was last updated'), OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, Field(description='When the product catalog was last updated'), OmittedNotNull] = None
     update_frequency: Annotated[UpdateFrequency | None, Field(description='How frequently the product catalog is updated'), OmittedNotNull] = None
     agentic_checkout: Annotated[AgenticCheckout | None, Field(description='Agentic checkout endpoint configuration'), OmittedNotNull] = None
 
@@ -1768,7 +1769,7 @@ class PortfolioEntry(AdCPBaseModel):
     domain: Annotated[DomainName, Field(description="Domain where the child's canonical brand.json lives")]
     brand_id: Annotated[BrandId, Field(description='Stable brand identifier within the house portfolio. Required so the cross-array uniqueness invariant (brand_id MUST NOT appear in both brands[] and brand_refs[]) is enforceable.')]
     managed_by: Annotated[DomainName | None, Field(description="Optional domain of the entity that operationally manages this brand (e.g., an agency network within a holdco). House-declared. Consumers MUST NOT use it for trust or authorization decisions. Aggregation across houses ('show me everything BBH manages') is the intended use; trust is unaffected."), OmittedNotNull] = None
-    effective_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the house established this ownership claim. Consumers age mutual-assertion edges from this date for TTL purposes and MUST NOT extend relationship trust before a future effective_at is reached. Optional; absent means the consumer ages from its own durable first observation.'), OmittedNotNull] = None
+    effective_at: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when the house established this ownership claim. Consumers age mutual-assertion edges from this date for TTL purposes and MUST NOT extend relationship trust before a future effective_at is reached. Optional; absent means the consumer ages from its own durable first observation.'), OmittedNotNull] = None
 
 
 class ScopesItem(StrEnum):
@@ -1803,8 +1804,8 @@ class AuthorizedOperator(AdCPBaseModel):
     brands: Annotated[list[AuthorizedOperatorBrandsItem], Field(description="Brand IDs this operator is authorized for. Use ['*'] for all brands in the portfolio.", min_length=1)]
     countries: Annotated[list[CountryCode] | None, Field(description='ISO 3166-1 alpha-2 country codes where this authorization applies. Omit for global authorization.'), OmittedNotNull] = None
     scopes: Annotated[list[ScopesItem] | None, Field(description="Activities this operator is authorized to perform for the listed brands and countries. Omit for backwards-compatible broad authorization. Use ['all'] only when every listed scope is delegated.", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    valid_from: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization starts. Omit when authorization is already active or the start date is not tracked.'), OmittedNotNull] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization expires. Consumers MUST treat entries at or after this timestamp as inactive for authorization decisions.'), OmittedNotNull] = None
+    valid_from: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization starts. Omit when authorization is already active or the start date is not tracked.'), OmittedNotNull] = None
+    valid_until: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when this operator authorization expires. Consumers MUST treat entries at or after this timestamp as inactive for authorization decisions.'), OmittedNotNull] = None
 
 
 class HousePortfolio(BrandDiscovery):
@@ -1827,7 +1828,7 @@ class HousePortfolio(BrandDiscovery):
     contact: Annotated[BrandDiscoveryContact | None, OmittedNotNull] = None
     authorized_operators: Annotated[list[AuthorizedOperator] | None, Field(description="Entities authorized to represent brands from this house. Third parties (sellers, platforms) can verify an operator's authorization by checking this list. Operators are identified by domain."), OmittedNotNull] = None
     trademarks: Annotated[list[Trademark] | None, Field(description='House-level (corporate) registered trademarks. Brand-level marks live on individual brand entries; resolution is union.'), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 class BrandCanonicalDocument(BrandDiscovery, Brand):
@@ -1845,7 +1846,7 @@ class BrandCanonicalDocument(BrandDiscovery, Brand):
     version: Annotated[str | None, OmittedNotNull] = None
     default_language: Annotated[LanguageTag | None, Field(json_schema_extra={'default': 'en'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(LanguageTag).validate_python('en'))
     house_domain: Annotated[DomainName | None, Field(description="Optional pointer to the corporate house this brand belongs to. The named house's brand_refs[] MUST reciprocate for mutual-assertion trust. Single-hop only — a brand cannot itself declare brand_refs[]. Omit for standalone brands (no house)."), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 BrandDiscovery._branch_models = (AuthoritativeLocationRedirect, HouseRedirect, BrandAgent, HousePortfolio, BrandCanonicalDocument,)

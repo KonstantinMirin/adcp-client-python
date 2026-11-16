@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import GeoForecastDimensionCode, StrMinLen1
 
 from .country_code import CountryCode
@@ -44,7 +45,7 @@ class GeographicPlaceCatalogEntry(AdCPBaseModel):
     parent_labels: Annotated[list[StrMinLen1], Field(description='Ordered human-readable parent hierarchy for disambiguation only. Must include at least the containing country.', min_length=1)]
     status: Status
     replaced_by_values: Annotated[list[StrMinLen1] | None, Field(description='Replacement identifiers in the same system and response system_version.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='Known time after which the identifier must no longer be accepted for new targeting.'), OmittedNotNull] = None
+    valid_until: Annotated[WireDatetime | None, Field(description='Known time after which the identifier must no longer be accepted for new targeting.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

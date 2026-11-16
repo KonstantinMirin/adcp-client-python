@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Presence, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
     CreativesItemAssignmentsReturnedAssignmentCount,
@@ -129,13 +130,13 @@ class AssignedPackagesItem(IndicatorBearingResourceState):
     )
     package_id: Annotated[str, Field(description='Package identifier')]
     media_buy_id: Annotated[str | None, Field(description='Media buy containing this package. A seller advertising list_creatives in media_buy.relationship_notifications.projection_tasks MUST include this field on every assignment row, including rows where indicators is omitted as unknown, so buyers can key and reread the relationship unambiguously when package IDs are reused across media buys.'), OmittedNotNull] = None
-    assigned_date: Annotated[AwareDatetime, Field(description='When this assignment was created')]
+    assigned_date: Annotated[WireDatetime, Field(description='When this assignment was created')]
     approval_status: Annotated[CreativeApprovalStatus | None, Field(description='Aggregate approval state for this creative in this package assignment. This mirrors the same relationship in get_media_buys. Sellers advertising list_creatives as an indicator projection task MUST include it; partially_approved requires approval_scopes.'), OmittedNotNull] = None
     rejection_reason: Annotated[str | None, Field(description='Human-readable explanation when approval_status is rejected. Mirrors get_media_buys for the same relationship.'), OmittedNotNull] = None
     approval_scopes: Annotated[list[ScopedCreativeApproval] | None, Field(description='Complete, disjoint publisher/placement approval partition when approval_status is partially_approved. A normalized scope appears once. For one publisher, use either one publisher-wide row or placement-specific rows, never both. Omit when one approval_status applies uniformly to the whole assignment. The same scoped outcomes are mirrored on get_media_buys.', json_schema_extra={'uniqueItems': True}, min_length=2), OmittedNotNull] = None
     indicators: Annotated[list[ObjType] | None, Field(description='Current seller indicators that are true for this creative in this package assignment. The package assignment supplies the default delivery scope; an indicator may narrow further with scope. Omitted means unknown or not evaluated. A present empty array means the seller completed the evaluation identified by indicators_evaluated_scope at indicators_as_of and asserts no current indicator in that evaluated scope.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     indicator_types_evaluated: Annotated[list[AssignmentIndicatorType] | None, Field(description='Indicator types covered by this assignment snapshot. Required whenever indicators is present; omitted types remain unknown.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    indicators_as_of: Annotated[AwareDatetime | None, Field(description='When the seller last completed the evaluation represented by indicators for this relationship. Required whenever indicators is present, including an empty array.'), OmittedNotNull] = None
+    indicators_as_of: Annotated[WireDatetime | None, Field(description='When the seller last completed the evaluation represented by indicators for this relationship. Required whenever indicators is present, including an empty array.'), OmittedNotNull] = None
     indicators_evaluated_scope: Annotated[list[IndicatorScope] | None, Field(description='Optional publisher or placement scopes covered by this evaluation. Omit when indicators covers the whole package–creative assignment. When present, scopes not listed remain unknown; every returned indicator.scope entry MUST be contained by this set.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
 
 
@@ -167,10 +168,10 @@ class Snapshot(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/snapshot')
-    as_of: Annotated[AwareDatetime, Field(description='When this snapshot was captured by the platform')]
+    as_of: Annotated[WireDatetime, Field(description='When this snapshot was captured by the platform')]
     staleness_seconds: Annotated[NonNegativeInt, Field(description='Maximum age of this data in seconds. For example, 3600 means the data may be up to 1 hour old.')]
     impressions: Annotated[NonNegativeInt, Field(description='Lifetime impressions across all assignments. Not scoped to any date range.')]
-    last_served: Annotated[AwareDatetime | None, Field(description='Last time this creative served an impression. Absent when the creative has never served.'), OmittedNotNull] = None
+    last_served: Annotated[WireDatetime | None, Field(description='Last time this creative served an impression. Absent when the creative has never served.'), OmittedNotNull] = None
 
 
 class Kind(StrEnum):
@@ -190,7 +191,7 @@ class Purge(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/purge')
     kind: Annotated[Kind, Field(description='Always `soft` on tombstones — hard purges do not surface on this read.')]
-    at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the creative was destroyed. Matches the `purged_at` field on the corresponding `creative.purged` webhook fire.')]
+    at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the creative was destroyed. Matches the `purged_at` field on the corresponding `creative.purged` webhook fire.')]
     reason_code: Annotated[CreativeEventReasonCode, Field(description='Categorical reason for the purge. Matches the value the seller emitted on the corresponding `creative.purged` webhook fire.')]
 
 
@@ -226,8 +227,8 @@ class CreativesItem(BranchDispatchMixin, AdCPBaseModel):
     format_kind: Annotated[CanonicalFormatKind | None, Field(description='Canonical 3.2 path. The canonical format kind this creative targets. Mutually exclusive with deprecated `format_id`.'), OmittedNotNull] = None
     format_option_ref: Annotated[FormatOptionReference | None, Field(description='Optional reference to the concrete canonical format option this creative targets. Required when `format_kind` alone is ambiguous in the enclosing product context.'), OmittedNotNull] = None
     status: Annotated[CreativeStatus, Field(description='Current approval status of the creative')]
-    created_date: Annotated[AwareDatetime, Field(description='When the creative was created')]
-    updated_date: Annotated[AwareDatetime, Field(description='When the creative was last modified')]
+    created_date: Annotated[WireDatetime, Field(description='When the creative was created')]
+    updated_date: Annotated[WireDatetime, Field(description='When the creative was last modified')]
     assets: Annotated[dict[str, AssetVariant | NonEmptyList[AssetVariant]] | None, Field(description='Assets for this creative, keyed by asset_id. Each slot value is either a single asset object or an array of asset objects (for slots with `min`/`max > 1`). Each asset value carries an `asset_type` discriminator that selects the matching asset schema.'), OmittedNotNull] = None
     component_assets: Annotated[dict[AccountAuthorizationAllowedTasksItem, CreativeAssets] | None, Field(description='Preserved component-addressed asset maps for `coordinated_placements`, keyed by coordinated component ID.'), OmittedNotNull] = None
     localization: Annotated[CreativeLocalizationReadback | None, Field(description='Authoritative exact materialized locale-variant state. Present for localized creatives when complete. The enclosing creative status is the single review lifecycle for all variants.'), OmittedNotNull] = None

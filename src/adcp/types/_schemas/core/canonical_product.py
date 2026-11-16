@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import CanonicalProductCatalogMatchMatchedGtinsItem, StrMinLen1
 
 from ..enums.audio_distribution_type import AudioDistributionType
@@ -110,7 +111,7 @@ class CanonicalProduct(AdCPBaseModel):
     list_applications: Annotated[list[InventoryListApplication] | None, Field(description='Product-scoped receipts for every effective property- or collection-list targeting reference. Sellers MUST return one receipt per application regardless of response field projection; exclusion applications receive a receipt even when summary.matched is zero, while zero matches for any inclusion application make the product ineligible and it is not returned. Each receipt uses the same pre-list product inventory baseline; pricing and forecast reflect inventory remaining after all effective lists are composed.', min_length=1), OmittedNotNull] = None
     brief_relevance: Annotated[str | None, OmittedNotNull] = None
     targeting_resolution: Annotated[ProductTargetingResolution | None, Field(description='Discovery-time targeting resolution bound to this configured product. modifications sparsely disclose product-specific differences from criteria.targeting_overlay; absence means exact acceptance of the structured overlay. Request-level brief interpretation is returned once on the response-root targeting_resolution. Selecting product_id accepts the disclosed modifications; pricing and forecast MUST reflect them. Requires expires_at.'), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='Expiration of a request-specific configured offer. Canonical products have no is_custom flag; expires_at is what marks an offer as request-specific. After it, the buyer rediscovers.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='Expiration of a request-specific configured offer. Canonical products have no is_custom flag; expires_at is what marks an offer as request-specific. After it, the buyer rediscovers.'), OmittedNotNull] = None
     allowed_actions: Annotated[list[CanonicalProductAction] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     acceptance_policy_profile_ids: Annotated[AcceptancePolicyProfileIDs | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

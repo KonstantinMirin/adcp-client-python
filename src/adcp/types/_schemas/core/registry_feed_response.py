@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, StrFormatUuid
 
 from .registry_event import RegistryEvent
@@ -19,8 +20,8 @@ class Freshness(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-feed-response.json', pointer='#/properties/freshness')
-    generated_at: Annotated[AwareDatetime, Field(description='Server timestamp when this feed page was generated.')]
-    latest_event_created_at: Annotated[AwareDatetime | None, Field(description='Newest event creation timestamp currently visible in the feed for the requested type filter. Null when no matching event exists inside retention.')]
+    generated_at: Annotated[WireDatetime, Field(description='Server timestamp when this feed page was generated.')]
+    latest_event_created_at: Annotated[WireDatetime | None, Field(description='Newest event creation timestamp currently visible in the feed for the requested type filter. Null when no matching event exists inside retention.')]
     lag_seconds: Annotated[NonNegativeInt | None, Field(description='Seconds between generated_at and latest_event_created_at. Null when no matching event exists.')]
     retention_days: Annotated[IntMin1, Field(description='Number of days the registry retains feed cursors and events.')]
 

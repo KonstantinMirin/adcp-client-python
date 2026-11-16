@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HostedUrl
 
 
@@ -22,7 +23,7 @@ class PlacementEvidence(AdCPBaseModel):
         Approximation(document='core/placement-evidence.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     url: Annotated[HostedUrl, Field(description='The evidence artifact — photograph, scanned tearsheet, or evidence package')]
-    captured_at: Annotated[AwareDatetime | None, Field(description='When the artifact was captured'), OmittedNotNull] = None
+    captured_at: Annotated[WireDatetime | None, Field(description='When the artifact was captured'), OmittedNotNull] = None
     latitude: Annotated[FloatMinNeg90Max90 | None, Field(description='Capture location latitude'), OmittedNotNull] = None
     longitude: Annotated[FloatMinNeg180Max180 | None, Field(description='Capture location longitude'), OmittedNotNull] = None
     notes: Annotated[str | None, Field(description="Context that doesn't fit the structured fields (e.g., 'shot from the eastbound approach at 40mph equivalent')"), OmittedNotNull] = None

@@ -5,19 +5,11 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import (
-    AfterValidator,
-    AwareDatetime,
-    ConfigDict,
-    Field,
-    NonNegativeInt,
-    StrictBool,
-    StrictFloat,
-    TypeAdapter,
-)
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool, StrictFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
     AccountChangeFeedSupportedRetentionDays,
@@ -248,7 +240,7 @@ class CapabilityChanges(AdCPBaseModel):
         Approximation(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/adcp/properties/capability_changes/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'notifications': {'properties': {'supported': {'const': True}}, 'required': ['supported']}}, 'required': ['notifications']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     capabilities_version: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque revision token for the full capability document. Required when `notifications.supported: true` because `capabilities.changed` webhooks use this as the read-after-notify fence. Sellers SHOULD change this value whenever any material field in `get_adcp_capabilities` changes. Buyers MUST treat it as opaque and compare it only for equality.'), OmittedNotNull] = None
-    last_modified: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp when the seller last changed the advertised capability document. This is the scoped replacement for legacy top-level `last_updated` when buyers need cache validation semantics.'), OmittedNotNull] = None
+    last_modified: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when the seller last changed the advertised capability document. This is the scoped replacement for legacy top-level `last_updated` when buyers need cache validation semantics.'), OmittedNotNull] = None
     cache_ttl_seconds: Annotated[AdcpCapabilityChangesCacheTtlSeconds | None, Field(description='Maximum time a buyer or registry SHOULD reuse this capability response before refreshing when it has no fresher invalidation signal. Sellers that emit `capabilities.changed` webhooks SHOULD still set a bounded TTL so consumers can recover from missed notifications. This is a cache hint, not an authorization lifetime.'), OmittedNotNull] = None
     notifications: Annotated[CapabilityChangeNotificationsSupported | CapabilityChangeNotificationsUnsupported | None, Field(description='Whether the seller supports agent-level capability-change webhooks. When supported, interested consumers register endpoint subscribers with the declared registration_task; sync_principal is preferred when the broader connection surface is available, while sync_agent_notification_configs remains the specialized compatibility task. Each capabilities.changed fire is a small invalidation payload, and consumers repair by re-reading get_adcp_capabilities.'), OmittedNotNull] = None
 
@@ -1808,7 +1800,7 @@ class GetAdCPCapabilitiesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     extensions_supported: Annotated[list[ExtensionsSupportedItem] | None, Field(description='Extension namespaces this agent supports. Buyers can expect meaningful data in ext.{namespace} fields on responses from this agent. Extension schemas are published in the AdCP extension registry.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     experimental_features: Annotated[list[ExperimentalFeatureID] | None, Field(description='Experimental AdCP surfaces this agent implements. A surface is experimental when its schema carries x-status: experimental and the working group has not yet frozen it. Sellers that implement any experimental surface MUST list its feature id here. Buyers inspect this array before relying on experimental surfaces — a seller that does not list a surface is asserting it does not implement it. Experimental surfaces MAY break between any two 3.x releases with at least 6 weeks notice; the full contract is in docs/reference/experimental-status.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     wholesale_feed_versioning: Annotated[WholesaleFeedVersioning | None, Field(description="Conditional-fetch token capabilities for get_products and get_signals. Independent of wholesale feed webhooks: an agent MAY support cheap version probes via if_wholesale_feed_version without pushing change payloads (and vice versa). When supported is true, the agent returns wholesale_feed_version on every get_products / get_signals response and honors if_wholesale_feed_version on subsequent requests. When absent or supported is false, callers MAY still send if_wholesale_feed_version — pre-3.1 agents that ignore it just return the full payload (correct, just inefficient). Pre-flight declaration here lets buyers fast-path which agents to bother caching versions for. See get_products / get_signals 'Wholesale feed versioning' sections."), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when capabilities were last updated. Buyers can use this for cache invalidation.'), OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp of when capabilities were last updated. Buyers can use this for cache invalidation.'), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Task-specific errors and warnings'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

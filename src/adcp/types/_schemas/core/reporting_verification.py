@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     PhysicalChecksumsItemSHA512PhysicalChecksumValue,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
@@ -85,7 +86,7 @@ class ReportingVerification(AdCPBaseModel):
         ConditionalRequired((Match('verification_profile', True, ('manifest_checksums',)),), require=('physical_checksums',), forbid=()),
         ConditionalRequired((Match('verification_profile', True, ('canonical_digest',)),), require=('canonical_content_digest',), forbid=()),
     )
-    verified_at: Annotated[AwareDatetime, Field(description='When the producer completed verification through the claimed consumer/destination path.')]
+    verified_at: Annotated[WireDatetime, Field(description='When the producer completed verification through the claimed consumer/destination path.')]
     verification_path: Annotated[VerificationPath, Field(description='Path on which verification succeeded. dataset_share readiness requires representative_consumer; delivered warehouse state requires destination.')]
     verification_profile: ReportingVerificationProfile
     row_count: Annotated[NonNegativeInt, Field(description='Verified row count. Zero explicitly distinguishes an empty committed revision from a missing revision.')]

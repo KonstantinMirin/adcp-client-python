@@ -2149,11 +2149,11 @@ def _with_prose(docstring: str, prose: str) -> str:
 #: ``patches/`` overlay, where the site set is the overlay's data.
 URL_LINE = "\n".join(
     [
-        f"{constraint_names.HIERARCHICAL} = Annotated[AnyUrl, "
+        f"{constraint_names.HIERARCHICAL} = Annotated[WireAnyUrl, "
         "UrlConstraints(host_required=True)]",
         "",
-        f"{constraint_names.URL} = Annotated[HttpUrl, "
-        'UrlConstraints(allowed_schemes=["https"])]',
+        f"{constraint_names.URL} = Annotated[WireAnyUrl, "
+        'UrlConstraints(max_length=2083, allowed_schemes=["https"])]',
     ]
 )
 
@@ -2199,8 +2199,25 @@ STRICT_REEXPORTS = {("pydantic", "StrictFloat"), ("pydantic", "StrictBool")}
 #: What :data:`URL_LINE` names.
 URL_IMPORTS = {
     ("typing", "Annotated"),
-    ("pydantic", "AnyUrl"),
-    ("pydantic", "HttpUrl"),
+    #: **``WireAnyUrl`` AND NOT ``AnyUrl``/``HttpUrl``, so a URL survives a round trip.**
+    #: ``AnyUrl`` rewrites a bare origin -- ``https://measurement.example`` dumps as
+    #: ``https://measurement.example/`` -- and AdCP binds bytes to several objects:
+    #: ``content_digest`` is SHA-256 over the RFC 8785 form, and a ``context`` is "echoed
+    #: unchanged".  ``adcp.types._wire`` carries the parsed-from text for exactly that
+    #: (#1610); it was pointed at the generated fields by upstream's
+    #: ``scripts/post_generate_fixes.py``, which went with their generator, so the types
+    #: survived the substitution and the wiring did not.
+    #:
+    #: ``WireAnyUrl`` SUBCLASSES ``AnyUrl``, so ``.scheme``/``.host``/``.path`` and
+    #: ``isinstance`` are unchanged for a consumer.
+    #:
+    #: **THE 2,083 CAP IS CARRIED EXPLICITLY**, because it came from ``HttpUrl`` and
+    #: ``WireAnyUrl``'s core schema does not read a subclass's ``_constraints``.  Measured
+    #: before and after over `https://a.example`, `http://`, `ftp://`, a 2,083-character
+    #: URL and a 2,084-character one: acceptance is identical, and §2's "``AdCPUrl`` IS
+    #: ``HttpUrl``, AND ITS 2,083-CHARACTER CAP IS ACCEPTED" still holds.  Dropping it
+    #: silently would have widened 218 declared pairs.
+    ("adcp.types._wire", "WireAnyUrl"),
     ("pydantic", "UrlConstraints"),
 }
 

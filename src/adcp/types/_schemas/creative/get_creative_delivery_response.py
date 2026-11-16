@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1
 from adcp.types.envelopes import AdcpResponse
 
@@ -30,8 +31,8 @@ class ReportingPeriod(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#/properties/reporting_period')
-    start: Annotated[AwareDatetime, Field(description='ISO 8601 start timestamp')]
-    end: Annotated[AwareDatetime, Field(description='ISO 8601 end timestamp')]
+    start: Annotated[WireDatetime, Field(description='ISO 8601 start timestamp')]
+    end: Annotated[WireDatetime, Field(description='ISO 8601 end timestamp')]
     timezone: Annotated[str | None, Field(description="IANA timezone identifier for the reporting period (e.g., 'America/New_York', 'UTC'). Platforms report in their native timezone."), OmittedNotNull] = None
 
 

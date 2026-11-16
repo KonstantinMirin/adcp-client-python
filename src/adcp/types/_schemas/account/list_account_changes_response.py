@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     ListAccountChangesRequestResourceTypesItem,
     SourceCoverageItemStaleAfterSeconds,
@@ -57,9 +58,9 @@ class SourceCoverageItem(AdCPBaseModel):
     source_id: Annotated[StrMaxLen255, Field(description='Opaque seller or connection reference.')]
     kind: Kind
     status: Annotated[Status, Field(description='Connector freshness classification. For connected_platform, current means last_successful_sync_at is no older than stale_after_seconds at generated_at and the seller knows of no ingestion gap; delayed means that threshold is exceeded or a gap is known.')]
-    coverage_start: Annotated[AwareDatetime | None, Field(description='Earliest upstream time covered by this source after connection or retention limits.'), OmittedNotNull] = None
-    observed_through: Annotated[AwareDatetime | None, Field(description='Latest upstream point the seller has successfully observed.'), OmittedNotNull] = None
-    last_successful_sync_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    coverage_start: Annotated[WireDatetime | None, Field(description='Earliest upstream time covered by this source after connection or retention limits.'), OmittedNotNull] = None
+    observed_through: Annotated[WireDatetime | None, Field(description='Latest upstream point the seller has successfully observed.'), OmittedNotNull] = None
+    last_successful_sync_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     stale_after_seconds: Annotated[SourceCoverageItemStaleAfterSeconds | None, Field(description='Maximum age of last_successful_sync_at at generated_at for this connected source to self-classify as current. Required by the protocol contract whenever a connected source reports current.'), OmittedNotNull] = None
     resource_types: Annotated[list[ListAccountChangesRequestResourceTypesItem], Field(json_schema_extra={'uniqueItems': True}, max_length=50)]
 
@@ -81,8 +82,8 @@ class ListAccountChangesResponse(BranchDispatchMixin, AdCPVersionEnvelope, Proto
     changes: Annotated[list[AccountChange] | None, Field(description='Matching changes in oldest-first total account order. Timestamps are descriptive and do not define this order.', max_length=100), OmittedNotNull] = None
     cursor: Annotated[StrMinLen1MaxLen4096 | None, Field(description='Opaque checkpoint strictly after the high-water scanned by this page. Always persist this value, including when changes is empty or has_more is false. A filtered empty page still advances past scanned nonmatching records.'), OmittedNotNull] = None
     has_more: Annotated[StrictBool | None, Field(description='True when more retained matching changes were available at generation time. False means caught up to seller ingestion, not necessarily to an unavailable or delayed connected source.'), OmittedNotNull] = None
-    available_since: Annotated[AwareDatetime | None, Field(description='Oldest time for which the seller currently retains change records for this account and caller. The capability guarantees at least 90 days after adoption; pre-adoption history is not fabricated.'), OmittedNotNull] = None
-    generated_at: Annotated[AwareDatetime | None, Field(description='Seller time when this page and its source-coverage watermarks were generated.'), OmittedNotNull] = None
+    available_since: Annotated[WireDatetime | None, Field(description='Oldest time for which the seller currently retains change records for this account and caller. The capability guarantees at least 90 days after adoption; pre-adoption history is not fabricated.'), OmittedNotNull] = None
+    generated_at: Annotated[WireDatetime | None, Field(description='Seller time when this page and its source-coverage watermarks were generated.'), OmittedNotNull] = None
     source_coverage: Annotated[list[SourceCoverageItem] | None, Field(description='Account-specific feed and connector coverage. Buyers use this to distinguish feed catch-up from upstream freshness. Omission means no additional connected-source coverage is declared.', max_length=50), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
@@ -101,10 +102,10 @@ class ListAccountChangesResponseCompleted(ListAccountChangesResponse):
         ForbiddenGroups((('adcp_error',),)),
     )
     status: Annotated[Literal['completed'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
-    available_since: Annotated[AwareDatetime, Field(description='Oldest time for which the seller currently retains change records for this account and caller. The capability guarantees at least 90 days after adoption; pre-adoption history is not fabricated.')]
+    available_since: Annotated[WireDatetime, Field(description='Oldest time for which the seller currently retains change records for this account and caller. The capability guarantees at least 90 days after adoption; pre-adoption history is not fabricated.')]
     changes: Annotated[list[AccountChange], Field(description='Matching changes in oldest-first total account order. Timestamps are descriptive and do not define this order.', max_length=100)]
     cursor: Annotated[StrMinLen1MaxLen4096, Field(description='Opaque checkpoint strictly after the high-water scanned by this page. Always persist this value, including when changes is empty or has_more is false. A filtered empty page still advances past scanned nonmatching records.')]
-    generated_at: Annotated[AwareDatetime, Field(description='Seller time when this page and its source-coverage watermarks were generated.')]
+    generated_at: Annotated[WireDatetime, Field(description='Seller time when this page and its source-coverage watermarks were generated.')]
     has_more: Annotated[StrictBool, Field(description='True when more retained matching changes were available at generation time. False means caught up to seller ingestion, not necessarily to an unavailable or delayed connected source.')]
 
 

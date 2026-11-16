@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import DictMinProperties1, HostedUrl
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -101,7 +102,7 @@ class SearchBrandResult(AdCPBaseModel):
     brand_id: Annotated[str, Field(description='Brand identifier. Pass to get_brand_identity or get_rights for the next step.')]
     house: Annotated[ObjDomainName | None, Field(description='The house (corporate entity) associated with this brand. Present when a house affiliation is on record. Use relationship_trust to determine whether this association has been reciprocally confirmed by the house.'), OmittedNotNull] = None
     relationship_trust: Annotated[RelationshipTrust | None, Field(description="Trust verdict for the brand-to-house relationship, computed from the mutual-assertion model. inline = brand defined inside the house's own document; mutual = both sides publish the relationship (trust-extending); leaf_only = brand claims house but house has not reciprocated or declaration is expired; house_only = house claims brand, brand has not reciprocated; standalone = brand claims no house; unverifiable = claimed house could not be checked. When absent, trust has not yet been computed — absent MUST NOT be interpreted as standalone. Use get_brand_identity or verify_brand_claim for authoritative trust resolution."), OmittedNotNull] = None
-    relationship_verified_at: Annotated[AwareDatetime | None, Field(description='When the mutual-assertion edge was last confirmed by both sides. Present only when relationship_trust is mutual.'), OmittedNotNull] = None
+    relationship_verified_at: Annotated[WireDatetime | None, Field(description='When the mutual-assertion edge was last confirmed by both sides. Present only when relationship_trust is mutual.'), OmittedNotNull] = None
     claimed_house_domain: Annotated[str | None, Field(description='Canonical domain of the house this brand self-declares as its parent. Not trust-extending on its own. Present for leaf_only and unverifiable trust states where the brand has made a claim that could not be or has not been reciprocated.'), OmittedNotNull] = None
     names: Annotated[list[DictMinProperties1[str, str]], Field(description="Localized brand names with BCP 47 locale code keys (e.g., 'en_US', 'fr_CA').")]
     description: Annotated[str | None, Field(description='Brand description'), OmittedNotNull] = None

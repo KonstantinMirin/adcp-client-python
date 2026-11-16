@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatGt0Lt1, HostedUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen100, StrMinLen1MaxLen255
 
 from ..enums.feedback_source import FeedbackSource
@@ -74,7 +75,7 @@ class PerformanceFeedbackAssertion(AdCPBaseModel):
     study_ref: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque producer-assigned study or model-run reference. Receivers use it for correlation only and MUST NOT interpret it as an experiment-execution instruction.'), OmittedNotNull] = None
     evidence: Annotated[Evidence | None, Field(description='Small inline evidence summary used to weight the assertion without transporting the full study.'), OmittedNotNull] = None
     evidence_ref: Annotated[HostedUrl | None, Field(description='Provider-hosted evidence or result reference for parties authorized to inspect the full study.'), OmittedNotNull] = None
-    as_of: Annotated[AwareDatetime | None, Field(description='When the producer computed this assertion.'), OmittedNotNull] = None
+    as_of: Annotated[WireDatetime | None, Field(description='When the producer computed this assertion.'), OmittedNotNull] = None
     final: Annotated[StrictBool | None, Field(description='Whether the producer expects this assertion to be revised as data matures.'), OmittedNotNull] = None
     supersedes_feedback_id: Annotated[StrMinLen1 | None, Field(description='Receiver-issued feedback_id of the earlier assertion this one replaces at the same hop.'), OmittedNotNull] = None
 

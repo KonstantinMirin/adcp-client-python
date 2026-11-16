@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -118,7 +119,7 @@ class AudiencesItem(AdCPBaseModel):
     matched_count: Annotated[NonNegativeInt | None, Field(description="Total members matched to platform users across all syncs (cumulative, not just this call). Populated when status is 'ready'."), OmittedNotNull] = None
     effective_match_rate: Annotated[FloatMin0Max1 | None, Field(description="Deduplicated match rate across all identifier types (matched_count / total_uploaded_count after deduplication). A single number for reach estimation. Populated when status is 'ready'."), OmittedNotNull] = None
     match_breakdown: Annotated[list[MatchBreakdownItem] | None, Field(description='Per-identifier-type match results. Shows which ID types are resolving and at what rate. Helps buyers decide which identifiers to prioritize. Populated when the seller can report per-type matching. Omitted when the seller only supports aggregate match counts.', min_length=1), OmittedNotNull] = None
-    last_synced_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp of when the most recent sync operation was accepted by the platform. Useful for agents reasoning about audience freshness. Omitted if the seller does not track this. For externally sourced audiences, REQUIRED once counts populate (status ready or too_small): every count field is as-of this timestamp — it is the buyer's only anchor for what a count means, since two reads can differ because membership changed, match rate changed, or the seller re-read the source."), OmittedNotNull] = None
+    last_synced_at: Annotated[WireDatetime | None, Field(description="ISO 8601 timestamp of when the most recent sync operation was accepted by the platform. Useful for agents reasoning about audience freshness. Omitted if the seller does not track this. For externally sourced audiences, REQUIRED once counts populate (status ready or too_small): every count field is as-of this timestamp — it is the buyer's only anchor for what a count means, since two reads can differ because membership changed, match rate changed, or the seller re-read the source."), OmittedNotNull] = None
     source: Annotated[Source | None, Field(description='Echo of the external source feeding this audience (never credentials), present on externally sourced audiences in every response including discovery-only calls — the single pane invariant: externally sourced audiences appear in discovery identically to pushed ones, with the same status enum, match reporting, and targetability. Loss of source access (revocation, access_expires_at passing, or read failure of any cause) MUST NOT change the audience status: last matched state persists and remains targetable, last_synced_at freezes, and failed re-reads MUST NOT emit suspended — that value stays reserved for consent/policy causes, which remain orthogonal. Source health is reported here via access_status instead.'), OmittedNotNull] = None
     minimum_size: Annotated[IntMin1 | None, Field(description="Minimum matched audience size required for targeting on this platform. Populated when status is 'too_small'. Helps agents know how many more members are needed."), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description="Errors for this audience (only present when action='failed')"), OmittedNotNull] = None

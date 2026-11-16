@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -88,7 +89,7 @@ class ReportingDeliveryConfiguration(AdCPBaseModel):
     authoritative_party: Annotated[AuthoritativeParty | None, Field(description="Reserved: which party's count of this feed is authoritative. seller (the default, and the only value any 3.2 seller accepts) means the seller produces every revision and the consumer may only attest to what it consumed. consumer is reserved for the buyer-deposited billing revision task scoped to a later minor; until that task exists sellers MUST reject it with UNSUPPORTED_FEATURE. Reserving the field now keeps a future buyer-basis billing feed additive instead of breaking the billing-feed constraints. See https://github.com/adcontextprotocol/adcp/issues/7440.", json_schema_extra={'default': 'seller'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(AuthoritativeParty).validate_python('seller'))
     schedule: ReportingSchedule
     method: Annotated[ReportingDeliveryMethod | None, OmittedNotNull] = None
-    revocation_effective_at: Annotated[AwareDatetime | None, Field(description='Optional requested cutoff for deactivation. No new publication may begin after the applied cutoff; historical access is limited to the contracted recovery window.'), OmittedNotNull] = None
+    revocation_effective_at: Annotated[WireDatetime | None, Field(description='Optional requested cutoff for deactivation. No new publication may begin after the applied cutoff; historical access is limited to the contracted recovery window.'), OmittedNotNull] = None
 
 
 __all__ = ["ReportingDeliveryConfiguration"]

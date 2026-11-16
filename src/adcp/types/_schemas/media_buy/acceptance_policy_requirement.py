@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import AcceptancePolicyRequirementId, StrMinLen1
 
 from ..core.ext import ExtensionObject
@@ -180,8 +181,8 @@ class AcceptancePolicyRequirementTimeRestriction(AcceptancePolicyRequirement):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/acceptance-policy-requirement.json', pointer='#/oneOf/14')
     kind: Literal['time_restriction']
-    starts_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    ends_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    starts_at: Annotated[WireDatetime | None, OmittedNotNull] = None
+    ends_at: Annotated[WireDatetime | None, OmittedNotNull] = None
     description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 

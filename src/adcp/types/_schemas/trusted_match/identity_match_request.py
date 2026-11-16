@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AdCPVersionEnvelopeAdcpVersion,
     HostedUrl,
@@ -53,7 +54,7 @@ class Attestation(AdCPBaseModel):
     verification_level: Annotated[VerificationLevel | None, Field(description='Credential strength (e.g. World ID Orb = biometric unique-human; Device = weaker; Document = passport/NFC).'), OmittedNotNull] = None
     signal_binding: Annotated[str | None, Field(description='Hash of the signal the proof commits to. The receiver MUST verify it matches the context the receiver expects (e.g. a buyer-issued nonce or the request_id) and that the attestation is within its freshness window; this, plus nullifier-reuse tracking, is the replay defense.'), OmittedNotNull] = None
     proof: Annotated[dict[str, Any], Field(description="Scheme-specific verifiable proof material. Opaque to this schema; validated by the scheme's verifier. MUST carry only scheme-defined verification material — never page context or additional user identifiers.")]
-    expires_at: Annotated[AwareDatetime | None, Field(description='Attestation validity horizon. Receivers MUST reject when past.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='Attestation validity horizon. Receivers MUST reject when past.'), OmittedNotNull] = None
 
 
 class IdentitiesItem(AdCPBaseModel):

@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 
 from ..enums.adcp_protocol import AdCPProtocol
 from ..enums.sort_direction import SortDirection
@@ -33,10 +34,10 @@ class Filters(AdCPBaseModel):
     statuses: Annotated[list[TaskStatus] | None, Field(description='Filter by multiple task statuses', min_length=1), OmittedNotNull] = None
     task_type: Annotated[TaskType | None, Field(description='Filter by single task type'), OmittedNotNull] = None
     task_types: Annotated[list[TaskType] | None, Field(description='Filter by multiple task types', min_length=1), OmittedNotNull] = None
-    created_after: Annotated[AwareDatetime | None, Field(description='Filter tasks created after this date (ISO 8601)'), OmittedNotNull] = None
-    created_before: Annotated[AwareDatetime | None, Field(description='Filter tasks created before this date (ISO 8601)'), OmittedNotNull] = None
-    updated_after: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated after this date (ISO 8601)'), OmittedNotNull] = None
-    updated_before: Annotated[AwareDatetime | None, Field(description='Filter tasks last updated before this date (ISO 8601)'), OmittedNotNull] = None
+    created_after: Annotated[WireDatetime | None, Field(description='Filter tasks created after this date (ISO 8601)'), OmittedNotNull] = None
+    created_before: Annotated[WireDatetime | None, Field(description='Filter tasks created before this date (ISO 8601)'), OmittedNotNull] = None
+    updated_after: Annotated[WireDatetime | None, Field(description='Filter tasks last updated after this date (ISO 8601)'), OmittedNotNull] = None
+    updated_before: Annotated[WireDatetime | None, Field(description='Filter tasks last updated before this date (ISO 8601)'), OmittedNotNull] = None
     task_ids: Annotated[list[str] | None, Field(description='Filter by specific task IDs', max_length=100, min_length=1), OmittedNotNull] = None
     context_contains: Annotated[str | None, Field(description='Filter tasks where context contains this text (searches media_buy_id, signal_id, etc.)'), OmittedNotNull] = None
     has_webhook: Annotated[StrictBool | None, Field(description='Filter tasks that have webhook configuration when true'), OmittedNotNull] = None

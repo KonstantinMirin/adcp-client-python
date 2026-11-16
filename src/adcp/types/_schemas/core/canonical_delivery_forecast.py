@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import MeasurementSource
 
 from ..enums.demographic_system import DemographicSystem
@@ -33,8 +34,8 @@ class CanonicalDeliveryForecast(AdCPBaseModel):
     demographic: Annotated[str | None, OmittedNotNull] = None
     measurement_source: Annotated[MeasurementSource | None, OmittedNotNull] = None
     reach_unit: Annotated[ReachUnit | None, OmittedNotNull] = None
-    generated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    valid_until: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    generated_at: Annotated[WireDatetime | None, OmittedNotNull] = None
+    valid_until: Annotated[WireDatetime | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, NotValue, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen100
 
 from ..core.audience_evidence_pin import AudienceEvidencePin
@@ -87,8 +88,8 @@ class PackageRequest(AdCPVersionEnvelope):
     bidding: Annotated[Bidding | None, Field(description='Package-authored bidding policy. This complete block replaces, rather than field-merges with, any media-buy bidding policy for this package. `{automatic:true}` explicitly overrides a media-buy policy with provider automatic bidding; omission inherits the complete media-buy block. Monetary fields use the media-buy currency, while the selected pricing option supplies only the auction unit and MUST declare that same currency. Sellers MUST reject a new bidding block combined with legacy bid_price or legacy monetary optimization-goal targets on the same effective package with AMBIGUOUS_BIDDING_POLICY.'), OmittedNotNull] = None
     impressions: Annotated[NonNegativeFloat | None, Field(description='Impression goal for this package'), OmittedNotNull] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard package daily spend ceiling in the media-buy currency. It is subordinate, not a reserved allocation; package caps need not sum to the aggregate cap. Uses the media buy's cap timezone. Requires advertised package budget-capping scope; otherwise rejected with UNSUPPORTED_FEATURE."), OmittedNotNull] = None
-    start_time: Annotated[Annotated[AwareDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Flight start date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's start_time. Must fall within the media buy's date range."), OmittedNotNull] = None
-    end_time: Annotated[AwareDatetime | None, Field(description="Flight end date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's end_time. Must fall within the media buy's date range."), OmittedNotNull] = None
+    start_time: Annotated[Annotated[WireDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Flight start date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's start_time. Must fall within the media buy's date range."), OmittedNotNull] = None
+    end_time: Annotated[WireDatetime | None, Field(description="Flight end date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's end_time. Must fall within the media buy's date range."), OmittedNotNull] = None
     paused: Annotated[StrictBool | None, Field(description='Whether this package should be created in a paused state. Paused packages do not deliver impressions. Defaults to false.'), OmittedNotNull] = False
     catalogs: Annotated[list[Catalog] | None, Field(description='Catalogs this package promotes. Each catalog MUST have a distinct type (e.g., one product catalog, one store catalog). This constraint is enforced at the application level — sellers MUST reject requests containing multiple catalogs of the same type with a validation_error. Makes the package catalog-driven: one budget envelope, platform optimizes across items.'), OmittedNotNull] = None
     optimization_goals: Annotated[list[OptimizationGoal] | None, Field(description='Optimization targets for this package. The seller optimizes delivery toward these goals in priority order. Common pattern: event goals (purchase, install) as primary targets at priority 1; metric goals (clicks, views) as secondary proxy signals at priority 2+.', min_length=1), OmittedNotNull] = None

@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMaxLen500
 
 from ..enums.consent_basis import ConsentBasis
@@ -74,7 +75,7 @@ class SignalDefinitionEnrichment(AdCPBaseModel):
     art9_basis: Annotated[Art9Basis | None, Field(description="Data provider's declared GDPR Article 9 basis for the underlying signal definition when special-category data is involved and Article 9 applies, projected into this get_signals response row when requested. Sellers and federating agents that pass through another provider's signal MUST NOT substitute their own Article 9 basis for the provider-declared basis."), OmittedNotNull] = None
     modeling: Annotated[Modeling | None, OmittedNotNull] = None
     data_subject_rights: Annotated[DataSubjectRights | None, Field(description='Per-signal data-subject-rights routing. This is a contact/routing reference, not a machine-callable AdCP API.'), OmittedNotNull] = None
-    last_updated: Annotated[AwareDatetime | None, Field(description='When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.'), OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, Field(description='When this definition record was last updated. This indicates freshness of the definition record, not an attestation that the underlying data or model was refreshed at that time.'), OmittedNotNull] = None
     dts_compliant_version: Annotated[str | None, OmittedNotNull] = None
 
 

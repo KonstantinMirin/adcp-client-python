@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen255, StrMaxLen500, StrMaxLen2000
 
 from ..enums.pacing import Pacing
@@ -52,7 +53,7 @@ class Proposal(AdCPBaseModel):
     pacing: Annotated[Pacing | None, Field(description='Recommended aggregate pacing for the executed media-buy budget. On a committed proposal this is part of the firm delivery terms.'), OmittedNotNull] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Aggregate cap bound into this legacy proposal. It is authoritative when the proposal is executed and uses one counter across its packages.'), OmittedNotNull] = None
     proposal_status: Annotated[ProposalStatus | None, Field(description="Lifecycle status of this proposal and the per-proposal source of truth for whether finalization is required before create_media_buy. When absent, the proposal is ready to buy (backward compatible). 'draft' means indicative pricing — finalize via refine before purchasing. 'committed' means firm pricing with inventory reserved until expires_at and executable via create_media_buy."), OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, Field(description='When this proposal expires and can no longer be executed. For draft proposals, indicates when indicative pricing becomes stale. For committed proposals, indicates when the inventory hold lapses — the buyer must call create_media_buy before this time.'), OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, Field(description='When this proposal expires and can no longer be executed. For draft proposals, indicates when indicative pricing becomes stale. For committed proposals, indicates when the inventory hold lapses — the buyer must call create_media_buy before this time.'), OmittedNotNull] = None
     insertion_order: Annotated[InsertionOrder | None, Field(description='Formal insertion order attached to a committed proposal. Present when the seller requires a signed agreement before the media buy can proceed. The buyer references the io_id in io_acceptance on create_media_buy.'), OmittedNotNull] = None
     total_budget_guidance: Annotated[TotalBudgetGuidance | None, Field(description='Optional budget guidance for this proposal'), OmittedNotNull] = None
     brief_alignment: Annotated[StrMaxLen2000 | None, Field(description='Explanation of how this proposal aligns with the campaign brief'), OmittedNotNull] = None

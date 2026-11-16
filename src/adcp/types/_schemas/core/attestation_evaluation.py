@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
     FloatMin0Max1,
@@ -93,13 +94,13 @@ class AttestationEvaluation(AdCPBaseModel):
     credential_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 of the exact resolved or embedded credential bytes according to proof_format. REQUIRED by the normative contract when outcome is verified, expired, revoked, invalid, subject_mismatch, or digest_mismatch; omitted when no credential bytes were obtained. For dual delivery, this is the resolved credential digest; reference_digest independently binds the embedded bytes.'), OmittedNotNull] = None
     proof_format: Annotated[HostedUrl | None, Field(description='Absolute URI identifying the credential/proof format used to interpret and hash obtained credential bytes. REQUIRED whenever credential_digest is present.'), OmittedNotNull] = None
     outcome: Annotated[Outcome, Field(description='Stable evaluation outcome. verified means all required issuer, signature, claim type, subject, consuming-action scope, validity, revocation, and digest checks passed under evaluator policy. subject_mismatch covers either a credential/presentation subject mismatch or a presentation/consuming-action subject mismatch. Other values are non-authoritative failures and MUST NOT be treated as verified.')]
-    evaluated_at: AwareDatetime
+    evaluated_at: WireDatetime
     evaluated_by: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='Canonical agent URL of the evaluator-of-record that produced this result, even when it delegated proof checking to an accepted verifier.')]
     verifier_agent_url: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl | None, Field(description='Accepted verifier agent actually used, when verification was delegated. Omit for local verification or when no verifier was called.'), OmittedNotNull] = None
     reason_codes: Annotated[list[ReasonCodesItem] | None, Field(description='Open, machine-readable reason identifiers supplied by the evaluator. Consumers MUST branch on outcome, not on free-form or evaluator-specific reason codes.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     confidence: Annotated[FloatMin0Max1 | None, Field(description='Optional evaluator-produced confidence in the normalized outcome on the AdCP 0–1 scale. This is evaluation output, never copied from an authoritative presenter field. Omit when the proof or evaluator does not support a meaningful confidence score.'), OmittedNotNull] = None
-    revocation_checked_at: Annotated[AwareDatetime | None, Field(description='When the evaluator last checked authoritative revocation state. Its freshness is governed by proof format and evaluator policy.'), OmittedNotNull] = None
-    valid_until: Annotated[AwareDatetime | None, Field(description='Upper bound on reuse of this evaluation, considering credential expiry, revocation-cache TTL, and evaluator policy. Consumers MUST re-evaluate after this time.'), OmittedNotNull] = None
+    revocation_checked_at: Annotated[WireDatetime | None, Field(description='When the evaluator last checked authoritative revocation state. Its freshness is governed by proof format and evaluator policy.'), OmittedNotNull] = None
+    valid_until: Annotated[WireDatetime | None, Field(description='Upper bound on reuse of this evaluation, considering credential expiry, revocation-cache TTL, and evaluator policy. Consumers MUST re-evaluate after this time.'), OmittedNotNull] = None
     action_binding: Annotated[ActionBinding | None, Field(description='Optional binding to the consuming action or readback. Domain consumers that rely on an evaluation MUST carry either an action id or an action digest so the result cannot be transplanted to an unrelated decision.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

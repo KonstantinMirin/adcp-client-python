@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId,
     AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
@@ -71,8 +72,8 @@ class ValidityHint(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    not_before: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    expires_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    not_before: Annotated[WireDatetime | None, OmittedNotNull] = None
+    expires_at: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 class VerifyAgent(AdCPBaseModel):

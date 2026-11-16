@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMinLen1
 
 from ..enums.signal_catalog_type import SignalAvailabilityType
@@ -75,7 +76,7 @@ class WholesaleFeedEvent(BranchDispatchMixin, AdCPBaseModel):
     event_type: Annotated[WholesaleFeedEventType, Field(description='Discriminator. Determines the shape of `payload`.')]
     entity_type: Annotated[EntityType, Field(description="Entity class. 'product' for product.* events, 'signal' for signal.* events, 'feed' for wholesale_feed.bulk_change.")]
     entity_id: Annotated[str, Field(description='Entity identifier. For product.* events, the product_id. For signal.* events, the signal_agent_segment_id. For wholesale_feed.bulk_change, an agent-defined operation id.')]
-    created_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when the agent emitted the event. Advisory — consumers MUST order by event_id (UUID v7), not by created_at, to avoid clock-skew artifacts.')]
+    created_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the agent emitted the event. Advisory — consumers MUST order by event_id (UUID v7), not by created_at, to avoid clock-skew artifacts.')]
     payload: Annotated[dict[str, Any], Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
@@ -178,7 +179,7 @@ class WholesaleFeedEventProductPricedProductPayload(AdCPBaseModel):
     pricing_options: Annotated[list[PricingOption] | None, Field(description='Full post-change pricing_options array. NOT a delta — consumers replace the prior options with this list.', min_length=1), OmittedNotNull] = None
     canonical_pricing_options: Annotated[list[CanonicalPricingOption] | None, Field(description='Full post-change canonical pricing array for list_products mirrors.', min_length=1), OmittedNotNull] = None
     previous_pricing_option_ids: Annotated[list[str] | None, Field(description='Optional. Lets consumers detect which pricing_option_ids were retired.'), OmittedNotNull] = None
-    effective_at: Annotated[AwareDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.'), OmittedNotNull] = None
+    effective_at: Annotated[WireDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.'), OmittedNotNull] = None
     retracts_event_id: Annotated[str | None, Field(description="Optional. When this event retracts a prior pre-announced *.priced (per the §`effective_at` and pre-announce rules), set this to the event_id of the announcement being retracted. Lets consumers detect retraction deterministically by event_id lookup rather than maintaining per-entity 'latest-event' state. When present, the retraction MUST carry effective_at <= the retracted event's effective_at.", json_schema_extra={'format': 'uuid'}), OmittedNotNull] = None
     applies_to: AppliesTo
 
@@ -318,7 +319,7 @@ class WholesaleFeedEventSignalPricedSignalPayload(AdCPBaseModel):
     signal_ref: Annotated[SignalRef | None, OmittedNotNull] = None
     pricing_options: Annotated[list[VendorPricingOption], Field(description='Full post-change pricing_options array. NOT a delta.', min_length=1)]
     previous_pricing_option_ids: Annotated[list[str] | None, OmittedNotNull] = None
-    effective_at: Annotated[AwareDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.'), OmittedNotNull] = None
+    effective_at: Annotated[WireDatetime | None, Field(description='When the price change takes effect. A value in the future is a pre-announcement: consumers MAY warm caches but MUST NOT bind decisions until the effective time has passed. See specs/wholesale-feed-webhooks.md §`effective_at` and pre-announce.'), OmittedNotNull] = None
     retracts_event_id: Annotated[str | None, Field(description='Optional. When this event retracts a prior pre-announced *.priced, set this to the event_id of the announcement being retracted. See product.priced for the full retraction contract.', json_schema_extra={'format': 'uuid'}), OmittedNotNull] = None
     applies_to: AppliesTo
 

@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 
 from ..enums.asset_content_type import AssetContentType
 from ..enums.creative_status import CreativeStatus
@@ -36,10 +37,10 @@ class CreativeFilters(AdCPBaseModel):
     tags_any: Annotated[list[str] | None, Field(description='Filter by creative tags (any tag must match)', min_length=1), OmittedNotNull] = None
     name_contains: Annotated[str | None, Field(description='Filter by creative names containing this text (case-insensitive)'), OmittedNotNull] = None
     creative_ids: Annotated[list[str] | None, Field(description='Filter by specific creative IDs', max_length=100, min_length=1), OmittedNotNull] = None
-    created_after: Annotated[AwareDatetime | None, Field(description='Filter creatives created after this date (ISO 8601)'), OmittedNotNull] = None
-    created_before: Annotated[AwareDatetime | None, Field(description='Filter creatives created before this date (ISO 8601)'), OmittedNotNull] = None
-    updated_after: Annotated[AwareDatetime | None, Field(description='Filter creatives last updated after this date (ISO 8601)'), OmittedNotNull] = None
-    updated_before: Annotated[AwareDatetime | None, Field(description='Filter creatives last updated before this date (ISO 8601)'), OmittedNotNull] = None
+    created_after: Annotated[WireDatetime | None, Field(description='Filter creatives created after this date (ISO 8601)'), OmittedNotNull] = None
+    created_before: Annotated[WireDatetime | None, Field(description='Filter creatives created before this date (ISO 8601)'), OmittedNotNull] = None
+    updated_after: Annotated[WireDatetime | None, Field(description='Filter creatives last updated after this date (ISO 8601)'), OmittedNotNull] = None
+    updated_before: Annotated[WireDatetime | None, Field(description='Filter creatives last updated before this date (ISO 8601)'), OmittedNotNull] = None
     assigned_to_packages: Annotated[list[str] | None, Field(description='Filter creatives assigned to any of these packages. Sales-agent-specific — standalone creative agents SHOULD ignore this filter.', min_length=1), OmittedNotNull] = None
     media_buy_ids: Annotated[list[str] | None, Field(description='Filter creatives assigned to any of these media buys. Sales-agent-specific — standalone creative agents SHOULD ignore this filter.', min_length=1), OmittedNotNull] = None
     unassigned: Annotated[StrictBool | None, Field(description='Filter for unassigned creatives when true, assigned creatives when false. Sales-agent-specific — standalone creative agents SHOULD ignore this filter.'), OmittedNotNull] = None
