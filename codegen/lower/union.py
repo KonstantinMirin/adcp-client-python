@@ -123,8 +123,8 @@ measured case and the one document of 3.2 this frees: ``type: object``,
 ``not: {"required": [...]}``.  The base carries the 16 fields and the two
 ``Dependencies`` rules; ``ProvisioningMode`` and ``SettingsUpdateMode`` restate the
 three and the one as REQUIRED over the base's own decided types and carry their
-``ForbiddenGroups``.  Every fact is kept and nothing is declared but the UNDERDETERMINED
-the dispatch derivation already owes (the ``not``s sit in the branches' CONJUNCTS, where
+``ForbiddenGroups``.  Every fact is kept and nothing is declared but the widening
+the dispatch derivation already owes for the inseparable ``oneOf`` (the ``not``s sit in the branches' CONJUNCTS, where
 ``compiler.rules_at`` of the branch node does not read them, so §4's third source cannot
 separate the pair and §8's third equality holds in both directions).
 
@@ -1144,7 +1144,7 @@ def forbidden_names(parsed: nodes.Node, raw: Any) -> frozenset[str]:
     branches' guards as ``allOf`` conjuncts of ``not: {"required": [...]}`` -- four on one
     branch and six on the other, each forbidding a name the other branch requires -- and
     read off the branch node alone each branch forbids NOTHING, so the pair was
-    inseparable and the union carried an UNDERDETERMINED declaration it had not earned.
+    inseparable and the union carried a declaration it had not earned.
     ``brand.json``'s branch 4 is the same idiom with the ``not`` inside ``allOf[0]``
     beside that conjunct's ``type`` and ``properties``.
 
@@ -1305,7 +1305,7 @@ def separates(
         # genuinely do, which ``content-standards/calibrate-content-response.json`` is
         # the clearest of: its two branches require ``verdict`` and ``errors``, forbid
         # nothing and close nothing, so one instance satisfies both.  They are §4's
-        # UNDERDETERMINED row and step 10's.
+        # row -- WIDENED, because the combinator is ``oneOf`` -- and step 10's.
         # **A GROUP AT A TIME, which is what "a name one branch declares" is once the
         # branch states its requirement as a presence combinator** (:func:`demands`).
         # Every instance of ``one`` carries some name of the group, so a branch forbidding
@@ -1953,18 +1953,49 @@ def lower_union(
         # ``_BRANCH_DISCRIMINATOR = ""`` and reach their branches through §4's third
         # source.
         # **§4's own answer, WRITTEN (2026-10-27): "A union matching none of the three
-        # emits a plain ``A | B`` over its branches and declares an UNDERDETERMINED
-        # approximation at the union's pointer."**  So the refusal above is gone and what
-        # stands in its place is the declaration: the branches are emitted in the
-        # document's own order, a payload reaches the first branch that validates, and
-        # WHICH branch an overlapping payload becomes is the fact dropped.
+        # emits a plain ``A | B`` over its branches and declares an approximation at the
+        # union's pointer."**  So the refusal above is gone and what stands in its place
+        # is the declaration: the branches are emitted in the document's own order, a
+        # payload reaches the first branch that validates, and WHICH branch an
+        # overlapping payload becomes is the fact dropped.
         #
-        # **UNDERDETERMINED and not WIDENED**, which is §2's one instance of the kind: no
-        # draw or dump can see it, because the annotation admits exactly what
-        # the document admits.  Its instrument is §8's third equality --
-        # ``harness.underdetermined_census``, over §4's disjointness derivation in both
-        # directions -- so a union that becomes separable loses its declaration and one
-        # that stops being separable gains it.
+        # **AND §4 ALREADY WROTE WHICH DECLARATION, WHICH THIS SITE DID NOT IMPLEMENT**
+        # until 2026-11-16 -- it declared ``UNDERDETERMINED`` for both combinators, where
+        # the section says:
+        #
+        # > declares a **WIDENED** approximation at the union's pointer where the
+        # > combinator is ``oneOf``, and **nothing at all where it is ``anyOf``.**
+        #
+        # The emission is ``A | B`` either way and the question is what that admits
+        # relative to the document:
+        #
+        # * ``anyOf`` is "at least one branch matches", which is exactly what ``A | B``
+        #   admits.  §4: "nothing widens and nothing narrows -- for ``anyOf``", and
+        #   "nothing is owed but the branch choice", which the document does not decide
+        #   and so is not a fact the annotation dropped.  **NOTHING IS DECLARED.**
+        # * ``oneOf`` is "EXACTLY one branch matches", and an inseparable union is one
+        #   where some instance matches two.  ``A | B`` admits that instance and the
+        #   document REFUSES it.  **WIDENED** -- and §4 says why it is the kind and the
+        #   only one: "the kind is the one §8's CONSTRUCTION can prove, by handing the
+        #   class a value the document refuses", while the branch-order loss is
+        #   "coextensive" with it, the same pointer over the same values, so two
+        #   declarations "say one thing twice" and collide on a
+        #   ``(document, pointer, keyword)`` site.
+        #
+        # ``UNDERDETERMINED`` on a ``oneOf`` said the opposite of what is true -- "admits
+        # exactly what the document admits", of a class that admits more -- and because
+        # ``harness.check_refuses``' declared set was keyed on the KEYWORD alone, the
+        # mislabel also excused every real ``oneOf`` widening at the same pair.  Measured
+        # in the tree at the time of the correction: 16 ``oneOf`` and 13 ``anyOf`` sites
+        # carried the one wrong kind between them.
+        #
+        # **AND THE DECLARATION IS THE INTERIM AND NOT THE ANSWER**, which §4 is equally
+        # explicit about -- "a declared widening is honest, and honest is not correct",
+        # because ``oneOf`` states a constraint the model layer CAN carry: "a
+        # non-separable ``oneOf`` carries a rule that counts the branches an instance
+        # satisfies and refuses unless exactly one does".  When that rule lands this
+        # declaration retires with it, and a surviving one is "a site the rule failed to
+        # reach".
         #
         # Declared at ``<pointer>/<kw>``, which is the UNION's pointer and the spelling
         # ``harness.inseparable_unions`` yields: the combinator is what is
@@ -1982,14 +2013,15 @@ def lower_union(
         # document and yields the pointer the keyword is WRITTEN at, so a declaration at
         # the composed node instead would put §8's third equality on two spellings of one
         # union.
-        approximate.declare(
-            mod,
-            f"{node.stated_at}/{kw}",
-            kw,
-            node.position,
-            node.branch_raw,
-            kind=ir.UNDERDETERMINED,
-        )
+        if kw == "oneOf":
+            approximate.declare(
+                mod,
+                f"{node.stated_at}/{kw}",
+                kw,
+                node.position,
+                node.branch_raw,
+                kind=ir.WIDENED,
+            )
     # **§4 "Names"'s branch rules as HOPS, one per branch** (§14 step 7).  The three
     # inputs the rules read are recorded here -- the branch's own declaration, the
     # dispatch property the pin is looked for on, and the property map the readings range
@@ -2987,10 +3019,10 @@ def _targeted(raw: Mapping[str, Any], at: str, mod: compiler.Module) -> Inherite
 
 
 def _undetermined(node: nodes.Union, mod: compiler.Module) -> None:
-    """§4's UNDERDETERMINED row at a NESTED union, which is the ROOT's own answer here.
+    """§4's declaration row at a NESTED union, which is the ROOT's own answer here.
 
     "A union matching none of the three emits a plain ``A | B`` over its branches and
-    declares an UNDERDETERMINED approximation at the union's pointer" -- and a nested
+    declares an approximation at the union's pointer" -- and a nested
     union IS a plain ``A | B`` over its branches, so §5's "root and non-root are one
     path" applies to the DECLARATION exactly as it applies to the type.  Each branch of
     shapes is a class at its own ``#/<kw>/<i>`` pointer (:func:`_arms`), the arms are
@@ -3060,13 +3092,23 @@ def _undetermined(node: nodes.Union, mod: compiler.Module) -> None:
     # :attr:`nodes.Union.stated_at` for :func:`lower_union`'s reason, one position over:
     # the pointer is where the document WRITES the combinator, which both sides of §8's
     # third equality read.
+    #
+    # **AND THE COMBINATOR DECIDES, for :func:`lower_union`'s reason and by the same §4
+    # sentence** (corrected 2026-11-16): WIDENED where it is ``oneOf``, because "exactly
+    # one" refuses the instance that matches two branches and ``A | B`` admits it, and
+    # NOTHING where it is ``anyOf``, because ``A | B`` admits exactly what "at least one"
+    # admits.  "§5's root and non-root are one path" applies to the KIND as much as to
+    # the type, which is why this is the same two lines here as there -- and all 5
+    # pointers this site was found by are ``oneOf``.
+    if kw != "oneOf":
+        return
     approximate.declare(
         mod,
         f"{node.stated_at}/{kw}",
         kw,
         node.position,
         node.branch_raw,
-        kind=ir.UNDERDETERMINED,
+        kind=ir.WIDENED,
     )
 
 

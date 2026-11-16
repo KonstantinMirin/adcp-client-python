@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
 
@@ -48,9 +48,6 @@ class RequestProposalsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequ
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/request-proposals-request.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['brand']}, {'properties': {'account': {'required': ['brand', 'operator']}}, 'required': ['account']}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
     adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
     adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
     context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.'), OmittedNotNull] = None

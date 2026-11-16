@@ -675,17 +675,13 @@ DECLARED_WIDENINGS = {
     ('media-buy/build-creative-response.json', '#/oneOf', 'oneOf'),
     ('registries/v1-canonical-mapping.json', '#/properties/mappings/items/properties/v1_pattern/oneOf', 'oneOf'),
 
-    # anyOf at JOIN: 10 sites in 10 documents
-    ('adagents.json', '#/oneOf/1/allOf/0/anyOf', 'anyOf'),
-    ('compliance/task-completion-data.json', '#/anyOf', 'anyOf'),
-    ('core/async-response-data.json', '#/anyOf', 'anyOf'),
-    ('core/requirements/asset-requirements.json', '#/anyOf', 'anyOf'),
-    ('media-buy/buy-products-request.json', '#/anyOf', 'anyOf'),
-    ('media-buy/create-media-buy-request.json', '#/anyOf', 'anyOf'),
-    ('media-buy/get-media-buys-response.json', '#/properties/media_buys/items/properties/available_actions/items/anyOf', 'anyOf'),
-    ('media-buy/proposal-refinement.json', '#/oneOf/1/anyOf', 'anyOf'),
-    ('media-buy/request-proposals-request.json', '#/anyOf', 'anyOf'),
-    ('trusted-match/provider-registration.json', '#/anyOf', 'anyOf'),
+    # anyOf at JOIN: NONE, and §4 is why -- "nothing at all where it is ``anyOf``".
+    # ``A | B`` admits exactly what "at least one branch matches" admits, so an inseparable
+    # ``anyOf`` drops no fact and owes no declaration; the 10 sites that stood here were
+    # the ones ``lower/union.py`` minted UNDERDETERMINED against that sentence, and they
+    # left with the kind (2026-11-16).  The 13 ``oneOf`` sites above are the same
+    # correction's other half and stayed, because their site is unchanged and only their
+    # KIND was wrong.
 
     # patternProperties at CONTAINER: 7 sites in 6 documents
     ('core/creative-asset.json', '#/properties/assets', 'patternProperties'),
@@ -759,13 +755,14 @@ DECLARED_WIDENINGS = {
 #:
 #: Held as ``document#pointer`` and not as ``harness``'s own sentence: the sentence is
 #: constant text and the site is the fact.
-UNDERDETERMINED_UNIONS: list[str] = [
-    'core/canonical-forecast-point.json#/properties/viewability/anyOf',
-    'core/forecast-point.json#/properties/viewability/anyOf',
-    'core/placement-definition.json#/properties/format_options/items/anyOf',
-    'core/product.json#/anyOf',
-    'core/transformer.json#/anyOf',
-]
+#: **EMPTY, AND BOTH DIRECTIONS NOW HOLD WITH NOTHING PINNED** (2026-11-16).  The five
+#: sites that stood here were all ``anyOf``, and they were silent because the equality
+#: asked an ``anyOf`` for a declaration §4 says it does not owe -- "nothing at all where
+#: it is ``anyOf``".  ``harness.underdetermined_census`` now derives over inseparable
+#: ``oneOf`` sites on BOTH sides, which is the combinator that owes one, and the residue
+#: is empty rather than pinned.  An equality is an obligation and not a ratchet: a site
+#: arriving here reddens and is not to be added back.
+UNDERDETERMINED_UNIONS: list[str] = []
 
 
 def test_the_declared_backlog_is_the_set_this_compiler_mints() -> None:

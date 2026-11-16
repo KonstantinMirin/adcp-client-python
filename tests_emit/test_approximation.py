@@ -528,7 +528,7 @@ def test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw() 
         node = schema_at(ref)
         for one in declared:
             owners.setdefault(harness.site_of(one), set()).add(name)
-            if one.kind == UNDERDETERMINED:
+            if one.kind == UNDERDETERMINED or harness._names_a_combinator(one):
                 continue  # §2: no draw can see one, so the obligation claims none
             if harness._steps(_relative(ref, one.pointer), node, _stated(ref)) is None:
                 unreachable.add((name, harness.site_of(one)))
@@ -547,7 +547,7 @@ def test_no_declaration_the_tree_carries_is_one_its_pair_cannot_put_to_a_draw() 
         for owner, ref, _ in rows:
             if owner in where:
                 one = stated[ref.document][site]
-                if one.kind == UNDERDETERMINED:
+                if one.kind == UNDERDETERMINED or harness._names_a_combinator(one):
                     continue
                 assert harness._steps(
                     _relative(ref, one.pointer), schema_at(ref), _stated(ref)
@@ -1128,8 +1128,8 @@ def _at(record: dict) -> dict:
     return {DOC: (record, {id(node): (DOC, pointer) for pointer, node in bundle.nodes(record)})}
 
 
-def test_the_underdetermined_set_equals_the_inseparable_set_in_both_directions() -> None:
-    """**Section 8's UNDERDETERMINED equality, and each direction perturbed.**
+def test_the_inseparable_oneof_set_equals_the_declared_set_in_both_directions() -> None:
+    """**Section 8's third equality, and each direction perturbed.**
 
     "Its check is section 4's disjointness derivation: **the set of unions declaring one
     equals the set the derivation cannot separate**, in both directions, so a union that
@@ -1139,10 +1139,15 @@ def test_the_underdetermined_set_equals_the_inseparable_set_in_both_directions()
     Four states: declared and inseparable (equal); declared and separable (a declaration
     the union no longer needs); inseparable and undeclared (a value decided by declaration
     order with nothing saying so); and neither.
+
+    The probe is a ``oneOf``, which is the combinator that owes a declaration -- §4 gives
+    an ``anyOf`` none -- and the kind it owes is ``WIDENED``, which is what ``approximate``
+    answers when nothing overrides it.
     """
     declaration = approximate(
-        _ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"], kind=UNDERDETERMINED
+        _ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"]
     )
+    assert declaration.kind == WIDENED
     stale, silent = harness.underdetermined_census((declaration,), _at(OVERLAPPING))
     assert (stale, silent) == ([], [])
 
@@ -1157,15 +1162,26 @@ def test_the_underdetermined_set_equals_the_inseparable_set_in_both_directions()
     assert harness.underdetermined_census((), _at(SEPARATED)) == ([], [])
 
 
-def test_a_widened_declaration_is_not_read_as_an_underdetermined_one() -> None:
-    """Section 2: the two kinds "are never summed", and the equality ranges over one of them.
+def test_an_inseparable_oneof_is_declared_widened_and_the_census_reads_it() -> None:
+    """**The kind an inseparable union earns is its COMBINATOR's, and the equality is over
+    the UNION.**
 
-    A ``WIDENED`` declaration at a union's pointer is a different claim about a different
-    thing -- a fact the annotation does not carry -- so counting it here would make a union
-    look declared that nothing declared.
+    An inseparable ``oneOf`` is one where some instance matches two branches.  "Exactly
+    one" refuses that instance and the emitted ``A | B`` admits it, so the declaration is
+    ``WIDENED`` -- which is what ``approximate`` answers without being overridden.  An
+    inseparable ``anyOf`` admits exactly what "at least one" admits and is
+    ``UNDERDETERMINED``.  Both are the declaration the inseparability earns, so both
+    satisfy the census; reading only one kind would report the whole ``oneOf`` half as
+    undeclared the moment it was labelled correctly.
     """
     widened = approximate(_ref("#/oneOf"), "oneOf", Position.ROOT, OVERLAPPING["oneOf"])
     assert widened.kind == WIDENED
-    stale, silent = harness.underdetermined_census((widened,), _at(OVERLAPPING))
+    assert harness.underdetermined_census((widened,), _at(OVERLAPPING)) == ([], [])
+
+    # And it is still a question about UNIONS: a widening on any other keyword is a
+    # different claim about a different thing and must not make a union look declared.
+    other = approximate(_ref("#/oneOf"), "required", Position.ROOT, ["kind"])
+    assert other.kind == WIDENED
+    stale, silent = harness.underdetermined_census((other,), _at(OVERLAPPING))
     assert stale == []
-    assert len(silent) == 1
+    assert len(silent) == 1 and "nothing declares it" in silent[0]

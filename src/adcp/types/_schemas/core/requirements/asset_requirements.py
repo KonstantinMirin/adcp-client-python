@@ -5,7 +5,7 @@ from typing import ClassVar
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
 
 from .audio_asset_requirements import AudioAssetRequirements
 from .css_asset_requirements import CSSAssetRequirements
@@ -32,9 +32,6 @@ class AssetRequirements(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='core/requirements/asset-requirements.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/image-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/video-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/audio-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/text-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/markdown-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/html-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/css-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/javascript-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/vast-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/daast-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/url-asset-requirements.json'}, {'$ref': 'https://adcontextprotocol.org/schemas/3.2.7/core/requirements/webhook-asset-requirements.json'}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
 
 
 class AssetRequirementsImage(AssetRequirements, ImageAssetRequirements):

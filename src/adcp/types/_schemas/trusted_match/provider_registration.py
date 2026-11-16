@@ -51,7 +51,6 @@ class TMPProviderRegistration(BranchDispatchMixin, AdCPBaseModel):
         UniqueItems('tmpx_slots'),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='trusted-match/provider-registration.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'properties': {'context_match': {'const': True}}, 'required': ['context_match']}, {'properties': {'identity_match': {'const': True}}, 'required': ['identity_match']}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
         Approximation(document='trusted-match/provider-registration.json', pointer='#/properties/endpoint', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='trusted-match/provider-registration.json', pointer='#/properties/endpoint', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )

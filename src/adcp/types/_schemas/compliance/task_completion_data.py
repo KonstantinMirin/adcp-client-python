@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedWhenNone, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedWhenNone, SchemaRef
 
 from ..media_buy.create_media_buy_response import CreateMediaBuySuccess
 from ..media_buy.get_products_response import GetProductsResponse
@@ -24,9 +24,6 @@ class ComplianceTaskCompletionData(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='compliance/task-completion-data.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'title': 'GetProductsCompletion', '$ref': 'https://adcontextprotocol.org/schemas/3.2.7/media-buy/get-products-response.json'}, {'title': 'GetSignalsCompletion', '$ref': 'https://adcontextprotocol.org/schemas/3.2.7/signals/get-signals-response.json'}, {'title': 'CreateMediaBuyCompletion', '$ref': 'https://adcontextprotocol.org/schemas/3.2.7/media-buy/create-media-buy-response.json#/oneOf/0'}, {'title': 'GetCreativeFeaturesCompletion', '$ref': 'https://adcontextprotocol.org/schemas/3.2.7/compliance/get-creative-features-completion.json'}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
 
 
 class GetProductsCompletion(ComplianceTaskCompletionData, GetProductsResponse):

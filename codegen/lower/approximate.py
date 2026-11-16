@@ -127,11 +127,21 @@ def approximate(
     itself inserted").
 
     ``kind`` defaults to ``WIDENED`` because that is every row's answer but one: section 2
-    gives ``UNDERDETERMINED`` exactly one instance, "a union whose branches section 4's
-    dispatch cannot separate", and section 6 of the architecture document has the union
-    handler declare it at the union's own pointer.  A default and not a required argument,
-    because the one caller that needs the other value is naming a specific row and every
-    other caller would be restating the common case.
+    gives ``UNDERDETERMINED`` one instance, "a union whose branches section 4's dispatch
+    cannot separate", and section 6 of the architecture document has the union handler
+    declare it at the union's own pointer.  A default and not a required argument, because
+    the one caller that needs the other value is naming a specific row and every other
+    caller would be restating the common case.
+
+    **AND THAT INSTANCE IS THE ``anyOf`` HALF OF IT ONLY** (corrected 2026-11-16).  The
+    union handler passed ``UNDERDETERMINED`` for both combinators and so overrode this
+    default at 16 ``oneOf`` sites where the default was RIGHT: ``oneOf`` is "exactly one
+    branch matches", an inseparable union is one where some instance matches two, and the
+    emitted ``A | B`` admits that instance where the document refuses it -- a widening, and
+    one a draw can see.  ``anyOf`` is "at least one", which ``A | B`` admits exactly, and
+    there the only fact dropped is WHICH branch an overlapping payload becomes.
+    ``lower/union.py`` carries the derivation; this default is now what a ``oneOf`` gets by
+    not being overridden.
     """
     if kind not in ir.KINDS:
         raise BuildFailure(

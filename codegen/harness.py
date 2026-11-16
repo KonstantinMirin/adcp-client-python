@@ -105,6 +105,7 @@ from adcp.types._base import (
     KINDS,
     NARROWED,
     UNDERDETERMINED,
+    WIDENED,
     Approximation,
     SchemaBound,
     SchemaRef,
@@ -4725,11 +4726,23 @@ def check_widening(
     stated = node_as_stated(document, at)
     for one in declared:
         res.declarations += 1
-        if one.kind == UNDERDETERMINED:
+        if one.kind == UNDERDETERMINED or _names_a_combinator(one):
             # Section 2: "No draw or dump can see one, which is precisely why
             # it is declared and why its instrument is different (section 8)."  Its check
             # is the disjointness equality (:func:`underdetermined_census`) and claiming
             # it here would report a pass this check cannot earn.
+            #
+            # **AND A DECLARATION AT A COMBINATOR'S OWN POINTER IS THE SAME CASE, BY ITS
+            # SPELLING AND NOT BY ITS KIND** (2026-11-16).  An inseparable ``oneOf``
+            # declares WIDENED -- §4 -- at ``<stated_at>/oneOf``, which names a COMBINATOR
+            # and no instance location, so :func:`_steps` answers ``None`` and this check
+            # can only report ``unproved``: there is nowhere to place a drawn value.  Its
+            # instrument is the one §4 names -- "the kind is the one §8's CONSTRUCTION can
+            # prove, by handing the class a value the document refuses", which is
+            # :func:`check_refuses`' two-branch draw -- and :func:`emit.stating_site`
+            # reads the same spelling for the same reason, one segment up.  Keyed on the
+            # kind alone, this skip fired on the mislabelled sites by accident and would
+            # have stopped firing the moment they were labelled correctly.
             res.declarations -= 1
             continue
         relative = "" if one.pointer == at else one.pointer[len(at.rstrip("/")) :]
@@ -4996,6 +5009,22 @@ Site = tuple[str, str, str]
 
 def site_of(declared: Approximation) -> Site:
     return (declared.document, declared.pointer, declared.keyword)
+
+
+def _names_a_combinator(one: Approximation) -> bool:
+    """Whether this declaration's pointer names a COMBINATOR and no instance location.
+
+    ``lower.union`` declares at ``<stated_at>/<combinator>`` because "the combinator is
+    what is approximated, not the node that holds it", so the pointer's last segment IS
+    the keyword.  Nothing can be placed at such a pointer -- there is no instance there --
+    which is why :func:`check_widening` cannot discharge one and
+    :func:`emit.stating_site` reads the node one segment up.
+
+    Read off the pointer and the keyword together, never off the kind: the kind is a claim
+    about direction and this is a claim about the ADDRESS, and the two were conflated while
+    every combinator declaration happened to carry one kind.
+    """
+    return one.keyword in _COMBINATORS and one.pointer.endswith(f"/{one.keyword}")
 
 
 def declarations_of(subject: Any) -> tuple[Approximation, ...]:
@@ -7345,13 +7374,30 @@ def underdetermined_census(
     records: Mapping[str, tuple[Mapping[str, Any], bundle.Origins]],
     collapsed: Mapping[str, Collection[str]] = {},
 ) -> tuple[list[str], list[str]]:
-    """Section 8's UNDERDETERMINED equality, in BOTH directions.
+    """Section 8's equality over the declaration an INSEPARABLE UNION EARNS, in BOTH directions.
 
     Returns ``(declared and separable, inseparable and undeclared)``.  Both empty is the
     equality; either non-empty is a defect, and the two say different things -- a union that
     became separable keeps a declaration it has not earned, and one that stopped being
     separable carries no declaration at all and the value it constructs is then a property
     of declaration order with nothing saying so.
+
+    **AND THE EQUALITY IS OVER INSEPARABLE ``oneOf`` SITES, BOTH SIDES** (corrected
+    2026-11-16, with ``lower/union.py``).  §4 decides what each combinator declares --
+    "a WIDENED approximation at the union's pointer where the combinator is ``oneOf``, and
+    **nothing at all where it is ``anyOf``**" -- because ``A | B`` admits exactly what "at
+    least one" admits, so an ``anyOf`` drops no fact and owes no declaration.  An
+    inseparable ``oneOf`` does: "exactly one" refuses the instance that matches two
+    branches and ``A | B`` admits it.
+
+    So this ranged over the wrong set at BOTH ends.  The declared side read
+    ``kind == UNDERDETERMINED``, which is a question about the KIND where the subject is
+    the UNION, and the derived side counted every inseparable combinator -- so the moment
+    the kinds were right, the 16 ``oneOf`` sites read as undeclared and the 13 ``anyOf``
+    sites read as owed a declaration §4 says they do not owe.  The keyword test on the
+    declared side is also what keeps this a question about unions: a ``WIDENED``
+    declaration on any other keyword is a different claim about a different thing and must
+    not make a union look declared.
 
     ``records`` is document -> ``bundle.recorded``'s pair: the document of record, which is
     the verifier's own reading of what the document states (section 9), and the origin map
@@ -7392,19 +7438,20 @@ def underdetermined_census(
     declared_at = {
         (one.document, one.pointer)
         for one in declared
-        if one.kind == UNDERDETERMINED
+        if one.keyword == "oneOf" and one.kind == WIDENED
     }
     inseparable = {
         site
         for document, (record, origins) in records.items()
         for site in inseparable_sites(record, origins)
+        if site[1].endswith("/oneOf")
         if not any(
             site[0] == document and site[1].lstrip("#").startswith(at)
             for at in collapsed.get(document, ())
         )
     }
     return (
-        sorted(f"{d}{p}: declared UNDERDETERMINED and the derivation separates it" for d, p in declared_at - inseparable),
+        sorted(f"{d}{p}: declared at a combinator and the derivation separates it" for d, p in declared_at - inseparable),
         sorted(f"{d}{p}: the derivation cannot separate these branches and nothing declares it" for d, p in inseparable - declared_at),
     )
 
@@ -7922,6 +7969,20 @@ def _check_pair(
     #: pointer from this pair's node, and a pointer in another document's space describes
     #: no location it can reach.
     #:
+    #: **AND ONLY A ``WIDENED`` DECLARATION COUNTS, because this check grades the WIDENED
+    #: direction and a declaration's kind IS its direction.**  :data:`admits_declared` a
+    #: few lines below filters ``one.kind == NARROWED`` for exactly this reason and this
+    #: draw filtered nothing, so a declaration pointing the OTHER way silenced a real
+    #: widening on the same keyword -- ``NARROWED`` says the class admits LESS than the
+    #: document and ``UNDERDETERMINED`` says it admits EXACTLY as much, and neither is a
+    #: claim that it admits more.  §2 is explicit that an UNDERDETERMINED approximation
+    #: "is invisible to all three checks": :func:`check_widening` already drops one where
+    #: it is handed one (``res.declarations -= 1``), and being invisible to a check is not
+    #: the same as EXCUSING it.  Measured over the graded population: the six
+    #: ``content-standards`` sites declare ``oneOf``/``UNDERDETERMINED`` and every
+    #: ``oneOf`` widening at those pairs read ``pass`` on that declaration's keyword
+    #: alone.
+    #:
     #: With no accepted instance there is nothing to reduce, and ``unrun`` says so rather
     #: than a pass: the table reads ``undeclared=absent:unrun``, which is a fact about the
     #: draw and not evidence about the class.
@@ -7937,6 +7998,7 @@ def _check_pair(
             declared=tuple(
                 one.keyword
                 for one in (*pair.declared, *composed_declarations(pair.model))
+                if one.kind == WIDENED
             ),
         )
         if sampled

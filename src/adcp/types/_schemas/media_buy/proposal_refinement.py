@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin2Max10, StrMinLen1
 
@@ -116,9 +116,6 @@ class ProposalRefinement(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/proposal-refinement.json', pointer='#/oneOf/1/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['constraints']}, {'required': ['product_changes']}, {'required': ['alternatives']}, {'required': ['ask']}, {'required': ['criteria']}, {'required': ['remove_media_buy_frequency_cap']}, {'properties': {'change_kind': {'type': 'string', 'const': 'cancellation'}}, 'required': ['change_kind']}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
     proposal_id: StrMinLen1
     action: Annotated[Action | None, Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.'), OmittedNotNull] = None
     change_kind: Annotated[ChangeKind | None, Field(description='Desired successor proposal. cancellation is valid only when the source proposal is accepted and attached to a non-terminal MediaBuy.', json_schema_extra={'default': 'amendment'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(ChangeKind).validate_python('amendment'))
@@ -152,9 +149,6 @@ class ProposalRefinementRevise(ProposalRefinement):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
-    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/proposal-refinement.json', pointer='#/oneOf/1/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['constraints']}, {'required': ['product_changes']}, {'required': ['alternatives']}, {'required': ['ask']}, {'required': ['criteria']}, {'required': ['remove_media_buy_frequency_cap']}, {'properties': {'change_kind': {'type': 'string', 'const': 'cancellation'}}, 'required': ['change_kind']}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
-    )
     action: Annotated[Literal[Action.REVISE], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.')]
 
 

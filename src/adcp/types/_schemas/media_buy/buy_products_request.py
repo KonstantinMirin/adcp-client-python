@@ -66,7 +66,6 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
         ForbiddenGroups((('packages',), ('proposal_id',), ('creatives',), ('creative_assignments',), ('artifact_webhook',))),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
-        Approximation(document='media-buy/buy-products-request.json', pointer='#/anyOf', keyword='anyOf', kind='UNDERDETERMINED', rung='JOIN', fact=({'required': ['brand']}, {'properties': {'account': {'required': ['brand', 'operator']}}}), attribution='docs/plan/rebuild-plan.md §5 combinators/anyOf'),
         Approximation(document='media-buy/buy-products-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
