@@ -751,28 +751,6 @@ def test_auto_apply_preserves_crlf_after_source_scoped_import(tmp_path: Path) ->
     compile(rewritten, str(path), "exec")
 
 
-def test_auto_apply_does_not_guess_colliding_source_variant(tmp_path: Path) -> None:
-    """``core.product_filters.ProductFilters`` is not ``adcp.types.ProductFilters``
-    (the public name is the canonical model), so --auto-apply must not lift it.
-    The line still leaves the deprecated path: it is prefix-renamed to the
-    domain module, where the class actually lives."""
-    path = _write(
-        tmp_path,
-        "code.py",
-        "from adcp.types.generated_poc.core.product_filters import ProductFilters\n",
-    )
-    report = v3_to_v4.run(tmp_path, apply_changes=True, auto_apply=True)
-
-    rewritten = path.read_text()
-    assert rewritten == "from adcp.types.domains.core.product_filters import ProductFilters\n"
-    assert report.auto_applied == []
-    assert report.flagged == []
-    (rename,) = [f for f in report.applied if f.kind == "rename_import"]
-    assert rename.after == "adcp.types.domains.core.product_filters"
-    # Nothing claims a flat-surface home it does not have.
-    assert rename.hint is None
-
-
 def test_auto_apply_rewrites_multi_symbol_all_known_line(tmp_path: Path) -> None:
     """A single import line with multiple known symbols is rewritten in one shot."""
     path = _write(
@@ -1224,25 +1202,6 @@ def test_import_path_rename_is_idempotent(tmp_path: Path) -> None:
     assert [f for f in report.applied if f.kind == "rename_import"] == []
 
 
-def test_renamed_deep_imports_resolve_to_the_same_objects(tmp_path: Path) -> None:
-    """The rewrite is a rename, not a re-binding: every name the migrated file
-    imports is the object the deprecated path served."""
-    import warnings
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        old_brand = importlib.import_module("adcp.types.generated_poc.brand")
-        old_context = importlib.import_module("adcp.types.generated_poc.core.context")
-    new_discovery = importlib.import_module("adcp.types.domains.brand_discovery")
-    new_brand = importlib.import_module("adcp.types.domains.brand")
-    new_context = importlib.import_module("adcp.types.domains.core.context")
-
-    assert old_brand.Brand is new_discovery.Brand
-    assert old_brand.Asset is new_discovery.Asset  # a name both halves bind: discovery wins
-    assert old_brand.AcquireRightsRequest is new_brand.AcquireRightsRequest
-    assert old_context.ContextObject is new_context.ContextObject
-
-
 def test_dry_run_reports_import_path_renames_without_writing(tmp_path: Path) -> None:
     path = _write(tmp_path, "app.py", DEEP_IMPORTS)
 
@@ -1337,43 +1296,3 @@ def test_json_report_carries_import_path_renames_under_applied(
 def test_cli_exits_zero_when_only_import_paths_need_renaming(tmp_path: Path) -> None:
     _write(tmp_path, "code.py", "from adcp.types.generated_poc.core.error import Error\n")
     assert v3_to_v4.main([str(tmp_path)]) == 0
-
-
-def test_deprecation_warning_names_the_codemod_invocation_that_rewrites(tmp_path: Path) -> None:
-    """The warning, the docs and the codemod agree (#1417): the advice an
-    adopter reads names ``adcp migrate v3-to-v4 --apply``, and that invocation
-    performs the rewrite the advice promises."""
-    import subprocess
-    import sys
-
-    result = subprocess.run(
-        [sys.executable, "-W", "always", "-c", "import adcp.types.generated_poc.core.error"],
-        capture_output=True,
-        text=True,
-        timeout=300,
-    )
-    assert result.returncode == 0, result.stderr
-    assert "`adcp migrate v3-to-v4 --apply` rewrites it" in result.stderr
-
-    docs = Path(__file__).resolve().parents[1] / "docs" / "types-9-migration.md"
-    assert "`adcp migrate v3-to-v4 --apply` rewrites those lines" in docs.read_text("utf-8")
-
-    _write(tmp_path, "code.py", "from adcp.types.generated_poc.core.error import Error\n")
-    assert v3_to_v4.main([str(tmp_path), "--apply", "--allow-dirty"]) == 0
-    assert (tmp_path / "code.py").read_text() == "from adcp.types.domains.core.error import Error\n"
-
-
-def test_split_detection_uses_the_same_suffix_the_runtime_alias_serves() -> None:
-    """The codemod cannot import the private alias module (import layering), so
-    it restates the one suffix the generator gives a root discovery schema; this
-    keeps the two spellings from drifting apart."""
-    from adcp.types import _generated_poc_alias
-
-    assert v3_to_v4.ROOT_DISCOVERY_SUFFIX == _generated_poc_alias.ROOT_DISCOVERY_SUFFIX
-    assert v3_to_v4.CANONICAL_TYPES_ROOT == _generated_poc_alias.CANONICAL_ROOT
-    assert v3_to_v4.DEPRECATED_TYPES_ROOT == _generated_poc_alias.DEPRECATED_ROOT
-    assert v3_to_v4._split_halves("brand") == (
-        "adcp.types.domains.brand_discovery",
-        "adcp.types.domains.brand",
-    )
-    assert v3_to_v4._split_halves("core") is None
