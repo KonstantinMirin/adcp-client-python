@@ -35,11 +35,17 @@ class Seller(DecisioningPlatform):
     @store.wrap
     async def create_media_buy(self, req: Any, ctx: Any) -> CreateMediaBuySuccessResponse:
         self.created += 1
+        # Two status fields, and 'active' belongs to the second. The envelope's
+        # ``status`` is a TaskStatus (``core/protocol-envelope.json`` one
+        # ``allOf`` up); ``media_buy_status`` is the lifecycle state, and the
+        # document says so itself: "This field carries the media buy lifecycle
+        # state; top-level `status` ...".
         return CreateMediaBuySuccessResponse(
             media_buy_id=f"mb_{self.created}",
             confirmed_at="2026-05-01T00:00:00Z",
             revision=1,
-            status="active",
+            status="completed",
+            media_buy_status="active",
             packages=[Package(package_id="pkg_1", product_id="prod_1")],
         )
 
