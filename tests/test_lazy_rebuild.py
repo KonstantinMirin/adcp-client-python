@@ -22,8 +22,7 @@ import subprocess
 import sys
 from typing import Literal
 
-import pytest
-from pydantic import BaseModel, ConfigDict, Field, RootModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 from adcp.types.base import AdCPBaseModel, AdCPRootModel, defer_model_rebuild
 
@@ -71,25 +70,17 @@ def test_importing_the_surface_builds_no_patched_model() -> None:
     assert not built, f"importing adcp.types._eager built {sorted(built)} at import time"
 
 
-def test_forward_compat_patches_apply_on_first_use() -> None:
-    from adcp.types import CreateMediaBuyRequest, ReportingWebhook
-
-    # The reporting_webhook extension (#1547) is a patched-in field.
-    registration = {
-        "url": "https://buyer.example/hook",
-        "authentication": {
-            "schemes": ["Bearer"],
-            "credentials": "buyer-reporting-token-1234567890",
-        },
-        "reporting_frequency": "daily",
-    }
-    webhook = ReportingWebhook.model_validate({**registration, "operation_id": "op-1"})
-    assert webhook.operation_id == "op-1"
-    with pytest.raises(ValidationError):
-        ReportingWebhook.model_validate({**registration, "operation_id": ""})
-    # And the request parent sees it through its own lazily built schema.
-    schema = CreateMediaBuyRequest.model_json_schema()
-    assert "operation_id" in schema["$defs"]["ReportingWebhook"]["properties"]
+# ``test_forward_compat_patches_apply_on_first_use`` stood here.  Its whole
+# subject was ``adcp.types._forward_compat``'s patched-in
+# ``ReportingWebhook.operation_id``: it asserted that an empty value is refused
+# once the model is built, and that the parent request's lazily built
+# ``$defs`` carries the field.  Measured, this emission declares no such module
+# (``src/adcp/types/`` names it only in two docstrings), and no node of bundle
+# 3.2 states ``operation_id`` on ``core/reporting-webhook.json`` -- the key is an
+# extra the document's own ``additionalProperties: true`` admits unconstrained,
+# which ``tests/test_reporting_webhook_operation_id.py`` now grades.  So there is
+# no patch here whose first-use application could be observed; the rest of this
+# file grades the deferred rebuild on models that are still patched.
 
 
 def test_ergonomic_patches_apply_on_first_use() -> None:
