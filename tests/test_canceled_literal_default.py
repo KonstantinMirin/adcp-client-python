@@ -97,50 +97,49 @@ class TestPackageUpdateCanceledDefault:
         assert payload["canceled"] is True
 
 
-class TestFixIdempotency:
-    """The post-gen fix must be idempotent — running it twice produces the same output."""
+class TestTheWalkEmitsTheNonDestructiveShape:
+    """The shape is the walk's own output, not a regex applied after it.
 
-    def test_fix_is_idempotent_on_synthesized_source(self) -> None:
-        from scripts.post_generate_fixes import _CANCELED_FIELD_RE, _WIDENED_LITERAL_TRUE
+    There is no ``scripts/post_generate_fixes.py`` in this emission, so there is
+    no ``_CANCELED_FIELD_RE`` to run twice and no idempotence to grade. The two
+    tests that stood here exercised that regex against synthesized source.
 
-        already_fixed = (
-            "    canceled: Annotated[\n"
-            "        Literal[True] | None,\n"
-            "        Field(\n"
-            "            description='Cancel this specific package. Cancellation is irreversible"
-            " — canceled packages stop delivery and cannot be reactivated."
-            " Sellers MAY reject with NOT_CANCELLABLE.'\n"
-            "        ),\n"
-            "    ] = None\n"
+    What decides the shape is the document: ``canceled`` is ``{"type":
+    "boolean", "const": true}`` and is NOT in ``required``, so an optional
+    property compiles to ``Literal[True] | None = None`` -- the pinned-default
+    rule applies only to a REQUIRED property the document pins (decision index,
+    ``verdicts/a-pinned-default-is-the-documents-own.md``). The emitted
+    annotation is read here so the two facts stay side by side.
+    """
+
+    def test_the_document_states_an_optional_pinned_boolean(self) -> None:
+        import json
+        from pathlib import Path
+
+        from adcp.validation.version import resolve_bundle_key
+
+        repo_root = Path(__file__).resolve().parent.parent
+        bundle = resolve_bundle_key((repo_root / "src/adcp/ADCP_VERSION").read_text().strip())
+        document = json.loads(
+            (repo_root / "schemas/cache" / bundle / "media-buy/package-update.json").read_text()
         )
 
-        result, count = _CANCELED_FIELD_RE.subn(
-            _WIDENED_LITERAL_TRUE,
-            already_fixed,
-        )
-        assert count == 0, "fix must not re-apply to already-widened source"
-        assert result == already_fixed
+        assert document["properties"]["canceled"] == {
+            "type": "boolean",
+            "const": True,
+            "description": document["properties"]["canceled"]["description"],
+        }
+        assert "canceled" not in document["required"]
 
-    def test_fix_matches_destructive_source(self) -> None:
-        from scripts.post_generate_fixes import _CANCELED_FIELD_RE, _WIDENED_LITERAL_TRUE
+    def test_the_emitted_annotation_is_literal_true_or_none(self) -> None:
+        import inspect
 
-        destructive = (
-            "    canceled: Annotated[\n"
-            "        Literal[True],\n"
-            "        Field(\n"
-            "            description='Cancel this specific package. Cancellation is irreversible"
-            " — canceled packages stop delivery and cannot be reactivated."
-            " Sellers MAY reject with NOT_CANCELLABLE.'\n"
-            "        ),\n"
-            "    ] = True\n"
-        )
+        from adcp.types.domains.media_buy.package_update import PackageUpdate
 
-        result, count = _CANCELED_FIELD_RE.subn(
-            _WIDENED_LITERAL_TRUE,
-            destructive,
-        )
-        assert count == 1
-        assert "Literal[True] | None," in result
-        assert "] = None" in result
-        assert "Literal[True]," not in result
-        assert "] = True" not in result
+        [line] = [
+            line
+            for line in inspect.getsource(PackageUpdate).splitlines()
+            if line.lstrip().startswith("canceled:")
+        ]
+        assert "Literal[True] | None" in line
+        assert line.rstrip().endswith("= None")

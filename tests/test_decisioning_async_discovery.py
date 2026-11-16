@@ -14,7 +14,6 @@ Reference: JS adcp-client#2170 (rc8 async discovery parity).
 from __future__ import annotations
 
 import asyncio
-import typing
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -66,45 +65,62 @@ class _UnresolvedAccounts:
 # ---------------------------------------------------------------------------
 
 
-def test_get_products_union_includes_all_three_async_arms() -> None:
-    """``GetProductsResponseUnion`` carries the sync success arm plus the
-    submitted / working / input_required async arms the rc.9 spec ships."""
+def test_get_products_ships_all_three_async_response_documents() -> None:
+    """``get_products`` ships the sync success document plus three async ones.
+
+    There is no ``GetProductsResponseUnion`` to read: each of these is its OWN
+    document root, and no node of the bundle states a ``oneOf`` over them, so
+    there is no union for the walk to emit (§1 -- the export set is read off the
+    run's own record, and a union with no node behind it is not in it). The
+    contract that was worth grading is which async states the tool ships, and
+    that is the set of documents and their classes.
+    """
     from adcp.types import (
         GetProductsInputRequiredResponse,
         GetProductsResponse,
-        GetProductsResponseUnion,
         GetProductsSubmittedResponse,
         GetProductsWorkingResponse,
     )
 
-    arms = set(typing.get_args(GetProductsResponseUnion))
-    assert GetProductsResponse in arms
-    assert GetProductsSubmittedResponse in arms
-    assert GetProductsWorkingResponse in arms
-    assert GetProductsInputRequiredResponse in arms
+    assert [
+        response.__adcp_schema__.document
+        for response in (
+            GetProductsResponse,
+            GetProductsSubmittedResponse,
+            GetProductsWorkingResponse,
+            GetProductsInputRequiredResponse,
+        )
+    ] == [
+        "media-buy/get-products-response.json",
+        "media-buy/get-products-async-response-submitted.json",
+        "media-buy/get-products-async-response-working.json",
+        "media-buy/get-products-async-response-input-required.json",
+    ]
 
 
-def test_get_signals_union_has_submitted_working_but_not_input_required() -> None:
+def test_get_signals_ships_submitted_and_working_but_no_input_required() -> None:
     """``get_signals`` ships ONLY submitted + working — no input_required
-    arm (signal discovery cannot pause to solicit buyer clarification)."""
+    document (signal discovery cannot pause to solicit buyer clarification)."""
     from adcp.types import (
         GetSignalsResponse,
-        GetSignalsResponseUnion,
         GetSignalsSubmittedResponse,
         GetSignalsWorkingResponse,
     )
 
-    arms = set(typing.get_args(GetSignalsResponseUnion))
-    assert GetSignalsResponse in arms
-    assert GetSignalsSubmittedResponse in arms
-    assert GetSignalsWorkingResponse in arms
-    # No input_required arm exists for signals at all.
+    assert [
+        response.__adcp_schema__.document
+        for response in (GetSignalsResponse, GetSignalsSubmittedResponse, GetSignalsWorkingResponse)
+    ] == [
+        "signals/get-signals-response.json",
+        "signals/get-signals-async-response-submitted.json",
+        "signals/get-signals-async-response-working.json",
+    ]
+
+    # No input_required document exists for signals, so no class does either.
     import adcp.types as adcp_types
 
     assert not hasattr(adcp_types, "GetSignalsInputRequiredResponse")
     assert not hasattr(adcp_types, "GetSignalsInputRequired")
-    arm_names = {a.__name__ for a in arms}
-    assert not any("InputRequired" in n for n in arm_names)
 
 
 def test_input_required_arm_exists_for_products_only() -> None:

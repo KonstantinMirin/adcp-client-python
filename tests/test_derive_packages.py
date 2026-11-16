@@ -88,9 +88,25 @@ def test_derive_packages_propagates_allocation_flight_times() -> None:
 
 
 def test_derive_packages_accepts_typed_total_budget() -> None:
-    """Typed ``TotalBudget`` from the wire model works the same as a dict."""
-    from adcp.types import PackageRequest
-    from adcp.types.domains.media_buy.create_media_buy_request import TotalBudget
+    """The typed total budget from the wire model works the same as a dict.
+
+    `total_budget` is `{amount, currency}` and the bundle states that subject
+    once, at `media-buy/change-term-constraints.json#/definitions/money`. §4's
+    one-class-per-SUBJECT rule means the field's type IS that class rather than
+    a second `TotalBudget` declared at this property, and §1 keeps a definitions
+    entry off the domain surface -- "a consumer reaches them through the field
+    whose annotation names them, which is the path the document itself gives."
+    So the class is read off the field, which is also what keeps this test
+    honest about which class the field actually takes.
+    """
+    import typing
+
+    from adcp.types import CreateMediaBuyRequest, PackageRequest
+
+    total_budget_type = typing.get_args(
+        CreateMediaBuyRequest.model_fields["total_budget"].annotation
+    )[0]
+    assert total_budget_type.__adcp_schema__.pointer == "#/definitions/money"
 
     payload = {
         "allocations": [
@@ -101,7 +117,7 @@ def test_derive_packages_accepts_typed_total_budget() -> None:
             },
         ]
     }
-    total_budget = TotalBudget(amount=500.0, currency="USD")
+    total_budget = total_budget_type(amount=500.0, currency="USD")
     packages = derive_packages_from_proposal(payload, total_budget)
     assert isinstance(packages[0], PackageRequest)
     assert packages[0].budget == 500.0

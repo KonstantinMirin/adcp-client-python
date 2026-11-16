@@ -30,7 +30,7 @@ from adcp.decisioning import (
 )
 from adcp.server import ADCPHandler
 from adcp.testing import build_test_client
-from adcp.types import ContextObject, CreateMediaBuySuccessResponse, GetProductsResponse, Package
+from adcp.types import CreateMediaBuySuccessResponse, GetProductsResponse, Package
 
 BUY_CONTEXT: dict[str, Any] = {
     "campaign": "spring-26",
@@ -281,16 +281,27 @@ def test_claiming_overlay_specialism_still_requires_an_adopter_store() -> None:
 
 
 def test_context_object_dump_keeps_null_values() -> None:
-    context = ContextObject.model_validate({"a": None, "b": 1, "n": {"x": None}})
-    assert context.model_dump() == {"a": None, "b": 1, "n": {"x": None}}
-    assert json.loads(context.model_dump_json()) == {"a": None, "b": 1, "n": {"x": None}}
+    """A null INSIDE the opaque context is data and survives every dump path.
+
+    `core/context.json` is `{"type": "object", "additionalProperties": true}`
+    with no stated properties, so `ContextObject` is an alias for
+    `dict[str, Any]` and not a model -- there is no `model_validate` on it, and
+    nothing to strip a key at. The `None`-is-absence rule governs a property the
+    document states; these keys are the caller's own and the document's own
+    words are that the value is "echoed unchanged".
+    """
+    from adcp.types._schemas.core.context import strict_validate
+
+    context = {"a": None, "b": 1, "n": {"x": None}}
+    assert strict_validate(context) == context
+
     # `status` is required by core/protocol-envelope.json, which this
     # document composes via allOf. Upstream's generator dropped
     # allOf-composed required fields, so their fixtures omit it.
     response = GetProductsResponse(status="completed", products=[], context=context)
-    assert response.model_dump(mode="json")["context"] == {"a": None, "b": 1, "n": {"x": None}}
-    # An explicit exclusion still wins.
-    assert context.model_dump(exclude={"a"}) == {"b": 1, "n": {"x": None}}
+    assert response.model_dump(mode="json")["context"] == context
+    assert json.loads(response.model_dump_json())["context"] == context
+    assert response.model_dump(exclude_none=True)["context"] == context
 
 
 class _TypedEchoHandler(ADCPHandler[Any]):

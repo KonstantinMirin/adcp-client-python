@@ -25,7 +25,10 @@ from pathlib import Path
 import pytest
 
 SRC_TYPES = Path(__file__).parent.parent / "src" / "adcp" / "types"
-PARTIAL_MODULES = ("media_buy", "creative", "signals", "protocol", "buyer", "seller")
+# Upstream's own module paths, served from our surface by `survey/adapter_surface.py`.
+# The set is derived from what upstream's kept machinery imports at module scope, and
+# upstream carries no `adcp.types.seller` -- the word named no module to serve.
+PARTIAL_MODULES = ("media_buy", "creative", "signals", "protocol", "buyer")
 
 
 def _run(code: str) -> str:
@@ -278,33 +281,27 @@ def test_star_import_from_adcp_resolves_all() -> None:
     assert not missing, f"star-import did not resolve: {missing}"
 
 
-def test_geopostalarea_deprecation_warns_once_then_caches() -> None:
-    """GeoPostalArea resolves to PostalArea5 and warns once (then is cached).
+def test_a_word_with_no_document_behind_it_is_refused_with_the_reason() -> None:
+    """``GeoPostalArea`` is not bound, and the refusal says where to look instead.
 
-    The lazy facade caches the resolved alias into the module namespace so the
-    DeprecationWarning fires on first access only — subsequent accesses hit the
-    module dict directly and skip ``__getattr__``.
+    There is no deprecating-alias layer in this emission: a word the walk did
+    not derive from a document gets no class and no DeprecationWarning, it gets
+    an ``AttributeError`` naming the domain surface. ``core/postal-area.json``'s
+    fused-system branch is still there, under the name its own position derives
+    (``adcp.types.core.PostalAreaWithFusedSystem``); what is gone is the word.
+
+    What stood here asserted ``adcp.types.GeoPostalArea`` resolved to
+    ``PostalArea2`` behind a warn-once-then-cache shim -- the previous
+    generator's alias layer, which binds nothing now.
     """
-    import warnings
-
     import adcp.types
 
-    # Start uncached so this test observes the first-access warning regardless
-    # of what ran before it.
-    adcp.types.__dict__.pop("GeoPostalArea", None)
+    with pytest.raises(AttributeError) as raised:
+        adcp.types.GeoPostalArea
 
-    with warnings.catch_warnings(record=True) as caught:
-        warnings.simplefilter("always")
-        first = adcp.types.GeoPostalArea
-        second = adcp.types.GeoPostalArea
-        third = adcp.types.GeoPostalArea
-
-    assert first.__name__ == "PostalArea2"
-    assert second is first and third is first
-    deprecations = [w for w in caught if issubclass(w.category, DeprecationWarning)]
-    assert len(deprecations) == 1, f"expected one warning, got {len(deprecations)}"
-    assert "GeoPostalArea is deprecated" in str(deprecations[0].message)
-    assert "GeoPostalArea" in vars(adcp.types), "alias should be cached after first access"
+    assert "adcp.types.<domain>" in str(raised.value)
+    assert "docs/migration-from-upstream.md" in str(raised.value)
+    assert "GeoPostalArea" not in vars(adcp.types)
 
 
 def test_removed_v4_names_take_precedence_over_lazy() -> None:

@@ -45,16 +45,29 @@ _AUTHENTICATION = {
 _REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_reporting_webhook_operation_id_is_optional() -> None:
+def test_reporting_webhook_states_five_properties_and_operation_id_is_not_one() -> None:
+    """`operation_id` is not a FIELD here; the pinned document does not state it.
+
+    `core/reporting-webhook.json` in bundle 3.2 states exactly
+    `url, token, authentication, reporting_frequency, requested_metrics`, so those
+    are the class's fields. A registration that supplies none of the optional ones
+    carries no `operation_id` at all -- not a field defaulting to `None`, and not
+    an extra.
+    """
     webhook = ReportingWebhook(
         url="https://buyer.example/reporting",
         authentication=_AUTHENTICATION,
         reporting_frequency="daily",
     )
 
-    assert "operation_id" in ReportingWebhook.model_fields
-    assert not ReportingWebhook.model_fields["operation_id"].is_required()
-    assert webhook.operation_id is None
+    assert set(ReportingWebhook.model_fields) == {
+        "url",
+        "token",
+        "authentication",
+        "reporting_frequency",
+        "requested_metrics",
+    }
+    assert webhook.model_extra == {}
     assert "operation_id" not in webhook.model_dump()
 
 
@@ -105,14 +118,25 @@ def test_reporting_webhook_admits_any_operation_id_value(operation_id: object) -
     ReportingWebhook.strict_validate({**base, "operation_id": operation_id})
 
 
-def test_reporting_operation_id_none_is_omitted_on_the_wire() -> None:
+def test_reporting_operation_id_none_rides_the_wire_as_a_supplied_extra() -> None:
+    """A `None` passed here is a SUPPLIED extra key, not an absent field.
+
+    The `None`-is-absence rule (`rebuild-plan.md` §2, decision index) governs a
+    property the document STATES: an unsupplied optional field is dropped from the
+    dump. `operation_id` is not such a property -- the pinned document states it
+    nowhere and admits it under `additionalProperties: true` -- so the key is
+    carried verbatim, null included. Omitting it is what
+    `test_reporting_webhook_states_five_properties_and_operation_id_is_not_one`
+    grades, by not supplying it.
+    """
     webhook = ReportingWebhook(
         url="https://buyer.example/reporting",
         authentication=_AUTHENTICATION,
         reporting_frequency="daily",
         operation_id=None,
     )
-    assert "operation_id" not in json.loads(webhook.model_dump_json())
+    assert webhook.model_extra == {"operation_id": None}
+    assert json.loads(webhook.model_dump_json())["operation_id"] is None
 
 
 _ACCOUNT = {"brand": {"domain": "example.com"}, "operator": "agency.example"}
@@ -168,14 +192,16 @@ def test_all_registration_requests_preserve_optional_reporting_id(
         idempotency_key="reporting_request_001",
         reporting_webhook=registration,
     )
-    assert request.reporting_webhook.operation_id == operation_id
+    # The key is an EXTRA on the registration -- no node of these documents states
+    # it -- so it is read off `model_extra` and is absent when it was not supplied.
+    assert request.reporting_webhook.model_extra.get("operation_id") == operation_id
     dumped = request.model_dump(mode="json")
     assert dumped["reporting_webhook"].get("operation_id") == operation_id
     schema = get_portable_schema(tool, "request", version="3.2")
     assert schema is not None
     Draft7Validator(schema, format_checker=FormatChecker()).validate(dumped)
     restored = model.model_validate_json(request.model_dump_json())
-    assert restored.reporting_webhook.operation_id == operation_id
+    assert restored.reporting_webhook.model_extra.get("operation_id") == operation_id
 
 
 @pytest.mark.parametrize("model,tool,params", _REQUEST_CASES)
@@ -245,43 +271,56 @@ def _validate_wire_delivery_webhook(body: bytes) -> dict[str, Any]:
     return wire
 
 
-def test_reporting_operation_id_constraints_match_push_notification_config() -> None:
-    """AdCP 3.3 (adcp#7895) adopts push_notification_config.operation_id's constraints.
+def test_only_push_notification_config_states_operation_id_constraints() -> None:
+    """One of the two registration documents states the key, and only one.
 
-    Pinning parity keeps this 3.2 extension and the SDK 10 generated field in
-    agreement, so the forward-compat patch can retire without a wire change.
+    `core/push-notification-config.json` states `operation_id` with the 1-255
+    `[A-Za-z0-9_.:-]` form, so the class carries it as a constrained field.
+    `core/reporting-webhook.json` states it nowhere, so the class carries no such
+    field and the key is admitted as an unconstrained extra -- graded by
+    `test_reporting_webhook_admits_any_operation_id_value`.
+
+    What stood here asserted the two were in agreement, against the field
+    `adcp.types._forward_compat` patched onto `ReportingWebhook`; that layer is
+    not restored in this emission, and a class that carried the push document's
+    constraints on a key the reporting document never states would be narrower
+    than its document.
     """
-    reporting = ReportingWebhook.model_fields["operation_id"]
-    push = PushNotificationConfig.model_fields["operation_id"]
-    assert not reporting.is_required()
-    assert reporting.default is None
-    assert reporting.annotation == push.annotation
-    assert [repr(item) for item in reporting.metadata] == [repr(item) for item in push.metadata]
-    schema = ReportingWebhook.model_json_schema()["properties"]["operation_id"]
     push_schema = PushNotificationConfig.model_json_schema()["properties"]["operation_id"]
-    wire_keys = ("type", "minLength", "maxLength", "pattern", "anyOf")
-    assert {key: schema.get(key) for key in wire_keys} == {
-        key: push_schema.get(key) for key in wire_keys
-    }
-    assert {key: schema[key] for key in ("type", "minLength", "maxLength", "pattern")} == {
+    assert {key: push_schema[key] for key in ("type", "minLength", "maxLength", "pattern")} == {
         "type": "string",
         "minLength": 1,
         "maxLength": 255,
         "pattern": "^[A-Za-z0-9_.:-]{1,255}$",
     }
-    assert "MUST NOT emit `media_buy_delivery`" in schema["description"]
+
+    assert "operation_id" not in ReportingWebhook.model_fields
+    assert "operation_id" not in ReportingWebhook.model_json_schema()["properties"]
 
 
-def test_reporting_operation_id_refuses_an_explicit_json_null() -> None:
-    """Omitted is fine; a JSON null is not, matching the generated push field."""
+def test_reporting_operation_id_json_null_is_admitted_as_an_extra() -> None:
+    """A JSON null is not refused here, because no node of the document refuses it.
+
+    The push field's annotation refuses an explicit null; `ReportingWebhook` has
+    no such field to refuse at, and its document's `additionalProperties: true`
+    admits the key whatever it holds. Refusing it would be a NARROWING no
+    declaration covers.
+    """
     base = {
         "url": "https://buyer.example/reporting",
         "authentication": _AUTHENTICATION,
         "reporting_frequency": "daily",
     }
-    assert ReportingWebhook.model_validate_json(json.dumps(base)).operation_id is None
+    assert ReportingWebhook.model_validate_json(json.dumps(base)).model_extra == {}
+    nulled = ReportingWebhook.model_validate_json(json.dumps({**base, "operation_id": None}))
+    assert nulled.model_extra == {"operation_id": None}
+    assert ReportingWebhook.strict_validate({**base, "operation_id": None}) is not None
+
+    # The push document DOES state the field, and there a JSON null is refused.
     with pytest.raises(ValidationError):
-        ReportingWebhook.model_validate_json(json.dumps({**base, "operation_id": None}))
+        PushNotificationConfig.model_validate_json(
+            json.dumps({"url": "https://buyer.example/push", "operation_id": None})
+        )
 
 
 @pytest.mark.asyncio

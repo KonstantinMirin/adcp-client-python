@@ -1082,7 +1082,8 @@ def test_consumer_billing_mismatch_creates_rejected_receipt() -> None:
     )
 
     assert receipt.status.value == "rejected"
-    assert [code.root for code in receipt.rejection_codes or []] == [
+    # A rejection code is a scalar root: it IS its `str`, with no `.root` wrapper.
+    assert list(receipt.rejection_codes or []) == [
         "ROW_COUNT_MISMATCH",
         "CONTROL_TOTAL_MISMATCH",
         "CANONICAL_DIGEST_MISMATCH",

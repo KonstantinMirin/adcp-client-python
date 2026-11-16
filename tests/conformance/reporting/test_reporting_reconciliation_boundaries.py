@@ -102,7 +102,7 @@ async def test_native_versions_preserve_decoded_value_and_require_exact_path_evi
     from adcp.reporting.ledger import receipt_to_wire
 
     assert (
-        ReportingReceipt.model_validate(receipt_to_wire(receipt)).observed_native_version_ref.root
+        ReportingReceipt.model_validate(receipt_to_wire(receipt)).observed_native_version_ref
         == native
     )
 
