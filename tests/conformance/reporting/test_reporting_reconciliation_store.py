@@ -28,7 +28,8 @@ from adcp.reporting.ledger import (
     revision_to_wire,
 )
 from adcp.types import (
-    GetReportingStatusResponse,
+    ReportingAdjustment,
+    ReportingAdjustmentReceipt,
     ReportingMaterialization,
     ReportingReceipt,
     ReportingRevision,
@@ -469,7 +470,14 @@ async def test_adjustment_digest_finality_and_independent_receipt_chain(
     expected = wire.pop("canonical_adjustment_sha256")
     assert expected == hashlib.sha256(canonical_json_utf8_v1(wire)).hexdigest()
     wire["canonical_adjustment_sha256"] = expected
-    GetReportingStatusResponse.model_validate({"status": "completed", "adjustments": [wire]})
+    # The node that STATES the adjustment, as `pending.to_wire()` is graded above.
+    # `media-buy/get-reporting-status-response.json` reaches this shape through
+    # `properties.adjustments.items.$ref -> core/reporting-adjustment.json`, and its
+    # `completed` branch carries a three-branch `oneOf` over `view` whose summary
+    # branch FORBIDS `adjustments` outright and whose periods and revision branches
+    # each require nine further keys this fixture has no business inventing.  A
+    # response envelope was never the subject here; the adjustment's wire shape is.
+    ReportingAdjustment.model_validate(wire)
     record = ReportingAdjustmentReceiptRecord(
         s.attempt.scope,
         "adjustment-receipt-0001",
@@ -482,9 +490,7 @@ async def test_adjustment_digest_finality_and_independent_receipt_chain(
     # The schema defines independent evidence; it does not require acceptance
     # of the official receipt first. Completion still needs both receipts.
     accepted, _ = await store.record_adjustment_receipt(record)
-    GetReportingStatusResponse.model_validate(
-        {"status": "completed", "adjustment_receipts": [receipt_to_wire(accepted)]}
-    )
+    ReportingAdjustmentReceipt.model_validate(receipt_to_wire(accepted))
     assert await store.record_adjustment_receipt(record) == (accepted, False)
     with pytest.raises(LedgerConflictError) as error:
         await store.record_adjustment_receipt(
