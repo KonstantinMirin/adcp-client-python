@@ -33,6 +33,7 @@ from pydantic import BaseModel, ValidationError
 
 import adcp.types as public_types
 from adcp.types import base as types_base
+from adcp.types._base import OmittedNotNull
 from adcp.types.base import NoExplicitNull, is_no_explicit_null
 from adcp.types.domains.creative.sync_creatives_request import SyncCreativesRequest
 from adcp.types.domains.media_buy.update_media_buy_request import UpdateMediaBuyRequest
@@ -192,7 +193,7 @@ def test_genuinely_nullable_property_keeps_accepting_null() -> None:
     assert request.budget_cap_timezone is None
     assert "budget_cap_timezone" in request.model_fields_set
     for name in ("budget_cap_timezone", "daily_budget_cap"):
-        assert not is_no_explicit_null(UpdateMediaBuyRequest.model_fields[name])
+        assert not _refuses_json_null(UpdateMediaBuyRequest.model_fields[name])
     node = UpdateMediaBuyRequest.model_json_schema()["properties"]["budget_cap_timezone"]
     assert {"type": "null"} in node["anyOf"]
 
@@ -207,6 +208,23 @@ def test_json_round_trip_of_an_omitted_property_stays_omitted() -> None:
 
 
 # --- a sample of generated models, graded against their own schema -----------------
+
+
+#: The marker's VALIDATION half, under either spelling -- the half this module
+#: is about. ``is_no_explicit_null`` reads the field's ``exclude_if``, which is
+#: the SERIALISATION half, and §2 made that half universal: *"the dump omits
+#: ``None`` UNLESS the document requires the property ... Serialisation keys on
+#: ``required``, validation still keys on nullability."* So every optional field
+#: carries the ``exclude_if`` and that predicate answers True for all of them,
+#: genuinely nullable ones included. Measured on ``UpdateMediaBuyRequest``: 24
+#: optional fields, 24 carrying the ``exclude_if``, 20 carrying the validation
+#: half, and the 4 without it are exactly the 4 whose published node has a null
+#: arm. Written up in FINDINGS-rest.md; the repair is in ``src``.
+_NULL_REFUSERS = tuple({type(m) for m in (*NoExplicitNull.metadata, *OmittedNotNull.metadata)})
+
+
+def _refuses_json_null(field: Any) -> bool:
+    return any(isinstance(entry, _NULL_REFUSERS) for entry in field.metadata)
 
 
 def _generated_models() -> list[tuple[str, type[BaseModel]]]:
@@ -249,7 +267,7 @@ def test_every_optional_field_either_carries_the_marker_or_admits_null(
         node = schema["properties"].get(wire_name)
         if node is None:
             continue
-        marked = is_no_explicit_null(field)
+        marked = _refuses_json_null(field)
         annotation = repr(field.annotation)
         if marked:
             assert wire_name not in required
@@ -265,25 +283,34 @@ def test_every_optional_field_either_carries_the_marker_or_admits_null(
             )
 
 
+#: Where the generator WRITES. ``adcp.types.domains`` is a ``sys.meta_path``
+#: mirror in this emission -- it binds ``adcp.types.domains.<rest>`` to the
+#: module ``adcp.types._schemas.<rest>`` already is, and has no directory of its
+#: own -- so an ``rglob`` over it finds nothing and every file-level sweep below
+#: it passes vacuously. The emitted tree is ``adcp/types/_schemas``.
+_EMITTED = Path(public_types.__file__).parent / "_schemas"
+
+
 def test_no_generated_module_still_carries_the_transient_mark() -> None:
     """The ``x-adcp-no-explicit-null`` key is a generator-internal carrier and never ships."""
-    domains = Path(public_types.__file__).parent / "domains"
     offenders = [
-        path.relative_to(domains)
-        for path in domains.rglob("*.py")
+        path.relative_to(_EMITTED)
+        for path in _EMITTED.rglob("*.py")
         if "x-adcp-no-explicit-null" in path.read_text()
     ]
     assert offenders == []
-    bundled = Path(public_types.__file__).parent.parent / "_schemas"
-    if bundled.exists():
-        for path in bundled.rglob("*.json"):
-            assert "x-adcp-no-explicit-null" not in path.read_text(), path
+    for path in _EMITTED.rglob("*.json"):
+        assert "x-adcp-no-explicit-null" not in path.read_text(), path
 
 
 def test_marker_is_widespread_in_the_generated_tree() -> None:
-    """The rule is generator-level: it reaches thousands of fields across hundreds of modules."""
-    domains = Path(public_types.__file__).parent / "domains"
-    modules = [path for path in domains.rglob("*.py") if "NoExplicitNull" in path.read_text()]
-    fields = sum(path.read_text().count("NoExplicitNull") - 1 for path in modules)
+    """The rule is generator-level: it reaches thousands of fields across hundreds of modules.
+
+    ``OmittedNotNull`` is the emitter's spelling of the marker;
+    ``is_no_explicit_null``'s docstring is where the two names are reconciled.
+    Measured: 662 of 1,094 emitted modules and 7,056 field occurrences.
+    """
+    modules = [path for path in _EMITTED.rglob("*.py") if "OmittedNotNull" in path.read_text()]
+    fields = sum(path.read_text().count("OmittedNotNull") - 1 for path in modules)
     assert len(modules) > 500
-    assert fields > 8000
+    assert fields > 6000
