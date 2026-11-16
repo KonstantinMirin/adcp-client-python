@@ -634,6 +634,30 @@ DECLARED: dict[str, Callable[[Divergence], bool]] = {
     "model_requires_a_field_the_schema_does_not": lambda d: (
         d.direction == SCHEMA_ACCEPTS and d.error_types == frozenset({"missing"})
     ),
+    # **PYDANTIC COERCES AT THE PYTHON BOUNDARY, AND THAT IS CORRECT** -- the same shape
+    # as ``datetime_field_parses_a_number`` above, which declares the identical thing for
+    # ``AwareDatetime``.  A ``{"type": "number"}`` field takes ``"1000"`` and ``True`` and
+    # normalises them; the bundled schema, grading JSON, refuses both.
+    #
+    # Declared and NOT closed.  The split is the architecture's own: the model is the
+    # convenient Python layer and ``strict_validate`` is the DOCUMENT's screen, which
+    # refuses these payloads either way, so the divergence is where it belongs rather
+    # than something to narrow the models for.
+    #
+    # The history is the reason this comment is long.  These were "fixed" by making every
+    # bounded numeric strict -- 755 fields, 425 ``NonNegativeFloat`` and 330
+    # ``NonNegativeInt`` -- on the strength of ``codegen/ir.py``'s ``STRICT_SCALAR`` table
+    # reading that ``number`` refuses ``"1"``.  That table is about the carrier chosen for
+    # a BARE type word; it is not a licence to narrow every coerced value the parity check
+    # reports, and the owner's ruling is that the coercion is correct.  The change was
+    # reverted.  What the check wanted all along was this entry.
+    "pydantic_coerces_a_scalar_at_the_python_boundary": lambda d: (
+        d.direction == MODEL_ACCEPTS
+        and (_is_numeric_string(d.mutation) or isinstance(d.mutation, bool))
+        and any(
+            f"'{word}'" in d.message for word in ("number", "integer", "string", "boolean")
+        )
+    ),
     # **``None`` IS THE SDK'S SPELLING OF ABSENCE** -- decision 1 of
     # ``docs/plan/rebuild-plan.md`` §2's index, "``None`` is absence and ``null`` is a
     # value".  An optional property whose document refuses ``null`` carries
