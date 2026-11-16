@@ -119,13 +119,42 @@ def test_beta3_secure_urls_accept_valid_https_origins() -> None:
 
 @pytest.mark.parametrize("params", [{"width": 300}, {"height": 250}])
 def test_image_package_dimensions_must_cooccur(params: dict[str, int]) -> None:
-    with pytest.raises(ValidationError, match="width and height must co-occur"):
-        PackageRequest(
-            product_id="product-1",
-            pricing_option_id="price-1",
-            format_kind="image",
-            params=params,
+    """The co-occurrence is stated under a conditional's `properties`, so the SCHEMA half holds it.
+
+    `media-buy/package-request.json#/allOf/2`::
+
+        {"if": {"properties": {"format_kind": {"const": "image"}},
+                "required": ["format_kind", "params"]},
+         "then": {"properties": {"params": {"dependencies": {"width": ["height"],
+                                                             "height": ["width"]}}}}}
+
+    §5's `then` row: a conditional's `properties` compile to nothing on the model
+    and the schema half narrows the value.  The class declares exactly that --
+    ``Approximation(pointer='#/allOf/2', keyword='if', kind='WIDENED',
+    rung='KEYWORD')`` -- and its own `params` field is ``dict[str, Any] | None``,
+    because the document types it ``{"type": "object", "additionalProperties":
+    true}`` and never `$ref`s the canonical image parameters here.
+
+    So construction admits a half-dimensioned selector and ``strict_validate``,
+    which resolves the conjunction the way the document does, refuses it.  What
+    stood here expected the refusal at construction under upstream's sentence.
+    """
+    with pytest.raises(ValidationError) as refused:
+        PackageRequest.strict_validate(
+            {
+                "product_id": "product-1",
+                "pricing_option_id": "price-1",
+                "format_kind": "image",
+                "params": params,
+            }
         )
+    assert_refused(refused, "params", "dependencies")
+    assert PackageRequest(
+        product_id="product-1",
+        pricing_option_id="price-1",
+        format_kind="image",
+        params=params,
+    ).params == params
 
 
 def test_package_params_require_format_kind() -> None:
