@@ -244,14 +244,14 @@ class Signal(SignalListing):
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
     )
     signal_ref: Annotated[SignalRef | None, Field(description='Canonical signal reference for this wholesale signal. New events SHOULD use signal_ref.'), OmittedNotNull] = None
-    signal_id: Annotated[SignalID | None, Field(description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
+    signal_id: Annotated[SignalID | None, Field(deprecated=True, description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
     signal_agent_segment_id: Annotated[StrMinLen1, Field(description='Opaque activation handle returned by the signals agent.')]
     name: Annotated[StrMinLen1, Field(description='Human-readable signal name')]
     description: Annotated[StrMinLen1, Field(description='Detailed signal description')]
     value_type: Annotated[SignalValueType | None, OmittedNotNull] = None
     signal_type: SignalAvailabilityType
     data_provider: Annotated[StrMinLen1 | None, OmittedNotNull] = None
-    coverage_percentage: Annotated[FloatMin0Max100 | None, Field(description='DEPRECATED for detailed planning. Optional legacy scalar percentage of audience coverage retained only as a fallback for clients that do not consume coverage_forecast. When coverage_forecast is present, coverage_forecast is authoritative for signal-level discovery and coverage_percentage is fallback-only.'), OmittedNotNull] = None
+    coverage_percentage: Annotated[FloatMin0Max100 | None, Field(deprecated=True, description='DEPRECATED for detailed planning. Optional legacy scalar percentage of audience coverage retained only as a fallback for clients that do not consume coverage_forecast. When coverage_forecast is present, coverage_forecast is authoritative for signal-level discovery and coverage_percentage is fallback-only.'), OmittedNotNull] = None
     coverage_forecast: Annotated[SignalCoverageForecast | None, Field(description='Optional forecast-shaped signal availability guidance using the same wire shape as get_signals.signals[].coverage_forecast. When present, this is authoritative for signal-level discovery coverage.'), OmittedNotNull] = None
     deployments: Annotated[list[Deployment], Field(min_length=1)]
     pricing_options: Annotated[list[VendorPricingOption] | None, Field(min_length=1), OmittedNotNull] = None

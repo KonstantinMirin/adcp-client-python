@@ -60,7 +60,7 @@ class CanonicalFormatVASTVideo(CanonicalFormatBase):
     orientation: Annotated[Orientation | None, OmittedNotNull] = None
     aspect_ratio: Annotated[CanonicalFormatImageAspectRatio | None, OmittedNotNull] = None
     vast_versions: Annotated[list[VASTVersion] | None, Field(description='VAST versions accepted by this product format option. The asset still declares exactly one `vast_version`; compatibility requires membership in this set and the seller-wide execution set.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    vast_version: Annotated[VASTVersion | None, Field(description='Deprecated one-element alias for `vast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.'), OmittedNotNull] = None
+    vast_version: Annotated[VASTVersion | None, Field(deprecated=True, description='Deprecated one-element alias for `vast_versions`. Producers use either the singular legacy alias or the plural 3.2 field, never both.'), OmittedNotNull] = None
     media_file_requirements: Annotated[VASTMediaFileRequirements | None, Field(description='Technical acceptance constraints for alternative VAST MediaFile renditions. Each applicable resolved InLine linear creative needs at least one MediaFile satisfying all declared constraints.'), OmittedNotNull] = None
     vpaid_enabled: Annotated[StrictBool | None, Field(description='Whether VPAID interactivity is supported. When true, the VAST tag may carry VPAID JS/Flash payloads.'), OmittedNotNull] = None
     vpaid_version: Annotated[VpaidVersion | None, OmittedNotNull] = None

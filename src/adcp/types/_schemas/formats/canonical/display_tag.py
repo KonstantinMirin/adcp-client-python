@@ -60,7 +60,7 @@ class CanonicalFormatDisplayTag(CanonicalFormatBase):
     max_width: Annotated[IntMin1 | None, Field(description='Maximum accepted width for responsive third-party tags. Pair with `min_width`.'), OmittedNotNull] = None
     min_height: Annotated[IntMin1 | None, Field(description='Minimum accepted height for responsive third-party tags. Pair with `max_height`.'), OmittedNotNull] = None
     max_height: Annotated[IntMin1 | None, Field(description='Maximum accepted height for responsive third-party tags. Pair with `min_height`.'), OmittedNotNull] = None
-    supported_tag_types: Annotated[list[SupportedTagTypesItem] | None, Field(description='Deprecated ambiguous mechanism list. Use `supported_delivery_types`; markup subtype lives on the `display_tag` asset.'), OmittedNotNull] = None
+    supported_tag_types: Annotated[list[SupportedTagTypesItem] | None, Field(deprecated=True, description='Deprecated ambiguous mechanism list. Use `supported_delivery_types`; markup subtype lives on the `display_tag` asset.'), OmittedNotNull] = None
     supported_delivery_types: Annotated[list[SupportedDeliveryTypesItem] | None, Field(description='Closed set of delivery types this format option can traffic. `paired_redirect` means one atomic ad-request/click-through pair (Internal Redirect semantics), never independently matchable URL slots.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ssl_required: Annotated[StrictBool | None, Field(description='Whether the tag URL must be HTTPS.'), OmittedNotNull] = None
     max_redirect_depth: Annotated[NonNegativeInt | None, Field(description='Maximum redirect chain depth permitted.'), OmittedNotNull] = None

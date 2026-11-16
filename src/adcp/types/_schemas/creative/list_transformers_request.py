@@ -43,8 +43,8 @@ class ListTransformersRequestCreativeAgent(AdCPVersionEnvelope, AdcpRequest):
         ConditionalRequired((Match('include_pricing', True, (True,)),), require=('account',), forbid=()),
     )
     transformer_ids: Annotated[list[str] | None, Field(description='Return only these specific transformer IDs.', min_length=1), OmittedNotNull] = None
-    input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Filter by legacy named input formats. Use input_format_kinds.', min_length=1), OmittedNotNull] = None
-    output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='**DEPRECATED in 3.2.** Filter by legacy named output formats. Use output_capability_ids.', min_length=1), OmittedNotNull] = None
+    input_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Filter by legacy named input formats. Use input_format_kinds.', min_length=1), OmittedNotNull] = None
+    output_format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Filter by legacy named output formats. Use output_capability_ids.', min_length=1), OmittedNotNull] = None
     input_format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(description='Filter to transformers whose canonical input_formats include any of these canonical format kinds.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     output_capability_ids: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem] | None, Field(description='Filter to transformers that can produce any of these canonical creative.supported_formats capability IDs.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     name_search: Annotated[str | None, Field(description='Search transformers by name (case-insensitive partial match).'), OmittedNotNull] = None

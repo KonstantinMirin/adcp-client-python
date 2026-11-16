@@ -170,7 +170,7 @@ class AcceptancePolicyRequirementFormatRestriction(AcceptancePolicyRequirement):
         UniqueItems('format_ids'),
     )
     kind: Literal['format_restriction']
-    format_ids: Annotated[list[StrMinLen1] | None, Field(description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
+    format_ids: Annotated[list[StrMinLen1] | None, Field(deprecated=True, description='Deprecated in AdCP 3.2 and removed in AdCP 4.0. This named-format restriction is retained for 3.x compatibility; new policies identify canonical format options in description or an extension until a registry-stable format-option identity is standardized.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     description: Annotated[StrMinLen1 | None, OmittedNotNull] = None
 
 

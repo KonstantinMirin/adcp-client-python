@@ -40,7 +40,7 @@ class Installment(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/installment.json', pointer='#')
     installment_id: Annotated[str, Field(description='Unique identifier for this installment within the collection')]
     collection_ref: Annotated[CollectionReference | None, Field(description='Canonical parent collection identity. Products spanning multiple collections or publisher namespaces MUST use this field.'), OmittedNotNull] = None
-    collection_id: Annotated[str | None, Field(description='Deprecated publisher-domain-free parent collection shorthand. Use collection_ref. It is unambiguous only when the enclosing product addresses one publisher namespace.'), OmittedNotNull] = None
+    collection_id: Annotated[str | None, Field(deprecated=True, description='Deprecated publisher-domain-free parent collection shorthand. Use collection_ref. It is unambiguous only when the enclosing product addresses one publisher namespace.'), OmittedNotNull] = None
     name: Annotated[str | None, Field(description='Installment title'), OmittedNotNull] = None
     season: Annotated[str | None, Field(description="Season identifier (e.g., '1', '2024', 'spring_2026')"), OmittedNotNull] = None
     installment_number: Annotated[str | None, Field(description="Installment number within the season (e.g., '3', '47')"), OmittedNotNull] = None

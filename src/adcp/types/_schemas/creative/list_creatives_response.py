@@ -222,7 +222,7 @@ class CreativesItem(BranchDispatchMixin, AdCPBaseModel):
     representation_selection: Annotated[RepresentationSelection | None, Field(description='Exact source-set and selected-output lineage retained when the current stored creative was resolved from a CreativeRepresentationSet.'), OmittedNotNull] = None
     account: Annotated[Account | None, Field(description='Account that owns this creative'), OmittedNotNull] = None
     name: Annotated[str, Field(description='Human-readable creative name')]
-    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format path. New listed creatives use `format_kind` and optional `format_option_ref`.'), OmittedNotNull] = None
+    format_id: Annotated[FormatReferenceStructuredObject | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named-format path. New listed creatives use `format_kind` and optional `format_option_ref`.'), OmittedNotNull] = None
     format_kind: Annotated[CanonicalFormatKind | None, Field(description='Canonical 3.2 path. The canonical format kind this creative targets. Mutually exclusive with deprecated `format_id`.'), OmittedNotNull] = None
     format_option_ref: Annotated[FormatOptionReference | None, Field(description='Optional reference to the concrete canonical format option this creative targets. Required when `format_kind` alone is ambiguous in the enclosing product context.'), OmittedNotNull] = None
     status: Annotated[CreativeStatus, Field(description='Current approval status of the creative')]
@@ -255,7 +255,7 @@ class ListedCreativeNamedFormatReference(CreativesItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('format_kind',),)),
     )
-    format_id: Annotated[FormatReferenceStructuredObject, Field(description='**DEPRECATED in 3.2.** Legacy named-format path. New listed creatives use `format_kind` and optional `format_option_ref`.')]
+    format_id: Annotated[FormatReferenceStructuredObject, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named-format path. New listed creatives use `format_kind` and optional `format_option_ref`.')]
 
 
 class ListedCreativeCanonicalFormatKind(CreativesItem):

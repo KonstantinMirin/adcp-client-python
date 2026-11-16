@@ -71,7 +71,7 @@ class TargetingOverlayInput(AdCPBaseModel):
     audience_include: Annotated[AudienceInclude | None, OmittedWhenNone] = None
     audience_exclude: Annotated[AudienceExclude | None, OmittedWhenNone] = None
     signal_targeting_groups: Annotated[PackageSignalTargetingGroups | None, OmittedWhenNone] = None
-    signal_targeting: Annotated[NonEmptyList[SignalTargeting] | None, Field(description='DEPRECATED. Use signal_targeting_groups for package-level signal targeting. Legacy flat signal_targeting remains accepted during the SignalRef migration window but cannot express grouped include/exclude composition or product-scoped pricing.'), OmittedWhenNone] = None
+    signal_targeting: Annotated[NonEmptyList[SignalTargeting] | None, Field(deprecated=True, description='DEPRECATED. Use signal_targeting_groups for package-level signal targeting. Legacy flat signal_targeting remains accepted during the SignalRef migration window but cannot express grouped include/exclude composition or product-scoped pricing.'), OmittedWhenNone] = None
     demographics: Annotated[DemographicTargetingIntent | None, OmittedWhenNone] = None
     frequency_cap: Annotated[FrequencyCap | None, OmittedWhenNone] = None
     property_list: Annotated[PropertyListReference | None, OmittedWhenNone] = None

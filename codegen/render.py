@@ -665,6 +665,11 @@ def _field(decided: ir.Field) -> DataModelField:
     extras: dict[str, Any] = {}
     if decided.description:
         extras["description"] = decided.description
+    # §6's ``deprecated`` row at PROP.  A pydantic ``Field(deprecated=True)`` both warns
+    # on attribute access and renders ``"deprecated": true`` into
+    # ``model_json_schema()``, which is what the row's ``rendered`` column now claims.
+    if decided.deprecated:
+        extras["deprecated"] = True
     constructed = _constructed_default(decided)
     # One ``json_schema_extra`` dict, three facts that can all be true of one field:
     # a ``format`` no type was selected for, D6's ``uniqueItems``, and the document's own

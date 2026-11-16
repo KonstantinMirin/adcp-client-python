@@ -55,7 +55,7 @@ class CreativeManifest(BranchDispatchMixin, AdCPBaseModel):
         Approximation(document='core/creative-manifest.json', pointer='#/properties/assets', keyword='additionalProperties', kind='NARROWED', rung='CONTAINER', fact=True, attribution='docs/plan/rebuild-plan.md §5 objects/additionalProperties'),
         Approximation(document='core/creative-manifest.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'format_kind': {'const': 'audio_vast'}}, 'required': ['format_kind']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='**DEPRECATED in 3.2.** Legacy named-format path retained for 3.x compatibility. New manifests use canonical `format_kind` and, when product routing requires it, `format_option_ref`. Mutually exclusive with format_kind.'), OmittedNotNull] = None
+    format_id: Annotated[FormatReferenceStructuredObject | None, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named-format path retained for 3.x compatibility. New manifests use canonical `format_kind` and, when product routing requires it, `format_option_ref`. Mutually exclusive with format_kind.'), OmittedNotNull] = None
     format_kind: Annotated[CanonicalFormatKind | None, Field(description="Canonical 3.2 path. The canonical format name this manifest targets (e.g., `image`, `video_hosted`, `audio_vast`, `seller_rendered_stateful_display`, `coordinated_placements`). Selects the contract against which the seller validates the manifest's assets. Mutually exclusive with deprecated `format_id`."), OmittedNotNull] = None
     format_option_ref: Annotated[FormatOptionReference | None, Field(description='3.1+ format-option path, optional. Structured format option reference matching one of the target product\'s `format_options[]` declarations. Publisher-catalog-backed options match by `{ scope: "publisher", publisher_domain, format_option_id }`; product-local options match by `{ scope: "product", format_option_id }`. Required when the target product carries multiple `format_options` entries sharing the same `format_kind`; optional when `format_kind` alone routes the manifest to a single declaration. Product-scoped refs require an enclosing target product/package context.'), OmittedNotNull] = None
     representation_selection: Annotated[RepresentationSelection | None, Field(description='Present when this seller-bound manifest was selected from a CreativeRepresentationSet. Preserves creative, complete revision digest, and selected representation lineage through sync and reporting.'), OmittedNotNull] = None
@@ -79,7 +79,7 @@ class NamedFormatManifest(CreativeManifest):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('format_kind',),)),
     )
-    format_id: Annotated[FormatReferenceStructuredObject, Field(description='**DEPRECATED in 3.2.** Legacy named-format path retained for 3.x compatibility. New manifests use canonical `format_kind` and, when product routing requires it, `format_option_ref`. Mutually exclusive with format_kind.')]
+    format_id: Annotated[FormatReferenceStructuredObject, Field(deprecated=True, description='**DEPRECATED in 3.2.** Legacy named-format path retained for 3.x compatibility. New manifests use canonical `format_kind` and, when product routing requires it, `format_option_ref`. Mutually exclusive with format_kind.')]
 
 
 class CanonicalFormatManifest(CreativeManifest):

@@ -42,7 +42,7 @@ class AgentNotificationConfigState(AdCPBaseModel):
     event_types: Annotated[list[Annotated[NotificationType, AfterValidator(NotValue(('scheduled', 'final', 'delayed', 'adjusted', 'window_update', 'impairment')))]], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     all_authorized_accounts: Annotated[StrictBool | None, Field(description='Echoed scope acknowledgment for account-anchored event types.'), OmittedNotNull] = None
     include_future_event_types: Annotated[StrictBool | None, Field(description='Echoed from the desired configuration when set.'), OmittedNotNull] = None
-    authentication: Annotated[Authentication | None, OmittedNotNull] = None
+    authentication: Annotated[Authentication | None, Field(deprecated=True), OmittedNotNull] = None
     active: Annotated[StrictBool | None, OmittedNotNull] = True
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

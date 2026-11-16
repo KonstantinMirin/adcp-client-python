@@ -30,7 +30,7 @@ class Response(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-send-message-response.json', pointer='#/properties/response')
     message: Annotated[str | None, Field(description='Conversational message from brand agent'), OmittedNotNull] = None
     surface: Annotated[A2UISurface | None, Field(description='A2UI surface with interactive components'), OmittedNotNull] = None
-    ui_elements: Annotated[list[SIUIElement] | None, Field(description='Visual components to render (DEPRECATED: use surface instead)'), OmittedNotNull] = None
+    ui_elements: Annotated[list[SIUIElement] | None, Field(deprecated=True, description='Visual components to render (DEPRECATED: use surface instead)'), OmittedNotNull] = None
 
 
 class HandoffType(StrEnum):

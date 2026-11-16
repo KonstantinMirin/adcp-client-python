@@ -195,7 +195,7 @@ class BrandAgent(BrandDiscovery):
     schema_: Annotated[str | None, Field(alias='$schema'), OmittedNotNull] = None
     version: Annotated[str | None, OmittedNotNull] = None
     agents: Annotated[Agents | None, OmittedNotNull] = None
-    brand_agent: Annotated[BrandDiscoveryBrandAgent | None, OmittedNotNull] = None
+    brand_agent: Annotated[BrandDiscoveryBrandAgent | None, Field(deprecated=True), OmittedNotNull] = None
     contact: Annotated[BrandDiscoveryContact | None, OmittedNotNull] = None
     data_subject_contestation: Annotated[DataSubjectContestation | None, OmittedNotNull] = None
     last_updated: Annotated[AwareDatetime | None, OmittedNotNull] = None
@@ -1751,8 +1751,8 @@ class Brand(AdCPBaseModel):
     avatar: Annotated[Avatar | None, Field(description='Visual avatar configuration'), OmittedNotNull] = None
     visual_guidelines: Annotated[VisualGuidelines | None, Field(description='Structured visual rules for generative creative systems'), OmittedNotNull] = None
     agents: Annotated[Agents | None, Field(description='Agents authorized to act on behalf of this brand. Consumers resolving an agent by URL use the matching brand-level entry; do not infer a type-wide override of unrelated house-level entries when multiple same-type entries exist.'), OmittedNotNull] = None
-    brand_agent: Annotated[BrandDiscoveryBrandAgent | None, Field(description="Deprecated: use agents array with type 'brand' instead. Brand agent that provides dynamic brand data via MCP."), OmittedNotNull] = None
-    rights_agent: Annotated[RightsAgent | None, Field(description="Deprecated: use agents array with type 'rights' instead. Rights licensing agent for this brand."), OmittedNotNull] = None
+    brand_agent: Annotated[BrandDiscoveryBrandAgent | None, Field(deprecated=True, description="Deprecated: use agents array with type 'brand' instead. Brand agent that provides dynamic brand data via MCP."), OmittedNotNull] = None
+    rights_agent: Annotated[RightsAgent | None, Field(deprecated=True, description="Deprecated: use agents array with type 'rights' instead. Rights licensing agent for this brand."), OmittedNotNull] = None
     contact: Annotated[BrandContact | None, Field(description='Brand-level contact information'), OmittedNotNull] = None
     collections: Annotated[list[CollectionsItem] | None, Field(description="Collections this person or brand is associated with. Enables bidirectional linking: a collection's talent references brand.json via brand_url, and brand.json links back to collections."), OmittedNotNull] = None
 

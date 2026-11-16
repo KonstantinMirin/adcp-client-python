@@ -443,7 +443,7 @@ class AgentProfilePayload(AdCPBaseModel):
     markets: Annotated[list[CountryCode] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     categories: Annotated[StringArray | None, OmittedNotNull] = None
     category_taxonomy: Annotated[str | None, OmittedWhenNone] = None
-    format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Named-format profile projection. Use canonical `format_kinds` and `format_option_refs`.'), OmittedNotNull] = None
+    format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(deprecated=True, description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Named-format profile projection. Use canonical `format_kinds` and `format_option_refs`.'), OmittedNotNull] = None
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     tags: Annotated[StringArray | None, OmittedNotNull] = None
     delivery_types: Annotated[StringArray | None, OmittedNotNull] = None
@@ -704,7 +704,7 @@ class PublisherAdagentsPayload(AdCPBaseModel):
         Approximation(document='core/registry-event.json', pointer='#/$defs/publisherAdagentsPayload/properties/agents_removed/items', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     publisher_domain: Annotated[DomainName | None, OmittedNotNull] = None
-    domain: Annotated[DomainName | None, Field(description='Legacy alias for publisher_domain retained for early feed examples.'), OmittedNotNull] = None
+    domain: Annotated[DomainName | None, Field(deprecated=True, description='Legacy alias for publisher_domain retained for early feed examples.'), OmittedNotNull] = None
     properties_added: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     properties_removed: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     agents_added: Annotated[list[HostedUrl] | None, OmittedNotNull] = None

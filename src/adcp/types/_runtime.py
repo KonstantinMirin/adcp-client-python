@@ -894,7 +894,20 @@ def supplied(model: BaseModel) -> tuple[frozenset[str], Mapping[str, Any]]:
         if declared is None:
             out[name] = (model.__pydantic_extra__ or {}).get(name)
             continue
-        value = getattr(model, name)
+        # **``__dict__`` AND NOT ``getattr``, so this SDK's own traversal does not fire a
+        # consumer's deprecation warning.**  §6's ``deprecated`` row renders
+        # ``Field(deprecated=True)``, and pydantic implements that as a descriptor that
+        # warns on ATTRIBUTE ACCESS -- which is exactly right for a consumer reading
+        # ``product.format_ids`` and exactly wrong here, where the SDK is walking every set
+        # field of its own accord.  Measured: this one line raised 64,261
+        # ``DeprecationWarning``s in a single grade run, and under
+        # ``-W error::DeprecationWarning`` it would raise instead of warn on any dump that
+        # touches a deprecated field.
+        #
+        # ``__pydantic_fields_set__`` holds FIELD NAMES, which is how ``__dict__`` is
+        # keyed, so the two reads return the same object; the alias is applied on the way
+        # out below and is unaffected.
+        value = model.__dict__[name] if name in model.__dict__ else getattr(model, name)
         if value is None and omits_null(declared):
             continue
         out[declared.alias or name] = value

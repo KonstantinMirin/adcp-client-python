@@ -143,7 +143,7 @@ class BuildCreativeMultiSuccessPreviewPreviewsItem(AdCPBaseModel):
         RequiredGroups((('capability_id',), ('format_id',)), 'anyOf'),
     )
     preview_id: Annotated[str, Field(description='Unique identifier for this preview')]
-    format_id: Annotated[FormatReferenceStructuredObject | None, Field(description='Deprecated named-format correlation for a legacy target_format_ids request.'), OmittedNotNull] = None
+    format_id: Annotated[FormatReferenceStructuredObject | None, Field(deprecated=True, description='Deprecated named-format correlation for a legacy target_format_ids request.'), OmittedNotNull] = None
     capability_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Canonical creative capability this preview was generated through. Matches one requested target_capability_ids entry.'), OmittedNotNull] = None
     renders: Annotated[list[PreviewRender], Field(description="Array of rendered pieces for this format's preview. Most formats render as a single piece. Companion ad formats render as multiple pieces.", min_length=1)]
     input: Annotated[BuildCreativeMultiSuccessPreviewPreviewsItemInput, Field(description='The input parameters that generated this preview. For multi-format responses, this is always a default input.')]
