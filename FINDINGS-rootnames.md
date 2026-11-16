@@ -3,10 +3,20 @@
 **The measurement, taken first and taken again.**
 
 ```
-.venv/bin/python -c "import adcp; m=[n for n in adcp.__all__ if not hasattr(adcp,n)]; print(len(adcp.__all__), len(m))"
+PYTHONPATH=src .venv/bin/python -c "import adcp; m=[n for n in adcp.__all__ if not hasattr(adcp,n)]; print(len(adcp.__all__), len(m))"
 before   748 27
 after    745  0
 ```
+
+**`PYTHONPATH=src` IS NOT DECORATION, AND THE GATE AS TASK.md SPELLS IT READS ANOTHER
+CHECKOUT.** The venv's editable `.pth` names `/srv/ws/adcp-client-python/src`, so a bare
+`.venv/bin/python -c "import adcp"` in this worktree resolves
+`/srv/ws/adcp-client-python/src/adcp/__init__.py` and reports `748 27` however this tree is
+edited — which is the hazard `./check`'s own shell preamble is written about. Measured on
+this tree with `src` first, the pre-change figure is the same `748 27` and the same 27
+names, so the work list was right; the reading was of a sibling. `pytest` is unaffected
+(`pyproject.toml:452`, `pythonpath = [".", "src"]`) and so are `./check` and `./verify`,
+which set the path themselves. Every figure in this document is `src`-first.
 
 **24 BIND, 3 DROP, 0 for the owner.** Every one of the 27 was decided by the pointer its
 subject carries, never by the spelling, and the ground is below. `./check` is unmoved at
