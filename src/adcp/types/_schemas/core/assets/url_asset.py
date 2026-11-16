@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import IntMin0
 
 from ...enums.macro_value_context import MacroValueContext
 from ...enums.url_asset_type import URLAssetType
@@ -21,7 +20,7 @@ class Location(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/url-asset.json', pointer='#/properties/macro_declarations/items/allOf/1/properties/location')
     field: Annotated[Literal['url'], Field(description='Asset field containing this occurrence.')]
-    occurrence: Annotated[IntMin0, Field(description='Zero-based occurrence of this exact token within the named field.')]
+    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 
 

@@ -4,14 +4,13 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ContextMatchResponseRouterPublisherSignalsByProvider,
     HostedUrl,
-    IntMin0,
     IntMin5Max5000,
     StrFormatUuid,
     TMPProviderRegistrationTmpxSlotsItem,
@@ -64,7 +63,7 @@ class TMPProviderRegistration(BranchDispatchMixin, AdCPBaseModel):
     uid_types: Annotated[list[UIDType] | None, Field(description="Identity types this provider can resolve. The router selects Identity Match providers whose uid_types overlaps with any uid_type in the request's identities array. MUST be present and non-empty when identity_match is true.", min_length=1), OmittedNotNull] = None
     properties: Annotated[list[StrFormatUuid] | None, Field(description='Property RIDs (UUID v7) this provider serves. When present, the router only sends requests from these properties to this provider. When absent, the provider serves all properties.', min_length=1), OmittedNotNull] = None
     timeout_ms: Annotated[IntMin5Max5000 | None, Field(description="Per-provider timeout in milliseconds. The router skips this provider if it does not respond within this budget. Must be less than or equal to the router's overall latency_budget_ms. The router may further reduce this based on adaptive timeout allocation."), OmittedNotNull] = 50
-    priority: Annotated[IntMin0 | None, Field(description='Provider ordering for Context Match offer conflict resolution. Lower values have higher priority. When two providers return offers for the same package_id (a configuration error), the router keeps the offer from the higher-priority provider; equal priorities are broken by first response received. Identity Match eligibility remains a responder-scoped union because silent omission is not a negative vote. Also used for adaptive timeout allocation — higher-priority providers receive a larger share of the latency budget.'), OmittedNotNull] = 0
+    priority: Annotated[NonNegativeInt | None, Field(description='Provider ordering for Context Match offer conflict resolution. Lower values have higher priority. When two providers return offers for the same package_id (a configuration error), the router keeps the offer from the higher-priority provider; equal priorities are broken by first response received. Identity Match eligibility remains a responder-scoped union because silent omission is not a negative vote. Also used for adaptive timeout allocation — higher-priority providers receive a larger share of the latency budget.'), OmittedNotNull] = 0
     tmpx_slots: Annotated[list[TMPProviderRegistrationTmpxSlotsItem] | None, Field(description='Stable provider-local slot identifiers for the ordered TMPX chunks this provider mints. Slot IDs are opaque provider-namespaced tokens (e.g. `["primary","secondary"]`), NOT ad-server macro names — publishers map `(provider_id, slot_id)` → local destination via `tmpx_macro_mapping` in publisher-tmpx-config.json, so the destination namespace stays publisher-owned and the router never accepts a destination name from an untrusted provider. Distinct providers MAY reuse the same slot_id without collision because publisher lookup is keyed on `(provider_id, slot_id)`. Publishers use this list at startup to validate `tmpx_macro_mapping` covers every slot the provider mints and to detect config drift when the provider\'s slot contract changes. Ordering carries the ordered-prefix invariant: a provider that emits fewer chunks than it registered MUST emit an ordered prefix of this list — chunks map to slots in registration order and MUST NOT be shifted, sparse, or reordered. Cap of 2 slots in v1 aligned with the GAM macro-slot budget; the cap MAY rise without a shape change. A provider that emits TMPX (populates `tmpx_chunks` on its identity-match response) MUST register this list; a provider that does not emit TMPX omits it. Schema cannot enforce that predicate because "emits TMPX" is not schema-visible.', json_schema_extra={'uniqueItems': True}, max_length=2, min_length=1), OmittedNotNull] = None
     status: Annotated[Status | None, Field(description='Provider lifecycle status. Active providers receive requests. Inactive providers are skipped entirely. Draining providers stop receiving new requests but in-flight requests complete normally.', json_schema_extra={'default': 'active'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(Status).validate_python('active'))
 

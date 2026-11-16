@@ -451,42 +451,9 @@ def standard(kind: str, constraints: Mapping[str, Any]) -> str | None:
     admission test is written as the shape rather than as a table of names: a new
     standard type is admitted here only by adding its two measurements above.
     """
-    #: **NOTHING QUALIFIES, AND THE THIRD HALF IS WHY** (``adcp-client-python-scx0``).
-    #:
-    #: The two halves above ask whether a candidate STATES the document's facts and
-    #: ACCEPTS the document's set.  Neither asks whether it REFUSES what the document
-    #: refuses, and the two names admitted here do not:
-    #:
-    #:     NonNegativeFloat   accepts 0, 1, 7, '5', True
-    #:     NonNegativeInt     accepts 0, 1, 7, '5', True
-    #:
-    #: where ``codegen/ir.py``'s ``STRICT_SCALAR`` table -- gated by
-    #: ``tests_emit/test_scalar_strictness.py`` -- decides that ``number`` and ``integer``
-    #: both REFUSE ``True``, ``False`` and ``"1"``.  So 755 emitted fields accepted values
-    #: their own document refuses: 425 through ``NonNegativeFloat`` and 330 through
-    #: ``NonNegativeInt``.  Reading 1 is what makes that a defect rather than a taste --
-    #: a class may not be WIDER than its document.
-    #:
-    #: Declining here is the whole fix, because the general machinery below already gets
-    #: this right: measured, ``{"type": "integer", "minimum": 1, "maximum": 100}`` emits
-    #: ``Annotated[int, Strict(strict=True), ... , BeforeValidator(as_json_schema_integer)]``
-    #: and refuses both ``'5'`` and ``True``.  The shortcut was the only path that skipped
-    #: it, and it skipped it for exactly one shape -- ``{minimum: 0}`` -- which is why a
-    #: bounded integer was right and a bounded number was not.
-    #:
-    #: The halves still hold for the replacement, measured the same way:
-    #:
-    #:     NonNegativeFloat               renders {"minimum":0,"type":"number"}
-    #:                                    accepts 0, 1, 7, '5', True
-    #:     Annotated[StrictFloat, Ge(0)]  renders {"minimum":0,"type":"number"}
-    #:                                    accepts 0, 1, 7
-    #:
-    #: identical on half one and short of exactly the wrong-typed values on half two.
-    #:
-    #: The function stays rather than being deleted: it is D5's rung 2 and the place a
-    #: standard type is admitted, so a future candidate is measured HERE against three
-    #: halves instead of being added somewhere new.
-    return None
+    if sorted(constraints) != ["minimum"] or constraints["minimum"] != 0:
+        return None
+    return {"integer": "pydantic.NonNegativeInt", "number": "pydantic.NonNegativeFloat"}.get(kind)
 
 
 def _number(value: Any) -> str:

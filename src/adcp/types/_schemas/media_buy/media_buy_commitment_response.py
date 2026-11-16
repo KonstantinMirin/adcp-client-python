@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin0, IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
+from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
 
 from ..core.canonical_media_buy_action import CanonicalMediaBuyAction
 from ..core.canonical_proposal import CanonicalProposal
@@ -50,7 +50,7 @@ class PurchaseBindingsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-commitment-response.json', pointer='#/oneOf/0/properties/purchase_bindings/items')
-    purchase_index: IntMin0
+    purchase_index: NonNegativeInt
     product_id: StrMinLen1
     package_id: StrMinLen1
 

@@ -3,11 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import IntMin0
 
 from ..enums.available_metric import AvailableMetric
 from ..enums.reporting_frequency import ReportingFrequency
@@ -46,7 +45,7 @@ class CanonicalReportingCapabilities(AdCPBaseModel):
         UniqueItems('measurement_windows'),
     )
     available_reporting_frequencies: Annotated[list[ReportingFrequency], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
-    expected_delay_minutes: IntMin0
+    expected_delay_minutes: NonNegativeInt
     timezone: Annotated[str, Field(description='Explicit reporting-period timezone for this product. It may equal Account.timezone or differ when the upstream platform reports on a separate boundary.')]
     supports_webhooks: StrictBool
     reporting_delivery_offering_ids: Annotated[list[ReportingDeliveryOfferingID] | None, Field(description='Product-scoped subset of get_adcp_capabilities.media_buy.reporting_delivery.offerings[].offering_id that packages using this product can satisfy. This binds seller-wide managed-delivery offerings to product/package eligibility. An empty array explicitly declares no managed offering; absence means product-level applicability is unknown and MUST NOT be inferred from the seller-wide list. Account, seat, credential, or provider constraints may narrow support further during sync_accounts validation.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None

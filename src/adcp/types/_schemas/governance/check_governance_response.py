@@ -4,13 +4,12 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     ConsultationContext,
-    FloatMin0,
     FloatMin0Max1,
     GovernanceContext,
     IntMin1,
@@ -92,7 +91,7 @@ class DeliveryStatement(AdCPBaseModel):
     issued_at: AwareDatetime
     seller_reference: str
     reporting_period: ObjStartEnd
-    cumulative_spend: FloatMin0
+    cumulative_spend: NonNegativeFloat
     currency: CurrencyCode
     canonical_payload: Annotated[CanonicalPayload, Field(description='Exact retained digest-bearing payload. To verify statement_digest, apply RFC 8785 JCS after removing delivery_metrics.statement_digest.')]
 

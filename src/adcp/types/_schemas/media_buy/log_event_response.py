@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
-from adcp.types.constraints import FloatMin0Max1, IntMin0
+from adcp.types.constraints import FloatMin0Max1
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.context import ContextObject
@@ -54,8 +54,8 @@ class LogEventSuccess(LogEventResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
-    events_received: Annotated[IntMin0, Field(description='Number of events received')]
-    events_processed: Annotated[IntMin0, Field(description='Number of events successfully queued for processing')]
+    events_received: Annotated[NonNegativeInt, Field(description='Number of events received')]
+    events_processed: Annotated[NonNegativeInt, Field(description='Number of events successfully queued for processing')]
     partial_failures: Annotated[list[PartialFailuresItem] | None, Field(description='Events that failed validation'), OmittedNotNull] = None
     warnings: Annotated[list[str] | None, Field(description='Non-fatal issues (low match quality, missing recommended fields, deprecation notices)'), OmittedNotNull] = None
     match_quality: Annotated[FloatMin0Max1 | None, Field(description='Overall match quality score for the batch (0.0 = no matches, 1.0 = all matched)'), OmittedNotNull] = None

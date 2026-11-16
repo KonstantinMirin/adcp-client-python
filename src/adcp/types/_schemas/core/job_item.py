@@ -5,10 +5,10 @@ from datetime import date
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0, HostedUrl
+from adcp.types.constraints import HostedUrl
 
 from .currency_code import CurrencyCode
 from .ext import ExtensionObject
@@ -69,8 +69,8 @@ class Salary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/job-item.json', pointer='#/properties/salary')
-    min: Annotated[FloatMin0 | None, Field(description='Minimum salary.'), OmittedNotNull] = None
-    max: Annotated[FloatMin0 | None, Field(description='Maximum salary.'), OmittedNotNull] = None
+    min: Annotated[NonNegativeFloat | None, Field(description='Minimum salary.'), OmittedNotNull] = None
+    max: Annotated[NonNegativeFloat | None, Field(description='Maximum salary.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code.')]
     period: Annotated[Period, Field(description='Pay period.')]
 

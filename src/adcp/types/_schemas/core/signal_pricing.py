@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
-from adcp.types.constraints import FloatMin0, FloatMin0Max100, StrMinLen1
+from adcp.types.constraints import FloatMin0Max100, StrMinLen1
 
 from .currency_code import CurrencyCode
 from .ext import ExtensionObject
@@ -36,7 +36,7 @@ class CpmPricing(VendorPricing):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-pricing.json', pointer='#/oneOf/0')
     model: Literal['cpm']
-    cpm: Annotated[FloatMin0, Field(description='Cost per thousand impressions')]
+    cpm: Annotated[NonNegativeFloat, Field(description='Cost per thousand impressions')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -51,7 +51,7 @@ class PercentOfMediaPricing(VendorPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-pricing.json', pointer='#/oneOf/1')
     model: Literal['percent_of_media']
     percent: Annotated[FloatMin0Max100, Field(description='Percentage of media spend, e.g. 15 = 15%')]
-    max_cpm: Annotated[FloatMin0 | None, Field(description='Optional CPM cap. When set, the effective charge is min(percent × media_spend_per_mille, max_cpm).'), OmittedNotNull] = None
+    max_cpm: Annotated[NonNegativeFloat | None, Field(description='Optional CPM cap. When set, the effective charge is min(percent × media_spend_per_mille, max_cpm).'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code for the resulting charge')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -79,7 +79,7 @@ class FlatFeePricing(VendorPricing):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-pricing.json', pointer='#/oneOf/2')
     model: Literal['flat_fee']
-    amount: Annotated[FloatMin0, Field(description='Fixed charge for the billing period')]
+    amount: Annotated[NonNegativeFloat, Field(description='Fixed charge for the billing period')]
     period: Annotated[Period, Field(description='Billing period for the flat fee.')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -95,7 +95,7 @@ class PerUnitPricing(VendorPricing):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-pricing.json', pointer='#/oneOf/3')
     model: Literal['per_unit']
     unit: Annotated[str, Field(description="What is counted — e.g. 'format', 'image', 'token', 'variant', 'render', 'evaluation'.")]
-    unit_price: Annotated[FloatMin0, Field(description='Cost per one unit')]
+    unit_price: Annotated[NonNegativeFloat, Field(description='Cost per one unit')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

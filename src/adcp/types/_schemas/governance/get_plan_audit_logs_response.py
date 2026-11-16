@@ -4,16 +4,23 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool, StrictFloat, StrictInt
+from pydantic import (
+    AwareDatetime,
+    ConfigDict,
+    Field,
+    NonNegativeFloat,
+    NonNegativeInt,
+    StrictBool,
+    StrictFloat,
+    StrictInt,
+)
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     FloatGt0,
-    FloatMin0,
     FloatMin0Max1,
     HostedUrl,
-    IntMin0,
     PlansItemEntriesItemPlanHash,
     SchemaIntegral,
     StrMinLen1MaxLen255,
@@ -241,10 +248,10 @@ class Delivery(AdCPBaseModel):
     seller_statement_id: Annotated[str | None, Field(description='Seller statement identifier as received by the buyer. Required for seller_statement_copy.'), OmittedNotNull] = None
     seller_statement_digest: Annotated[ZipAssetDigest | None, Field(description='Digest received with the seller statement. Governance compares it to the seller-authenticated canonical digest.'), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEnd | None, Field(description='Start and end timestamps for the reporting window.'), OmittedNotNull] = None
-    cumulative_spend: Annotated[FloatMin0 | None, Field(description='Buyer-attributed cumulative spend for the governed action.'), OmittedNotNull] = None
+    cumulative_spend: Annotated[NonNegativeFloat | None, Field(description='Buyer-attributed cumulative spend for the governed action.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, OmittedNotNull] = None
     period_closed: Annotated[StrictBool | None, Field(description='Buyer-declared operational closure of this governance reporting period. When true, governance freezes the period after recording this observation. An unresolved mismatch becomes closed_unresolved and no longer blocks later governance. Closure is not final billing or commercial settlement.'), OmittedNotNull] = False
-    impressions: Annotated[IntMin0 | None, OmittedNotNull] = None
+    impressions: Annotated[NonNegativeInt | None, OmittedNotNull] = None
 
 
 class RuntimeAttestationsItem(AdCPBaseModel):
@@ -344,11 +351,11 @@ class EntriesItem(AdCPBaseModel):
     seller_adjustment_id: Annotated[str | None, Field(description='Seller-issued source adjustment identifier (present for adjustment entries).'), OmittedNotNull] = None
     adjustment_type: Annotated[AdjustmentType | None, Field(description='Commercial adjustment type (present for adjustment entries).'), OmittedNotNull] = None
     amount: Annotated[Amount | None, Field(description='Adjustment amount and currency (present for adjustment entries).'), OmittedNotNull] = None
-    headroom_restored: Annotated[FloatMin0 | None, Field(description='Current-obligation headroom restored by this adjustment. Zero for audit-only types.'), OmittedNotNull] = None
+    headroom_restored: Annotated[NonNegativeFloat | None, Field(description='Current-obligation headroom restored by this adjustment. Zero for audit-only types.'), OmittedNotNull] = None
     reason: Annotated[str | None, Field(description='Seller-supplied adjustment reason.'), OmittedNotNull] = None
     effective_at: Annotated[AwareDatetime | None, Field(description="When the seller's adjustment became effective."), OmittedNotNull] = None
     committed_budget: Annotated[StrictFloat | None, Field(description='Governance-authorized budget reserved (present for completed outcome entries).'), OmittedNotNull] = None
-    reported_committed_budget: Annotated[FloatMin0 | None, Field(description='Caller-reported seller amount retained for reconciliation. Never ledger authority.'), OmittedNotNull] = None
+    reported_committed_budget: Annotated[NonNegativeFloat | None, Field(description='Caller-reported seller amount retained for reconciliation. Never ledger authority.'), OmittedNotNull] = None
     seller_reference: Annotated[str | None, Field(description='Seller resource identifier retained on an outcome entry.'), OmittedNotNull] = None
     delivery: Annotated[Delivery | None, Field(description='Buyer-attributed observation retained as audit evidence on a delivery outcome. It never overwrites the seller statement.'), OmittedNotNull] = None
     governance_context: Annotated[str | None, Field(description='Governance context for this entry (present for check and outcome entries).'), OmittedNotNull] = None
@@ -360,7 +367,7 @@ class EntriesItem(AdCPBaseModel):
     delivery_reconciliation_status: Annotated[DeliveryReconciliationStatus | None, OmittedNotNull] = None
     delivery_period_state: Annotated[EntriesItemDeliveryPeriodState | None, Field(description='Operational governance-window state for this delivery observation.'), OmittedNotNull] = None
     adjustment_state: Annotated[AdjustmentState | None, OmittedNotNull] = None
-    verified_amount: Annotated[FloatMin0 | None, OmittedNotNull] = None
+    verified_amount: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     evidence: Annotated[Evidence | None, OmittedNotNull] = None
     reviewed_by: Annotated[HostedUrl | None, OmittedNotNull] = None
     reviewed_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
@@ -406,10 +413,10 @@ class GovernedActionsItem(AdCPBaseModel):
     net_cost: Annotated[StrictFloat | None, Field(description='Gross action commitment minus verified economic reductions.'), OmittedNotNull] = None
     headroom_restored: Annotated[StrictFloat | None, Field(description='Verified adjustments eligible to restore headroom under the plan accounting mode.'), OmittedNotNull] = None
     net_committed: Annotated[StrictFloat | None, Field(description='Current ledger obligation for this action after restored headroom.'), OmittedNotNull] = None
-    seller_reported_spend: Annotated[FloatMin0 | None, OmittedNotNull] = None
-    buyer_observed_spend: Annotated[FloatMin0 | None, OmittedNotNull] = None
+    seller_reported_spend: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    buyer_observed_spend: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     delivery_reporting_period: Annotated[ObjStartEnd | None, Field(description='Current seller statement period summarized for this governed action.'), OmittedNotNull] = None
-    conservative_exposure: Annotated[FloatMin0 | None, Field(description='Greater of seller-reported and buyer-observed spend while evidence is unresolved.'), OmittedNotNull] = None
+    conservative_exposure: Annotated[NonNegativeFloat | None, Field(description='Greater of seller-reported and buyer-observed spend while evidence is unresolved.'), OmittedNotNull] = None
     delivery_reconciliation_status: Annotated[GovernedActionsItemDeliveryReconciliationStatus | None, OmittedNotNull] = None
     delivery_period_state: Annotated[GovernedActionsItemDeliveryPeriodState | None, Field(description='Whether the current governance reporting period remains actionable. Closure is not final billing.'), OmittedNotNull] = None
     check_count: Annotated[StrictInt, Field(description='Number of governance checks performed for this action.'), SchemaIntegral]

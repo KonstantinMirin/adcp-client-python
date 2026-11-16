@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
-from adcp.types.constraints import IntMin0, StrMaxLen2000, StrMinLen1MaxLen255
+from adcp.types.constraints import StrMaxLen2000, StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.catalog_item_availability_state import CatalogItemAvailabilityState
@@ -63,10 +63,10 @@ class CatalogsItem(AdCPBaseModel):
     catalog_generation: Annotated[StrMinLen1MaxLen255 | None, Field(description='Opaque token for this catalog incarnation. Sellers declaring catalog_item_availability_updates MUST return it for every accessible buyer-managed catalog result, including discovery. It remains stable across ordinary upserts and feed refreshes, changes after deletion and recreation, and is never reused for the same resolved account and catalog_id.'), OmittedNotNull] = None
     action: Annotated[CatalogAction, Field(description='Action taken for this catalog')]
     platform_id: Annotated[str | None, Field(description='Platform-specific ID assigned to the catalog'), OmittedNotNull] = None
-    item_count: Annotated[IntMin0 | None, Field(description="Total number of items in the catalog after sync. Required when action is 'created', 'updated', or 'unchanged'. Omitted on 'failed' and 'deleted'."), OmittedNotNull] = None
-    items_approved: Annotated[IntMin0 | None, Field(description='Number of items approved by the platform. Populated when the platform performs item-level review.'), OmittedNotNull] = None
-    items_pending: Annotated[IntMin0 | None, Field(description='Number of items pending platform review. Common for product catalogs where items must pass content policy checks.'), OmittedNotNull] = None
-    items_rejected: Annotated[IntMin0 | None, Field(description='Number of items rejected by the platform. Check item_issues for rejection reasons.'), OmittedNotNull] = None
+    item_count: Annotated[NonNegativeInt | None, Field(description="Total number of items in the catalog after sync. Required when action is 'created', 'updated', or 'unchanged'. Omitted on 'failed' and 'deleted'."), OmittedNotNull] = None
+    items_approved: Annotated[NonNegativeInt | None, Field(description='Number of items approved by the platform. Populated when the platform performs item-level review.'), OmittedNotNull] = None
+    items_pending: Annotated[NonNegativeInt | None, Field(description='Number of items pending platform review. Common for product catalogs where items must pass content policy checks.'), OmittedNotNull] = None
+    items_rejected: Annotated[NonNegativeInt | None, Field(description='Number of items rejected by the platform. Check item_issues for rejection reasons.'), OmittedNotNull] = None
     item_issues: Annotated[list[ItemIssuesItem] | None, Field(description='Per-item issues reported by the platform (rejections, warnings). Only present when the platform performs item-level review.'), OmittedNotNull] = None
     last_synced_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the most recent sync was accepted by the platform'), OmittedNotNull] = None
     next_fetch_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when the platform will next fetch the feed URL. Only present for URL-based catalogs with update_frequency.'), OmittedNotNull] = None

@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0
 
 from ..enums.content_id_type import ContentIDType
 from .delivery_metrics import DeliveryMetrics
@@ -22,8 +21,8 @@ class CatalogItemDeliveryMetrics(DeliveryMetrics):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/catalog-item-delivery-metrics.json', pointer='#')
     content_id: Annotated[str, Field(description='Catalog item identifier (e.g., SKU, GTIN, job_id, offering_id)')]
     content_id_type: Annotated[ContentIDType | None, Field(description='Identifier type for this content_id'), OmittedNotNull] = None
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 __all__ = ["CatalogItemDeliveryMetrics"]

@@ -3,16 +3,14 @@ from __future__ import annotations
 
 from typing import Annotated, Any, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import (
     DemographicReportingCapabilityAgeIntervalsItemDemographic,
-    FloatMin0,
     FloatMin0Max1,
     GetCreativeDeliveryRequestEndDate,
-    IntMin0,
     IntMin1,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
     StrMaxLen50,
@@ -74,7 +72,7 @@ class ReportingRevisionBinding(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/reporting_revision_binding')
     reporting_revision_id: StrMinLen1MaxLen255
-    row_count: IntMin0
+    row_count: NonNegativeInt
     control_totals: list[ReportingControlTotal]
     content_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='SHA-256 of RFC 8785 JCS of {reporting_revision_id,row_count,control_totals,reporting_rows}, where reporting_rows is the complete ordered sequence concatenated across every cursor page; identical to reporting_revision.revision_content_sha256.')]
 
@@ -90,23 +88,23 @@ class AggregatedTotals(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('reach_aggregation', True, ('sum_of_constituent_reach',)),), require=(), forbid=('frequency',)),
     )
-    impressions: Annotated[FloatMin0, Field(description='Total impressions delivered across all media buys')]
-    spend: Annotated[FloatMin0, Field(description='Total amount spent across all media buys')]
-    clicks: Annotated[FloatMin0 | None, Field(description='Total clicks across all media buys (if applicable)'), OmittedNotNull] = None
-    completed_views: Annotated[FloatMin0 | None, Field(description='Total audio/video completions across all media buys (if applicable)'), OmittedNotNull] = None
-    views: Annotated[FloatMin0 | None, Field(description='Total views across all media buys (if applicable)'), OmittedNotNull] = None
-    conversions: Annotated[FloatMin0 | None, Field(description='Total conversions across all media buys (if applicable)'), OmittedNotNull] = None
-    conversion_value: Annotated[FloatMin0 | None, Field(description='Total conversion value across all media buys (if applicable)'), OmittedNotNull] = None
-    commissionable_value: Annotated[FloatMin0 | None, Field(description='Total settled conversion value eligible for revenue-share commission across all media buys (if applicable)'), OmittedNotNull] = None
-    roas: Annotated[FloatMin0 | None, Field(description='Aggregate return on ad spend across all media buys (total conversion_value / total spend)'), OmittedNotNull] = None
+    impressions: Annotated[NonNegativeFloat, Field(description='Total impressions delivered across all media buys')]
+    spend: Annotated[NonNegativeFloat, Field(description='Total amount spent across all media buys')]
+    clicks: Annotated[NonNegativeFloat | None, Field(description='Total clicks across all media buys (if applicable)'), OmittedNotNull] = None
+    completed_views: Annotated[NonNegativeFloat | None, Field(description='Total audio/video completions across all media buys (if applicable)'), OmittedNotNull] = None
+    views: Annotated[NonNegativeFloat | None, Field(description='Total views across all media buys (if applicable)'), OmittedNotNull] = None
+    conversions: Annotated[NonNegativeFloat | None, Field(description='Total conversions across all media buys (if applicable)'), OmittedNotNull] = None
+    conversion_value: Annotated[NonNegativeFloat | None, Field(description='Total conversion value across all media buys (if applicable)'), OmittedNotNull] = None
+    commissionable_value: Annotated[NonNegativeFloat | None, Field(description='Total settled conversion value eligible for revenue-share commission across all media buys (if applicable)'), OmittedNotNull] = None
+    roas: Annotated[NonNegativeFloat | None, Field(description='Aggregate return on ad spend across all media buys (total conversion_value / total spend)'), OmittedNotNull] = None
     new_to_brand_rate: Annotated[FloatMin0Max1 | None, Field(description='Fraction of total conversions across all media buys from first-time brand buyers (weighted by conversion volume, not a simple average of per-buy rates)'), OmittedNotNull] = None
-    cost_per_acquisition: Annotated[FloatMin0 | None, Field(description='Aggregate cost per conversion across all media buys (total spend / total conversions)'), OmittedNotNull] = None
+    cost_per_acquisition: Annotated[NonNegativeFloat | None, Field(description='Aggregate cost per conversion across all media buys (total spend / total conversions)'), OmittedNotNull] = None
     completion_rate: Annotated[FloatMin0Max1 | None, Field(description='Aggregate completion rate across all media buys (weighted by impressions, not a simple average of per-buy rates). Null indicates the metric is not applicable to the aggregated buys (e.g. all non-video inventory).'), OmittedWhenNone] = None
-    reach: Annotated[FloatMin0 | None, Field(description='Reach across all media buys. Only present when all media buys share the same reach_unit. Omitted when reach units are heterogeneous — use per-buy reach values instead. The optional reach_aggregation field declares whether this value is deduplicated across buys or is a sum of constituent reach values.'), OmittedNotNull] = None
+    reach: Annotated[NonNegativeFloat | None, Field(description='Reach across all media buys. Only present when all media buys share the same reach_unit. Omitted when reach units are heterogeneous — use per-buy reach values instead. The optional reach_aggregation field declares whether this value is deduplicated across buys or is a sum of constituent reach values.'), OmittedNotNull] = None
     reach_aggregation: Annotated[ReachAggregation | None, Field(description='How reach was combined across the media buys in this aggregate. When omitted, legacy reach semantics are unknown and consumers MUST NOT use reach as the denominator for frequency.'), OmittedNotNull] = None
     reach_unit: Annotated[ReachUnit | None, Field(description='Unit of measurement for reach. Only present when all aggregated media buys use the same reach_unit.'), OmittedNotNull] = None
-    frequency: Annotated[FloatMin0 | None, Field(description='Average frequency per reach unit across all media buys (impressions / reach). In new payloads, only present when reach is present and reach_aggregation is deduplicated. MUST be omitted when reach_aggregation is sum_of_constituent_reach. Legacy payloads that omit reach_aggregation remain schema-valid, but consumers MUST NOT treat their reach as a safe frequency denominator.'), OmittedNotNull] = None
-    media_buy_count: Annotated[IntMin0, Field(description='Number of media buys included in the response')]
+    frequency: Annotated[NonNegativeFloat | None, Field(description='Average frequency per reach unit across all media buys (impressions / reach). In new payloads, only present when reach is present and reach_aggregation is deduplicated. MUST be omitted when reach_aggregation is sum_of_constituent_reach. Legacy payloads that omit reach_aggregation remain schema-valid, but consumers MUST NOT treat their reach as a safe frequency denominator.'), OmittedNotNull] = None
+    media_buy_count: Annotated[NonNegativeInt, Field(description='Number of media buys included in the response')]
     metric_aggregates: Annotated[list[DeliveryMetricAggregate] | None, Field(description="Cross-buy delivery aggregates partitioned by qualifier. Row-symmetric with `package.committed_metrics` and `by_package[].missing_metrics` — same atomic unit `(scope, metric_id, qualifier)` — so reconciliation collapses to a row-level join on the tuple. Granularity rule: one row per `(metric_id, full-qualifier-set)`, reported at the finest available granularity; buyers re-aggregate up if they want a coarser view. Used only for metrics with non-empty qualifier sets — unqualified metrics (`impressions`, `spend`, `media_buy_count`, etc.) remain at the top of `aggregated_totals`. **Mutual exclusion MUST**: for any `metric_id` appearing in `metric_aggregates`, the corresponding top-level scalar in `aggregated_totals` MUST be omitted (not zeroed) — avoids duplicate sources of truth. The qualifier vocabulary on this delivery surface is closed today (`additionalProperties: false`, same content as `committed_metrics.qualifier`) but is expected to **diverge from contract qualifier in future minors** as transparency disclosures buyers don't commit to ship delivery-only (e.g., `tracker_firing` pending #3832 resolution). Each row carries a `value` plus inlined per-metric component fields (e.g., `measurable_impressions` and `viewable_impressions` for `viewable_rate`; `spend` and `conversions` for `cost_per_acquisition`). Per-buy `totals` keeps its flat shape — each buy is single-qualifier by definition; only the aggregate spans qualifiers. **Qualifier-set drift across reports**: when a campaign gains a new qualifier mid-flight (e.g., adds `tracker_firing` partitioning in week 2), prior periods' rows remain valid at their original granularity; buyers SHOULD NOT retroactively repartition."), OmittedNotNull] = None
 
 
@@ -118,7 +116,7 @@ class MediaBuyDeliveriesItemTotals(DeliveryMetrics):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/totals')
-    effective_rate: Annotated[FloatMin0 | None, Field(description="Effective rate paid per unit based on pricing_model (e.g., actual CPM for 'cpm', actual cost per completed view for 'cpcv', actual cost per point for 'cpp')"), OmittedNotNull] = None
+    effective_rate: Annotated[NonNegativeFloat | None, Field(description="Effective rate paid per unit based on pricing_model (e.g., actual CPM for 'cpm', actual cost per completed view for 'cpcv', actual cost per point for 'cpp')"), OmittedNotNull] = None
 
 
 class ByFormatItem(DeliveryMetrics):
@@ -130,8 +128,8 @@ class ByFormatItem(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_format/items')
     format_kind: Annotated[CanonicalFormatKind, Field(description='Canonical creative format kind aggregated by this row. This identifies creative shape, not duration or other format-option parameters.')]
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 class ByDeviceTypeItem(DeliveryMetrics):
@@ -143,8 +141,8 @@ class ByDeviceTypeItem(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_device_type/items')
     device_type: Annotated[DeviceType, Field(description='Device form factor (desktop, mobile, tablet, ctv, dooh, unknown)')]
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 class ByDevicePlatformItem(DeliveryMetrics):
@@ -156,8 +154,8 @@ class ByDevicePlatformItem(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/by_device_platform/items')
     device_platform: Annotated[DevicePlatform, Field(description='Operating system platform')]
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 class ByAudienceItem(DeliveryMetrics):
@@ -171,8 +169,8 @@ class ByAudienceItem(DeliveryMetrics):
     audience_id: Annotated[str, Field(description="Audience segment identifier. For 'synced' source, matches audience_id from sync_audiences. For other sources, seller-defined.")]
     audience_source: Annotated[AudienceSource, Field(description='Origin of the audience segment (synced, platform, third_party, lookalike, retargeting, unknown)')]
     audience_name: Annotated[str | None, Field(description='Human-readable audience segment name'), OmittedNotNull] = None
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 class ByDemographicItem(DeliveryMetrics):
@@ -186,8 +184,8 @@ class ByDemographicItem(DeliveryMetrics):
     demographic: Annotated[DemographicReportingCapabilityAgeIntervalsItemDemographic, Field(description="Demographic code in the declared system's notation (for example, P25-54 for Nielsen).")]
     demographic_system: Annotated[DemographicSystem, Field(description='Measurement system that defines the demographic code.')]
     age: Annotated[DemographicAgeRange | None, Field(description="Canonical age interval represented by this row. Required by protocol semantics for age ranges requested through reporting_dimensions.demographic.age_ranges and for intervals declared in the product's demographic reporting capability."), OmittedNotNull] = None
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 class BySpotItem(DeliveryMetrics):
@@ -212,12 +210,12 @@ class ByPackageItemDailyBreakdownItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items/allOf/1/properties/daily_breakdown/items')
     date: Annotated[GetCreativeDeliveryRequestEndDate, Field(description="Calendar date (YYYY-MM-DD) in the reporting timezone: reporting_period.timezone when present, otherwise this package's product reporting_capabilities.timezone. The row covers that local day, which can be 23 or 25 hours long across a DST change.")]
-    impressions: Annotated[FloatMin0, Field(description='Daily impressions for this package')]
-    spend: Annotated[FloatMin0, Field(description='Daily spend for this package')]
-    conversions: Annotated[FloatMin0 | None, Field(description='Daily conversions for this package'), OmittedNotNull] = None
-    conversion_value: Annotated[FloatMin0 | None, Field(description='Daily conversion value for this package'), OmittedNotNull] = None
-    commissionable_value: Annotated[FloatMin0 | None, Field(description='Daily settled conversion value eligible for revenue-share commission for this package'), OmittedNotNull] = None
-    roas: Annotated[FloatMin0 | None, Field(description='Daily return on ad spend (conversion_value / spend)'), OmittedNotNull] = None
+    impressions: Annotated[NonNegativeFloat, Field(description='Daily impressions for this package')]
+    spend: Annotated[NonNegativeFloat, Field(description='Daily spend for this package')]
+    conversions: Annotated[NonNegativeFloat | None, Field(description='Daily conversions for this package'), OmittedNotNull] = None
+    conversion_value: Annotated[NonNegativeFloat | None, Field(description='Daily conversion value for this package'), OmittedNotNull] = None
+    commissionable_value: Annotated[NonNegativeFloat | None, Field(description='Daily settled conversion value eligible for revenue-share commission for this package'), OmittedNotNull] = None
+    roas: Annotated[NonNegativeFloat | None, Field(description='Daily return on ad spend (conversion_value / spend)'), OmittedNotNull] = None
     new_to_brand_rate: Annotated[FloatMin0Max1 | None, Field(description='Daily fraction of conversions from first-time brand buyers (0 = none, 1 = all)'), OmittedNotNull] = None
 
 
@@ -230,9 +228,9 @@ class MediaBuyDeliveriesItemByPackageItem(DeliveryMetrics):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/by_package/items')
     package_id: Annotated[str, Field(description="Seller's package identifier")]
-    pacing_index: Annotated[FloatMin0 | None, Field(description='Package delivery pace relative to its package-level pacing plan (1.0 = on track, <1.0 = behind, >1.0 = ahead). In seller-optimized mode this is a subordinate diagnostic and may be absent when no package pacing preference exists.'), OmittedNotNull] = None
+    pacing_index: Annotated[NonNegativeFloat | None, Field(description='Package delivery pace relative to its package-level pacing plan (1.0 = on track, <1.0 = behind, >1.0 = ahead). In seller-optimized mode this is a subordinate diagnostic and may be absent when no package pacing preference exists.'), OmittedNotNull] = None
     pricing_model: Annotated[PricingModel, Field(description='The pricing model used for this package (e.g., cpm, cpcv, cpp). Indicates how the package is billed and which metrics are most relevant for optimization.')]
-    rate: Annotated[FloatMin0, Field(description='The pricing rate for this package. For fixed-rate pricing, this is the agreed currency-denominated unit rate (e.g., CPM rate of 12.50 means $12.50 per 1,000 impressions). For auction-based pricing, this is the effective rate based on actual delivery. For revenue_share, this is the decimal commission rate (e.g., 0.04 means 4%) and is not itself currency-denominated.')]
+    rate: Annotated[NonNegativeFloat, Field(description='The pricing rate for this package. For fixed-rate pricing, this is the agreed currency-denominated unit rate (e.g., CPM rate of 12.50 means $12.50 per 1,000 impressions). For auction-based pricing, this is the effective rate based on actual delivery. For revenue_share, this is the decimal commission rate (e.g., 0.04 means 4%) and is not itself currency-denominated.')]
     currency: Annotated[CurrencyCode, Field(description="ISO 4217 currency code for this package's spend and currency-denominated pricing rate. The rate for revenue_share is a dimensionless commission fraction, but attributed monetary values still use this currency. When the enclosing media_buy_deliveries[].currency is present, this value MUST equal it. For AdCP-authored buys both values MUST equal the media-buy currency. A different package currency is permitted only for a legacy or externally created mixed-currency buy whose row currency, daily_breakdown, and row/window monetary totals are omitted. AdCP does not perform currency conversion.")]
     delivery_status: Annotated[DeliveryStatus | None, Field(description="System-reported operational state of this package. Reflects actual delivery state independent of buyer pause control. 'not_delivering' means zero impressions were recorded for the entire reporting_period while the package was in-flight. Sellers SHOULD only report 'not_delivering' once the package's data is_final for the period — a provisional (is_final: false) zero may still be measurement catching up, not genuine non-delivery."), OmittedNotNull] = None
     paused: Annotated[StrictBool | None, Field(description='Whether this package is currently paused by the buyer'), OmittedNotNull] = None
@@ -318,7 +316,7 @@ class MediaBuyDeliveriesItemByPackageItem(DeliveryMetrics):
     by_spot: Annotated[list[BySpotItem] | None, Field(description='Spot-level as-run airing records for broadcast TV, radio, or other scheduled inventory. Available when the buyer requests spot breakdown and the product declares supports_spot_breakdown. Sellers MUST order rows by aired_at ascending. The same spot_id is reused when a later package measurement_window adds or revises metrics. Network and station are optional so station-direct radio and network-level TV records use the same channel-neutral shape. Sellers SHOULD populate creative_id whenever they can associate a specific airing with a creative, particularly when the package could serve more than one creative during any part of the reporting period, including a mid-period replacement. Sellers that cannot make that association MUST omit creative_id rather than emit a default or placeholder. Buyers MUST NOT aggregate by_spot rows by creative_id and expect the result to equal by_creative impressions for the same creative: the two dimensions are independently produced at different granularities and are subject to different metric-maturation and attribution semantics within the package measurement_window. by_creative is the authoritative creative-performance aggregate; creative_id on a by_spot row identifies which creative aired, not an independent metric roll-up source.'), OmittedNotNull] = None
     by_spot_truncated: Annotated[StrictBool | None, Field(description='Whether by_spot is incomplete because of the requested limit or a seller-imposed maximum. Sellers MUST return this flag whenever by_spot is present (false means the as-run log is complete for the requested reporting period).'), OmittedNotNull] = None
     daily_breakdown: Annotated[list[ByPackageItemDailyBreakdownItem] | None, Field(description='Day-by-day delivery for this package. Only present when include_package_daily_breakdown is true in the request. Enables per-package pacing analysis and line-item monitoring.'), OmittedNotNull] = None
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 class WindowsItemTotals(DeliveryMetrics):
@@ -359,12 +357,12 @@ class MediaBuyDeliveriesItemDailyBreakdownItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/daily_breakdown/items')
     date: Annotated[GetCreativeDeliveryRequestEndDate, Field(description="Calendar date (YYYY-MM-DD) in the reporting timezone: reporting_period.timezone when present, otherwise this media buy's product reporting_capabilities.timezone. The row covers that local day, which can be 23 or 25 hours long across a DST change.")]
-    impressions: Annotated[FloatMin0, Field(description='Daily impressions')]
-    spend: Annotated[FloatMin0, Field(description='Daily spend')]
-    conversions: Annotated[FloatMin0 | None, Field(description='Daily conversions'), OmittedNotNull] = None
-    conversion_value: Annotated[FloatMin0 | None, Field(description='Daily conversion value'), OmittedNotNull] = None
-    commissionable_value: Annotated[FloatMin0 | None, Field(description='Daily settled conversion value eligible for revenue-share commission'), OmittedNotNull] = None
-    roas: Annotated[FloatMin0 | None, Field(description='Daily return on ad spend (conversion_value / spend)'), OmittedNotNull] = None
+    impressions: Annotated[NonNegativeFloat, Field(description='Daily impressions')]
+    spend: Annotated[NonNegativeFloat, Field(description='Daily spend')]
+    conversions: Annotated[NonNegativeFloat | None, Field(description='Daily conversions'), OmittedNotNull] = None
+    conversion_value: Annotated[NonNegativeFloat | None, Field(description='Daily conversion value'), OmittedNotNull] = None
+    commissionable_value: Annotated[NonNegativeFloat | None, Field(description='Daily settled conversion value eligible for revenue-share commission'), OmittedNotNull] = None
+    roas: Annotated[NonNegativeFloat | None, Field(description='Daily return on ad spend (conversion_value / spend)'), OmittedNotNull] = None
     new_to_brand_rate: Annotated[FloatMin0Max1 | None, Field(description='Daily fraction of conversions from first-time brand buyers (0 = none, 1 = all)'), OmittedNotNull] = None
 
 
@@ -384,7 +382,7 @@ class MediaBuyDeliveriesItem(AdCPBaseModel):
     is_final: Annotated[StrictBool | None, Field(description="Whether this row's delivery data is final for the reporting period. The row does not carry its own `measurement_window` — that lives on each `by_package[*]` entry. Reconciliation joins on per-package `measurement_window`; this row-level flag is a convenience roll-up. Sellers MUST NOT emit `is_final: true` at the row level unless every entry in `by_package` has `is_final: true` for the same `measurement_window` as the buy's `measurement_terms.billing_measurement.measurement_window` (or for the row's natural window when no `billing_measurement.measurement_window` is set). On any disagreement between row-level and package-level finality, package-level is authoritative. When true, the seller considers these numbers closed and is willing to invoice on them subject to `measurement_terms.billing_measurement`. When false, numbers may still move as measurement matures (broadcast C3 → C7) or processing completes (IVT scrubbing, dedup). When absent, the seller does not distinguish provisional from final at the row level — consult per-package `is_final`."), OmittedNotNull] = None
     finalized_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp at which this row became final. Present only when `is_final: true`. Anchors the buyer's reconciliation and (when later defined) dispute-window clocks against the buy's `measurement_terms.billing_measurement`. Computed as the latest `finalized_at` across the row's packages for the reconciliation window."), OmittedNotNull] = None
     pricing_model: Annotated[PricingModel | None, Field(description='Pricing model used for this media buy'), OmittedNotNull] = None
-    pacing_index: Annotated[FloatMin0 | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan (1.0 = on track, <1.0 = behind, >1.0 = ahead). This is the authoritative pacing signal for seller-optimized buys; package pacing indexes are subordinate diagnostics.'), OmittedNotNull] = None
+    pacing_index: Annotated[NonNegativeFloat | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan (1.0 = on track, <1.0 = behind, >1.0 = ahead). This is the authoritative pacing signal for seller-optimized buys; package pacing indexes are subordinate diagnostics.'), OmittedNotNull] = None
     totals: MediaBuyDeliveriesItemTotals
     by_package: Annotated[list[MediaBuyDeliveriesItemByPackageItem], Field(description='Metrics broken down by package')]
     windows: Annotated[list[WindowsItem] | None, Field(description="Per-window delivery slices over the reporting period at the requested time_granularity. Only present when the request set time_granularity and include_window_breakdown: true. Each slice mirrors what reporting_webhook would have delivered for the same window — buyers who missed webhook fires can reconstruct identical data by reading this array. Slice rows are ordered by window_start ascending; consecutive rows are contiguous (each row's window_end equals the next row's window_start) and partition the requested date range at the chosen granularity. For a legacy or external mixed-currency media buy, monetary and money-derived values MUST be omitted from each window totals object and reported only in currency-qualified windows[].by_package rows. Sellers MUST exclude this field when time_granularity is omitted; when set, sellers MUST honor pulls at any granularity in reporting_capabilities.windowed_pull_granularities (otherwise return UNSUPPORTED_GRANULARITY). See snapshot-and-log Rule 4 for the two-paths-parity contract this surface anchors."), OmittedNotNull] = None
@@ -408,7 +406,7 @@ class GetMediaBuyDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     )
     notification_type: Annotated[MediaBuyDeliveryWebhookResultNotificationType | None, Field(description='Type of webhook notification (only present in webhook deliveries): scheduled = regular periodic update, final = campaign completed, delayed = data not yet available, adjusted = resending period with corrected data (same window), window_update = resending period with a wider measurement window (e.g., C3 superseding live, C7 superseding C3)'), OmittedNotNull] = None
     partial_data: Annotated[StrictBool | None, Field(description='Indicates if any media buys in this webhook have missing/delayed data (only present in webhook deliveries)'), OmittedNotNull] = None
-    unavailable_count: Annotated[IntMin0 | None, Field(description='Number of media buys with reporting_delayed or failed status (only present in webhook deliveries when partial_data is true)'), OmittedNotNull] = None
+    unavailable_count: Annotated[NonNegativeInt | None, Field(description='Number of media buys with reporting_delayed or failed status (only present in webhook deliveries when partial_data is true)'), OmittedNotNull] = None
     sequence_number: Annotated[IntMin1 | None, Field(description='Sequential notification number (only present in webhook deliveries, starts at 1)'), OmittedNotNull] = None
     next_expected_at: Annotated[AwareDatetime | None, Field(description="ISO 8601 timestamp for next expected notification (only present in webhook deliveries when notification_type is not 'final')"), OmittedNotNull] = None
     reporting_period: Annotated[ObjStartEndTimezone, Field(description="Half-open period for the report: start is inclusive and end is exclusive. Both are instants. For a date-bounded request they are the instants at which start_date and end_date begin in the reporting timezone (the in-scope products' reporting_capabilities.timezone, echoed in timezone). They fall on UTC midnight only when that timezone is UTC. An exact reporting_revision_id read returns the revision's period instead, whose source_timezone names its calendar.")]

@@ -3,17 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import (
-    FloatMin0,
-    IntMin0,
-    StrMaxLen100,
-    StrMinLen1,
-    StrMinLen1MaxLen255,
-    StrMinLen1MaxLen500,
-)
+from adcp.types.constraints import StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen500
 
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_key import BrandKey
@@ -48,7 +41,7 @@ class ReportingCommitmentsItem(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/commercial-terms.json', pointer='#/properties/reporting_commitments/items')
-    purchase_index: IntMin0
+    purchase_index: NonNegativeInt
     metrics: Annotated[list[CanonicalReportingCommitment], Field(min_length=1)]
 
 
@@ -78,7 +71,7 @@ class CommercialTerms(AdCPBaseModel):
     start_time: StartTiming
     end_time: AwareDatetime
     total_budget: Annotated[Money | None, OmittedNotNull] = None
-    daily_budget_cap: Annotated[FloatMin0 | None, Field(description='Hard aggregate daily spend ceiling accepted as part of these terms. It bounds total spend without creating purchase allocations.'), OmittedNotNull] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate daily spend ceiling accepted as part of these terms. It bounds total spend without creating purchase allocations.'), OmittedNotNull] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Hard MediaBuy-level cap accepted as part of these terms. One counter aggregates exposures across every purchase; purchase targeting caps remain independently binding.'), OmittedNotNull] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Shared IANA calendar-day boundary for aggregate and purchase daily caps in these terms.'), OmittedNotNull] = None
     budget_allocation: Annotated[CanonicalBudgetAllocation | None, OmittedNotNull] = None

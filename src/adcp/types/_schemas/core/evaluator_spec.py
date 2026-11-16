@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0, IntMin1
+from adcp.types.constraints import IntMin1
 
 from ..content_standards.content_standards import CalibrationExemplars
 from .ext import ExtensionObject
@@ -44,7 +44,7 @@ class EvalBudget(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/evaluator-spec.json', pointer='#/properties/eval_budget')
     max_calls: Annotated[IntMin1 | None, Field(description='Soft cap on the number of judge calls the evaluator should make.'), OmittedNotNull] = None
-    max_seconds: Annotated[FloatMin0 | None, Field(description='Soft cap on wall-clock seconds the evaluation should consume.'), OmittedNotNull] = None
+    max_seconds: Annotated[NonNegativeFloat | None, Field(description='Soft cap on wall-clock seconds the evaluation should consume.'), OmittedNotNull] = None
 
 
 class EvaluatorSpec(BranchDispatchMixin, AdCPBaseModel):

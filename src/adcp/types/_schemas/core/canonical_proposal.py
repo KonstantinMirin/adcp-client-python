@@ -4,14 +4,13 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import (
     CanonicalProposalTermsDigest,
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
-    FloatMin0,
     IntMin1,
     StrMaxLen2000,
     StrMinLen1,
@@ -46,9 +45,9 @@ class TotalBudgetGuidance(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('recommended',), ('min',), ('max',)), 'anyOf'),
     )
-    min: Annotated[FloatMin0 | None, OmittedNotNull] = None
-    recommended: Annotated[FloatMin0 | None, OmittedNotNull] = None
-    max: Annotated[FloatMin0 | None, OmittedNotNull] = None
+    min: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    recommended: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    max: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     currency: CurrencyCode
 
 

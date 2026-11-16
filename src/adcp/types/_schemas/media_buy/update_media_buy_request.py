@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import Approximation, OmittedNotNull, OmittedWhenNone, SchemaRef
-from adcp.types.constraints import FloatMin0, GovernanceContext, IntMin1, MediaBuyName, StrMaxLen500, StrMinLen1
+from adcp.types.constraints import GovernanceContext, IntMin1, MediaBuyName, StrMaxLen500, StrMinLen1
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.account_ref import AccountReference
@@ -50,7 +50,7 @@ class UpdateMediaBuyRequest(AdCPVersionEnvelope, AdcpRequest):
     start_time: Annotated[StartTiming | None, OmittedNotNull] = None
     end_time: Annotated[AwareDatetime | None, Field(description='New end date/time in ISO 8601 format'), OmittedNotNull] = None
     total_budget: Annotated[Money | None, Field(description='Updated hard aggregate lifetime budget. currency MUST equal the existing media-buy currency; an update does not redenominate a buy. When supplied alone (without packages or new_packages), in fixed mode the seller MUST atomically scale every active package budget in proportion to its current committed budget, rejecting the entire request if any derived budget cannot be accepted. When supplied with packages or new_packages, the amount MUST equal the resulting fixed-mode package sum; the seller applies the explicit package mutations and rejects with VALIDATION_ERROR if the total is inconsistent. In seller-optimized mode this changes the shared pool without converting package caps into allocations. Already-spent amounts still count against the new total.'), OmittedNotNull] = None
-    daily_budget_cap: Annotated[FloatMin0 | None, Field(description='Replace the hard aggregate daily cap; null removes it. Numeric changes apply immediately with current-day spend counted. A cap below that spend pauses delivery for the day. Package caps are unchanged. Requires advertised media_buy scope; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedWhenNone] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Replace the hard aggregate daily cap; null removes it. Numeric changes apply immediately with current-day spend counted. A cap below that spend pauses delivery for the day. Package caps are unchanged. Requires advertised media_buy scope; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedWhenNone] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Replace the hard MediaBuy-level frequency cap; null removes it. Changes apply immediately without resetting the shared counter, so prior qualifying exposures in the resulting window continue to count. Every active package must support the resulting cap or the request is rejected atomically with UNSUPPORTED_FEATURE before any change; sellers MUST NOT clamp it. The check applies to the state the request would produce, so null combined with new_packages adds those packages uncapped.'), OmittedWhenNone] = None
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Replace the shared IANA cap-day timezone; null restores the default selected by budget_capping.timezone_basis (Account.timezone or fixed_timezone). Requires buyer_timezone_override. Changes start at the next boundary in the previously effective timezone; numeric cap changes remain immediate.'), OmittedWhenNone] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Updated allocation configuration. Switching between fixed and seller-optimized modes is allowed only when update_budget_allocation is advertised in available_actions and the resulting package constraints are valid. A resulting seller_optimized allocation requires advertised media_buy.features.seller_optimized_budget, and any package budget caps, min_spend_target values, or package pacing it retains require their own advertised sub-capability; otherwise the update is rejected with UNSUPPORTED_FEATURE before any over-subscription validation.'), OmittedNotNull] = None

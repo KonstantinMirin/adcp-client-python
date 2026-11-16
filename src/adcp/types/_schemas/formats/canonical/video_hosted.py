@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, StrictBool, StrictFloat, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, StrictFloat, TypeAdapter
 
 from adcp.types._base import Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin0, IntMin1
+from adcp.types.constraints import CanonicalFormatImageAspectRatio, IntMin1
 
 from ...common._vocabularies import _VALUES_ACCEPTED_REJECTED
 from ...enums.ctv_ad_experience import CTVAdExperience
@@ -91,7 +91,7 @@ class CanonicalFormatHostedVideo(CanonicalFormatBase):
     min_height: Annotated[IntMin1 | None, OmittedNotNull] = None
     max_width: Annotated[IntMin1 | None, OmittedNotNull] = None
     max_height: Annotated[IntMin1 | None, OmittedNotNull] = None
-    duration_ms_range: Annotated[list[IntMin0 | None] | None, Field(description='[min, max] duration in milliseconds. Either endpoint MAY be null to express an unbounded side: [null, 60000] means up to 60s; [15000, null] means at least 15s. [null, null] is invalid because at least one endpoint must be bounded. **Precedence**: when both `duration_ms_exact` and `duration_ms_range` ship on the same product, `duration_ms_exact` takes precedence — buyers MUST validate against the exact value and ignore the range. SDKs SHOULD lint a warning when both fields ship; producers SHOULD pick one.', max_length=2, min_length=2), OmittedNotNull] = None
+    duration_ms_range: Annotated[list[NonNegativeInt | None] | None, Field(description='[min, max] duration in milliseconds. Either endpoint MAY be null to express an unbounded side: [null, 60000] means up to 60s; [15000, null] means at least 15s. [null, null] is invalid because at least one endpoint must be bounded. **Precedence**: when both `duration_ms_exact` and `duration_ms_range` ship on the same product, `duration_ms_exact` takes precedence — buyers MUST validate against the exact value and ignore the range. SDKs SHOULD lint a warning when both fields ship; producers SHOULD pick one.', max_length=2, min_length=2), OmittedNotNull] = None
     duration_ms_exact: Annotated[IntMin1 | None, Field(description='When set, duration must equal exactly this value. Takes precedence over `duration_ms_range` when both ship (see `duration_ms_range` description).'), OmittedNotNull] = None
     video_codecs: Annotated[list[VideoCodec] | None, OmittedNotNull] = None
     audio_codecs: Annotated[list[AudioCodecsItem] | None, OmittedNotNull] = None

@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import IntMin0, IntMin1
+from adcp.types.constraints import IntMin1
 
 from ._base import CanonicalFormatBase, SlotsItem
 
@@ -63,7 +63,7 @@ class CanonicalFormatDisplayTag(CanonicalFormatBase):
     supported_tag_types: Annotated[list[SupportedTagTypesItem] | None, Field(deprecated=True, description='Deprecated ambiguous mechanism list. Use `supported_delivery_types`; markup subtype lives on the `display_tag` asset.'), OmittedNotNull] = None
     supported_delivery_types: Annotated[list[SupportedDeliveryTypesItem] | None, Field(description='Closed set of delivery types this format option can traffic. `paired_redirect` means one atomic ad-request/click-through pair (Internal Redirect semantics), never independently matchable URL slots.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ssl_required: Annotated[StrictBool | None, Field(description='Whether the tag URL must be HTTPS.'), OmittedNotNull] = None
-    max_redirect_depth: Annotated[IntMin0 | None, Field(description='Maximum redirect chain depth permitted.'), OmittedNotNull] = None
+    max_redirect_depth: Annotated[NonNegativeInt | None, Field(description='Maximum redirect chain depth permitted.'), OmittedNotNull] = None
     max_response_time_ms: Annotated[IntMin1 | None, Field(description='Maximum tag-server response time in milliseconds.'), OmittedNotNull] = None
     backup_image_required: Annotated[StrictBool | None, Field(description='Whether a backup image must accompany the tag for environments that cannot render the third-party tag.'), OmittedNotNull] = None
     backup_image_max_size_kb: Annotated[IntMin1 | None, OmittedNotNull] = None

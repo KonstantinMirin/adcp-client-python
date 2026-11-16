@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import IntMin0
 
 from ..enums.derivative_type import DerivativeType
 from ..enums.installment_status import InstallmentStatus
@@ -47,7 +46,7 @@ class Installment(AdCPBaseModel):
     installment_number: Annotated[str | None, Field(description="Installment number within the season (e.g., '3', '47')"), OmittedNotNull] = None
     scheduled_at: Annotated[AwareDatetime | None, Field(description='When the installment airs or publishes (ISO 8601)'), OmittedNotNull] = None
     status: Annotated[InstallmentStatus | None, Field(description='Lifecycle status of the installment'), OmittedNotNull] = None
-    duration_seconds: Annotated[IntMin0 | None, Field(description='Expected duration of the installment in seconds'), OmittedNotNull] = None
+    duration_seconds: Annotated[NonNegativeInt | None, Field(description='Expected duration of the installment in seconds'), OmittedNotNull] = None
     flexible_end: Annotated[StrictBool | None, Field(description='Whether the end time is approximate (live events, sports)'), OmittedNotNull] = None
     valid_until: Annotated[AwareDatetime | None, Field(description='When this installment data expires and should be re-queried. Agents should re-query before committing budget to products with tentative installments.'), OmittedNotNull] = None
     content_rating: Annotated[ContentRating | None, Field(description="Installment-specific content rating. Overrides the collection's baseline content_rating when present."), OmittedNotNull] = None

@@ -4,16 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar
 
-from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule, UniqueItems
-from adcp.types.constraints import (
-    AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
-    FloatMin0,
-    GovernanceContext,
-    IntMin1,
-)
+from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, GovernanceContext, IntMin1
 from adcp.types.envelopes import AdcpRequest
 
 from ..common._vocabularies import _VALUES_VOICE_THEME_BEST_OF_N_TRANSFORMER_CONFIG_CUSTOM
@@ -56,7 +51,7 @@ class MaxSpend(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-request.json', pointer='#/properties/max_spend')
-    amount: Annotated[FloatMin0, Field(description='Maximum aggregate vendor_cost to incur on this call, in `currency`.')]
+    amount: Annotated[NonNegativeFloat, Field(description='Maximum aggregate vendor_cost to incur on this call, in `currency`.')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency; MUST match the rate card.')]
 
 

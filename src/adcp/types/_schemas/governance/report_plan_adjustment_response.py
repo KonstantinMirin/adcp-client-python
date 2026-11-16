@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, StrictBool, StrictFloat
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool, StrictFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -21,13 +20,13 @@ class PlanSummary(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/report-plan-adjustment-response.json', pointer='#/properties/plan_summary')
     accounting_mode: AccountingMode
-    gross_committed: FloatMin0
-    adjustments_reported: FloatMin0
-    adjustments_verified: FloatMin0
-    net_cost: FloatMin0
-    headroom_restored: FloatMin0
-    ledger_committed: FloatMin0
-    net_committed: FloatMin0
+    gross_committed: NonNegativeFloat
+    adjustments_reported: NonNegativeFloat
+    adjustments_verified: NonNegativeFloat
+    net_cost: NonNegativeFloat
+    headroom_restored: NonNegativeFloat
+    ledger_committed: NonNegativeFloat
+    net_committed: NonNegativeFloat
     budget_remaining: StrictFloat
 
 
@@ -43,7 +42,7 @@ class ReportPlanAdjustmentResponse(AdCPVersionEnvelope, AdcpResponse):
     adjustment_state: Annotated[AdjustmentState, Field(description='reported has seller evidence but no buyer decision; verified was accepted by the plan owner; disputed was rejected by the plan owner. Only verified records can affect net cost or headroom.')]
     adjustment_type: AdjustmentType
     amount: Amount
-    headroom_restored: Annotated[FloatMin0, Field(description='Amount by which current ledger commitment was reduced under the plan accounting mode.')]
+    headroom_restored: Annotated[NonNegativeFloat, Field(description='Amount by which current ledger commitment was reduced under the plan accounting mode.')]
     plan_summary: PlanSummary
     replayed: Annotated[StrictBool | None, Field(description="Set to true when this response was returned from the idempotency cache rather than from a fresh execution. Set to false (or omitted) when the request was executed fresh. Buyers use this to distinguish cached replays from new executions — matters for billing reconciliation, audit logs, state-machine routing (cached state-tracking fields are historical snapshots, not current state — re-read via the resource's read endpoint), and any downstream system that assumes exactly-once event semantics. `replayed` appears only when the request actually resolved through the idempotency cache. Pure reads may ignore an optional `idempotency_key`; when a seller voluntarily caches keyed reads, those responses use the same replay indicator and full cache contract."), OmittedNotNull] = False
     context: Annotated[ContextObject | None, OmittedNotNull] = None

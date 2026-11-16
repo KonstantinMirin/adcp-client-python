@@ -4,14 +4,13 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Presence, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
     CreativesItemAssignmentsReturnedAssignmentCount,
-    IntMin0,
     NonEmptyList,
 )
 from adcp.types.envelopes import AdcpResponse
@@ -65,8 +64,8 @@ class QuerySummary(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/query_summary')
-    total_matching: Annotated[IntMin0, Field(description='Total number of creatives matching filters (across all pages)')]
-    returned: Annotated[IntMin0, Field(description='Number of creatives returned in this response')]
+    total_matching: Annotated[NonNegativeInt, Field(description='Total number of creatives matching filters (across all pages)')]
+    returned: Annotated[NonNegativeInt, Field(description='Number of creatives returned in this response')]
     filters_applied: Annotated[list[str] | None, Field(description='List of filters that were applied to the query'), OmittedNotNull] = None
     sort_applied: Annotated[SortApplied | None, Field(description='Sort order that was applied'), OmittedNotNull] = None
 
@@ -153,9 +152,9 @@ class Assignments(AdCPBaseModel):
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'approval_status': {'const': 'partially_approved'}}, 'required': ['approval_status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/assignments/properties/assigned_packages/items/allOf/4', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['approval_scopes']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    assignment_count: Annotated[IntMin0, Field(description='Total number of active package assignments')]
+    assignment_count: Annotated[NonNegativeInt, Field(description='Total number of active package assignments')]
     returned_assignment_count: Annotated[CreativesItemAssignmentsReturnedAssignmentCount | None, Field(description='Number of rows present in assigned_packages for this response.'), OmittedNotNull] = None
-    matching_assignment_count: Annotated[IntMin0 | None, Field(description='Total active assignments matching filters.indicator_types. MUST be present exactly when assignment_projection was matching. May exceed returned_assignment_count.'), OmittedNotNull] = None
+    matching_assignment_count: Annotated[NonNegativeInt | None, Field(description='Total active assignments matching filters.indicator_types. MUST be present exactly when assignment_projection was matching. May exceed returned_assignment_count.'), OmittedNotNull] = None
     assignments_truncated: Annotated[StrictBool | None, Field(description='True exactly when more qualifying assignments exist than were returned under assignment_limit. Qualifying means assignment_count for the all projection and matching_assignment_count for the matching projection. Buyers needing complete state repair through get_media_buys.'), OmittedNotNull] = None
     assigned_packages: Annotated[list[AssignedPackagesItem] | None, Field(description='Bounded package assignment projection. Under assignment_projection: matching, contains only assignments carrying a requested indicator type; otherwise contains active assignments up to assignment_limit. The response ceiling is enforced via verifier_constraints rather than maxItems, so payloads from 3.1 sellers remain schema-valid.'), OmittedNotNull] = None
 
@@ -169,8 +168,8 @@ class Snapshot(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/creatives/items/properties/snapshot')
     as_of: Annotated[AwareDatetime, Field(description='When this snapshot was captured by the platform')]
-    staleness_seconds: Annotated[IntMin0, Field(description='Maximum age of this data in seconds. For example, 3600 means the data may be up to 1 hour old.')]
-    impressions: Annotated[IntMin0, Field(description='Lifetime impressions across all assignments. Not scoped to any date range.')]
+    staleness_seconds: Annotated[NonNegativeInt, Field(description='Maximum age of this data in seconds. For example, 3600 means the data may be up to 1 hour old.')]
+    impressions: Annotated[NonNegativeInt, Field(description='Lifetime impressions across all assignments. Not scoped to any date range.')]
     last_served: Annotated[AwareDatetime | None, Field(description='Last time this creative served an impression. Absent when the creative has never served.'), OmittedNotNull] = None
 
 
@@ -274,7 +273,7 @@ CreativesItem._branch_models = (ListedCreativeNamedFormatReference, ListedCreati
 CreativesItem.model_rebuild(force=True)
 
 
-FormatSummaryValue = Annotated[IntMin0, Field(description='Number of creatives with this format')]
+FormatSummaryValue = Annotated[NonNegativeInt, Field(description='Number of creatives with this format')]
 
 
 class StatusSummary(AdCPBaseModel):
@@ -285,11 +284,11 @@ class StatusSummary(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creatives-response.json', pointer='#/properties/status_summary')
-    processing: Annotated[IntMin0 | None, Field(description='Number of creatives being processed'), OmittedNotNull] = None
-    approved: Annotated[IntMin0 | None, Field(description='Number of approved creatives'), OmittedNotNull] = None
-    pending_review: Annotated[IntMin0 | None, Field(description='Number of creatives pending review'), OmittedNotNull] = None
-    rejected: Annotated[IntMin0 | None, Field(description='Number of rejected creatives'), OmittedNotNull] = None
-    archived: Annotated[IntMin0 | None, Field(description='Number of archived creatives'), OmittedNotNull] = None
+    processing: Annotated[NonNegativeInt | None, Field(description='Number of creatives being processed'), OmittedNotNull] = None
+    approved: Annotated[NonNegativeInt | None, Field(description='Number of approved creatives'), OmittedNotNull] = None
+    pending_review: Annotated[NonNegativeInt | None, Field(description='Number of creatives pending review'), OmittedNotNull] = None
+    rejected: Annotated[NonNegativeInt | None, Field(description='Number of rejected creatives'), OmittedNotNull] = None
+    archived: Annotated[NonNegativeInt | None, Field(description='Number of archived creatives'), OmittedNotNull] = None
 
 
 class ListCreativesResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):

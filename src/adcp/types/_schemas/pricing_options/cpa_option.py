@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import FloatGt0, FloatMin0
+from adcp.types.constraints import FloatGt0
 
 from ..core.currency_code import CurrencyCode
 from ..enums.adjustment_kind import PriceAdjustmentKind
@@ -33,7 +33,7 @@ class CPAPricingOption(AdCPBaseModel):
     event_source_id: Annotated[str | None, Field(description='When present, only events from this specific event source count toward billing. Allows different CPA rates for different sources (e.g., online vs in-store purchases). Must match an event source configured via sync_event_sources.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     fixed_price: Annotated[FloatGt0, Field(description='Fixed price per acquisition in the specified currency')]
-    min_spend_per_package: Annotated[FloatMin0 | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency'), OmittedNotNull] = None
+    min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency'), OmittedNotNull] = None
     price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.'), OmittedNotNull] = None
     eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 

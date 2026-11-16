@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import BillingMeasurementMaxVariancePercent, IntMin0, StrMinLen1
+from adcp.types.constraints import BillingMeasurementMaxVariancePercent, StrMinLen1
 
 from ..enums.makegood_remedy import MakegoodRemedy
 from .brand_key import BrandKey
@@ -21,7 +21,7 @@ class BillingMeasurement(AdCPBaseModel):
     vendor: BrandKey
     max_variance_percent: Annotated[BillingMeasurementMaxVariancePercent | None, OmittedNotNull] = None
     measurement_window: Annotated[StrMinLen1 | None, OmittedNotNull] = None
-    finalization_deadline_hours: Annotated[IntMin0 | None, OmittedNotNull] = None
+    finalization_deadline_hours: Annotated[NonNegativeInt | None, OmittedNotNull] = None
 
 
 class MakegoodPolicy(AdCPBaseModel):

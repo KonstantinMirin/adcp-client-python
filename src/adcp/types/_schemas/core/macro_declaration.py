@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
-from adcp.types.constraints import DeclarationId, HostedUrl, IntMin0, StrMinLen1
+from adcp.types.constraints import DeclarationId, HostedUrl, StrMinLen1
 
 from ..enums.macro_dialect import MacroDialectFamily
 from ..enums.macro_mapping_status import MacroMappingStatus
@@ -42,7 +42,7 @@ class Location(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/macro-declaration.json', pointer='#/properties/location')
     field: Annotated[LocationField, Field(description='Asset field containing this occurrence.')]
-    occurrence: Annotated[IntMin0, Field(description='Zero-based occurrence of this exact token within the named field.')]
+    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 
 

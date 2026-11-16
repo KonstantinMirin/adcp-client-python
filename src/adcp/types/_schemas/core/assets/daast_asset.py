@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, IntMin0
+from adcp.types.constraints import HostedUrl
 
 from ...enums.daast_tracking_event import DAASTTrackingEvent
 from ...enums.daast_version import DAASTVersion
@@ -37,7 +37,7 @@ class DAASTAsset(BranchDispatchMixin, AdCPBaseModel):
     )
     asset_type: Annotated[Literal['daast'], Field(description='Discriminator identifying this as a DAAST asset. See /schemas/creative/asset-types for the registry.')]
     daast_version: Annotated[DAASTVersion | None, Field(description='DAAST specification version'), OmittedNotNull] = None
-    duration_ms: Annotated[IntMin0 | None, Field(description='Expected audio duration in milliseconds (if known)'), OmittedNotNull] = None
+    duration_ms: Annotated[NonNegativeInt | None, Field(description='Expected audio duration in milliseconds (if known)'), OmittedNotNull] = None
     tracking_events: Annotated[list[DAASTTrackingEvent] | None, Field(description='Tracking events supported by this DAAST tag'), OmittedNotNull] = None
     companion_ads: Annotated[StrictBool | None, Field(description='Whether companion display ads are included'), OmittedNotNull] = None
     transcript_url: Annotated[HostedUrl | None, Field(description='URL to text transcript of the audio content'), OmittedNotNull] = None
@@ -61,7 +61,7 @@ class Location(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items/properties/location')
     field: Annotated[Literal['content'], Field(description='Asset field containing this occurrence.')]
-    occurrence: Annotated[IntMin0, Field(description='Zero-based occurrence of this exact token within the named field.')]
+    occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import (
     AdCPBaseModel,
@@ -14,14 +14,7 @@ from adcp.types._base import (
     SchemaRef,
 )
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
-from adcp.types.constraints import (
-    IntMin0,
-    IntMin1,
-    StrMinLen1,
-    StrMinLen1MaxLen64,
-    StrMinLen1MaxLen255,
-    StrMinLen1MaxLen2048,
-)
+from adcp.types.constraints import IntMin1, StrMinLen1, StrMinLen1MaxLen64, StrMinLen1MaxLen255, StrMinLen1MaxLen2048
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -90,13 +83,13 @@ class ObligationCounts(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/properties/obligation_counts')
-    total: IntMin0
-    waiting: IntMin0
-    healthy: IntMin0
-    delayed: IntMin0
-    action_required: IntMin0
-    complete: IntMin0
-    consumer_status_pending: Annotated[IntMin0 | None, Field(description="Obligations in this scope whose elapsed expected period has passed its consumer-status deadline — expected_at plus automated_recovery_window_seconds — without a current consumer status from the authenticated caller. A chain with any unsuperseded leaf counts as current whatever that leaf says; only an empty chain is pending. Because it counts obligations, a period the seller omitted entirely has no obligation and is not counted here — the buyer's independently derived denominator, not this field, remains the authority on omitted periods. It is a visibility count over the caller's own silence, never a health input: it MUST NOT change health, any other count, or seller-advertised reliability_statistics, and it overlaps the health counts rather than partitioning them. Required when the seller advertises consumer_status_task."), OmittedNotNull] = None
+    total: NonNegativeInt
+    waiting: NonNegativeInt
+    healthy: NonNegativeInt
+    delayed: NonNegativeInt
+    action_required: NonNegativeInt
+    complete: NonNegativeInt
+    consumer_status_pending: Annotated[NonNegativeInt | None, Field(description="Obligations in this scope whose elapsed expected period has passed its consumer-status deadline — expected_at plus automated_recovery_window_seconds — without a current consumer status from the authenticated caller. A chain with any unsuperseded leaf counts as current whatever that leaf says; only an empty chain is pending. Because it counts obligations, a period the seller omitted entirely has no obligation and is not counted here — the buyer's independently derived denominator, not this field, remains the authority on omitted periods. It is a visibility count over the caller's own silence, never a health input: it MUST NOT change health, any other count, or seller-advertised reliability_statistics, and it overlaps the health counts rather than partitioning them. Required when the seller advertises consumer_status_task."), OmittedNotNull] = None
 
 
 class GetReportingStatusResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):
@@ -195,7 +188,7 @@ class PeriodsViewPagination(PaginationResponse):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1/properties/pagination')
-    total_count: Annotated[IntMin0, Field(description='Total number of items matching the query across all pages. Optional because not all backends can efficiently compute this.')]
+    total_count: Annotated[NonNegativeInt, Field(description='Total number of items matching the query across all pages. Optional because not all backends can efficiently compute this.')]
 
 
 class PeriodsView(SuccessfulLookup):

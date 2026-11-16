@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import IntMin0, IntMin1
+from adcp.types.constraints import IntMin1
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.canonical_format_kind import CanonicalFormatKind
@@ -46,7 +46,7 @@ class CreativesItem(AdCPBaseModel):
     format_kind: Annotated[CanonicalFormatKind | None, Field(description='Canonical format kind delivered for this creative.'), OmittedNotNull] = None
     format_option_ref: Annotated[FormatOptionReference | None, Field(description='Portable reference to the product or publisher format option used for delivery, when disambiguation is required.'), OmittedNotNull] = None
     totals: Annotated[DeliveryMetrics | None, Field(description='Aggregate delivery metrics across all variants of this creative'), OmittedNotNull] = None
-    variant_count: Annotated[IntMin0 | None, Field(description='Total number of agent-unique variant_id rows for this creative. When max_variants was specified in the request, this may exceed the number of items in the variants array.'), OmittedNotNull] = None
+    variant_count: Annotated[NonNegativeInt | None, Field(description='Total number of agent-unique variant_id rows for this creative. When max_variants was specified in the request, this may exceed the number of items in the variants array.'), OmittedNotNull] = None
     variants: Annotated[list[CreativeVariant], Field(description='Variant-level delivery breakdown. Each agent-unique variant_id identifies one immutable served execution and each row includes metrics from exactly one source revision and, for localized delivery, exactly one locale variant. A distinct revision, locale, or rendered manifest receives a distinct variant_id; metrics MUST NOT cross those boundaries. For standard creatives, contains one row per source revision and locale represented in the reporting period. For asset group optimization, one per combination, source revision, and locale. For generative creative, one per generated execution, source revision, and locale. Empty when a creative has no variants yet.')]
 
 
@@ -59,10 +59,10 @@ class Pagination(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/get-creative-delivery-response.json', pointer='#/properties/pagination')
     limit: Annotated[IntMin1, Field(description='Maximum number of creatives requested')]
-    offset: Annotated[IntMin0, Field(description='Number of creatives skipped')]
+    offset: Annotated[NonNegativeInt, Field(description='Number of creatives skipped')]
     has_more: Annotated[StrictBool, Field(description='Whether more creatives are available beyond this page')]
-    total_count: Annotated[IntMin0 | None, Field(description='Total number of creatives matching the request filters. Canonical field name (matches `PaginationResponse.total_count`). Sellers SHOULD populate this and the deprecated `total` field identically until 4.0; buyers SHOULD prefer this field.'), OmittedNotNull] = None
-    total: Annotated[IntMin0 | None, Field(deprecated=True, description='**Deprecated** — use `total_count` instead. Retained as a legacy alias for 3.x backward compatibility; removed in AdCP 4.0. Sellers populating this field MUST also populate `total_count` with the same value.'), OmittedNotNull] = None
+    total_count: Annotated[NonNegativeInt | None, Field(description='Total number of creatives matching the request filters. Canonical field name (matches `PaginationResponse.total_count`). Sellers SHOULD populate this and the deprecated `total` field identically until 4.0; buyers SHOULD prefer this field.'), OmittedNotNull] = None
+    total: Annotated[NonNegativeInt | None, Field(deprecated=True, description='**Deprecated** — use `total_count` instead. Retained as a legacy alias for 3.x backward compatibility; removed in AdCP 4.0. Sellers populating this field MUST also populate `total_count` with the same value.'), OmittedNotNull] = None
 
 
 class GetCreativeDeliveryResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):

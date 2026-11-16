@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, OmittedWhenNone, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import FloatMin0, IntMin1, MediaBuyName, StrMaxLen2000
+from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
 from ..core.bidding_policy import BiddingPolicy
@@ -72,8 +72,8 @@ class UpdateMediaBuySuccess(UpdateMediaBuyResponse):
     media_buy_status: Annotated[MediaBuyStatus | None, Field(description="Media buy status after the update. Present when the update changes the media buy's status (e.g., cancellation transitions to 'canceled', pause transitions to 'paused'). This field carries the media buy lifecycle state; top-level `status` is reserved for the protocol-envelope TaskStatus."), OmittedNotNull] = None
     revision: Annotated[IntMin1, Field(description='Revision number after this update. Use this value in subsequent update_media_buy requests intended to change state for optimistic concurrency. Exact idempotency replays return the prior revision and do not increment revision.')]
     currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for monetary values at this media buy level. Echoed when the update affects budget or currency. Matches the currency field in subsequent get_media_buys responses.'), OmittedNotNull] = None
-    total_budget: Annotated[FloatMin0 | None, Field(description='Updated hard aggregate lifetime budget, denominated in currency. Echoed when the update affects the shared total or package budgets so buyers can verify the new aggregate without a round-trip to get_media_buys.'), OmittedNotNull] = None
-    daily_budget_cap: Annotated[FloatMin0 | None, Field(description='Post-update hard aggregate daily spend ceiling. Echoed when the update sets or changes the aggregate daily cap; omitted after the cap is removed.'), OmittedNotNull] = None
+    total_budget: Annotated[NonNegativeFloat | None, Field(description='Updated hard aggregate lifetime budget, denominated in currency. Echoed when the update affects the shared total or package budgets so buyers can verify the new aggregate without a round-trip to get_media_buys.'), OmittedNotNull] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Post-update hard aggregate daily spend ceiling. Echoed when the update sets or changes the aggregate daily cap; omitted after the cap is removed.'), OmittedNotNull] = None
     frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Post-update shared MediaBuy frequency cap. Echoed when the update sets or changes it; omitted after removal.'), OmittedNotNull] = None
     budget_cap_timezone: Annotated[str | None, Field(description='Post-update IANA timezone shared by every aggregate and package daily cap. Echoed whenever the update affects daily caps or their timezone.'), OmittedNotNull] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Post-update cross-package allocation configuration when affected by the update.'), OmittedNotNull] = None

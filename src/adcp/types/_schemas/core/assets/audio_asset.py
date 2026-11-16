@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field, StrictFloat, StrictInt
+from pydantic import ConfigDict, Field, NonNegativeInt, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, IntMin0, IntMin1, SchemaIntegral
+from adcp.types.constraints import HostedUrl, IntMin1, SchemaIntegral
 
 from ...enums.audio_channel_layout import AudioChannelLayout
 from ..provenance import Provenance
@@ -29,7 +29,7 @@ class AudioAsset(AdCPBaseModel):
     )
     asset_type: Annotated[Literal['audio'], Field(description='Discriminator identifying this as an audio asset. See /schemas/creative/asset-types for the registry.')]
     url: Annotated[HostedUrl, Field(description='URL to the audio asset')]
-    duration_ms: Annotated[IntMin0 | None, Field(description='Audio duration in milliseconds'), OmittedNotNull] = None
+    duration_ms: Annotated[NonNegativeInt | None, Field(description='Audio duration in milliseconds'), OmittedNotNull] = None
     file_size_bytes: Annotated[IntMin1 | None, Field(description='File size in bytes'), OmittedNotNull] = None
     container_format: Annotated[str | None, Field(description='Audio container/file format (mp3, m4a, aac, wav, ogg, flac, etc.)'), OmittedNotNull] = None
     codec: Annotated[str | None, Field(description='Audio codec used (aac, aac_lc, he_aac, pcm, mp3, vorbis, opus, flac, ac3, eac3, etc.)'), OmittedNotNull] = None

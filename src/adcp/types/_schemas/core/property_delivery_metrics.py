@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0
 
 from .delivery_metrics import DeliveryMetrics
 from .domain_name import DomainName
@@ -26,8 +25,8 @@ class PropertyDeliveryMetrics(DeliveryMetrics):
     identifier: Annotated[Identifier, Field(description='Primary operational identifier of the property that delivered. Required even when catalog enrichment is unavailable.')]
     property_ref: Annotated[PropertyReference | None, Field(description="Canonical publisher-scoped catalog identity when the delivered property resolves to adagents.json. Its publisher_domain MUST equal the row's publisher_domain."), OmittedNotNull] = None
     property_name: Annotated[str | None, Field(description='Current human-readable property name. Convenience metadata only; property_ref is stable identity.'), OmittedNotNull] = None
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 __all__ = ["PropertyDeliveryMetrics"]

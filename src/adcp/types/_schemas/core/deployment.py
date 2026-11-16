@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0, HostedUrl
+from adcp.types.constraints import HostedUrl
 
 from .activation_key import ActivationKey
 
@@ -38,7 +38,7 @@ class DeploymentPlatform(Deployment):
     account: Annotated[str | None, Field(description='Account identifier if applicable'), OmittedNotNull] = None
     is_live: Annotated[StrictBool, Field(description='Whether signal is currently active on this deployment')]
     activation_key: Annotated[ActivationKey | None, Field(description='The key to use for targeting. Only present if is_live=true AND requester has access to this deployment.'), OmittedNotNull] = None
-    estimated_activation_duration_minutes: Annotated[FloatMin0 | None, Field(description='Estimated time to activate if not live, or to complete activation if in progress'), OmittedNotNull] = None
+    estimated_activation_duration_minutes: Annotated[NonNegativeFloat | None, Field(description='Estimated time to activate if not live, or to complete activation if in progress'), OmittedNotNull] = None
     deployed_at: Annotated[AwareDatetime | None, Field(description='Timestamp when activation completed (if is_live=true)'), OmittedNotNull] = None
 
 
@@ -56,7 +56,7 @@ class DeploymentAgent(Deployment):
     account: Annotated[str | None, Field(description='Account identifier if applicable'), OmittedNotNull] = None
     is_live: Annotated[StrictBool, Field(description='Whether signal is currently active on this deployment')]
     activation_key: Annotated[ActivationKey | None, Field(description='The key to use for targeting. Only present if is_live=true AND requester has access to this deployment.'), OmittedNotNull] = None
-    estimated_activation_duration_minutes: Annotated[FloatMin0 | None, Field(description='Estimated time to activate if not live, or to complete activation if in progress'), OmittedNotNull] = None
+    estimated_activation_duration_minutes: Annotated[NonNegativeFloat | None, Field(description='Estimated time to activate if not live, or to complete activation if in progress'), OmittedNotNull] = None
     deployed_at: Annotated[AwareDatetime | None, Field(description='Timestamp when activation completed (if is_live=true)'), OmittedNotNull] = None
 
 

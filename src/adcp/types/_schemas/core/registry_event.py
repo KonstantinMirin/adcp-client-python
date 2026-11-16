@@ -4,7 +4,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import (
     AdCPBaseModel,
@@ -16,7 +16,7 @@ from adcp.types._base import (
     SchemaRef,
 )
 from adcp.types._runtime import Distinct, RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import HostedUrl, IntMin0, StrFormatUuid
+from adcp.types.constraints import HostedUrl, StrFormatUuid
 
 from ..adagents import DelegationType
 from ..enums.adcp_protocol import AdCPProtocol
@@ -447,8 +447,8 @@ class AgentProfilePayload(AdCPBaseModel):
     format_kinds: Annotated[list[CanonicalFormatKind] | None, Field(json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     tags: Annotated[StringArray | None, OmittedNotNull] = None
     delivery_types: Annotated[StringArray | None, OmittedNotNull] = None
-    property_count: Annotated[IntMin0 | None, OmittedNotNull] = None
-    publisher_count: Annotated[IntMin0 | None, OmittedNotNull] = None
+    property_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    publisher_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     has_tmp: Annotated[StrictBool | None, OmittedNotNull] = None
     updated_at: Annotated[AwareDatetime | None, OmittedNotNull] = None
 
@@ -580,8 +580,8 @@ class StoryboardsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/$defs/compliancePayload/properties/storyboards/items')
     storyboard_id: str
     status: StoryboardStatus
-    steps_passed: Annotated[IntMin0 | None, OmittedNotNull] = None
-    steps_total: Annotated[IntMin0 | None, OmittedNotNull] = None
+    steps_passed: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    steps_total: Annotated[NonNegativeInt | None, OmittedNotNull] = None
 
 
 class CompliancePayload(AdCPBaseModel):
@@ -598,8 +598,8 @@ class CompliancePayload(AdCPBaseModel):
     current_status: ComplianceStatus
     headline: Annotated[str | None, OmittedWhenNone] = None
     tracks: Annotated[dict[str, TracksValue], Field(description='Map of compliance track id to track status.')]
-    storyboards_passing: IntMin0
-    storyboards_total: IntMin0
+    storyboards_passing: NonNegativeInt
+    storyboards_total: NonNegativeInt
     storyboards: Annotated[list[StoryboardsItem] | None, OmittedNotNull] = None
 
 
@@ -705,15 +705,15 @@ class PublisherAdagentsPayload(AdCPBaseModel):
     )
     publisher_domain: Annotated[DomainName | None, OmittedNotNull] = None
     domain: Annotated[DomainName | None, Field(deprecated=True, description='Legacy alias for publisher_domain retained for early feed examples.'), OmittedNotNull] = None
-    properties_added: Annotated[IntMin0 | None, OmittedNotNull] = None
-    properties_removed: Annotated[IntMin0 | None, OmittedNotNull] = None
+    properties_added: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    properties_removed: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     agents_added: Annotated[list[HostedUrl] | None, OmittedNotNull] = None
     agents_removed: Annotated[list[HostedUrl] | None, OmittedNotNull] = None
-    agent_count: Annotated[IntMin0 | None, OmittedNotNull] = None
-    property_count: Annotated[IntMin0 | None, OmittedNotNull] = None
-    collection_count: Annotated[IntMin0 | None, OmittedNotNull] = None
-    format_count: Annotated[IntMin0 | None, Field(description='Number of top-level formats[] declarations after this revision.'), OmittedNotNull] = None
-    placement_count: Annotated[IntMin0 | None, Field(description='Number of top-level placements[] declarations after this revision.'), OmittedNotNull] = None
+    agent_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    property_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    collection_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    format_count: Annotated[NonNegativeInt | None, Field(description='Number of top-level formats[] declarations after this revision.'), OmittedNotNull] = None
+    placement_count: Annotated[NonNegativeInt | None, Field(description='Number of top-level placements[] declarations after this revision.'), OmittedNotNull] = None
     changed_fields: Annotated[ChangedFields | None, OmittedNotNull] = None
     discovery_method: Annotated[str | None, OmittedNotNull] = None
     manager_domain: Annotated[str | None, OmittedWhenNone] = None

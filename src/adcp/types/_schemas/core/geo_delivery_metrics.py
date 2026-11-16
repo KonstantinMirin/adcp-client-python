@@ -3,11 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import FloatMin0
 
 from ..enums.geo_level import GeographicTargetingLevel
 from .country_code import CountryCode
@@ -36,8 +35,8 @@ class GeoDeliveryMetrics(DeliveryMetrics):
     country: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code for native postal_area rows.'), OmittedNotNull] = None
     geo_code: Annotated[str, Field(description="Geographic code within the level and system. Country: ISO 3166-1 alpha-2 ('US'). Region: ISO 3166-2 with country prefix ('US-CA'). Metro/postal: system-specific code ('501', '10001').")]
     geo_name: Annotated[str | None, Field(description="Human-readable geographic name (e.g., 'United States', 'California', 'New York DMA')"), OmittedNotNull] = None
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 __all__ = ["GeoDeliveryMetrics"]

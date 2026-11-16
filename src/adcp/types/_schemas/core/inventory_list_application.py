@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
-from adcp.types.constraints import HostedUrl, IntMin0, StrMinLen1
+from adcp.types.constraints import HostedUrl, StrMinLen1
 
 from ._vocabularies import _VALUES_INCLUDE_EXCLUDE
 
@@ -49,8 +49,8 @@ class PropertyListApplicationSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/inventory-list-application.json', pointer='#/oneOf/0/properties/summary')
-    matched: Annotated[IntMin0, Field(description='Resolved entries that matched at least one property in this product.')]
-    unmatched: Annotated[IntMin0, Field(description='Resolved entries that did not match a property in this product.')]
+    matched: Annotated[NonNegativeInt, Field(description='Resolved entries that matched at least one property in this product.')]
+    unmatched: Annotated[NonNegativeInt, Field(description='Resolved entries that did not match a property in this product.')]
 
 
 class PropertyListApplication(InventoryListApplication):
@@ -89,8 +89,8 @@ class CollectionListApplicationSummary(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/inventory-list-application.json', pointer='#/oneOf/1/properties/summary')
-    matched: Annotated[IntMin0, Field(description='Resolved entries that matched at least one collection in this product.')]
-    unmatched: Annotated[IntMin0, Field(description='Resolved entries that did not match a collection in this product.')]
+    matched: Annotated[NonNegativeInt, Field(description='Resolved entries that matched at least one collection in this product.')]
+    unmatched: Annotated[NonNegativeInt, Field(description='Resolved entries that did not match a collection in this product.')]
 
 
 class CollectionListApplication(InventoryListApplication):

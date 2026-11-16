@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
-from adcp.types.constraints import CanonicalProposalTermsDigest, FloatMin0, StrMinLen1, StrMinLen1MaxLen255
+from adcp.types.constraints import CanonicalProposalTermsDigest, StrMinLen1, StrMinLen1MaxLen255
 
 from ..enums.channels import MediaChannel
 from ..enums.pacing import Pacing
@@ -63,8 +63,8 @@ class PlannedDelivery(AdCPBaseModel):
     frequency_cap: Annotated[FrequencyCap | None, Field(description='Frequency cap the seller will apply.'), OmittedNotNull] = None
     audience_summary: Annotated[str | None, Field(description='Human-readable summary of the audience the seller will target.'), OmittedNotNull] = None
     audience_targeting: Annotated[list[AudienceSelector] | None, Field(description='Structured audience targeting the seller will activate. Each entry is either a signal reference or a descriptive criterion. When present, governance agents MUST use this for bias/fairness validation and SHOULD ignore audience_summary for validation purposes. The audience_summary field is a human-readable rendering of this array, not an independent declaration.', min_length=1), OmittedNotNull] = None
-    total_budget: Annotated[FloatMin0 | None, Field(description='Total budget the seller will deliver against.'), OmittedNotNull] = None
-    daily_budget_cap: Annotated[FloatMin0 | None, Field(description='Hard aggregate daily spend ceiling the seller will enforce. Governance checks compare it with the authorized execution controls; it does not allocate spend to packages.'), OmittedNotNull] = None
+    total_budget: Annotated[NonNegativeFloat | None, Field(description='Total budget the seller will deliver against.'), OmittedNotNull] = None
+    daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Hard aggregate daily spend ceiling the seller will enforce. Governance checks compare it with the authorized execution controls; it does not allocate spend to packages.'), OmittedNotNull] = None
     budget_cap_timezone: Annotated[str | None, Field(description='IANA timezone defining the calendar-day boundary for every daily cap on the planned media buy.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for the budget. Governance execution checks require it whenever total_budget is present and require it to match the intent-authorized currency.'), OmittedNotNull] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Seller-accepted cross-package allocation authority and goals. Presence with seller_optimized mode means automatic within-buy reallocations are part of the committed delivery, not separate modification actions.'), OmittedNotNull] = None

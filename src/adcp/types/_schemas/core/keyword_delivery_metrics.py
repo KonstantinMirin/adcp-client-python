@@ -3,10 +3,9 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import SchemaRef
-from adcp.types.constraints import FloatMin0
 
 from ..enums.match_type import MatchType
 from .delivery_metrics import DeliveryMetrics
@@ -22,8 +21,8 @@ class KeywordDeliveryMetrics(DeliveryMetrics):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/keyword-delivery-metrics.json', pointer='#')
     keyword: Annotated[str, Field(description='The targeted keyword')]
     match_type: MatchType
-    impressions: Annotated[FloatMin0, Field(description='Impressions delivered')]
-    spend: Annotated[FloatMin0, Field(description='Amount spent')]
+    impressions: Annotated[NonNegativeFloat, Field(description='Impressions delivered')]
+    spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
 __all__ = ["KeywordDeliveryMetrics"]

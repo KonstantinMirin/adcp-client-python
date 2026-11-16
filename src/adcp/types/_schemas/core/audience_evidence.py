@@ -4,10 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0, FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
+from adcp.types.constraints import FloatMin0Max1, IntMin1, StrMinLen1, ZipAssetDigest
 
 from ..enums.audience_evidence_methodology import AudienceEvidenceMethodology
 from ..enums.audience_resolution_method import AudienceResolutionMethod
@@ -111,7 +111,7 @@ class AudienceEvidence(AdCPBaseModel):
     content_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 of the RFC 8785 (JCS) canonical evidence core with content_digest and attestation_refs omitted. Attestation references are excluded so independently issued credentials can be attached without changing the immutable evidence snapshot and without creating a recursive digest. This digest is required even when snapshot_id is present so buyers can detect identifier reuse or catalog drift.')]
     audience: AudienceCharacteristic
     relationship: Annotated[Relationship, Field(description='What the estimate says: population share, ratio to a baseline, or estimated reachable count.')]
-    value: Annotated[FloatMin0, Field(description='Estimated relationship value, interpreted according to unit.')]
+    value: Annotated[NonNegativeFloat, Field(description='Estimated relationship value, interpreted according to unit.')]
     unit: Annotated[Unit, Field(description='composition uses fraction in [0,1], index uses ratio, and reach_estimate uses count.')]
     baseline: Annotated[Baseline, Field(description='Reference population against which the estimate was calculated.')]
     evidence_type: Annotated[EvidenceType, Field(description='Nature of the evidence. Independent verification is represented separately by attestation_refs and never inferred from this value.')]

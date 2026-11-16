@@ -3,11 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import FloatMin0
 
 from ..core.currency_code import CurrencyCode
 from ..enums.adjustment_kind import PriceAdjustmentKind
@@ -26,7 +25,7 @@ class Parameters(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='pricing-options/cpp-option.json', pointer='#/properties/parameters')
     demographic_system: Annotated[DemographicSystem | None, Field(description='Measurement system for the demographic field. Defaults to nielsen when omitted.'), OmittedNotNull] = None
     demographic: Annotated[str, Field(description='Target demographic code within the specified demographic_system (e.g., P18-49 for Nielsen, ABC1 Adults for BARB)')]
-    min_points: Annotated[FloatMin0 | None, Field(description='Minimum GRPs/TRPs required'), OmittedNotNull] = None
+    min_points: Annotated[NonNegativeFloat | None, Field(description='Minimum GRPs/TRPs required'), OmittedNotNull] = None
 
 
 class CPPPricingOption(AdCPBaseModel):
@@ -43,11 +42,11 @@ class CPPPricingOption(AdCPBaseModel):
     pricing_option_id: Annotated[str, Field(description='Unique identifier for this pricing option within the product')]
     pricing_model: Annotated[Literal['cpp'], Field(description='Cost per Gross Rating Point')]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
-    fixed_price: Annotated[FloatMin0 | None, Field(description='Fixed price per rating point. If present, this is fixed pricing. If absent, auction-based.'), OmittedNotNull] = None
-    floor_price: Annotated[FloatMin0 | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.'), OmittedNotNull] = None
+    fixed_price: Annotated[NonNegativeFloat | None, Field(description='Fixed price per rating point. If present, this is fixed pricing. If absent, auction-based.'), OmittedNotNull] = None
+    floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.'), OmittedNotNull] = None
     price_guidance: Annotated[PriceGuidance | None, Field(description='Optional pricing guidance for auction-based bidding'), OmittedNotNull] = None
     parameters: Annotated[Parameters, Field(description='CPP-specific parameters for demographic targeting')]
-    min_spend_per_package: Annotated[FloatMin0 | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency'), OmittedNotNull] = None
+    min_spend_per_package: Annotated[NonNegativeFloat | None, Field(description='Minimum spend requirement per package using this pricing option, in the specified currency'), OmittedNotNull] = None
     price_breakdown: Annotated[PriceBreakdown | None, Field(description='Breakdown of how fixed_price was derived from the list (rate card) price. Only meaningful when fixed_price is present.'), OmittedNotNull] = None
     eligible_adjustments: Annotated[list[PriceAdjustmentKind] | None, Field(description='Adjustment kinds applicable to this pricing option. Tells buyer agents which adjustments are available before negotiation. When absent, no adjustments are pre-declared — the buyer should check price_breakdown if present.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
 

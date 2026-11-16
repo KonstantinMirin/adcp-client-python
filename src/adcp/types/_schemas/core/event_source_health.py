@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0, FloatMin0Max1, FloatMin1, IntMin0
+from adcp.types.constraints import FloatMin0Max1, FloatMin1
 
 from ..enums.assessment_status import AssessmentStatus
 from .diagnostic_issue import DiagnosticIssue
@@ -20,7 +20,7 @@ class Detail(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/event-source-health.json', pointer='#/properties/detail')
-    score: Annotated[FloatMin0, Field(description='Seller-defined quality score. Scale varies by seller — only compare within the same seller.')]
+    score: Annotated[NonNegativeFloat, Field(description='Seller-defined quality score. Scale varies by seller — only compare within the same seller.')]
     max_score: Annotated[FloatMin1, Field(description="Maximum possible score on this seller's scale.")]
     label: Annotated[str | None, Field(description="Seller's name for this score (e.g., 'Event Quality Score', 'Event Match Quality')."), OmittedNotNull] = None
 
@@ -38,7 +38,7 @@ class EventSourceHealth(AdCPBaseModel):
     match_rate: Annotated[FloatMin0Max1 | None, Field(description='Fraction of events from this source that the seller successfully matched to ad interactions (0.0-1.0). Low match rates indicate weak user_match identifiers. Absent when the seller does not compute match rates.'), OmittedNotNull] = None
     last_event_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of the most recent event received from this source. Absent when no events have been received.'), OmittedNotNull] = None
     evaluated_at: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp of when this health assessment was computed. When health is derived from reporting data, this may lag real-time. Buyer agents can use this to decide whether to trust stale assessments or re-request.'), OmittedNotNull] = None
-    events_received_24h: Annotated[IntMin0 | None, Field(description='Number of events received from this source in the last 24 hours. Zero indicates the source is configured but not firing.'), OmittedNotNull] = None
+    events_received_24h: Annotated[NonNegativeInt | None, Field(description='Number of events received from this source in the last 24 hours. Zero indicates the source is configured but not firing.'), OmittedNotNull] = None
     issues: Annotated[list[DiagnosticIssue] | None, Field(description='Actionable issues detected with this event source. Sellers should limit to the top 3-5 most actionable items. Buyer agents should sort by severity rather than relying on array position.'), OmittedNotNull] = None
 
 

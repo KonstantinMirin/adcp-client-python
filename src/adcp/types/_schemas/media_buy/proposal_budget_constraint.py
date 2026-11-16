@@ -3,11 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
-from adcp.types.constraints import FloatMin0
 
 from ..core.currency_code import CurrencyCode
 
@@ -23,8 +22,8 @@ class ProposalBudgetConstraint(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('min',), ('max',)), 'anyOf'),
     )
-    min: Annotated[FloatMin0 | None, OmittedNotNull] = None
-    max: Annotated[FloatMin0 | None, OmittedNotNull] = None
+    min: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
+    max: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     currency: CurrencyCode
 
 

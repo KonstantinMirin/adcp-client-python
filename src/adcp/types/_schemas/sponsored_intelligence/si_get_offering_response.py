@@ -3,10 +3,10 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
-from adcp.types.constraints import HostedUrl, IntMin0
+from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpResponse
 
 from ..core.context import ContextObject
@@ -84,12 +84,12 @@ class SIGetOfferingResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse)
     )
     available: Annotated[StrictBool, Field(description='Whether the offering is currently available')]
     offering_token: Annotated[str | None, Field(description="Token to pass to si_initiate_session for session continuity. Brand stores the full query context server-side (products shown, order, context) so they can resolve references like 'the second one' when the session starts."), OmittedNotNull] = None
-    ttl_seconds: Annotated[IntMin0 | None, Field(description='How long this offering information is valid (seconds). Host should re-fetch after TTL expires.'), OmittedNotNull] = None
+    ttl_seconds: Annotated[NonNegativeInt | None, Field(description='How long this offering information is valid (seconds). Host should re-fetch after TTL expires.'), OmittedNotNull] = None
     checked_at: Annotated[AwareDatetime | None, Field(description='When this offering information was retrieved'), OmittedNotNull] = None
     offering: Annotated[SIGetOfferingResponseOffering | None, Field(description='Offering details'), OmittedNotNull] = None
     matching_products: Annotated[list[MatchingProductsItem] | None, Field(description='Products matching the request context. Only included if include_products was true.'), OmittedNotNull] = None
     sponsored_context: Annotated[SISponsoredContext | None, Field(description='Declaration for the sponsored context carried by this offering response. When present, it applies to the returned offering and matching_products package as a whole unless a future extension narrows the declaration to individual items. Hosts MUST either honor the declared context_use and disclosure_obligation or reject the context before using it.'), OmittedNotNull] = None
-    total_matching: Annotated[IntMin0 | None, Field(description='Total number of products matching the context (may be more than returned in matching_products)'), OmittedNotNull] = None
+    total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of products matching the context (may be more than returned in matching_products)'), OmittedNotNull] = None
     unavailable_reason: Annotated[str | None, Field(description="If not available, why (e.g., 'expired', 'sold_out', 'region_restricted')"), OmittedNotNull] = None
     alternative_offering_ids: Annotated[list[str] | None, Field(description='Alternative offerings to consider if this one is unavailable'), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Errors during offering lookup'), OmittedNotNull] = None

@@ -4,11 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
-from adcp.types.constraints import AdcpVersion, HostedUrl, IntMin0, StrMinLen1
+from adcp.types.constraints import AdcpVersion, HostedUrl, StrMinLen1
 
 from .registry_event import GradingProfile
 
@@ -60,8 +60,8 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
     sub: HostedUrl
     aud: Literal['aao-verification']
     jti: StrMinLen1
-    iat: IntMin0
-    exp: IntMin0
+    iat: NonNegativeInt
+    exp: NonNegativeInt
     agent_url: HostedUrl
     role: Role
     verified_specialisms: Annotated[list[str], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]

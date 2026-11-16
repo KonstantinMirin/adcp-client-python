@@ -4,10 +4,9 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import IntMin0
 
 from ..enums.sort_direction import SortDirection
 from ..enums.task_status import TaskStatus
@@ -27,9 +26,9 @@ class ObjMediaBuySignalsCreative(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-response.json', pointer='#/properties/query_summary/properties/domain_breakdown')
-    media_buy: Annotated[IntMin0 | None, Field(alias='media-buy', description='Number of media-buy tasks in results'), OmittedNotNull] = None
-    signals: Annotated[IntMin0 | None, Field(description='Number of signals tasks in results'), OmittedNotNull] = None
-    creative: Annotated[IntMin0 | None, Field(description='Number of creative tasks in results'), OmittedNotNull] = None
+    media_buy: Annotated[NonNegativeInt | None, Field(alias='media-buy', description='Number of media-buy tasks in results'), OmittedNotNull] = None
+    signals: Annotated[NonNegativeInt | None, Field(description='Number of signals tasks in results'), OmittedNotNull] = None
+    creative: Annotated[NonNegativeInt | None, Field(description='Number of creative tasks in results'), OmittedNotNull] = None
 
 
 class SortApplied(AdCPBaseModel):
@@ -52,10 +51,10 @@ class QuerySummary(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/tasks-list-response.json', pointer='#/properties/query_summary')
-    total_matching: Annotated[IntMin0 | None, Field(description='Total number of tasks matching filters (across all pages)'), OmittedNotNull] = None
-    returned: Annotated[IntMin0 | None, Field(description='Number of tasks returned in this response'), OmittedNotNull] = None
+    total_matching: Annotated[NonNegativeInt | None, Field(description='Total number of tasks matching filters (across all pages)'), OmittedNotNull] = None
+    returned: Annotated[NonNegativeInt | None, Field(description='Number of tasks returned in this response'), OmittedNotNull] = None
     domain_breakdown: Annotated[ObjMediaBuySignalsCreative | None, Field(description='Count of tasks by domain'), OmittedNotNull] = None
-    status_breakdown: Annotated[dict[str, IntMin0] | None, Field(description='Count of tasks by status'), OmittedNotNull] = None
+    status_breakdown: Annotated[dict[str, NonNegativeInt] | None, Field(description='Count of tasks by status'), OmittedNotNull] = None
     filters_applied: Annotated[list[str] | None, Field(description='List of filters that were applied to the query'), OmittedNotNull] = None
     sort_applied: Annotated[SortApplied | None, Field(description='Sort order that was applied'), OmittedNotNull] = None
 

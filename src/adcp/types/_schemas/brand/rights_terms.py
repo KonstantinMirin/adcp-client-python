@@ -4,10 +4,10 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0, IntMin1
+from adcp.types.constraints import IntMin1
 
 from ..core.country_code import CountryCode
 from ..core.currency_code import CurrencyCode
@@ -36,12 +36,12 @@ class RightsTerms(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/rights-terms.json', pointer='#')
     pricing_option_id: str
-    amount: FloatMin0
+    amount: NonNegativeFloat
     currency: CurrencyCode
     period: Annotated[RightsBillingPeriod | None, OmittedNotNull] = None
     uses: list[RightUse]
     impression_cap: Annotated[IntMin1 | None, OmittedNotNull] = None
-    overage_cpm: Annotated[FloatMin0 | None, OmittedNotNull] = None
+    overage_cpm: Annotated[NonNegativeFloat | None, OmittedNotNull] = None
     start_date: Annotated[date | None, OmittedNotNull] = None
     end_date: Annotated[date | None, OmittedNotNull] = None
     exclusivity: Annotated[RightsTermsExclusivity | None, Field(description='Exclusivity terms if applicable'), OmittedNotNull] = None

@@ -3,11 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar
 
-from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import AfterValidator, AwareDatetime, ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, Rule, UniqueItems
-from adcp.types.constraints import CanonicalProductCatalogMatchMatchedGtinsItem, IntMin0, StrMinLen1
+from adcp.types.constraints import CanonicalProductCatalogMatchMatchedGtinsItem, StrMinLen1
 
 from ..enums.audio_distribution_type import AudioDistributionType
 from ..enums.catalog_type import CatalogType
@@ -48,8 +48,8 @@ class CatalogMatch(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-product.json', pointer='#/properties/catalog_match')
     matched_gtins: Annotated[list[CanonicalProductCatalogMatchMatchedGtinsItem] | None, OmittedNotNull] = None
     matched_ids: Annotated[list[str] | None, OmittedNotNull] = None
-    matched_count: Annotated[IntMin0 | None, OmittedNotNull] = None
-    submitted_count: IntMin0
+    matched_count: Annotated[NonNegativeInt | None, OmittedNotNull] = None
+    submitted_count: NonNegativeInt
 
 
 class CanonicalProduct(AdCPBaseModel):
@@ -105,7 +105,7 @@ class CanonicalProduct(AdCPBaseModel):
     execution_requirements: Annotated[list[ProductExecutionRequirement] | None, Field(description='Experimental account resources a package on this product needs before it can be created. See Product.execution_requirements for completeness, binding, and rejection rules.', min_length=1), OmittedNotNull] = None
     audience_evidence: Annotated[list[CanonicalAudienceEvidence] | None, Field(min_length=1), OmittedNotNull] = None
     audience_evidence_selections: Annotated[list[CanonicalAudienceEvidenceSelection] | None, Field(description='Exact evidence snapshots that affected eligibility or ranking. Returned whenever evidence requirements affected the result, even if not requested explicitly.', min_length=1), OmittedNotNull] = None
-    max_optimization_goals: Annotated[IntMin0 | None, OmittedNotNull] = None
+    max_optimization_goals: Annotated[NonNegativeInt | None, OmittedNotNull] = None
     catalog_match: Annotated[CatalogMatch | None, OmittedNotNull] = None
     list_applications: Annotated[list[InventoryListApplication] | None, Field(description='Product-scoped receipts for every effective property- or collection-list targeting reference. Sellers MUST return one receipt per application regardless of response field projection; exclusion applications receive a receipt even when summary.matched is zero, while zero matches for any inclusion application make the product ineligible and it is not returned. Each receipt uses the same pre-list product inventory baseline; pricing and forecast reflect inventory remaining after all effective lists are composed.', min_length=1), OmittedNotNull] = None
     brief_relevance: Annotated[str | None, OmittedNotNull] = None

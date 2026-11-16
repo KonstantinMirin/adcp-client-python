@@ -4,12 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
-    IntMin0,
     IntMin1,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
     ReportingCanonicalContentDigestCanonicalizationUri,
@@ -34,8 +33,8 @@ class LatencyPercentiles(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-reliability-statistics.json', pointer='#/definitions/LatencyPercentiles')
-    p50: IntMin0
-    p95: IntMin0
+    p50: NonNegativeInt
+    p95: NonNegativeInt
 
 
 class AdjustmentMagnitudeItem(AdCPBaseModel):
@@ -89,9 +88,9 @@ class ReportingReliabilityStatistics(AdCPBaseModel):
     offering_id: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
     measurement_period: ReportingReliabilityMeasurementPeriod
     obligations_due: Annotated[IntMin1, Field(description='Denominator for on-time performance.')]
-    obligations_on_time: Annotated[IntMin0, Field(description='Obligations whose required revision was published by expected_at. Divide by obligations_due for the on-time rate.')]
-    official_revisions_published: Annotated[IntMin0, Field(description='Denominator for the official-adjustment rate.')]
-    official_revisions_adjusted: Annotated[IntMin0, Field(description='Distinct official revisions receiving at least one adjustment. Divide by official_revisions_published for the adjustment rate.')]
+    obligations_on_time: Annotated[NonNegativeInt, Field(description='Obligations whose required revision was published by expected_at. Divide by obligations_due for the on-time rate.')]
+    official_revisions_published: Annotated[NonNegativeInt, Field(description='Denominator for the official-adjustment rate.')]
+    official_revisions_adjusted: Annotated[NonNegativeInt, Field(description='Distinct official revisions receiving at least one adjustment. Divide by official_revisions_published for the adjustment rate.')]
     publication_latency_seconds: Annotated[LatencyPercentiles, Field(description='Observed seconds from period.end to publication of the required revision.')]
     adjustment_latency_seconds: Annotated[LatencyPercentiles | None, Field(description='Observed seconds from official finalized_at to the first adjustment, required when official_revisions_adjusted is nonzero.'), OmittedNotNull] = None
     adjustment_magnitude: Annotated[list[AdjustmentMagnitudeItem] | None, Field(description='Optional absolute adjustment-magnitude percentiles for comparable control totals such as spend.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None

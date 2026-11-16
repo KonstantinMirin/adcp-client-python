@@ -4,10 +4,9 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, NonNegativeFloat
 
 from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
-from adcp.types.constraints import FloatMin0
 
 from .currency_code import CurrencyCode
 
@@ -34,7 +33,7 @@ class Price(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/price.json', pointer='#')
-    amount: Annotated[FloatMin0, Field(description='Monetary amount in the specified currency.')]
+    amount: Annotated[NonNegativeFloat, Field(description='Monetary amount in the specified currency.')]
     currency: Annotated[CurrencyCode, Field(description="ISO 4217 currency code (e.g., 'USD', 'EUR', 'GBP').")]
     period: Annotated[Period | None, Field(description="Billing period. 'night' for hotel rates, 'month' or 'year' for salaries and rentals, 'one_time' for purchase prices. Omit when the period is obvious from context (e.g., a vehicle price is always one-time)."), OmittedNotNull] = None
 

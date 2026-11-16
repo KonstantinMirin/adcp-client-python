@@ -4,13 +4,12 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field
+from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
-    IntMin0,
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
     ReportingCanonicalContentDigestCanonicalizationUri,
     StrMinLen1,
@@ -86,7 +85,7 @@ class ReportingRevision(AdCPBaseModel):
     data_through: Annotated[AwareDatetime | None, Field(description='Latest event time conservatively included, or null when precision is unknown.')]
     data_through_precision: DataThroughPrecision
     supersedes_reporting_revision_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId | None, Field(description='Immediately superseded snapshot revision of the same logical slice. An official revision is terminal and MUST NOT be named here; later corrections use reporting-adjustment records.'), OmittedNotNull] = None
-    row_count: Annotated[IntMin0, Field(description='Logical row count, including zero for a successfully evaluated empty report.')]
+    row_count: Annotated[NonNegativeInt, Field(description='Logical row count, including zero for a successfully evaluated empty report.')]
     control_totals: Annotated[list[ReportingControlTotal], Field(description='Profile-defined totals computed from the canonical logical revision. Names MUST be unique.', json_schema_extra={'uniqueItems': True})]
     canonical_content_digest: Annotated[ReportingCanonicalContentDigest | None, OmittedNotNull] = None
     created_at: AwareDatetime
