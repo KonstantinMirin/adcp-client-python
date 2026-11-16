@@ -89,7 +89,13 @@ def test_installed_public_import_schema_and_typing(installation: tuple[Path, Pat
     fixture = directory / "adopter.py"
     fixture.write_text((ROOT / "tests/type_checks/notification_outbox.py").read_text())
     config = directory / "mypy.ini"
-    config.write_text("[mypy]\nplugins = adcp.types.mypy_plugin\n")
+    # No plugin line. `adcp.types.mypy_plugin` was upstream's 39-line plugin
+    # for rewriting `SchemaVariant[T]` to `Any`, and this compiler emits no
+    # `SchemaVariant` — the decision and its reason are recorded at the
+    # `[tool.mypy]` block in pyproject.toml. Naming it here made mypy abort at
+    # `Error importing plugin` before checking the adopter fixture at all,
+    # which is the one thing this test is for.
+    config.write_text("[mypy]\n")
     output = run(
         [
             str(python),
