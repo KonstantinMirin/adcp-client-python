@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import pytest
 from pydantic import BaseModel, ValidationError
 
 import adcp.types as public_types
@@ -62,8 +61,21 @@ def test_no_fixture_is_stricter_in_canonical_schema_than_declared() -> None:
         assert case["canonical_valid"] is False
 
 
-def test_high_risk_behavioral_extension_has_targeted_runtime_validator() -> None:
-    """Commitment-critical x-adcp-validation rules also fail at construction."""
+def test_x_adcp_validation_constrains_in_intent_and_not_in_the_document() -> None:
+    """`x-adcp-validation` is a key the document's own draft ignores, at BOTH halves.
+
+    rebuild-plan §6 states the decision by name: *"`x-adcp-validation` constrains
+    in intent and not in the document, so a model enforcing it would be narrower
+    than its document (upstream: `adcontextprotocol/adcp#8472`)"*.
+
+    `media-buy/change-term.json` carries no `allOf` and no conditional; the
+    action/constraint compatibility it wants sits under
+    `x-adcp-validation.verifier_constraints` as a table of prose and lists. So
+    the payload below -- a `budget` constraint on a `pause` right, which that
+    table calls incompatible -- is admitted by the model AND by
+    `strict_validate`, because the document admits it. What stood here expected a
+    refusal from the previous emission's hand-written targeted validator.
+    """
     spec_version = get_adcp_spec_version()
     bundle = spec_version if "-" in spec_version else ".".join(spec_version.split(".")[:2])
     schema_path = (
@@ -72,13 +84,14 @@ def test_high_risk_behavioral_extension_has_targeted_runtime_validator() -> None
     schema = json.loads(schema_path.read_text())
     constraints = schema["x-adcp-validation"]["verifier_constraints"]
     assert "constraint_action_compatibility" in constraints
+    assert "pause" not in constraints["constraint_action_compatibility"]["budget"]
+    assert [key for key in schema if key.startswith("allOf") or key in ("if", "not")] == []
 
-    with pytest.raises(ValidationError, match="incompatible with action"):
-        public_types.MediaBuyChangeTerm.model_validate(
-            {
-                "term_id": "right_pause",
-                "action": "pause",
-                "service_mode": "self_serve",
-                "constraints": {"kind": "budget", "max_delta_percent": 10},
-            }
-        )
+    incompatible = {
+        "term_id": "right_pause",
+        "action": "pause",
+        "service_mode": "self_serve",
+        "constraints": {"kind": "budget", "max_delta_percent": 10},
+    }
+    assert public_types.MediaBuyChangeTerm.model_validate(incompatible).action == "pause"
+    public_types.MediaBuyChangeTerm.strict_validate(incompatible)

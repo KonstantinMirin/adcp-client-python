@@ -26,15 +26,28 @@ def test_provider_registration_requires_identity_dimensions_when_identity_match_
         )
 
 
-def test_provider_registration_rejects_non_https_endpoint():
-    with pytest.raises(ValidationError, match="endpoint must use https"):
-        TypeAdapter(TmpProviderRegistration).validate_python(
-            {
-                "provider_id": "provider_1",
-                "endpoint": "http://example.com",
-                "context_match": True,
-            }
-        )
+def test_provider_registration_admits_an_http_endpoint_the_prose_warns_about():
+    """`endpoint` is `{"type": "string", "format": "uri"}`, and HTTPS is PROSE beside it.
+
+    `trusted-match/provider-registration.json#/properties/endpoint` states a type
+    word and a `format`; "MUST be HTTPS in production" lives in the same node's
+    `description`, together with the reserved-range and IP-pinning rules no
+    schema keyword can state either. A description constrains no instance, so a
+    class refusing `http://` would be narrower than its document -- and both
+    halves agree, the model and `strict_validate` admitting it.
+
+    The operator obligation is real and is the adopter's: it is enforced where
+    the connection is made, not where the registration is parsed. What stood
+    here expected the refusal under upstream's hand-written validator sentence.
+    """
+    registration = {
+        "provider_id": "provider_1",
+        "endpoint": "http://example.com",
+        "context_match": True,
+    }
+    parsed = TypeAdapter(TmpProviderRegistration).validate_python(registration)
+    assert parsed.endpoint.scheme == "http"
+    TmpProviderRegistration.strict_validate(registration)
 
 
 def test_provider_registration_accepts_valid_identity_registration():
