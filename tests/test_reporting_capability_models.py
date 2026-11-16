@@ -25,6 +25,12 @@ PROMISES = {
 def capability(**fields):
     return {
         "supported": True,
+        # `core/reporting-delivery-capabilities.json` requires six properties and pins
+        # these two with a `const`, so neither the key nor the value is a choice:
+        #   configuration_task  const "sync_accounts"
+        #   status_task         const "get_reporting_status"
+        "configuration_task": "sync_accounts",
+        "status_task": "get_reporting_status",
         "offerings": [_OFFERING],
         "automated_recovery_window_seconds": 0,
         "status_retention_days": 7,
