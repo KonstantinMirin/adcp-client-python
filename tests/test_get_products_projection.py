@@ -154,7 +154,13 @@ def test_projection_keeps_product_id_and_name_when_not_in_fields() -> None:
     response = _make_response(product)
     # Explicitly do NOT include product_id or name in the requested fields
     fields = [
-        f for f in GetProductsField if f not in (GetProductsField.product_id, GetProductsField.name)
+        # `GetProductsField.NAME` and not `.name`: the enum carries a lowercase alias
+        # for every member, and `name` is the one word it cannot -- `Enum.name` is a
+        # reserved property, so the attribute resolves to that and raises.  The member
+        # itself is reachable as `NAME`, or by value as `GetProductsField("name")`.
+        f
+        for f in GetProductsField
+        if f not in (GetProductsField.product_id, GetProductsField.NAME)
     ]
     projected = _project_product_fields(response, fields)
     result = projected.products[0]
