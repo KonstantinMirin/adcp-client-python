@@ -198,7 +198,19 @@ async def test_typed_scope_modes_accounts_and_invalid_requests_over_public_http(
                     )
                     assert_access_denied(denied)
 
-                    for scope in ({}, {"all_media_buys": True}):
+                    # `{}` stood beside `{"all_media_buys": True}` here, reaching the
+                    # wire as the latter.  `core/reporting-delivery-config.json
+                    # #/properties/scope` states `minProperties: 1` with
+                    # `maxProperties: 1` -- exactly one selector, and the empty object
+                    # names none -- so the request is refused at construction and
+                    # never reaches a seller.  The default that carried it was the
+                    # previous emission's, not the document's.  Graded as a refusal:
+                    empty = deepcopy(ready["requests"][account])
+                    empty["accounts"][0]["reporting_delivery_configs"][0]["scope"] = {}
+                    with pytest.raises(ValidationError):
+                        SyncAccountsRequest.model_validate(empty)
+
+                    for scope in ({"all_media_buys": True},):
                         raw = deepcopy(ready["requests"][account])
                         raw["accounts"][0]["reporting_delivery_configs"][0]["scope"] = scope
                         before = json.loads((tmp_path / "audit.json").read_text())

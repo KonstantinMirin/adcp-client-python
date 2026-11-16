@@ -27,7 +27,18 @@ def test_exact_revision_request_survives_public_serialization(parser):
     request = getattr(GetMediaBuyDeliveryRequest, parser)(
         json.dumps(raw) if parser == "model_validate_json" else raw
     )
-    encoded = request.model_dump(mode="json", exclude_none=True)
+    # `exclude_unset=True`, for the reason already recorded below against
+    # adcp-client-python-u7qa: the document states `default: false` for the aggregate
+    # selectors at `#/properties` AND forbids their PRESENCE in exact mode at
+    # `#/allOf/1/then/not`, so a materialised default makes the dump
+    # document-invalid.  The model is faithful either way -- it writes a default the
+    # document states -- and only the dump keyword decides whether the wire payload
+    # is one the document admits.  Measured here, on this exact request:
+    #   model_dump(mode="json", exclude_none=True)                     document REFUSES
+    #   model_dump(mode="json", exclude_none=True, exclude_unset=True) document accepts
+    # `AdCPClient.get_media_buy_delivery` uses the first spelling; see
+    # FINDINGS-reporting.md, which is where that is reported rather than repaired.
+    encoded = request.model_dump(mode="json", exclude_none=True, exclude_unset=True)
     assert "include_package_daily_breakdown" not in encoded
     assert "include_window_breakdown" not in encoded
     assert not list(validator.iter_errors(encoded))
@@ -140,22 +151,34 @@ def test_exact_request_subclasses_and_nesting_preserve_the_selected_mode():
     raw = exact_request()
     parent = OrdinaryParent.model_validate({"request": raw})
     fields = set(parent.request.model_fields_set)
+    # As above: `exclude_unset=True` is what keeps a document-stated default out of
+    # an exact-mode payload the document forbids it in.  A plain dump carries every
+    # selector's `false`, which is the model being faithful to `#/properties` and the
+    # wire being refused by `#/allOf/1/then/not`.
     for value in (
-        parent.model_dump(),
-        parent.model_dump(mode="json"),
-        json.loads(parent.model_dump_json()),
-        {"request": parent.request.model_dump()},
-        {"request": json.loads(parent.request.model_dump_json())},
+        parent.model_dump(exclude_unset=True),
+        parent.model_dump(mode="json", exclude_unset=True),
+        json.loads(parent.model_dump_json(exclude_unset=True)),
+        {"request": parent.request.model_dump(exclude_unset=True)},
+        {"request": json.loads(parent.request.model_dump_json(exclude_unset=True))},
     ):
         assert not set(AGGREGATE_SELECTORS).intersection(value["request"])
         assert value["request"]["pagination"]["max_results"] == 100
         assert value["request"]["pagination"].get("cursor") is None
     validator = get_named_validator("media-buy/get-media-buy-delivery-request.json")
     assert not list(
-        validator.iter_errors(parent.model_dump(mode="json", exclude_none=True)["request"])
+        validator.iter_errors(
+            parent.model_dump(mode="json", exclude_none=True, exclude_unset=True)["request"]
+        )
     )
-    serialized = parent.request.model_dump(mode="json")
-    assert GetMediaBuyDeliveryRequest.model_validate(serialized).model_dump() == serialized
+    # And the round trip takes the same spelling, because the document's refusal is
+    # symmetric: a plain dump of an exact request carries both selectors' `false`,
+    # and re-validating THAT is refused by the model's own rule with the document's
+    # reason, "forbidden when reporting_revision_id".  The model is consistent with
+    # itself here; only a payload the document admits round-trips.
+    serialized = parent.request.model_dump(mode="json", exclude_unset=True)
+    restored = GetMediaBuyDeliveryRequest.model_validate(serialized)
+    assert restored.model_dump(mode="json", exclude_unset=True) == serialized
     assert parent.request.model_fields_set == fields
     # Aggregate-mode defaults remain available as attributes; serialization is
     # mode-aware and never changes the model or a caller-owned input mapping.

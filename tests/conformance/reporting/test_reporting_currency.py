@@ -882,6 +882,16 @@ async def test_delivery_response_currency_is_checked_before_flattening(
             "by_package": [],
         }
         payload: dict[str, Any] = {
+            # The envelope's own `status`, required by `core/protocol-envelope.json`,
+            # which this document composes via `allOf` -- "REQUIRED on every task
+            # response envelope".  Requiredness is a conjunction of the node's own
+            # `required` and every ancestor's that applies to the same instance, and
+            # the fixture carried only the node's half.  Without it the response is
+            # refused at construction and the source reports PROVIDER_TRANSIENT
+            # ("the reporting source raised ValidationError") before the currency
+            # check this test grades is ever reached.  `delivery["status"]` below is
+            # a different node -- the media buy's own lifecycle word.
+            "status": "completed",
             "reporting_period": {"start": START, "end": END},
             "media_buy_deliveries": [delivery],
         }

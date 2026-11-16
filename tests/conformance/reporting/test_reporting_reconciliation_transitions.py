@@ -69,6 +69,12 @@ async def test_generated_projections_are_accepted_by_buyer_reconciler(
         accepted_receipt_count=1,
         adjustment_receipt_count=0,
         accepted_adjustment_receipt_count=0,
+        # `core/reporting-obligation.json#/allOf/7`: where `reconciliation_mode` is
+        # `consumer_receipt` and `health` is healthy or complete -- which the update
+        # above puts this period in -- the document REQUIRES `pending_adjustment_count`
+        # and pins it to `const: 0`.  The projection is hand-built here, so the key has
+        # to be stated; the scenario commits no adjustment, so zero is also the truth.
+        pending_adjustment_count=0,
         resource_retained_until=s.delivery.resource_retained_until.isoformat(),
     )
     result["revisions"] = [revision_to_wire(s.revision, obligation=s.obligation)]

@@ -72,14 +72,14 @@ def test_explicit_media_buy_selector_survives_public_request_serialization():
 
 
 @pytest.mark.parametrize(
-    "scope", [{}, {"all_media_buys": True}, {"media_buy_ids": ["shared-media-buy"]}]
+    "scope", [{"all_media_buys": True}, {"media_buy_ids": ["shared-media-buy"]}]
 )
 def test_scope_modes_round_trip_without_mutating_inputs_or_field_presence(scope):
     raw = onboarding_request(scope)
     before = deepcopy(raw)
     request = SyncAccountsRequest.model_validate(raw)
     selected = request.accounts[0].reporting_delivery_configs[0].scope
-    expected = scope or {"all_media_buys": True}
+    expected = scope
     fields = set(selected.model_fields_set)
     assert selected.all_media_buys is (True if "all_media_buys" in expected else None)
     validator = get_named_validator("account/sync-accounts-request.json")
@@ -100,6 +100,13 @@ def test_scope_modes_round_trip_without_mutating_inputs_or_field_presence(scope)
 @pytest.mark.parametrize(
     "scope",
     [
+        # `core/reporting-delivery-config.json#/properties/scope` states
+        # `minProperties: 1` beside `maxProperties: 1`: the scope names EXACTLY one
+        # selector, and the empty object names none.  What stood here admitted `{}`
+        # and expected it to read back as `{"all_media_buys": true}` -- a default the
+        # previous emission's hand-written model supplied and no node of bundle 3.2
+        # states.  The document refuses it, so it is graded here with the rest.
+        {},
         {"all_media_buys": False},
         {"all_media_buys": 1},
         {"all_media_buys": "true"},
@@ -123,7 +130,7 @@ def test_malformed_or_conflicting_explicit_scopes_fail_closed(scope):
 
 
 @pytest.mark.parametrize(
-    "scope", [{}, {"all_media_buys": True}, {"media_buy_ids": ["shared-media-buy"]}]
+    "scope", [{"all_media_buys": True}, {"media_buy_ids": ["shared-media-buy"]}]
 )
 def test_scope_subclasses_inside_an_ordinary_pydantic_parent(scope):
     scope_type = ReportingDeliveryConfiguration.model_fields["scope"].annotation
@@ -135,7 +142,7 @@ def test_scope_subclasses_inside_an_ordinary_pydantic_parent(scope):
         scope: CustomScope
 
     parent = OrdinaryParent.model_validate({"scope": scope})
-    expected = scope or {"all_media_buys": True}
+    expected = scope
     for encoded in (
         parent.model_dump(),
         parent.model_dump(mode="json"),
@@ -146,11 +153,11 @@ def test_scope_subclasses_inside_an_ordinary_pydantic_parent(scope):
 
 
 @pytest.mark.parametrize(
-    "scope", [{}, {"media_buy_ids": ["shared-media-buy"]}, {"all_media_buys": True}]
+    "scope", [{"media_buy_ids": ["shared-media-buy"]}, {"all_media_buys": True}]
 )
 def test_read_only_scope_mappings_follow_the_same_selector_contract(scope):
     scope_type = ReportingDeliveryConfiguration.model_fields["scope"].annotation
     wrapped = MappingProxyType(scope)
     selected = scope_type.model_validate(wrapped)
-    assert selected.model_dump(mode="json") == (scope or {"all_media_buys": True})
+    assert selected.model_dump(mode="json") == scope
     assert dict(wrapped) == scope

@@ -249,15 +249,27 @@ async def test_full_read_discards_incremental_omissions_and_cursor_but_keeps_pag
     assert client.requests[0].pagination.cursor is None
 
 
-async def test_health_finality_and_exact_revision_selectors_cannot_hide_history() -> None:
+@pytest.mark.parametrize(
+    "selectors",
+    [
+        # One request cannot carry all three.  `get-reporting-status-request.json
+        # #/allOf/3` is ``if view const "revision" -> then required
+        # ['reporting_revision_id'], not anyOf [... health, finality ...]``: the exact
+        # revision view REQUIRES the revision id and FORBIDS the health and finality
+        # selectors, and the periods view forbids the revision id in turn.  What stood
+        # here asked for one request carrying every selector, which no view admits.
+        # The subject -- that a caller's narrowing selector never reaches the pages the
+        # loader fetches, and so can never hide history -- is graded once per legal
+        # shape instead.
+        {"view": "periods", "health": ["action_required"], "finality": ["official"]},
+        {"view": "revision", "reporting_revision_id": REVISION_ID},
+    ],
+)
+async def test_health_finality_and_exact_revision_selectors_cannot_hide_history(
+    selectors: dict[str, Any],
+) -> None:
     client = Pages(_pages(_history()))
-    request = _request(
-        view="revision",
-        reporting_revision_id=REVISION_ID,
-        health=["action_required"],
-        finality=["official"],
-    )
-    await load_reporting_ledger(client, request)
+    await load_reporting_ledger(client, _request(**selectors))
     assert all(r.view.value == "periods" for r in client.requests)
     assert all(
         r.health is None and r.finality is None and r.reporting_revision_id is None
@@ -331,6 +343,15 @@ async def test_completed_snapshot_cannot_be_edited_into_different_evidence() -> 
 @pytest.mark.parametrize("field", ["changes_checkpoint", "next_expected_at", "health"])
 async def test_frozen_metadata_is_checked_including_wholly_legacy_pages(explicit, field) -> None:
     pages = _pages(_history(), explicit=explicit)
+    if field == "health":
+        # `get-reporting-status-response.json#/allOf/4`: a `health` of healthy,
+        # waiting or complete REQUIRES `issues` and pins it to `maxItems: 0`.  The
+        # fixture pages state no `health` at all, so naming one on the last page made
+        # that page document-invalid and the loader reported STATUS_READ_FAILED --
+        # the page never reached the frozen-metadata comparison this test grades.
+        # Stated on EVERY page, so the last page still differs in `health` alone.
+        for page in pages:
+            page["issues"] = []
     pages[-1][field] = {
         "changes_checkpoint": "different-checkpoint",
         "next_expected_at": "2026-10-01T00:00:00Z",
@@ -342,10 +363,36 @@ async def test_frozen_metadata_is_checked_including_wholly_legacy_pages(explicit
 
 
 async def test_every_page_requires_the_frozen_total() -> None:
+    """Two layers refuse a page without the total, and both are graded.
+
+    `get-reporting-status-response.json`'s `completed` branch states
+    ``"pagination": {"required": ["has_more", "total_count"]}`` on both the periods
+    and the revision view, so a page that omits the total is refused by the DOCUMENT
+    and never reaches the loader's own guard -- `STATUS_READ_FAILED`, not
+    `INCOMPLETE_LEDGER_PAGE`, which is what a raw dict missing the key now produces.
+
+    The loader's guard is still real and still owed a grade: it defends against a
+    page that the type did not screen, which is reached by nulling the total on an
+    already-validated response rather than by a payload the type would refuse.
+    """
     pages = _pages(_history())
-    pages[0]["pagination"].pop("total_count")
+    raw = deepcopy(pages[0])
+    raw["pagination"].pop("total_count")
     with pytest.raises(ReportingReconciliationError) as error:
-        await load_reporting_ledger(Pages(pages), _request(), max_snapshot_restarts=0)
+        await load_reporting_ledger(Pages([raw, *pages[1:]]), _request(), max_snapshot_restarts=0)
+    assert error.value.code == "STATUS_READ_FAILED"
+
+    class Untyped(Pages):
+        async def get_reporting_status(
+            self, request: GetReportingStatusRequest
+        ) -> TaskResult[GetReportingStatusResponse]:
+            result = await super().get_reporting_status(request)
+            if len(self.requests) == 1:
+                result.data.pagination.total_count = None
+            return result
+
+    with pytest.raises(ReportingReconciliationError) as error:
+        await load_reporting_ledger(Untyped(pages), _request(), max_snapshot_restarts=0)
     assert error.value.code == "INCOMPLETE_LEDGER_PAGE"
 
 
@@ -413,12 +460,41 @@ async def test_positive_status_count_requires_its_exact_current_status_dependenc
     assert error.value.code == "INVALID_LEDGER_DEPENDENCY"
 
 
-async def test_legacy_typed_status_without_owner_uses_exact_revision_binding() -> None:
+async def test_a_status_claiming_no_owner_cannot_be_bound_to_the_period_naming_it() -> None:
+    """A status with no owner has no revision binding either, and the document says so.
+
+    What stood here popped `reporting_obligation_id` off a `received` status and
+    expected the read to stay definitive by binding on `reporting_revision_id`
+    instead.  `core/reporting-consumer-status.json` refuses that payload at two
+    separate conditionals, so no seller can send it:
+
+    * `#/allOf/0` -- `consumer_status: "received"` REQUIRES `reporting_obligation_id`,
+      `reporting_revision_id` and `observed_revision_content_sha256` together;
+    * `#/allOf/1` -- `consumer_status: "obligation_missing"`, the one word whose
+      description says the owner is "Omitted when the consumer is reporting a missing
+      obligation", FORBIDS `reporting_obligation_id`, `reporting_revision_id` AND
+      `observed_revision_content_sha256` alike.
+
+    So "no owner but an exact revision to bind by" is a shape the document states
+    nowhere.  The document-legal spelling is graded instead, and it does not bind:
+    the period still names this status as its current leaf, and a status claiming no
+    owner cannot answer for it.
+    """
     raw = _with_status(_history())
-    raw["consumer_statuses"][0].pop("reporting_obligation_id")
+    status = raw["consumer_statuses"][0]
+    status["consumer_status"] = "obligation_missing"
+    for forbidden in (
+        "reporting_obligation_id",
+        "reporting_revision_id",
+        "observed_revision_content_sha256",
+    ):
+        status.pop(forbidden)
     ledger = await _load(raw)
     assert ledger.consumer_statuses[0].reporting_obligation_id is None
-    assert evaluate_reporting_ledger(ledger, expected_periods=_expected(), now=NOW).definitive
+    assert ledger.consumer_statuses[0].reporting_revision_id is None
+    result = evaluate_reporting_ledger(ledger, expected_periods=_expected(), now=NOW)
+    assert not result.definitive
+    assert "AMBIGUOUS_CONSUMER_STATUS_OWNERSHIP" in result.obligations[0].reasons
 
 
 @pytest.mark.parametrize("bounds", [{"max_bytes": 100}, {"max_records": 4}])
@@ -534,6 +610,16 @@ async def test_rejected_predecessors_and_only_the_accepted_current_leaf_satisfy(
     ledger = await _load(raw)
     assert evaluate_reporting_ledger(ledger, expected_periods=_expected(), now=NOW).definitive
     raw[array][0].update(status="rejected", rejection_codes=["EVIDENCE_MISMATCH"])
+    if kind == "adjustment":
+        # Rejecting the adjustment leaf leaves one adjustment with no accepted
+        # receipt, and `_response` declared `pending_adjustment_count=0` beside
+        # `health="complete"`.  The declaration has to follow the history, and the
+        # health has to move with it: `core/reporting-obligation.json#/allOf/7` fires
+        # on `reconciliation_mode == "consumer_receipt"` AND a health of healthy or
+        # complete, and PINS the count to `const: 0` there.  A period holding a
+        # pending adjustment is not complete, so `waiting` is the health that states
+        # both facts without the document contradicting either.
+        raw["periods"][0].update(health="waiting", pending_adjustment_count=1)
     _counts(raw)
     ledger = await _load(raw)
     result = evaluate_reporting_ledger(ledger, expected_periods=_expected(), now=NOW)
