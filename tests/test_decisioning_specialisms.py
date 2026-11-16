@@ -509,30 +509,38 @@ def test_build_creative_response_includes_submitted_arm() -> None:
 
     from adcp.types import GeneratedTaskStatus, LegacyBuildCreativeResponse
 
-    arms = typing.get_args(LegacyBuildCreativeResponse)
-    assert len(arms) > 0, "LegacyBuildCreativeResponse should be a Union of arms"
+    # §4 emits a ``oneOf`` of object types as a base plus one class per BRANCH,
+    # so there is no ``Union[...]`` for ``get_args`` to open; ``_branch_models``
+    # is the declared list and ``isinstance`` holds against the parent.
+    branches = LegacyBuildCreativeResponse._branch_models
+    assert len(branches) > 0, "LegacyBuildCreativeResponse should declare its branches"
+    assert all(issubclass(branch, LegacyBuildCreativeResponse) for branch in branches)
 
     # The root ``allOf`` composes core/protocol-envelope.json, so ``task_id``
-    # and ``status`` are present on *every* arm. Mere presence therefore does
-    # not identify the submitted arm; the pinned ``Literal`` annotation and its
-    # matching default do.
-    assert all({"task_id", "status"}.issubset(arm.model_fields) for arm in arms)
+    # and ``status`` are present on *every* branch. Mere presence therefore does
+    # not identify the submitted branch; the pinned ``Literal`` annotation does.
+    # There is no matching DEFAULT to check beside it: the emitter does not
+    # supply a pinned ``const``, and a discriminator's tag is read before
+    # defaults apply in any case (docs/reading-a-document.md rule 3).
+    assert all({"task_id", "status"}.issubset(branch.model_fields) for branch in branches)
 
-    submitted_arms = [
-        arm
-        for arm in arms
-        if arm.model_fields["status"].annotation
-        == typing.Literal[GeneratedTaskStatus.submitted]  # type: ignore[valid-type]
-        and arm.model_fields["status"].default is GeneratedTaskStatus.submitted
+    submitted_branches = [
+        branch
+        for branch in branches
+        if branch.model_fields["status"].annotation
+        == typing.Literal[GeneratedTaskStatus.submitted.value]  # type: ignore[valid-type]
     ]
-    assert [arm.__name__ for arm in submitted_arms] == ["BuildCreativeResponse6"]
+    # Named from the branch's own title, never from its position in the list.
+    assert [branch.__name__ for branch in submitted_branches] == ["BuildCreativeResponseSubmitted"]
 
-    # Only the submitted arm's own schema branch makes ``task_id`` required;
-    # the inherited envelope field stays optional on the others.
-    submitted = submitted_arms[0]
+    # Only the submitted branch's own schema makes ``task_id`` required; the
+    # inherited envelope field stays optional on the others.
+    submitted = submitted_branches[0]
     assert submitted.model_fields["task_id"].is_required()
     assert not any(
-        arm.model_fields["task_id"].is_required() for arm in arms if arm is not submitted
+        branch.model_fields["task_id"].is_required()
+        for branch in branches
+        if branch is not submitted
     )
 
 

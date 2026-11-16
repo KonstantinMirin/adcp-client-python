@@ -14,6 +14,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.canonical_formats.projection import migrated_format_option_id
+from adcp.types._wire import WireAnyUrl
 from adcp.types.base import WireUrl
 from adcp.types.domains.core.format_id import FormatReferenceStructuredObject
 from adcp.types.legacy import LegacyFormatId
@@ -32,8 +33,14 @@ def test_model_derived_reference_hashes_to_the_wire_mapping_id() -> None:
 
 def test_agent_url_round_trips_without_normalization() -> None:
     ref = LegacyFormatId.model_validate(dict(_WIRE))
-    assert ref.agent_url == "https://creative.adcontextprotocol.org"
-    assert isinstance(ref.agent_url, str)
+    # The attribute is a WireAnyUrl -- the wire-preserving URL type, which has
+    # the AnyUrl attribute API and serializes the text it was parsed from. That
+    # is what fixes #1384; a bare ``str`` was one way of keeping the bytes and
+    # this one keeps the parsed URL beside them. ``str()`` is what
+    # ``migrated_format_option_id`` hashes, as this module's docstring says, so
+    # ``str()`` is what the round trip is graded on.
+    assert isinstance(ref.agent_url, WireAnyUrl)
+    assert str(ref.agent_url) == "https://creative.adcontextprotocol.org"
     assert ref.model_dump(mode="json")["agent_url"] == "https://creative.adcontextprotocol.org"
 
 
