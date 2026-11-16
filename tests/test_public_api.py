@@ -33,25 +33,22 @@ def test_core_domain_types_are_exported():
 
 
 def test_a_media_buys_package_is_named_by_the_document_that_declares_it():
-    """`MediaBuyPackage` is a word with no document behind it.
+    """`MediaBuyPackage` is upstream's flat word for an INNER declaration of ours.
 
-    ``adcp.types._adapter.__adcp_refused__`` records it as
-    DOCUMENT-NO-WORD-NO-IDENTITY: upstream declared it at
-    ``media_buy.get_media_buys_response.Package``, an INNER declaration of
+    Upstream declared it at ``media_buy.get_media_buys_response.Package``, which is
     ``media-buy/get-media-buys-response.json`` at
-    ``#/properties/media_buys/items/properties/packages/items``. That node is
-    emitted and exported, at the domain surface its own document path names, so
-    the subject is reachable — under the spelling the pointer derives and not
-    under a flat word.
+    ``#/properties/media_buys/items/properties/packages/items``. **That node is
+    emitted, so the word has a subject and the earlier
+    DOCUMENT-NO-WORD-NO-IDENTITY reading was wrong**: the field sets agree member
+    for member (`FINDINGS-rootnames.md`), and `adcp.types.aliases` now binds the
+    word onto the class the pointer derives. What this test fixes is the NAME the
+    pointer gives, which is what the alias is a second spelling of.
     """
     import adcp
     import adcp.types.media_buy as media_buy
-    from adcp.types._adapter import __adcp_refused__
-
-    assert "MediaBuyPackage" in __adcp_refused__
-    assert not hasattr(adcp, "MediaBuyPackage")
 
     packages_item = media_buy.GetMediaBuysResponseMediaBuysItemPackagesItem
+    assert adcp.MediaBuyPackage is packages_item
     assert packages_item.__adcp_schema__.document == "media-buy/get-media-buys-response.json"
     assert (
         packages_item.__adcp_schema__.pointer
@@ -286,23 +283,27 @@ def test_semantic_aliases_are_exported():
 
 
 def test_vast_and_daast_delivery_branches_are_named_by_their_documents():
-    """The two delivery arms are branch classes of their own document's root.
+    """The two delivery branches are branch classes of their own document's root.
 
     ``UrlVastAsset``, ``InlineVastAsset``, ``UrlDaastAsset`` and
     ``InlineDaastAsset`` are upstream's words for one BRANCH of a document whose
-    root is emitted here, and all four are recorded in the refusal table of the
-    module that would have bound them, ``adcp.types.aliases``.
-    ``core/assets/vast-asset.json`` and
-    ``core/assets/daast-asset.json`` are each a 2-arm ``oneOf`` on
-    ``delivery_type``, so the branch is reached under the name the document's own
-    root and arm derive.
+    root is emitted here. ``core/assets/vast-asset.json`` and
+    ``core/assets/daast-asset.json`` are each a two-branch ``oneOf`` on
+    ``delivery_type``, so each branch is reached under the name the document's own
+    root and branch derive — and because the branch IS emitted, each of the four
+    upstream words has a subject and ``adcp.types.aliases`` binds it. The refusal
+    rows that stood here named ``adcp.types.domains.core.assets.asset_union``
+    classes and concluded no subject; the pointers below are why that was wrong.
     """
+    import adcp
     from adcp.types import core
     from adcp.types._base import SchemaRef
-    from adcp.types.aliases import __adcp_refused__
 
-    for upstream_word in ("UrlVastAsset", "InlineVastAsset", "UrlDaastAsset", "InlineDaastAsset"):
-        assert upstream_word in __adcp_refused__
+    assert (adcp.UrlVastAsset, adcp.InlineVastAsset) == (core.VASTAssetUrl, core.VASTAssetInline)
+    assert (adcp.UrlDaastAsset, adcp.InlineDaastAsset) == (
+        core.DAASTAssetUrl,
+        core.DAASTAssetInline,
+    )
 
     branches = {
         "core/assets/vast-asset.json": (core.VASTAsset, core.VASTAssetUrl, core.VASTAssetInline),

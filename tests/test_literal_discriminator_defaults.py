@@ -145,23 +145,6 @@ class TestVastDaastDiscriminators:
         assert isinstance(parsed_inline, VASTAssetInline)
 
 
-class TestUpstreamsArmNamesHaveNoSubject:
-    """Reading 10: a name with no schema subject gets a migration note and
-    never a class. The four VAST/DAAST arm names are upstream's names for
-    ONE BRANCH of a document whose root we emit, and the refusal carries
-    the reason."""
-
-    @pytest.mark.parametrize(
-        "name",
-        ["UrlVastAsset", "InlineVastAsset", "UrlDaastAsset", "InlineDaastAsset"],
-    )
-    def test_arm_name_is_refused_with_its_reason(self, name: str) -> None:
-        import adcp.types.aliases as aliases
-
-        with pytest.raises(AttributeError, match="no subject in the pinned bundle"):
-            getattr(aliases, name)
-
-
 class TestPinsPreserveValidation:
     """A ``const`` states exactly one value, so the ``Literal`` refuses any
     OTHER value passed explicitly."""
