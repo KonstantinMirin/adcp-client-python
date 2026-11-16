@@ -428,6 +428,11 @@ async def test_managed_completion_preserves_rejection_rows(completion: str, type
             def finish(task_ctx: Any = None) -> Any:
                 self.uploaded.extend(creative.creative_id for creative in req.creatives)
                 result = {
+                    # The response envelope's own `status`, required one level up by
+                    # `core/protocol-envelope.json` and distinct from each creative's
+                    # `status` below; 9-member enum there, "completed" chosen for a
+                    # sync that finished.
+                    "status": "completed",
                     "creatives": [
                         {
                             "creative_id": creative.creative_id,
@@ -435,7 +440,7 @@ async def test_managed_completion_preserves_rejection_rows(completion: str, type
                             "status": "approved",
                         }
                         for creative in reversed(req.creatives)
-                    ]
+                    ],
                 }
                 return SyncCreativesSuccessResponse(**result) if typed else result
 

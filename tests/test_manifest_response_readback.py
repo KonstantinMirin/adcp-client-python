@@ -419,6 +419,10 @@ def test_a_directly_listed_creative_retains_its_kind():
     graded by ``tests/test_open_format_kind_vocabulary.py``.
     """
     payload = {
+        # The response envelope's own `status`, required one level up by
+        # `core/protocol-envelope.json` (`#/allOf/1`) and distinct from each
+        # creative's `status` below; 9-member enum there, "completed" chosen.
+        "status": "completed",
         "query_summary": {"total_matching": 1, "returned": 1},
         "pagination": {"has_more": False},
         "creatives": [

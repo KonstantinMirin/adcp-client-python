@@ -198,7 +198,11 @@ async def test_create_media_buy_sync_path_returns_typed_response(executor) -> No
                 confirmed_at="2026-05-01T00:00:00Z",
                 revision=1,
                 packages=[],
-                status="active",
+                # The envelope's own `status`, required by `core/protocol-envelope.json`
+                # one `allOf` up and typed there by `enums/task-status.json`; "active"
+                # is not one of its nine members, "completed" is the one chosen for a
+                # synchronous create that returned a media buy.
+                status="completed",
             )
 
     handler = _make_handler(_Platform(), executor)
@@ -209,7 +213,18 @@ async def test_create_media_buy_sync_path_returns_typed_response(executor) -> No
             idempotency_key="idem_aaaa1234567890",
             start_time="2026-05-01T00:00:00Z",
             end_time="2026-05-31T23:59:59Z",
-            packages=[{"buyer_ref": "pkg_1", "product_id": "prod_1", "pricing_option_id": "cpm"}],
+            # `media-buy/create-media-buy-request.json`'s root `anyOf` names three
+            # groups and a request has to carry one.  `#/anyOf/0` ("Explicit packages
+            # with fixed allocation") is the group these packages are in, and it
+            # requires `budget` on each package item.
+            packages=[
+                {
+                    "buyer_ref": "pkg_1",
+                    "product_id": "prod_1",
+                    "pricing_option_id": "cpm",
+                    "budget": 1000.0,
+                }
+            ],
         ),
         ToolContext(),
     )
@@ -243,7 +258,18 @@ async def test_create_media_buy_handoff_path_returns_submitted_envelope(
             idempotency_key="idem_aaaa1234567890",
             start_time="2026-05-01T00:00:00Z",
             end_time="2026-05-31T23:59:59Z",
-            packages=[{"buyer_ref": "pkg_1", "product_id": "prod_1", "pricing_option_id": "cpm"}],
+            # `media-buy/create-media-buy-request.json`'s root `anyOf` names three
+            # groups and a request has to carry one.  `#/anyOf/0` ("Explicit packages
+            # with fixed allocation") is the group these packages are in, and it
+            # requires `budget` on each package item.
+            packages=[
+                {
+                    "buyer_ref": "pkg_1",
+                    "product_id": "prod_1",
+                    "pricing_option_id": "cpm",
+                    "budget": 1000.0,
+                }
+            ],
         ),
         ToolContext(),
     )

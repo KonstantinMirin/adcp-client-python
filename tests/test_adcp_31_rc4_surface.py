@@ -47,6 +47,10 @@ def test_verify_brand_claim_success_requires_signed_response() -> None:
     with pytest.raises(ValidationError, match="signed_response"):
         TypeAdapter(VerifyBrandClaimResponse).validate_python(
             {
+                # Required one level up by `core/protocol-envelope.json` (`#/allOf/1`),
+                # a 9-member enum; "completed" chosen.  Without it the envelope's own
+                # refusal preempts the `signed_response` refusal under test.
+                "status": "completed",
                 "claim_type": "property",
                 "verification_status": "owned",
             }
@@ -135,7 +139,11 @@ def test_verify_brand_claims_success_requires_signed_response_payload() -> None:
 
     result = {"claim_type": "property", "status": "owned"}
     with pytest.raises(ValidationError, match="signed_response"):
-        VerifyBrandClaimsResponseBulk.model_validate({"results": [result]})
+        # The envelope `status` (required at `#/allOf/1`, 9-member enum, "completed"
+        # chosen) is the response's own, distinct from each result's `status`.
+        VerifyBrandClaimsResponseBulk.model_validate(
+            {"status": "completed", "results": [result]}
+        )
 
     with pytest.raises(ValidationError, match="payload"):
         VerifyBrandClaimsSignedResponse.model_validate(

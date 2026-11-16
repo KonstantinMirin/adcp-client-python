@@ -560,6 +560,9 @@ async def test_a_get_media_buy_delivery_response_projects_into_rows(currency: st
     request = redacted_snapshot_request(currency=currency)
     response = GetMediaBuyDeliveryResponse.model_validate(
         {
+            # Required one level up by `core/protocol-envelope.json` (`#/allOf/1`);
+            # 9-member enum there, "completed" chosen for a finished delivery read.
+            "status": "completed",
             "reporting_period": {
                 "start": request.period.start.isoformat(),
                 "end": request.period.source_read_cutoff_at.isoformat(),
@@ -620,6 +623,9 @@ async def test_the_deprecated_response_currency_is_checked_without_warning() -> 
     request = redacted_snapshot_request(currency="EUR")
     response = GetMediaBuyDeliveryResponse.model_validate(
         {
+            # Required one level up by `core/protocol-envelope.json` (`#/allOf/1`);
+            # 9-member enum there, "completed" chosen for a finished delivery read.
+            "status": "completed",
             "reporting_period": {
                 "start": request.period.start.isoformat(),
                 "end": request.period.source_read_cutoff_at.isoformat(),

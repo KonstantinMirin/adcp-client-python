@@ -441,7 +441,14 @@ class TestMaybeApplyPropertyListFilter:
                 }
             ],
         }
-        payload = {"products": [p_pass, p_fail], "seller_extra": {"retained": True}}
+        # `status` is required one level up, by the `core/protocol-envelope.json` this
+        # response composes via `allOf`; it is a 9-member enum there, and "completed" is
+        # the member the envelope names for a synchronous read.
+        payload = {
+            "status": "completed",
+            "products": [p_pass, p_fail],
+            "seller_extra": {"retained": True},
+        }
         response = (
             GetProductsResponse.model_validate(payload) if response_shape == "model" else payload
         )
@@ -533,7 +540,14 @@ async def test_platform_filter_mode_leaves_response_and_fetcher_untouched(
 ) -> None:
     from adcp.types import GetProductsResponse
 
-    payload = {"products": [], "property_list_applied": applied, "seller_extra": "keep"}
+    # `status`: required one level up by `core/protocol-envelope.json`, enum member
+    # "completed" chosen for a synchronous read.
+    payload = {
+        "status": "completed",
+        "products": [],
+        "property_list_applied": applied,
+        "seller_extra": "keep",
+    }
     response = GetProductsResponse.model_validate(payload) if response_shape == "model" else payload
     fetcher = AsyncMock(spec=PropertyListFetcher)
     result = await maybe_apply_property_list_filter(

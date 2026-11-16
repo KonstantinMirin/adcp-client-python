@@ -81,6 +81,11 @@ def test_identity_match_response_rejects_invalid_tmpx_provider_ids():
 def test_identity_match_response_accepts_valid_tmpx_provider_ids():
     response = IdentityMatchResponse.model_validate(
         {
+            # `type` is the document's own required `const`; `status` is required one
+            # level up by `core/protocol-envelope.json` (`#/allOf/1`), a 9-member enum
+            # there, and "completed" is the member chosen for a served response.
+            "type": "identity_match_response",
+            "status": "completed",
             "request_id": "request_1",
             "eligible_package_ids": [],
             "serve_window_sec": 60,
@@ -95,6 +100,10 @@ def test_identity_match_response_accepts_valid_tmpx_provider_ids():
 def test_provider_identity_match_response_accepts_tmpx_chunks():
     response = IdentityMatchResponseProviderRouter.model_validate(
         {
+            # Same pair: `type` is this document's required `const`, `status` the
+            # envelope's required 9-member enum one `allOf` up ("completed" chosen).
+            "type": "identity_match_response",
+            "status": "completed",
             "request_id": "request_1",
             "eligible_package_ids": [],
             "serve_window_sec": 60,

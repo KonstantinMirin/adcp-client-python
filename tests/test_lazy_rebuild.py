@@ -201,7 +201,12 @@ request = CreateMediaBuyRequest.model_validate(
     {
         "buyer_ref": "b",
         "brand": {"domain": "brand.example"},
-        "packages": [{"buyer_ref": "p", "product_id": "prod", "pricing_option_id": "po"}],
+        # `#/anyOf/0` of create-media-buy-request ("Explicit packages with fixed
+        # allocation") is the group this request is in, and it requires `budget`
+        # on each package item.
+        "packages": [
+            {"buyer_ref": "p", "product_id": "prod", "pricing_option_id": "po", "budget": 10.0}
+        ],
         "start_time": "asap",
         "end_time": "2030-01-01T00:00:00Z",
         "idempotency_key": "k" * 20,

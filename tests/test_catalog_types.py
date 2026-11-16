@@ -201,6 +201,9 @@ def test_sync_catalogs_response_success():
     from adcp import CatalogAction, SyncCatalogResult, SyncCatalogsSuccessResponse
 
     data = {
+        # Required one level up, by the `core/protocol-envelope.json` this branch
+        # composes via `allOf` -- and pinned there to the single literal "completed".
+        "status": "completed",
         "catalogs": [
             {
                 "catalog_id": "main-feed",
@@ -208,7 +211,7 @@ def test_sync_catalogs_response_success():
                 "item_count": 1250,
                 "items_pending": 1250,
             }
-        ]
+        ],
     }
     resp = SyncCatalogsSuccessResponse.model_validate(data)
     assert resp.catalogs is not None
@@ -223,12 +226,15 @@ def test_sync_catalogs_response_error():
     from adcp import SyncCatalogsErrorResponse
 
     data = {
+        # Required one level up by `core/protocol-envelope.json`; this branch leaves it a
+        # 9-member enum, so "failed" is chosen -- the stated member for a task that failed.
+        "status": "failed",
         "errors": [
             {
                 "code": "UNAUTHORIZED",
                 "message": "Authentication failed",
             }
-        ]
+        ],
     }
     resp = SyncCatalogsErrorResponse.model_validate(data)
     assert resp.errors is not None

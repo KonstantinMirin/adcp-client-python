@@ -129,8 +129,16 @@ def test_confirmed_at_accepts_null_and_stays_required() -> None:
     )
     assert provisional.confirmed_at is None
 
+    # Same conjunction as the keyword construction above: the envelope's `status`,
+    # 9-member enum, "completed" chosen.  The refusal below is about `confirmed_at`.
     parsed = CreateMediaBuySuccessResponse.model_validate(
-        {"media_buy_id": "mb_1", "packages": [], "confirmed_at": None, "revision": 1}
+        {
+            "status": "completed",
+            "media_buy_id": "mb_1",
+            "packages": [],
+            "confirmed_at": None,
+            "revision": 1,
+        }
     )
     assert parsed.confirmed_at is None
 
@@ -178,6 +186,9 @@ def test_confirmed_at_still_accepts_a_commitment_timestamp() -> None:
 
     committed = CreateMediaBuySuccessResponse.model_validate(
         {
+            # `status`: required one `allOf` up by `core/protocol-envelope.json`,
+            # 9-member enum there, "completed" chosen.
+            "status": "completed",
             "media_buy_id": "mb_1",
             "packages": [],
             "confirmed_at": "2026-05-27T12:00:00Z",
