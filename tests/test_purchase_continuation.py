@@ -2448,13 +2448,33 @@ def test_generated_legacy_purchase_input_enforces_loss_array_constraints(
 
 
 def test_generated_legacy_purchase_input_emits_loss_array_constraints() -> None:
-    accepted_losses = CompatibilityPurchaseCoordinatorInput.model_json_schema()["properties"][
+    """The document's two ``contains`` keywords are emitted as rules.
+
+    §2 compiles a keyword that spans a collection into an after-validator, and
+    its rule-placement clause puts one on the VALUE's own annotated type where
+    no class encloses the value — which is what an array property is. So the
+    pair arrives as two ``AtLeastOne`` validators on the field's annotation
+    rather than as an ``allOf`` republished into ``model_json_schema()``, and
+    ``test_generated_legacy_purchase_input_enforces_loss_array_constraints``
+    above is the behaviour that follows from them.
+    """
+    from adcp.types._runtime import AtLeastOne
+
+    published = CompatibilityPurchaseCoordinatorInput.model_json_schema()["properties"][
         "accepted_losses"
     ]
-    assert accepted_losses["uniqueItems"] is True
-    assert accepted_losses["allOf"] == [
-        {"contains": {"const": "feed_version_not_atomic"}},
-        {"contains": {"const": "pricing_version_not_atomic"}},
+    assert published["uniqueItems"] is True
+    assert published["minItems"] == 2
+
+    field = CompatibilityPurchaseCoordinatorInput.model_fields["accepted_losses"]
+    at_least_one = [
+        entry.func
+        for entry in field.metadata
+        if isinstance(getattr(entry, "func", None), AtLeastOne)
+    ]
+    assert [rule.values for rule in at_least_one] == [
+        ("feed_version_not_atomic",),
+        ("pricing_version_not_atomic",),
     ]
 
 
