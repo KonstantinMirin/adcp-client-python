@@ -1,11 +1,16 @@
-"""Backward-compat tests for the deprecated ``GeoPostalArea`` alias.
+"""Backward-compat tests for the country-fused postal-area shape.
 
 AdCP 3.1.0-rc.10 restructured postal-area targeting: the inline
-``{system, values}`` ``GeoPostalArea`` shape was replaced by the
-``PostalArea`` union of a native per-country arm (``{country, system,
-values}``) and a legacy arm (``{system, values}`` with country-fused tokens
-like ``us_zip``). ``GeoPostalArea`` is retained as a deprecated alias to the
-legacy arm so old construction code keeps working.
+``{system, values}`` shape was replaced by the ``PostalArea`` union of a
+native per-country branch (``{country, system, values}``) and a legacy branch
+(``{system, values}`` with country-fused tokens like ``us_zip``). The legacy
+branch is still stated by the document, so old construction code keeps
+working.
+
+``core/postal-area.json#/anyOf/1`` is that branch and the surface names it
+``adcp.types.core.PostalAreaWithFusedSystem``. The flat ``adcp.types``
+namespace binds no ``GeoPostalArea``: that word was the previous generator's
+and no document states it.
 
 These tests exercise the wire contract of the public ``PostalArea`` /
 ``TargetingOverlay`` types by payload: which shapes construct, what they dump
@@ -14,16 +19,14 @@ to, and which country/system pairs are refused.
 
 from __future__ import annotations
 
-import warnings
-
 import pytest
 from pydantic import TypeAdapter
 
-from adcp.types import PostalArea, TargetingOverlay
+from adcp.types.core import PostalArea, PostalAreaWithFusedSystem, TargetingOverlay
 
 _POSTAL_AREA_ADAPTER = TypeAdapter(PostalArea)
 
-# The 11 legacy country-fused tokens that the removed GeoPostalArea accepted.
+# The 11 country-fused tokens the legacy branch accepts.
 LEGACY_TOKENS = [
     "us_zip",
     "us_zip_plus_four",
@@ -39,20 +42,9 @@ LEGACY_TOKENS = [
 ]
 
 
-def _geo_postal_area_cls() -> type:
-    """Access the deprecated alias without raising the DeprecationWarning."""
-    import adcp.types
-
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", DeprecationWarning)
-        return adcp.types.GeoPostalArea
-
-
 def test_old_construction_shape_still_works():
     """Constructing the old ``{system, values}`` shape succeeds."""
-    geo_postal_area = _geo_postal_area_cls()
-
-    area = geo_postal_area(system="us_zip", values=["10001", "10002"])
+    area = PostalAreaWithFusedSystem(system="us_zip", values=["10001", "10002"])
 
     dumped = area.model_dump(mode="json")
     assert dumped == {"system": "us_zip", "values": ["10001", "10002"]}
@@ -60,26 +52,23 @@ def test_old_construction_shape_still_works():
 
 @pytest.mark.parametrize("token", LEGACY_TOKENS)
 def test_every_legacy_token_constructs(token: str):
-    """All 11 removed-type fused tokens still construct via the alias."""
-    geo_postal_area = _geo_postal_area_cls()
-
-    area = geo_postal_area(system=token, values=["X1"])
+    """All 11 fused tokens still construct on the legacy branch."""
+    area = PostalAreaWithFusedSystem(system=token, values=["X1"])
     assert area.model_dump(mode="json") == {"system": token, "values": ["X1"]}
 
 
-def test_constructed_value_validates_against_postalarea_union_legacy_arm():
+def test_constructed_value_validates_against_postalarea_union_legacy_branch():
     """The constructed legacy value validates through the PostalArea union.
 
-    Passing the constructed instance preserves the legacy arm — the union
+    Passing the constructed instance preserves the legacy branch — the union
     resolves to the legacy ``{system, values}`` shape rather than injecting a
     spurious ``country``.
     """
-    geo_postal_area = _geo_postal_area_cls()
-
-    area = geo_postal_area(system="gb_outward", values=["SW1A"])
+    area = PostalAreaWithFusedSystem(system="gb_outward", values=["SW1A"])
 
     validated = _POSTAL_AREA_ADAPTER.validate_python(area)
-    # Legacy arm round-trips faithfully with no injected country field.
+    assert isinstance(validated, PostalAreaWithFusedSystem)
+    # Legacy branch round-trips faithfully with no injected country field.
     assert validated.model_dump(mode="json") == {
         "system": "gb_outward",
         "values": ["SW1A"],
@@ -87,7 +76,7 @@ def test_constructed_value_validates_against_postalarea_union_legacy_arm():
 
 
 def test_raw_legacy_value_round_trips_through_postalarea_adapter():
-    """Raw mappings must select the legacy arm before native defaults apply."""
+    """Raw mappings must select the legacy branch before native defaults apply."""
     validated = _POSTAL_AREA_ADAPTER.validate_python({"system": "us_zip", "values": ["10001"]})
 
     wire = _POSTAL_AREA_ADAPTER.dump_python(validated, mode="json")
@@ -98,12 +87,10 @@ def test_raw_legacy_value_round_trips_through_postalarea_adapter():
 
 def test_legacy_value_accepted_where_geo_postal_areas_used():
     """Legacy postal areas are accepted in ``TargetingOverlay.geo_postal_areas``."""
-    geo_postal_area = _geo_postal_area_cls()
-
     overlay = TargetingOverlay(
         geo_postal_areas=[
-            geo_postal_area(system="us_zip", values=["10001"]),
-            geo_postal_area(system="gb_outward", values=["SW1A"]),
+            PostalAreaWithFusedSystem(system="us_zip", values=["10001"]),
+            PostalAreaWithFusedSystem(system="gb_outward", values=["SW1A"]),
         ]
     )
 
