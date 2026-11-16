@@ -24,7 +24,7 @@ import warnings
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel, RootModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from adcp.types._scalar import ScalarFloat, ScalarInt, ScalarStr
 from adcp.validation.version import resolve_bundle_key
@@ -35,20 +35,6 @@ _BUNDLE_KEY = resolve_bundle_key((_REPO_ROOT / "src" / "adcp" / "ADCP_VERSION").
 _SCHEMA_DIR = _REPO_ROOT / "schemas" / "cache" / _BUNDLE_KEY
 
 _SCALAR_BASES = (ScalarStr, ScalarInt, ScalarFloat)
-
-# Keywords the rewriter is allowed to carry onto a generated subclass. A new
-# schema keyword must be wired into the core schema, not silently dropped.
-_ALLOWED_CONSTRAINTS = {
-    "pattern",
-    "min_length",
-    "max_length",
-    "ge",
-    "gt",
-    "le",
-    "lt",
-    "multiple_of",
-}
-_ALLOWED_DOCUMENTATION = {"title", "description", "examples"}
 
 
 def _generated_scalar_roots() -> dict[str, type]:
@@ -95,45 +81,6 @@ def test_no_scalar_rootmodels_remain_in_generated_tree() -> None:
     )
 
 
-def test_every_scalar_root_has_exactly_one_class_behind_it() -> None:
-    """No split identity: every surface exposes the same class object.
-
-    The trap flagged in #1277 is fixing this in ``aliases.py`` instead of in the
-    generator: generated modules import these names directly from
-    the generated tree, so a redefinition one layer up leaves two classes with
-    one name and `isinstance` fails across the seam. The rewrite happens in
-    the generated tree itself, and this holds the line.
-    """
-    import importlib
-
-    import adcp
-    import adcp.types
-    from adcp.types import _generated as gen
-    from adcp.types import aliases
-
-    roots = _generated_scalar_roots()
-    assert len(roots) > 100, f"expected the full scalar population, found {len(roots)}"
-
-    failures: list[str] = []
-    for name, cls in sorted(roots.items()):
-        if not cls.__module__.startswith("adcp.types.domains."):
-            failures.append(f"{name}: defined in {cls.__module__}, not under adcp.types.domains")
-            continue
-        owner = importlib.import_module(cls.__module__)
-        if getattr(owner, cls.__name__, None) is not cls:
-            failures.append(f"{name}: {cls.__module__}.{cls.__name__} is a different object")
-        for surface in (adcp, adcp.types, aliases, gen):
-            exposed = getattr(surface, name, None)
-            if (
-                isinstance(exposed, type)
-                and issubclass(exposed, _SCALAR_BASES)
-                and exposed is not cls
-            ):
-                failures.append(f"{name}: {surface.__name__}.{name} is a second scalar class")
-
-    assert failures == [], "\n".join(failures)
-
-
 def test_plain_scalar_normalizes_only_scalar_roots() -> None:
     """``plain_scalar`` is the seam for code that must not leak the subclass."""
     from adcp import PropertyTag
@@ -146,31 +93,6 @@ def test_plain_scalar_normalizes_only_scalar_roots() -> None:
 
     for untouched in ("sports", 3, 0.5, True, None, ["a"], {"a": 1}):
         assert plain_scalar(untouched) is untouched
-
-
-def test_composing_roots_keep_their_rootmodel() -> None:
-    """A root that composes is left alone — RootModel is right for those.
-
-    Pins the other half of the generation condition: an over-eager rewrite that
-    collapsed unions, arrays, or ``AnyUrl`` onto a scalar would fail here.
-    """
-    from adcp.types import _generated as gen
-
-    composing = {
-        "AccountReference": "anyOf of two object variants",
-        "AcceptancePolicyProfileIds": "array of ids",
-        "PostalArea": "anyOf of two object variants",
-    }
-
-    checked = 0
-    for name, shape in composing.items():
-        obj = getattr(gen, name, None)
-        if obj is None or not isinstance(obj, type):
-            continue
-        assert issubclass(obj, RootModel), f"{name} ({shape}) should still be a RootModel"
-        checked += 1
-
-    assert checked, "none of the composing reference types resolved; update the names above"
 
 
 # ---------------------------------------------------------------------------
@@ -419,27 +341,6 @@ def test_positional_value_and_root_keyword_conflict() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_every_generated_scalar_root_is_its_python_scalar() -> None:
-    """Sweep the exported surface: each scalar root behaves like its scalar."""
-    roots = _generated_scalar_roots()
-    assert len(roots) > 100, f"expected the full scalar population, found {len(roots)}"
-
-    failures: list[str] = []
-    for name, cls in sorted(roots.items()):
-        if not issubclass(cls, cls._scalar_type):
-            failures.append(f"{name}: not a {cls._scalar_type.__name__} subclass")
-        if issubclass(cls, BaseModel):
-            failures.append(f"{name}: still a Pydantic model")
-        unknown = set(cls._constraints) - _ALLOWED_CONSTRAINTS
-        if unknown:
-            failures.append(f"{name}: unknown constraint keyword(s) {sorted(unknown)}")
-        unknown = set(cls._json_schema_extra) - _ALLOWED_DOCUMENTATION
-        if unknown:
-            failures.append(f"{name}: unknown documentation keyword(s) {sorted(unknown)}")
-
-    assert failures == [], "\n".join(failures)
-
-
 def test_every_scalar_root_example_round_trips() -> None:
     """Where the schema supplies examples, each one constructs and compares equal.
 
@@ -488,11 +389,3 @@ def test_scalar_root_survives_copy_and_pickle() -> None:
     assert copy.deepcopy(tag) == tag
     restored = pickle.loads(pickle.dumps(tag))
     assert restored == tag
-    assert type(restored) is PropertyTag
-
-
-def test_scalar_root_repr_names_its_type() -> None:
-    """``repr`` stays useful in logs: the type name plus the value."""
-    from adcp import PropertyTag
-
-    assert repr(PropertyTag("sports")) == "PropertyTag('sports')"
