@@ -150,6 +150,11 @@ async def test_cold_strict_idempotency_preflight_gets_distinct_wire_span(
     client = ADCPClient(_config(), strict_idempotency=True)
     capabilities = GetAdcpCapabilitiesResponse.model_validate(
         {
+            # Required one level up: `protocol/get-adcp-capabilities-response.json`
+            # composes `core/protocol-envelope.json` at `#/allOf/1`.  9-member enum
+            # there, and "completed" is the member the envelope itself names for
+            # `get_adcp_capabilities`.
+            "status": "completed",
             "adcp": {
                 "major_versions": [3],
                 "idempotency": {"supported": True, "replay_ttl_seconds": 86400},

@@ -339,7 +339,12 @@ class TestUpdateMediaBuyResponse:
     def test_typed_success_exposes_new_revision(self):
         from adcp.types import UpdateMediaBuySuccessResponse
 
-        result = UpdateMediaBuySuccessResponse(media_buy_id="mb-123", revision=2)
+        # `status` is required by core/protocol-envelope.json, which this document
+        # composes via allOf; it is the 9-member `enums/task-status.json` there and
+        # "completed" is the member this test already asserts on.
+        result = UpdateMediaBuySuccessResponse(
+            media_buy_id="mb-123", revision=2, status="completed"
+        )
 
         assert result.status == "completed"
         assert result.revision == 2

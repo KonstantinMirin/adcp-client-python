@@ -363,7 +363,12 @@ class TestGovernanceHandler:
 
         class ConcreteGovHandler(GovernanceHandler):
             async def handle_get_creative_features(self, request, context=None):
-                return validate_union(GetCreativeFeaturesResponse, {"results": []})
+                # `status` is required by core/protocol-envelope.json, which this
+                # document composes via allOf; 9-member enum, "completed" chosen
+                # for a results branch that is already complete.
+                return validate_union(
+                    GetCreativeFeaturesResponse, {"status": "completed", "results": []}
+                )
 
             async def handle_sync_plans(self, request, context=None):
                 # `status` is required by core/protocol-envelope.json, which this
