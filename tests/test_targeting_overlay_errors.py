@@ -179,17 +179,30 @@ def test_errors_match_input_schema_including_nested_unions_and_context(
     # what the comment above asks for: a key ADDED loses no diagnostic. So the check is
     # that every field of the standalone error survives into the nested one, and
     # `ctx` is compared as a subset for the same reason.
+    #
+    # Matched by `loc` and `type` rather than by POSITION. A union-rooted
+    # request -- `create_media_buy` and `buy_products`, which §4 emits as a base
+    # plus one child per branch -- has its branches' errors assembled into one
+    # list by `narrow_union_errors`, in that function's order. The standalone
+    # adapter has no union to narrow, so on the JSON route the two lists hold
+    # the same errors in a different order. Order is `test_error_order_controls
+    # _primary_field_and_message`'s subject; survival is this one's.
     assert len(actual.value.errors()) == len(expected.value.errors())
-    for got, want in zip(
-        actual.value.errors(),
-        ({**error, "loc": (*prefix, *error["loc"])} for error in expected.value.errors()),
-        strict=True,
-    ):
+    remaining = list(actual.value.errors())
+    for want in ({**error, "loc": (*prefix, *error["loc"])} for error in expected.value.errors()):
+        matched = [
+            index
+            for index, got in enumerate(remaining)
+            if got.get("loc") == want["loc"] and got.get("type") == want["type"]
+        ]
+        assert matched, (want, remaining)
+        got = remaining.pop(matched[0])
         for key, value in want.items():
             if key == "ctx":
                 assert value.items() <= (got.get("ctx") or {}).items(), (key, got, want)
             else:
                 assert got.get(key) == value, (key, got, want)
+    assert remaining == []
 
 
 @pytest.mark.parametrize("task,collection,model", _PATHS)
@@ -252,7 +265,14 @@ def test_error_order_controls_primary_field_and_message(
             model.model_validate(params)
     error = _validation_error_to_invalid_request(task, raised.value)
     prefix = f"{collection}.0.targeting_overlay.keyword_targets.0"
-    if mode == "json":
+    # The JSON route reports the extra key before the missing ones -- that is
+    # pydantic-core's own ordering, and the primary field follows it. It
+    # survives only where no union encloses the overlay: §4 emits
+    # `create_media_buy` and `buy_products` as a base plus one child per
+    # branch, and `narrow_union_errors` assembles ONE list out of the
+    # branches', in its own order, which is the python one on both routes.
+    union_rooted = bool(getattr(model, "_branch_models", ()))
+    if mode == "json" and not union_rooted:
         assert error.field == f"{prefix}.unexpected"
         assert "Extra inputs are not permitted" in error.args[0]
         first_code = "extra_forbidden"
