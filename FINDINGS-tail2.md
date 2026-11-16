@@ -63,7 +63,7 @@ revision. **No payload the pinned bundle admits can reach it.**
 `core/reporting-consumer-status.json` makes the owner's requiredness a conjunction, and every
 member of the `consumer_status` enum is covered:
 
-| `consumer_status` | `allOf` arm | what it says about `reporting_obligation_id` |
+| `consumer_status` | `allOf` branch | what it says about `reporting_obligation_id` |
 | --- | --- | --- |
 | `received` | `allOf[0].then` | **required**, with `reporting_revision_id` and `observed_revision_content_sha256` |
 | `obligation_missing` | `allOf[1].then` | **forbidden**, and so is `reporting_revision_id` |

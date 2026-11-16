@@ -60,7 +60,7 @@ the omitted field is supplied inside `src/`. There is no argument to `sync_princ
 **The fix, when src is in scope.** Add `"status"` to the five success-path dicts: `"completed"` on
 all five. Both response documents additionally state a top-level if/then narrowing it where
 `result.kind == "failed"` to `enum: ["failed", "rejected"]`, which the two existing rejection
-sites already satisfy; the success arms are unconstrained beyond the envelope's own
+sites already satisfy; the success branches are unconstrained beyond the envelope's own
 `enums/task-status.json`.
 
 ---

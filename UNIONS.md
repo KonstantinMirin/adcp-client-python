@@ -72,26 +72,26 @@ sets**; what is missing in all 10 is the mutual `not`. §4 and the hypothesis ar
 reconciled in §3.
 
 And the combinator splits the population cleanly: **all 10 verified defects are
-`oneOf`; every `anyOf` the census reported is a false positive.** An `anyOf` whose arms
+`oneOf`; every `anyOf` the census reported is a false positive.** An `anyOf` whose branches
 overlap is an OR, which is what an OR looks like.
 
-## 2. The defect: disjoint `required` sets, open arms, no mutual `not`
+## 2. The defect: disjoint `required` sets, open branches, no mutual `not`
 
 ### The shape
 
-Each arm of a `oneOf` requires its own set of names. No two arms share a required
+Each branch of a `oneOf` requires its own set of names. No two branches share a required
 name. But:
 
-* no arm pins a `const` on a shared property (no derivable discriminator);
-* no arm states `not: {required: [<the other arm's name>]}`;
-* every arm is open — `additionalProperties` absent or `true`.
+* no branch pins a `const` on a shared property (no derivable discriminator);
+* no branch states `not: {required: [<the other branch's name>]}`;
+* every branch is open — `additionalProperties` absent or `true`.
 
-So an instance carrying the required names of *two* arms satisfies both. Under
+So an instance carrying the required names of *two* branches satisfies both. Under
 `oneOf` that instance is **rejected**, and the rejection is draft-07's
 `"... is valid under each of {...}"` — which names no field, so the producer is told
 its payload is wrong without being told which key to drop.
 
-Nothing is unreachable and no arm is dead. What is lost is (i) any derivable
+Nothing is unreachable and no branch is dead. What is lost is (i) any derivable
 discriminator, and (ii) a usable error.
 
 ### The idiom the bundle already uses, which these 10 omit
@@ -107,18 +107,18 @@ exists, in this bundle, spelled this way:
 
 `creative/get-creative-features-response.json`, `media-buy/decline-proposals-response.json`,
 `media-buy/refine-proposals-response.json`, `media-buy/request-proposals-response.json`
-and arms 4 and 5 of `media-buy/build-creative-response.json` all carry it, and all of
+and branches 4 and 5 of `media-buy/build-creative-response.json` all carry it, and all of
 them separate (see §5.A, §5.B). The 10 below are the sites where it was not written.
 
 ---
 
-### Group 2.1 — success-vs-error arms of a task response (6 unions, 6 pairs)
+### Group 2.1 — success-vs-error branches of a task response (6 unions, 6 pairs)
 
 **This is one repeated pattern, and the task's guess that "several of the 16
 content-standards/* rows look like one repeated pattern" is confirmed: it is the same
-pattern six times, in six files, with only the success arm's payload name changing.**
+pattern six times, in six files, with only the success branch's payload name changing.**
 
-| union | arm 0 `required` | arm 1 `required` |
+| union | branch 0 `required` | branch 1 `required` |
 |---|---|---|
 | `content-standards/calibrate-content-response.json#/oneOf` | `['verdict']` | `['errors']` |
 | `content-standards/create-content-standards-response.json#/oneOf` | `['standards_id']` | `['errors']` |
@@ -127,8 +127,8 @@ pattern six times, in six files, with only the success arm's payload name changi
 | `content-standards/list-content-standards-response.json#/oneOf` | `['standards']` | `['errors']` |
 | `content-standards/validate-content-delivery-response.json#/oneOf` | `['summary', 'results']` | `['errors']` |
 
-In all six: `additionalProperties` is absent from both arms, neither arm states `not`,
-and both arms declare `context` and `ext` and nothing else shared.
+In all six: `additionalProperties` is absent from both branches, neither branch states `not`,
+and both branches declare `context` and `ext` and nothing else shared.
 
 **Representative, verified by hand — `content-standards/list-content-standards-response.json#/oneOf`:**
 
@@ -149,7 +149,7 @@ and both arms declare `context` and `ext` and nothing else shared.
       "required": ["errors"] }
 ```
 
-Arm 0 says nothing about `errors`; arm 1 says nothing about `standards`; both are open.
+Branch 0 says nothing about `errors`; branch 1 says nothing about `standards`; both are open.
 A partial-success payload — "here are the standards I could read, here is what failed" —
 satisfies both.
 
@@ -175,30 +175,30 @@ validate-content-delivery {"summary": {"total_records": 0, "passed_records": 0,
                             "failed_records": 0}, "results": [], "errors": []}            -> [0, 1]
 ```
 
-**Recommended upstream fix.** Add the bundle's own guard to the error arm of each of
-the six — one line per file, no change to the success arm:
+**Recommended upstream fix.** Add the bundle's own guard to the error branch of each of
+the six — one line per file, no change to the success branch:
 
 ```json
-"not": {"required": ["<the success arm's required name>"]}
+"not": {"required": ["<the success branch's required name>"]}
 ```
 
 i.e. `["verdict"]`, `["standards_id"]`, `["standards_id"]`, `["media_buy_id"]`,
 `["standards"]`, `["summary"]`. This is byte-for-byte the idiom
 `media-buy/refine-proposals-response.json` already uses (`"not": {"required": ["task_id"]}`).
 Where upstream intends partial success to be *legal*, the fix is the opposite one —
-a single arm with `anyOf: [{required: [<payload>]}, {required: ["errors"]}]` — but that
+a single branch with `anyOf: [{required: [<payload>]}, {required: ["errors"]}]` — but that
 is a semantic change and a question for the owner, not a defect.
 
 ---
 
-### Group 2.2 — sibling success shapes, guard applied to only some arms (1 union, 6 pairs)
+### Group 2.2 — sibling success shapes, guard applied to only some branches (1 union, 6 pairs)
 
-`media-buy/build-creative-response.json#/oneOf` — arms **0,1 / 0,2 / 0,3 / 1,2 / 1,3 / 2,3**.
+`media-buy/build-creative-response.json#/oneOf` — branches **0,1 / 0,2 / 0,3 / 1,2 / 1,3 / 2,3**.
 
-Six arms. The four producing/estimate arms do not forbid each other; the error and
-submitted arms do.
+Six branches. The four producing/estimate branches do not forbid each other; the error and
+submitted branches do.
 
-| arm | title | `required` | `not` |
+| branch | title | `required` | `not` |
 |---|---|---|---|
 | 0 | `BuildCreativeSuccess` | `['creative_manifest']` | — |
 | 1 | `BuildCreativeMultiSuccess` | `['creative_manifests']` | — |
@@ -207,16 +207,16 @@ submitted arms do.
 | 4 | `BuildCreativeError` | `['errors']` | forbids `creative_manifest`, `creative_manifests`, `creatives`, `estimate`, `status: "submitted"` |
 | 5 | `BuildCreativeSubmitted` | `['status', 'task_id']` | forbids `creative_manifest`, `creative_manifests`, `creatives`, `estimate` |
 
-**The finding is the asymmetry.** Arms 4 and 5 carry a `not` naming exactly the keys
-of arms 0–3. Arms 0–3 carry no `not` at all. The exclusion is one-directional: the
-document knows which four names discriminate, and only two of its six arms say so.
-All six arms are `additionalProperties: true`.
+**The finding is the asymmetry.** Branches 4 and 5 carry a `not` naming exactly the keys
+of branches 0–3. Branches 0–3 carry no `not` at all. The exclusion is one-directional: the
+document knows which four names discriminate, and only two of its six branches say so.
+All six branches are `additionalProperties: true`.
 
-The document's own prose asserts the exclusion the arms do not state. Root:
-*"Exactly one of six shapes"*. Arm 3: *"Mutually exclusive with the
+The document's own prose asserts the exclusion the branches do not state. Root:
+*"Exactly one of six shapes"*. Branch 3: *"Mutually exclusive with the
 success/error/submitted shapes (discriminated by `mode:"estimate"` + the estimate
-object)"* — but arms 0, 1 and 2 declare no `mode` and are open, so `mode: "estimate"`
-passes them. Arm 2: *"Mutually exclusive with the other success/error/submitted shapes"*
+object)"* — but branches 0, 1 and 2 declare no `mode` and are open, so `mode: "estimate"`
+passes them. Branch 2: *"Mutually exclusive with the other success/error/submitted shapes"*
 — and it forbids none of them.
 
 **Representative, verified by hand — pair 0,3:**
@@ -238,8 +238,8 @@ passes them. Arm 2: *"Mutually exclusive with the other success/error/submitted 
       "additionalProperties": true }
 ```
 
-Arm 3's `mode` const is the discriminator the description names — but it discriminates
-nothing, because arm 0 never declares `mode` and admits it as an additional property.
+Branch 3's `mode` const is the discriminator the description names — but it discriminates
+nothing, because branch 0 never declares `mode` and admits it as an additional property.
 
 **Smallest payload matching more than one branch (pair 0,3):**
 
@@ -248,7 +248,7 @@ nothing, because arm 0 never declares `mode` and admits it as an additional prop
  "mode": "estimate",
  "estimate": {"currency": "USD", "cost_low": 1, "cost_high": 2, "basis": "fixed"}}
 ```
-→ arms `[0, 3]`; with `"status": "completed"` added, the whole document rejects with
+→ branches `[0, 3]`; with `"status": "completed"` added, the whole document rejects with
 the `oneOf` double-match.
 
 **All six pairs witnessed** (`M = {"format_kind":"image","assets":{}}`,
@@ -267,8 +267,8 @@ the `oneOf` double-match.
 All six, plus `"status": "completed"`, are rejected by the document as `oneOf`
 double-matches.
 
-**Recommended upstream fix.** Give arms 0–3 the `not` their own descriptions already
-assert, by the same construction arms 4 and 5 use — each arm forbids the other three
+**Recommended upstream fix.** Give branches 0–3 the `not` their own descriptions already
+assert, by the same construction branches 4 and 5 use — each branch forbids the other three
 producing keys:
 
 ```json
@@ -277,7 +277,7 @@ producing keys:
                   {"required": ["estimate"]}]}
 ```
 
-on arm 0, and the corresponding three on arms 1, 2 and 3. After that the four
+on branch 0, and the corresponding three on branches 1, 2 and 3. After that the four
 `required` names are a derivable discriminator and the response has a real six-way
 dispatch.
 
@@ -285,10 +285,10 @@ dispatch.
 
 ### Group 2.3 — "either / or" document and value shapes with no exclusion (3 unions, 5 pairs)
 
-The same mechanism, but the arms are not success/error — they are alternative *forms*
+The same mechanism, but the branches are not success/error — they are alternative *forms*
 of one value, and the prose says "either … or" or "Exactly one".
 
-| union | arms | pairs |
+| union | branches | pairs |
 |---|---|---|
 | `adagents.json#/oneOf` | `['authoritative_location']` vs `['authorized_agents']` | 0,1 |
 | `core/evaluator-spec.json#/oneOf` | `['exemplars']` / `['evaluator_id']` / `['agent_url']` | 0,1 0,2 1,2 |
@@ -319,7 +319,7 @@ of one value, and the prose says "either … or" or "Exactly one".
       "additionalProperties": true }
 ```
 
-Three "forms", three disjoint required names, three open arms, no `not` anywhere. Note
+Three "forms", three disjoint required names, three open branches, no `not` anywhere. Note
 `exemplars` states no `required` of its own, so `{}` satisfies it.
 
 **Smallest payloads matching more than one branch:**
@@ -335,11 +335,11 @@ all three.
 
 **The other two, witnessed:**
 
-`adagents.json#/oneOf` — arm 0 is the *"URL reference variant"* (`required:
-['authoritative_location']`, `additionalProperties: true`); arm 1 the *"Inline structure
+`adagents.json#/oneOf` — branch 0 is the *"URL reference variant"* (`required:
+['authoritative_location']`, `additionalProperties: true`); branch 1 the *"Inline structure
 variant"* (`required: ['authorized_agents']`, `additionalProperties: true`). The root
 description says *"Can either contain the full structure inline or reference an
-authoritative URL"* — and neither arm forbids the other's key.
+authoritative URL"* — and neither branch forbids the other's key.
 
 ```json
 {"authoritative_location": "https://cdn.example.com/adagents.json",
@@ -348,38 +348,38 @@ authoritative URL"* — and neither arm forbids the other's key.
                         "url": "https://sales.example.com",
                         "authorized_for": "all"}]}
 ```
-→ arms `[0, 1]`; the document rejects it as a `oneOf` double-match. A publisher who
+→ branches `[0, 1]`; the document rejects it as a `oneOf` double-match. A publisher who
 moves to a pointer file and leaves the old inline block in place gets
 `"is valid under each of"` and no indication that `authorized_agents` is the key to
 remove.
 
-`registries/v1-canonical-mapping.json#/…/v1_pattern/oneOf` — arm 0 `required:
-['format_id_glob']` ("Glob pattern matched against v1 `format_id.id`"), arm 1
+`registries/v1-canonical-mapping.json#/…/v1_pattern/oneOf` — branch 0 `required:
+['format_id_glob']` ("Glob pattern matched against v1 `format_id.id`"), branch 1
 `required: ['structural']` ("Structural match against the format's slot shape, asset
 types, and version constraints"). Neither forbids the other.
 
 ```json
 {"format_id_glob": "x", "structural": {}}
 ```
-→ arms `[0, 1]`. A registry entry that wants both a glob and a structural narrowing is
+→ branches `[0, 1]`. A registry entry that wants both a glob and a structural narrowing is
 silently unexpressible, and a producer that writes both is told only that its entry is
 valid under each.
 
-**Recommended upstream fix.** Add the reciprocal `not` to each arm:
+**Recommended upstream fix.** Add the reciprocal `not` to each branch:
 
-* `adagents.json` — arm 0 `"not": {"required": ["authorized_agents"]}`, arm 1
-  `"not": {"required": ["authoritative_location"]}`. Arm 0 is already the narrower
+* `adagents.json` — branch 0 `"not": {"required": ["authorized_agents"]}`, branch 1
+  `"not": {"required": ["authoritative_location"]}`. Branch 0 is already the narrower
   shape — it declares only `$schema`, `authoritative_location` and `last_updated` —
   so closing it with `"additionalProperties": false` is the stronger alternative and
   also fixes it.
-* `core/evaluator-spec.json` — each arm forbids the other two names, or (better,
+* `core/evaluator-spec.json` — each branch forbids the other two names, or (better,
   since the three forms are a closed set named by the descriptions) add a
   `spec_kind` const — `"exemplar"` / `"identifier"` / `"agent"` — required by each
-  arm. That makes the union a *declared* discriminated union, which
+  branch. That makes the union a *declared* discriminated union, which
   `core/assets/asset-union.json` and `adagents.json`'s `authorized_agents` items both
-  already do (`discriminator: {propertyName: …}` + a per-arm `const`).
-* `registries/v1-canonical-mapping.json` — each arm forbids the other name. The
-  arms are small and closed-shaped, so `"additionalProperties": false` on both also
+  already do (`discriminator: {propertyName: …}` + a per-branch `const`).
+* `registries/v1-canonical-mapping.json` — each branch forbids the other name. The
+  branches are small and closed-shaped, so `"additionalProperties": false` on both also
   works.
 
 ---
@@ -395,7 +395,7 @@ required-set:
 [1] "Explicit packages with seller-optimized allocation"  required ['packages','total_budget','budget_allocation']
 ```
 
-**That reading is wrong and the pair is not a defect.** Arm 0 *does* pin a const — one
+**That reading is wrong and the pair is not a defect.** Branch 0 *does* pin a const — one
 level down, on `budget_allocation.mode`:
 
 ```json
@@ -417,10 +417,10 @@ level down, on `budget_allocation.mode`:
       "not": {"required": ["proposal_id"]} }
 ```
 
-Arm 1 requires `budget_allocation` at the top level and pins `mode` to
-`"seller_optimized"`; arm 0 pins the same `mode` to `"fixed"`. So every instance of arm
-1 *has* `budget_allocation.mode == "seller_optimized"`, which arm 0 refuses. **No
-instance satisfies both** — this is a proof, not a sampled witness: arm 1 forces
+Branch 1 requires `budget_allocation` at the top level and pins `mode` to
+`"seller_optimized"`; branch 0 pins the same `mode` to `"fixed"`. So every instance of branch
+1 *has* `budget_allocation.mode == "seller_optimized"`, which branch 0 refuses. **No
+instance satisfies both** — this is a proof, not a sampled witness: branch 1 forces
 presence, and presence forces the contradiction.
 
 Measured:
@@ -429,13 +429,13 @@ Measured:
 {"idempotency_key": "k", "account": {}, "brand": "b",
  "start_time": "2026-01-01T00:00:00Z", "end_time": "2026-02-01T00:00:00Z",
  "packages": [], "total_budget": {}, "budget_allocation": {"mode": "seller_optimized"}}
-  arm 0: no     'fixed' was expected
-  arm 1: MATCH
-  arm 2: no     'proposal_id' is a required property
+  branch 0: no     'fixed' was expected
+  branch 1: MATCH
+  branch 2: no     'proposal_id' is a required property
 
 … the same payload without budget_allocation and total_budget:
-  arm 0: MATCH
-  arm 1: no     'total_budget' is a required property
+  branch 0: MATCH
+  branch 1: no     'total_budget' is a required property
 ```
 
 The census misses it because `harness._value_sets` and `lower.union.value_sets` read
@@ -498,11 +498,11 @@ The other five:
 
 | union | pairs | the separator, in the target |
 |---|---|---|
-| `creative/get-creative-features-response.json#/oneOf` | 0,1 0,2 | arm 0 `$ref`s `creative/get-creative-features-terminal-success.json`, whose `required` is `['results']`; arms 1 and 2 both carry `not: {anyOf: [{required: ['results']}, …]}` — forbidden by name |
-| `media-buy/decline-proposals-response.json#/anyOf` | 0,1 | arm 1 `$ref`s `core/compact-task-submitted.json` (`required: ['status','task_id']`); arm 0's `not: {anyOf: [{required: ['status']}, {required: ['task_id']}]}` forbids both |
-| `media-buy/refine-proposals-response.json#/anyOf` | 0,1 | same pair; arm 0's `not: {required: ['task_id']}` |
-| `media-buy/request-proposals-response.json#/anyOf` | 0,3 1,3 2,3 | arm 3 is the same `compact-task-submitted` `$ref`; arms 0–2 each forbid `task_id` by name |
-| `brand.json#/oneOf` | 2,4 | arm 2 (`Brand Agent`) is `additionalProperties: false` over `{$schema, version, agents, brand_agent, contact, data_subject_contestation, last_updated}`; arm 4 `$ref`s `#/definitions/brand`, whose `required` is `['id','names']` — neither name is in arm 2's closed map, so arm 2 refuses every instance of arm 4 |
+| `creative/get-creative-features-response.json#/oneOf` | 0,1 0,2 | branch 0 `$ref`s `creative/get-creative-features-terminal-success.json`, whose `required` is `['results']`; branches 1 and 2 both carry `not: {anyOf: [{required: ['results']}, …]}` — forbidden by name |
+| `media-buy/decline-proposals-response.json#/anyOf` | 0,1 | branch 1 `$ref`s `core/compact-task-submitted.json` (`required: ['status','task_id']`); branch 0's `not: {anyOf: [{required: ['status']}, {required: ['task_id']}]}` forbids both |
+| `media-buy/refine-proposals-response.json#/anyOf` | 0,1 | same pair; branch 0's `not: {required: ['task_id']}` |
+| `media-buy/request-proposals-response.json#/anyOf` | 0,3 1,3 2,3 | branch 3 is the same `compact-task-submitted` `$ref`; branches 0–2 each forbid `task_id` by name |
+| `brand.json#/oneOf` | 2,4 | branch 2 (`Brand Agent`) is `additionalProperties: false` over `{$schema, version, agents, brand_agent, contact, data_subject_contestation, last_updated}`; branch 4 `$ref`s `#/definitions/brand`, whose `required` is `['id','names']` — neither name is in branch 2's closed map, so branch 2 refuses every instance of branch 4 |
 
 **Why this is not a hole to be plugged in the instrument.** Resolving `$ref` to decide
 disjointness means the derivation's answer depends on a document it is not reading at
@@ -541,7 +541,7 @@ the set-valued reading — the remaining gap was never the sets, it was the gate
 argument.
 
 **`creative/preview-creative-response.json#/oneOf/1/properties/results/items/oneOf` —
-1 pair.** The two arms pin `success`:
+1 pair.** The two branches pin `success`:
 
 ```json
 [0] {"title": "PreviewBatchResultSuccess", "properties": {"success": {"const": true}},
@@ -550,10 +550,10 @@ argument.
      "required": ["errors"]}
 ```
 
-Neither arm requires `success` — and the enclosing `items` node does:
+Neither branch requires `success` — and the enclosing `items` node does:
 `"required": ["success", "creative_id"]`. This is the case CLAUDE.md names in so many
 words: *"`success` looks optional on `creative/preview-creative-response.json`'s batch
-arms and is required by their parent."* Two disjoint one-member sets on a key the
+branches and is required by their parent."* Two disjoint one-member sets on a key the
 parent requires: separated. **No payload matches both.**
 
 ### 5.C — The exclusion is a sibling of the combinator (2 unions, 2 pairs)
@@ -566,7 +566,7 @@ documents state the mutual exclusion there.
 | `media-buy/buy-products-request.json#/anyOf` | 0,1 |
 | `media-buy/request-proposals-request.json#/anyOf` | 0,1 |
 
-Both have the same two arms, and in both the arms genuinely overlap:
+Both have the same two branches, and in both the branches genuinely overlap:
 
 ```json
 [0] {"required": ["brand"]}
@@ -601,31 +601,31 @@ and the whole `request-proposals-request.json` document rejects the both-payload
 reaches the `anyOf`; the pair is separated, by a statement about the same instance that
 is neither branch's. **Not a defect** — though it is worth noting to the owner that the
 two documents state the same rule twice in two places (the `anyOf` and the `allOf/1`
-`not`), which is why the arms look permissive read alone.
+`not`), which is why the branches look permissive read alone.
 
 ### 5.D — The pin is nested one level below `properties` (1 union, 1 pair)
 
-`media-buy/create-media-buy-request.json#/anyOf` pair 0,1 — §3 above, in full. Arms 0
-and 1 pin `budget_allocation.mode` to `"fixed"` and `"seller_optimized"`, and arm 1
+`media-buy/create-media-buy-request.json#/anyOf` pair 0,1 — §3 above, in full. Branches 0
+and 1 pin `budget_allocation.mode` to `"fixed"` and `"seller_optimized"`, and branch 1
 requires `budget_allocation`, so the pair is disjoint. Both `_value_sets` readings stop
 at the top-level property declaration and never see it. **Not a defect.**
 
 ### 5.E — The `anyOf` is a cardinality or capability guard, not a dispatch (2 unions, 16 pairs)
 
 These two are false positives of the census's **population gate**, not of `separates`.
-`unions()` admits a combinator whose arms each state `properties`, and excludes only
-`schema_parse.presence_only` ones. An arm that states both `properties` and a
+`unions()` admits a combinator whose branches each state `properties`, and excludes only
+`schema_parse.presence_only` ones. An branch that states both `properties` and a
 constraint (a `minItems`, a `const`) passes the gate while being a constraint on one
-key rather than an alternative shape. The arms of these two unions overlap by design,
+key rather than an alternative shape. The branches of these two unions overlap by design,
 there is nothing to dispatch to, and the overlap is accepted by the document.
 
-**`adagents.json#/oneOf/1/allOf/0/anyOf` — 15 pairs, all of them.** Six arms. The
+**`adagents.json#/oneOf/1/allOf/0/anyOf` — 15 pairs, all of them.** Six branches. The
 document says what it is, in its own `$comment` on that very node:
 
 > *"A file MUST carry either sales authorization or catalog content. `authorized_agents`
 > MAY be empty (`[]`) for a catalog-only community mirror that publishes
 > formats/properties/placements/collections/signals …; a file with neither sales
-> authorization nor non-empty catalog content is rejected. **Each arm asserts
+> authorization nor non-empty catalog content is rejected. **Each branch asserts
 > non-emptiness directly** so the guard does not depend on the per-field minItems of the
 > catalog arrays."*
 
@@ -639,11 +639,11 @@ document says what it is, in its own `$comment` on that very node:
 ```
 
 This is "at least one of these six arrays is non-empty" — an OR, and a publisher with
-both sales authorization and catalog content satisfies two arms by design. Arm 0 states
+both sales authorization and catalog content satisfies two branches by design. Branch 0 states
 no `required` because the enclosing `oneOf/1` already requires `authorized_agents`
-(the `applied_schema` conjunction supplies it), so arm 0 reads as "non-empty", not as a
+(the `applied_schema` conjunction supplies it), so branch 0 reads as "non-empty", not as a
 vacuous truth. Measured — a file with non-empty `authorized_agents` *and* non-empty
-`properties` matches arms 0 and 1, **and the whole document accepts it**:
+`properties` matches branches 0 and 1, **and the whole document accepts it**:
 
 ```json
 {"authorized_agents": [{"authorization_type": "property_ids", "property_ids": ["p1"],
@@ -664,7 +664,7 @@ vacuous truth. Measured — a file with non-empty `authorized_agents` *and* non-
 `context_match` is *"Provider handles Context Match requests (POST /context)"* and
 `identity_match` is *"Provider handles Identity Match requests (POST /identity)"* — two
 independent capability booleans. The `anyOf` means "declare at least one capability". A
-provider that handles both satisfies both arms, which is the intent:
+provider that handles both satisfies both branches, which is the intent:
 
 ```json
 {"provider_id": "p", "endpoint": "https://x.example.com",
@@ -677,8 +677,8 @@ the document's own `if`/`then` on `identity_match`). **Not a defect.**
 **Worth raising with the owner, as a measurement rather than a defect:** these two
 unions declare no branch classes a consumer could choose between, so admitting them to
 the population costs 16 of the census's 300 pairs and makes the headline figure look
-worse than the bundle is. A population gate that also excluded an arm whose
-`properties` entries state only a `minItems` or a `const` on a single key — "an arm
+worse than the bundle is. A population gate that also excluded an branch whose
+`properties` entries state only a `minItems` or a `const` on a single key — "an branch
 that narrows one key rather than describing a shape" — would drop both. That is a
 change to `docs/plan/10l30-census.py`'s `unions()`, which is outside this task's write
 scope and is the owner's call.
@@ -687,8 +687,8 @@ scope and is the owner's call.
 
 | group | kind | unions | pairs |
 |---|---|---|---|
-| 2.1 | success-vs-error arms, no mutual `not` (one repeated pattern, 6 files) | 6 | 6 |
-| 2.2 | sibling success shapes, `not` on only 2 of 6 arms | 1 | 6 |
+| 2.1 | success-vs-error branches, no mutual `not` (one repeated pattern, 6 files) | 6 | 6 |
+| 2.2 | sibling success shapes, `not` on only 2 of 6 branches | 1 | 6 |
 | 2.3 | "either/or" forms with no exclusion at all | 3 | 5 |
 | | **verified defect** | **10** | **17** |
 | 5.A | separator in the `$ref` target | 6 | 218 |
