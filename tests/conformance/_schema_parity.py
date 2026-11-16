@@ -634,6 +634,33 @@ DECLARED: dict[str, Callable[[Divergence], bool]] = {
     "model_requires_a_field_the_schema_does_not": lambda d: (
         d.direction == SCHEMA_ACCEPTS and d.error_types == frozenset({"missing"})
     ),
+    # **``None`` IS THE SDK'S SPELLING OF ABSENCE** -- decision 1 of
+    # ``docs/plan/rebuild-plan.md`` §2's index, "``None`` is absence and ``null`` is a
+    # value".  An optional property whose document refuses ``null`` carries
+    # ``adcp.types._base.OmittedNotNull``, whose VALIDATION half keeps accepting a Python
+    # ``None`` (it is how a caller spells "not supplied") while its SERIALISATION half
+    # leaves the key off the wire -- so the payload this SDK actually sends omits the
+    # property and the document accepts it.  The bundled schema, handed the property
+    # PRESENT and ``null``, refuses on type, and that is the divergence counted here.
+    #
+    # Declared rather than closed, and the index is emphatic about why: this rule
+    # accounted for 1,021 of the 1,239 decisions once re-reported as defects, so the thing
+    # owed is the declaration and never the decision.
+    #
+    # The ``'null'`` test is what keeps it from over-declaring: where the document's own
+    # type list ADMITS null, a refusal of ``None`` is not this rule and stays undeclared.
+    #
+    # **LAST IN THE DICT ON PURPOSE.**  :func:`classify` returns the FIRST predicate that
+    # matches, so an entry placed earlier can quietly claim a divergence an existing one
+    # was accounting for and make that one look as though it no longer occurs.  Placed
+    # last, this only ever catches what nothing else has claimed -- verified by running
+    # the suite with it in both positions and getting the same three stale names.
+    "explicit_null_is_the_sdks_absence": lambda d: (
+        d.direction == MODEL_ACCEPTS
+        and d.mutation is None
+        and "'null'" not in d.message
+    ),
+
 }
 
 

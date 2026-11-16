@@ -54,16 +54,21 @@ UNREACHABLE = frozenset(
 #: each accepts the payload its bundled schema declares valid — so for those two
 #: the canonical request model is the thing that is missing, not the type. The
 #: other four expose no request model under any spelling.
-UNMODELLED = frozenset(
-    {
-        "build_creative",
-        "list_creative_formats",
-        "search_brands",
-        "tasks_get",
-        "tasks_list",
-        "validate_property_delivery",
-    }
-)
+#: **EMPTY, and it shrank to empty rather than being deleted.**  Every one of the six
+#: tools listed here now exposes a request model, measured:
+#:
+#:     build_creative              -> BuildCreativeRequest
+#:     list_creative_formats       -> ListCreativeFormatsRequest
+#:     search_brands               -> SearchBrandsRequest
+#:     tasks_get                   -> TasksGetRequest
+#:     tasks_list                  -> TasksListRequest
+#:     validate_property_delivery  -> ValidatePropertyDeliveryRequest
+#:
+#: so each moves into ``GRADED`` and is held to the parity check below, which is what
+#: this set existing at all was for.  The name stays so the structure
+#: ``GRADED | UNREACHABLE | UNMODELLED == tools`` still reads, and so a tool that ever
+#: loses its model again has a declared place to go rather than being dropped silently.
+UNMODELLED: frozenset[str] = frozenset()
 
 
 def _model_for(tool: str) -> tuple[str, Any] | tuple[None, None]:
