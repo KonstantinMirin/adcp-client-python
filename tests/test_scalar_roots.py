@@ -181,20 +181,40 @@ def test_scalar_int_and_float_roots_are_their_numbers() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_construction_enforces_the_string_pattern() -> None:
-    """A bad value is rejected at construction, not silently accepted.
+def test_the_alias_s_two_validating_sites_enforce_the_pattern_and_the_type() -> None:
+    """D2: a scalar root is an alias, so the validation is at a FIELD and at `strict_validate`.
 
-    This is why the type is a ``str`` subclass and not an
-    ``Annotated[str, StringConstraints(...)]`` alias: an annotated alias only
-    enforces its constraints inside a Pydantic field, so ``PropertyTag
-    ("Invalid-Tag")`` would succeed.
+    rebuild-plan §4, "What becomes what": *a scalar at a root* emits *"a
+    module-level annotated alias, not a class"*, and *"A root scalar is an alias,
+    so it has no class to carry ``strict_validate``; its module binds the same
+    validation as a module-level function over the same schema reference, so a
+    class and an alias cannot disagree about what their document accepts."*
+
+    So there is no constructor to refuse at: ``PropertyTag("Invalid-Tag")`` is
+    ``str("Invalid-Tag")``.  The three tests that stood here --
+    ``PropertyTag("Invalid-Tag")``, ``PropertyTag(5)`` and ``PropertyTag()`` --
+    graded the ``str`` subclass ``post_generate_fixes.rewrite_scalar_rootmodels``
+    emitted, which this emission does not produce.  Both sites the alias DOES
+    have are graded here.  The rest of this file still reads the subclass -- it
+    asks an alias for ``isinstance``, ``__slots__`` and a deprecated ``root``
+    keyword -- and that is a wider repair than this one.
     """
     from adcp import PropertyTag
+    from adcp.types._schemas.core.property_tag import strict_validate
 
-    with pytest.raises(ValidationError) as excinfo:
-        PropertyTag("Invalid-Tag")
+    class Holder(BaseModel):
+        tag: PropertyTag
 
-    assert excinfo.value.errors()[0]["type"] == "string_pattern_mismatch"
+    for bad, expected in (("Invalid-Tag", "string_pattern_mismatch"), (5, "string_type")):
+        with pytest.raises(ValidationError) as excinfo:
+            Holder(tag=bad)
+        assert excinfo.value.errors()[0]["type"] == expected
+
+        with pytest.raises(ValidationError) as strict:
+            strict_validate(bad)
+        assert strict.value.errors()[0]["type"] in ("pattern", "type")
+
+    assert strict_validate("sports") == "sports"
 
 
 def test_construction_enforces_numeric_bounds() -> None:
@@ -210,22 +230,6 @@ def test_construction_enforces_numeric_bounds() -> None:
         gen.MajorVersion(0)
 
 
-def test_construction_rejects_a_wrong_scalar_type() -> None:
-    """A string root still refuses a number, as the RootModel wrapper did."""
-    from adcp import PropertyTag
-
-    with pytest.raises(ValidationError) as excinfo:
-        PropertyTag(5)
-
-    assert excinfo.value.errors()[0]["type"] == "string_type"
-
-
-def test_missing_value_raises_type_error() -> None:
-    """Constructing with no value is a programming error, not an empty string."""
-    from adcp import PropertyTag
-
-    with pytest.raises(TypeError, match="missing required argument"):
-        PropertyTag()
 
 
 # ---------------------------------------------------------------------------
