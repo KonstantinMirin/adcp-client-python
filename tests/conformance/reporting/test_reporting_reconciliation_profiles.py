@@ -100,9 +100,9 @@ async def test_generated_provider_identifiers_round_trip_without_rewriting(
     )
     verification = replace(
         s.outcome.verification,
-        native_version_ref=generated.verification.native_commit_evidence.native_version_ref.root,
+        native_version_ref=generated.verification.native_commit_evidence.native_version_ref,
         physical_checksums=tuple(
-            ReportingPhysicalChecksum(item.object_ref.root, item.algorithm, item.value)
+            ReportingPhysicalChecksum(item.object_ref, item.algorithm, item.value)
             for item in (generated.verification.physical_checksums or [])
         ),
     )
@@ -122,7 +122,7 @@ async def test_generated_provider_identifiers_round_trip_without_rewriting(
         replace(
             s.receipt,
             consumer_commit_ref=receipt_model.consumer_commit_ref,
-            observed_native_version_ref=receipt_model.observed_native_version_ref.root,
+            observed_native_version_ref=receipt_model.observed_native_version_ref,
         )
     )
     assert ReportingReceipt.model_validate(receipt_to_wire(receipt)).model_dump(
