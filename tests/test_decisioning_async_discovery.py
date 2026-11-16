@@ -1097,7 +1097,18 @@ async def test_create_media_buy_external_push_owner_suppresses_sdk_sender(execut
             idempotency_key="idem_async_create_1",
             start_time="2026-05-01T00:00:00Z",
             end_time="2026-05-31T23:59:59Z",
-            packages=[{"buyer_ref": "pkg_1", "product_id": "prod_1", "pricing_option_id": "cpm"}],
+            # `media-buy/create-media-buy-request.json`'s root `anyOf` names three
+            # groups and a request has to carry one.  `#/anyOf/0` ("Explicit packages
+            # with fixed allocation") is the group these packages are in, and it
+            # requires `budget` on each package item.
+            packages=[
+                {
+                    "buyer_ref": "pkg_1",
+                    "product_id": "prod_1",
+                    "pricing_option_id": "cpm",
+                    "budget": 1000.0,
+                }
+            ],
             push_notification_config={
                 "url": "https://buyer.example.com/wh",
                 "operation_id": "op-cmb-789",
