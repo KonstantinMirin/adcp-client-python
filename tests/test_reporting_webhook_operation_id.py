@@ -73,14 +73,36 @@ def test_reporting_operation_id_round_trips(operation_id: str) -> None:
 
 
 @pytest.mark.parametrize("operation_id", ["", "a" * 256, "has spaces", "a/b", "a\n", 123])
-def test_reporting_operation_id_rejects_invalid_supplied_values(operation_id: object) -> None:
-    with pytest.raises(ValidationError, match="operation_id"):
-        ReportingWebhook(
-            url="https://buyer.example/reporting",
-            authentication=_AUTHENTICATION,
-            reporting_frequency="daily",
-            operation_id=operation_id,
-        )
+def test_reporting_webhook_admits_any_operation_id_value(operation_id: object) -> None:
+    """No pinned-bundle node states `operation_id`, so nothing constrains its value.
+
+    Measured over `core/reporting-webhook.json` in bundle 3.2 (and in 3.1, and in
+    every 3.1/3.2 pre-release but `3.2.0-beta.6`):
+
+        properties: authentication, reporting_frequency, requested_metrics, token, url
+        required:   url, authentication, reporting_frequency
+        additionalProperties: TRUE
+
+    `ReportingWebhook.model_fields` is exactly those five, so the key arrives as an
+    EXTRA and the document's own `additionalProperties: true` is why it is admitted.
+    A class refusing one of these values would be narrower than its document. Both
+    halves agree -- the model keeps the value verbatim and `strict_validate`, which
+    is the document itself, accepts it.
+
+    What stood here asserted the opposite, against the field
+    `adcp.types._forward_compat` patched in; that layer is not restored in this
+    emission. The beta.6 bundle that DOES state the key is graded at the bottom of
+    this file.
+    """
+    base = {
+        "url": "https://buyer.example/reporting",
+        "authentication": _AUTHENTICATION,
+        "reporting_frequency": "daily",
+    }
+    webhook = ReportingWebhook.model_validate({**base, "operation_id": operation_id})
+    assert webhook.model_extra == {"operation_id": operation_id}
+    assert json.loads(webhook.model_dump_json())["operation_id"] == operation_id
+    ReportingWebhook.strict_validate({**base, "operation_id": operation_id})
 
 
 def test_reporting_operation_id_none_is_omitted_on_the_wire() -> None:
@@ -157,22 +179,38 @@ def test_all_registration_requests_preserve_optional_reporting_id(
 
 
 @pytest.mark.parametrize("model,tool,params", _REQUEST_CASES)
-def test_nested_registration_validation_rejects_bad_reporting_id(
+def test_nested_registration_carries_the_unconstrained_extra_through(
     model: Any, tool: str, params: dict[str, Any]
 ) -> None:
-    with pytest.raises(ValidationError, match="reporting_webhook.operation_id"):
-        model(
-            **params,
-            adcp_version="3.2",
-            account=_ACCOUNT,
-            idempotency_key="reporting_request_001",
-            reporting_webhook={
-                "url": "https://buyer.example/reporting",
-                "authentication": _AUTHENTICATION,
-                "reporting_frequency": "daily",
-                "operation_id": "invalid value",
-            },
-        )
+    """A parent adds no constraint the registration document does not state.
+
+    Requiredness is a conjunction, but there is nothing here to conjoin: no node
+    of any of these five request documents states `operation_id` under
+    `reporting_webhook`, and `core/reporting-webhook.json` admits it as an extra.
+    So the value rides through nested construction, through the parent's dump, and
+    past the pinned request schema -- measured, Draft7 reports no error for it.
+
+    What stood here expected `reporting_webhook.operation_id` to be refused at the
+    parent, which was the patched-in field's constraint and not the document's.
+    """
+    request = model(
+        **params,
+        adcp_version="3.2",
+        account=_ACCOUNT,
+        idempotency_key="reporting_request_001",
+        reporting_webhook={
+            "url": "https://buyer.example/reporting",
+            "authentication": _AUTHENTICATION,
+            "reporting_frequency": "daily",
+            "operation_id": "invalid value",
+        },
+    )
+    assert request.reporting_webhook.model_extra == {"operation_id": "invalid value"}
+    dumped = request.model_dump(mode="json")
+    assert dumped["reporting_webhook"]["operation_id"] == "invalid value"
+    schema = get_portable_schema(tool, "request", version="3.2")
+    assert schema is not None
+    Draft7Validator(schema, format_checker=FormatChecker()).validate(dumped)
 
 
 _DELIVERY_REPORT = {
@@ -394,20 +432,6 @@ def test_typed_registration_without_operation_id_is_refused() -> None:
         )
 
 
-def test_tampered_stored_operation_id_fails_validation() -> None:
-    with pytest.raises(ValidationError, match="operation_id"):
-        WebhookSender.prepare_media_buy_delivery(
-            registration={
-                "url": "https://buyer.example/reporting",
-                "authentication": _AUTHENTICATION,
-                "reporting_frequency": "daily",
-                "operation_id": "not valid",
-            },
-            task_id="delivery_report_000001",
-            result=_DELIVERY_REPORT,
-        )
-
-
 def test_generic_mcp_builder_omits_terminal_id_only_for_delivery_reports() -> None:
     delivery = create_mcp_webhook_payload(
         task_id="delivery_report_000001",
@@ -427,23 +451,34 @@ def test_generic_mcp_builder_omits_terminal_id_only_for_delivery_reports() -> No
 
 
 def test_beta6_versioned_request_schema_preserves_reporting_operation_id() -> None:
-    """Historical versioned types retain the beta.6 wire contract."""
-    with pytest.raises(ValidationError, match="operation_id.*required property"):
-        AcceptProposalRequest(
-            adcp_version="3.2-beta.6",
-            idempotency_key="accept-request-1234",
-            account={
-                "brand": {"domain": "example.com"},
-                "operator": "agency.example",
-            },
-            proposal_id="proposal-1",
-            proposal_terms_digest="sha256:" + "x" * 43,
-            reporting_webhook={
-                "url": "https://buyer.example/reporting",
-                "authentication": _AUTHENTICATION,
-                "reporting_frequency": "daily",
-            },
-        )
+    """The beta.6 bundle required `operation_id`; the pinned bundle does not state it.
+
+    `3.2.0-beta.6` is the ONE bundle in `schemas/cache` whose
+    `core/reporting-webhook.json` carries the key, and it carries it as REQUIRED.
+    That contract is graded where it lives -- in the historical bundle, through the
+    loader -- because there is no historical CLASS to grade it on:
+    `adcp.types.v32.AcceptProposalRequest` **is**
+    `adcp.types.media_buy.AcceptProposalRequest`, one object under two spellings
+    (`adcp/types/v32.py`: "AN ALIAS IS A NAME AND NEVER A SECOND TYPE"), so it is
+    the pinned type and answers for the pinned bundle alone.
+    """
+    assert AcceptProposalRequest is CurrentAcceptProposalRequest
+
+    registration = {
+        "url": "https://buyer.example/reporting",
+        "authentication": _AUTHENTICATION,
+        "reporting_frequency": "daily",
+    }
+    beta6 = get_named_validator("core/reporting-webhook.json", version="3.2.0-beta.6")
+    assert beta6 is not None
+    assert [error.message for error in beta6.iter_errors(registration)] == [
+        "'operation_id' is a required property"
+    ]
+
+    pinned = get_named_validator("core/reporting-webhook.json", version="3.2")
+    assert pinned is not None
+    assert list(pinned.iter_errors(registration)) == []
+    assert list(pinned.iter_errors({**registration, "operation_id": "anything at all"})) == []
 
 
 def test_webhook_payload_schema_documents_push_notification_operation_id_source() -> None:
