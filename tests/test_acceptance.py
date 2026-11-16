@@ -561,15 +561,30 @@ async def test_unknown_region_alias_invalidates_profile(
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "url",
+    ("url", "code"),
     [
-        "http://seller.example/catalog.json",
-        "https://user:secret@seller.example/catalog.json",
-        "https://seller.example/catalog.json#fragment",
+        # An AdCP address is https-only, so the TYPE refuses this one before
+        # ``_safe_catalog_url`` is reached and the diagnostic is the discovery
+        # object's rather than the catalog URL's. Both say "fails before
+        # transport", which is what this test is named for.
+        (
+            "http://seller.example/catalog.json",
+            AcceptancePolicyDiagnosticCode.invalid_discovery,
+        ),
+        # Userinfo and a fragment are both admitted by the type and refused by
+        # ``_safe_catalog_url``, which is the only screen for them.
+        (
+            "https://user:secret@seller.example/catalog.json",
+            AcceptancePolicyDiagnosticCode.unsafe_catalog_url,
+        ),
+        (
+            "https://seller.example/catalog.json#fragment",
+            AcceptancePolicyDiagnosticCode.unsafe_catalog_url,
+        ),
     ],
 )
 async def test_unsafe_catalog_urls_fail_before_transport(
-    url: str,
+    url: str, code: AcceptancePolicyDiagnosticCode
 ) -> None:
     result = await AcceptancePolicyResolver(registry=_Registry()).resolve(
         {
@@ -579,7 +594,7 @@ async def test_unsafe_catalog_urls_fail_before_transport(
         }
     )
 
-    assert result.diagnostics[0].code is AcceptancePolicyDiagnosticCode.unsafe_catalog_url
+    assert result.diagnostics[0].code is code
 
 
 @pytest.mark.asyncio
