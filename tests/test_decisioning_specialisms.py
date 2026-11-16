@@ -504,7 +504,7 @@ def test_creative_builder_protocol_has_no_refine_creative() -> None:
 
 
 def test_build_creative_response_includes_submitted_arm() -> None:
-    """The spec now includes the task-submitted arm in build_creative responses."""
+    """The spec now includes the task-submitted branch in build_creative responses."""
     import typing
 
     from adcp.types import GeneratedTaskStatus, LegacyBuildCreativeResponse

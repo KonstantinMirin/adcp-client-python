@@ -91,8 +91,8 @@ def test_resolver_returns_typed_request_class_not_none(tool_name: str) -> None:
     assert issubclass(resolved, BaseModel), (
         f"{tool_name}: resolver returned {resolved!r} which is not a " "Pydantic BaseModel subclass"
     )
-    # Generated union arms may carry a numeric suffix (for example
-    # ``CheckGovernanceRequest3``); they are still the typed request arm.
+    # Generated union branches may carry a numeric suffix (for example
+    # ``CheckGovernanceRequest3``); they are still the typed request branch.
     assert "Request" in resolved.__name__, (
         f"{tool_name}: resolved class {resolved.__name__!r} doesn't look "
         "like a wire Request type"

@@ -551,7 +551,7 @@ def test_advertised_output_schemas_use_local_refs_like_input_schemas() -> None:
     assert "$defs" in output
     # Every ``$defs`` entry is REACHED by a local ``$ref`` from the body, which
     # is what "compact" means and what inlining would have removed. The refs
-    # are read off properties rather than off union arms: the advertised output
+    # are read off properties rather than off union branches: the advertised output
     # for a union-rooted response carries the envelope's own properties and no
     # ``anyOf`` at all, which is the separate finding
     # ``test_tools_list_output_schema`` reports.

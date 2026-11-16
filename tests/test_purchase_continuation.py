@@ -795,13 +795,13 @@ async def test_pending_refresh_requires_configured_poller() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", _cases(), ids=lambda c: c["source_version"])
-@pytest.mark.parametrize("arm", ["submitted", "errors"])
-async def test_completed_task_result_accepts_any_valid_legacy_arm(
-    case: dict[str, Any], arm: str
+@pytest.mark.parametrize("branch", ["submitted", "errors"])
+async def test_completed_task_result_accepts_any_valid_legacy_branch(
+    case: dict[str, Any], branch: str
 ) -> None:
     data = (
         {"status": "submitted", "task_id": "task-completed-wrapper"}
-        if arm == "submitted"
+        if branch == "submitted"
         else {"errors": [{"code": "INVALID_REQUEST", "message": "Rejected"}]}
     )
     calls = 0
@@ -811,7 +811,7 @@ async def test_completed_task_result_accepts_any_valid_legacy_arm(
         calls += 1
         return TaskResult(
             status=TaskStatus.COMPLETED,
-            success=arm != "errors",
+            success=branch != "errors",
             data=data,
         )
 

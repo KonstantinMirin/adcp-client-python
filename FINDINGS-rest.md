@@ -34,13 +34,13 @@ The marker has two halves, and the predicate reads one of them:
 `is_no_explicit_null` returns `field.exclude_if in (NoExplicitNull.exclude_if,
 OmittedNotNull.exclude_if)` — the serialisation half alone. Measured on `UpdateMediaBuyRequest`:
 **24 optional fields, 24 carrying the `exclude_if`, 20 carrying the validation half, and the 4
-without it are exactly the 4 whose published node has a null arm** (`daily_budget_cap`,
+without it are exactly the 4 whose published node has a null branch** (`daily_budget_cap`,
 `frequency_cap`, `budget_cap_timezone`, and one more). So the predicate says "this property refuses
 an explicit null" about `budget_cap_timezone`, which accepts one on the JSON route and publishes
 `anyOf: [..., {"type": "null"}]`.
 
 Its own docstring is where the claim is made — *"the two are the same marker in substance — a JSON
-`null` refused, a Python `None` read as absence, a `None` left off the dump, and no null arm
+`null` refused, a Python `None` read as absence, a `None` left off the dump, and no null branch
 published"* — and the decision's own sentence is what makes it false: serialisation keys on
 `required`, validation on nullability. `adcp.types._base.omits_null` reads the same half and has the
 same reach.

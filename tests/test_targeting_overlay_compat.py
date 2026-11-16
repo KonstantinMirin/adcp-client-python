@@ -351,7 +351,7 @@ def test_container_json_schema_keeps_only_mutation_input(
     container: type[BaseModel], required: dict[str, Any]
 ) -> None:
     # The bundled schema declares the overlay as the input shape with no null
-    # arm (the field is optional, not nullable), and the published schema
+    # branch (the field is optional, not nullable), and the published schema
     # states the same since ``NoExplicitNull`` (#1547).
     node = container.model_json_schema()["properties"]["targeting_overlay"]
     assert node["$ref"] == "#/$defs/TargetingOverlayInput"

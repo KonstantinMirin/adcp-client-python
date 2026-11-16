@@ -3,12 +3,12 @@
 The generator renders every optional property as ``T | None = None``. That is
 the right Python surface — omitted reads as ``None`` and dumps as absent — but
 it also admitted an explicit JSON ``null`` that the schema, and so the SDK's
-own JSON-Schema arm, rejects (#1547). The generator now marks each optional
+own JSON-Schema branch, rejects (#1547). The generator now marks each optional
 property the bundled validator says cannot be ``null`` and the post-generation
 pass points the mark at :data:`adcp.types.base.NoExplicitNull`.
 
 The rule is about the wire: a JSON document carrying ``null`` is refused, and
-the published JSON Schema has no null arm. A Python ``None`` — keyword
+the published JSON Schema has no null branch. A Python ``None`` — keyword
 construction, ``model_validate`` on a dict — stays the SDK's spelling of
 "not supplied", symmetric with ``model_dump``'s ``exclude_none`` default, unless
 ``ADCP_STRICT_VALIDATION`` asks for it to be refused too.
@@ -56,7 +56,7 @@ def _null_errors(exc: ValidationError) -> list[tuple[tuple[Any, ...], str]]:
 
 
 def test_explicit_null_creatives_is_refused_like_the_bundled_schema() -> None:
-    """The reported case: both arms now reject the JSON document at the same place."""
+    """The reported case: both branches now reject the JSON document at the same place."""
     schema_node = get_schema("sync_creatives", "request", version="3.2")["properties"]["creatives"]
     assert schema_node["type"] == "array"
 
@@ -164,7 +164,7 @@ def test_constraints_and_description_survive_beside_the_marker() -> None:
 
 
 def test_published_schema_states_what_the_bundle_states() -> None:
-    """``model_json_schema`` no longer advertises a null arm for a non-nullable property."""
+    """``model_json_schema`` no longer advertises a null branch for a non-nullable property."""
     node = SyncCreativesRequest.model_json_schema()["properties"]["creatives"]
     assert "anyOf" not in node
     assert node["type"] == "array"
@@ -219,7 +219,7 @@ def test_json_round_trip_of_an_omitted_property_stays_omitted() -> None:
 #: genuinely nullable ones included. Measured on ``UpdateMediaBuyRequest``: 24
 #: optional fields, 24 carrying the ``exclude_if``, 20 carrying the validation
 #: half, and the 4 without it are exactly the 4 whose published node has a null
-#: arm. Written up in FINDINGS-rest.md; the repair is in ``src``.
+#: branch. Written up in FINDINGS-rest.md; the repair is in ``src``.
 _NULL_REFUSERS = tuple({type(m) for m in (*NoExplicitNull.metadata, *OmittedNotNull.metadata)})
 
 
@@ -255,7 +255,7 @@ def test_every_optional_field_either_carries_the_marker_or_admits_null(
     Each optional field is probed in isolation with ``model_construct``-free input:
     a document carrying every required field's current default-less sentinel would
     need per-model synthesis, so the probe reads the field's own validator through
-    the published schema instead — a marked field has no null arm, an unmarked
+    the published schema instead — a marked field has no null branch, an unmarked
     optional field has one (or is a bare ``Any``).
     """
     schema = model.model_json_schema()
@@ -274,7 +274,7 @@ def test_every_optional_field_either_carries_the_marker_or_admits_null(
             assert node.get("type") != "null"
             assert {"type": "null"} not in node.get("anyOf", []), (name, field_name, node)
         elif "None" in annotation and "Any" not in annotation and node.get("anyOf") is None:
-            # An unmarked optional ``T | None`` must publish a null arm, unless the
+            # An unmarked optional ``T | None`` must publish a null branch, unless the
             # type itself is a reference the schema expresses without ``anyOf``.
             assert "$ref" in node or node.get("type") == "null" or "allOf" in node, (
                 name,

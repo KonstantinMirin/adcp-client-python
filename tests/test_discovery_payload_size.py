@@ -212,7 +212,7 @@ def test_inline_schema_mode_is_the_expensive_opt_in() -> None:
         ("list_creatives", {}),
         # The two tools whose advertised schema is post-processed after
         # generation — `_widen_media_buy_output_schema_for_legacy_statuses`
-        # had to learn to resolve `$ref` arms for this change.
+        # had to learn to resolve `$ref` branches for this change.
         ("create_media_buy", {"buyer_ref": "ref-1", "packages": [], "promoted_offering": "x"}),
         ("control_media_buy", {"media_buy_id": "mb-1", "action": "pause_media_buy"}),
     ],
@@ -655,7 +655,7 @@ def test_simplify_wire_schema_reads_names_as_names() -> None:
     # the field named ``not``.
     assert definition["properties"]["description"] == {"type": "string"}
     assert definition["properties"]["not"] == {"type": "boolean"}
-    # An existing anyOf is kept and the oneOf arms join it under allOf.
+    # An existing anyOf is kept and the oneOf branches join it under allOf.
     assert definition["anyOf"] == [{"type": "object"}]
     assert definition["allOf"] == [{"anyOf": schema["$defs"]["x-ray"]["oneOf"]}]
     # Literal values are not schemas.
