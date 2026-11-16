@@ -235,7 +235,19 @@ def project_refine_response(
 
     refinement_applied = build_refinement_applied(refines, result.per_refine_outcome)
 
+    # ``status`` is required by ``core/protocol-envelope.json``, which
+    # ``media-buy/get-products-response.json`` composes at ``#/allOf/1`` -- so it is
+    # required here even though this document's own root states no ``required`` at
+    # all.  ``completed`` is what this projection knows to be true: the platform's
+    # ``refine_get_products`` returned, every ask in ``refine[]`` has an outcome in
+    # ``refinement_applied[]``, and this is the seller's final answer.  It is NOT
+    # ``rejected`` -- the document reserves that for a deliberate decline and
+    # requires ``reason`` with it (``#/allOf/3``, ``#/definitions/Shared5``), while
+    # ``#/allOf/2`` forbids ``reason``/``suggestions`` on any other status.  A
+    # per-ask ``status`` of ``unable`` is a task-body outcome
+    # (``applied``/``partial``/``unable``) and does not demote the envelope.
     return GetProductsResponse(
+        status="completed",
         products=list(result.products),
         proposals=list(result.proposals) if result.proposals is not None else None,
         refinement_applied=refinement_applied,
