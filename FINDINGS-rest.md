@@ -401,12 +401,19 @@ the snapshot was not regenerated and the test was not touched.
 
 ## What was repaired, by ground
 
-| ground | files | failures |
+| ground | files (failures) | total |
 | --- | --- | --- |
-| a name the previous generator bound and this emission does not | migrate_v3_to_v4, canonical_formats_public_api, no_explicit_null, wire_types, import_memory, notification_outbox_artifacts, decisioning_specialisms | 24 |
-| a fixture short a key required one `allOf` up | response_size_limit, update_rights_roundtrip, looks_like_v3, decisioning_wire_dispatch, control_request_intent, rc3_media_buy_runtime, feed_version, idempotency_conflict | 17 |
-| a test asserting against a decision | targeting_overlay_compat, discovery_payload_size, acceptance, rc3_media_buy_runtime | 10 |
-| the flat class graph, where §4 emits a base plus one child per branch | targeting_overlay_errors, update_rights_roundtrip, decisioning_specialisms, response_str, mcp_schema_drift | 8 |
-| a rule or a refusal re-pointed at the document's own keyword | publisher_selector_xor_autoenforce, purchase_continuation, legacy_only_creative_surfaces | 3 |
+| **a name, module or field type the PREVIOUS generator bound and this emission does not** | migrate_v3_to_v4 (13), legacy_only_creative_surfaces (3), canonical_formats_public_api (2), wire_types (1), import_memory (1), notification_outbox_artifacts (1), response_str (1), format_reference_wire_url (1), no_explicit_null (1) | 24 |
+| **a fixture short a key, or a group, the document requires** | response_size_limit (4), rc3_media_buy_runtime (2), decisioning_idempotency_conflict (2), feed_version (2), update_rights_roundtrip (1), looks_like_v3 (1), decisioning_wire_dispatch (1), control_request_intent (1), idempotency_handoff (1) | 15 |
+| **a test asserting against a DECISION already taken** | targeting_overlay_compat (6), discovery_payload_size (3), no_explicit_null (2), acceptance (1) | 12 |
+| **the old FLAT class graph, where §4 emits a base plus one child per branch** | targeting_overlay_errors (4), discovery_payload_size (1), update_rights_roundtrip (1), decisioning_specialisms (1), mcp_schema_drift (1) | 8 |
+| **a refusal or a rule re-pointed at the document's own keyword** | publisher_selector_xor_autoenforce (2), purchase_continuation (1) | 3 |
 
-Sixty-two repaired, twenty-five left reporting, eighty-seven accounted for.
+Sixty-two repaired, twenty-five left reporting, eighty-seven accounted for. Two tests were
+DELETED and five parametrize entries with them, all in `test_migrate_v3_to_v4.py`, all naming a
+`_discovery` module this emission does not ship or an alias it does not bind; the collected total
+falls from 17,910 to 17,903 by exactly those seven.
+
+Measured against `test-results/before.json` and `test-results/after.json`: **398 → 337 failed,
+5 → 4 errors, 14,681 → 14,736 passed. Zero newly-failing node ids anywhere in the suite, and the
+316 failures outside this lane's thirty-two files are unchanged.**
