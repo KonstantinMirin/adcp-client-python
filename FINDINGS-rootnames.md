@@ -53,6 +53,16 @@ PYTHONPATH=src .venv/bin/python -c "import adcp; print(len([n for n in adcp.__al
     Found 308 errors                                                      (was 310)
 ```
 
+And the fifth figure, which is not one of TASK.md's four but is the one that caught what the
+four missed — module-scope `(module, name)` imports from `adcp.types*` in `src/adcp`, by AST
+then `hasattr`:
+
+```
+5455 pairs, 5454 resolve, 1 does not        (32 did not before this task)
+```
+
+The one is `CreditLimit`, and it is a declared decision rather than a defect — §5(b2).
+
 Gates 1, 3 and 4 pass. Gate 2 does not reach zero and cannot from this write scope — §5(a)
 is the measurement of why, and the half of it that belongs to these 27 names is met.
 
@@ -259,7 +269,7 @@ ruff check src/                      310 errors             ->  308
 
 ---
 
-## 5. What I could not do inside the write scope
+## 5. The premise corrections, the one real defect, and what stays outside the write scope
 
 ### (a) The task's premise about collection errors is not what the suite reports
 
@@ -289,39 +299,95 @@ words (`CreditLimit`, `BadgeRole`, `v31`, `is_canonical_format_kind`, `Publisher
 **So the "0 collection errors" gate cannot be met by deciding these 27 names, and it is not
 met.** The gate that belongs to this task — no collection error naming one of the 27 — is.
 
-### (b) `adcp.types.SyncCreativeResult` — one flat spelling our own code imports and the alias layer cannot serve
+### (b) FIXED — the facade now consults upstream's own module path, LAST
 
-`adcp.types.__getattr__` resolves through `compat`, `_adapter`, `_restored`, `_surface._flat`
-and `legacy_names`. **It does not consult `adcp.types.aliases`.** So this change makes
-`from adcp import <name>` work for all 24, and `from adcp.types import <name>` still raises
-for them. That matters at exactly one site, which
-`tests/test_public_words_resolve.py::test_every_word_our_source_imports_from_adcp_types_resolves_or_is_declared`
-now reports:
+**This was the real defect in the first pass and it is closed.** `adcp.types.__getattr__`
+resolved through `compat`, `_adapter`, `_restored`, `_surface._flat` and `legacy_names` and
+**not** through `adcp.types.aliases`, so 23 of the 24 bound words resolved at `adcp` and at
+`adcp.types.aliases` and RAISED at `adcp.types` — one surface answering two ways about one
+word. The site that bit is the one neither an import error nor a collection error can show
+you, because it waits for a caller:
 
 ```
-adcp.types.SyncCreativeResult        imported at: src/adcp/server/_creative_batch.py:31
+src/adcp/server/_creative_batch.py:31           from adcp.types import SyncCreativeResult
+src/adcp/decisioning/specialisms/audience.py:31 from adcp.types import SyncAudiencesAudience
 ```
 
-That test passed before this change **only because the word was declared refused** — and
-that test's own docstring calls the state it was in the worst case: *"A function-scope
-import of a refused word is the worst case: the package imports, this gate's other checks
-pass, and the failure waits for a caller."* The refusal was wrong (the pointer is emitted),
-so deleting the row is right and the red is the gate finally telling the truth about a live
-latent outage at that line. The one-line repair is a row in a layer `adcp.types` DOES
-consult:
+Both are FUNCTION-scope. The first was already reported red by
+`test_every_word_our_source_imports_from_adcp_types_resolves_or_is_declared`; the second was
+not, only because `_adapter.__adcp_refused__` still carried its (now stale) row.
 
-```python
-# src/adcp/types/compat.py  (or _adapter.py / legacy_names.py — all three are generated)
-from adcp.types.creative import SyncCreativesSuccessCreativesItem as SyncCreativeResult
+The repair is one layer in `src/adcp/types/__init__.py`, which is HAND-WRITTEN — its own
+docstring says so, "a package's own `__init__` is the package" — rather than a hand edit to
+one of the generated alias files. It closes the class of the bug, not the two instances.
+
+**Consulted LAST, and that is what makes it safe rather than tidy.** Measured over the
+module's 127 words against the chain as it stood:
+
+| | words | effect of reaching `aliases` last |
+|---|---|---|
+| already resolve here to the SAME object | 103 | nothing changes |
+| resolve nowhere | 23 | newly bound — this is what the layer adds |
+| resolve here to a DIFFERENT subject | 1 | `AuthorizedAgent` keeps the class it had |
+
+That one is `adcp.types.registry.AuthorizedAgent`, the restored model `legacy_names` binds
+flat. Reached last, the word does not move. **A layer that can only ADD a spelling cannot
+make a public word change meaning while staying importable**, which is the outcome §4 calls
+the worst available — so "last" here is the whole safety argument, not a style choice.
+
+`adcp.types.__all__` is unmoved at 4,298: the aggregation lists `compat`,
+`__adcp_flat_only__`, `_adapter`, `_restored` and `_flat`, and already omits the other
+consulted-last layer, `legacy_names`.
+
+Census of module-scope `(module, name)` imports from `adcp.types*` in `src/adcp`, by AST
+then `hasattr`:
+
+```
+before this task   5457 pairs, 32 do not resolve
+after the binds    5455 pairs,  6 do not resolve
+after this layer   5455 pairs,  1 does not resolve
 ```
 
-`survey/adapter_surface.py` is what derives those files, so the real repair is a
-re-derivation of the census, not a hand edit. `SyncAudiencesAudience` is the same shape at
-`src/adcp/decisioning/specialisms/audience.py:31` and is not reported only because
-`adcp.types._adapter.__adcp_refused__` still carries its row — which, by the same
-measurement, is now also stale.
+### (b2) The one left, and the two items of the handed-in classification that were off
+
+**`CreditLimit` is the one remaining, and it is a DECISION, not a defect.** Two corrections
+to the classification I was handed:
+
+* *"I find no import of it left in `src/adcp`"* — there is one, and it is module-scope by
+  AST: `src/adcp/decisioning/types.py:47`, inside `if TYPE_CHECKING:`, `from adcp.types
+  import (… CreditLimit …)`.
+* *"drop it from `__all__` if so"* — there is nothing to drop. `CreditLimit` is **not in
+  `adcp.__all__`** and never was during this task, so gate 1 never saw it.
+
+And it needs no repair: `adcp.types._adapter.__adcp_refused__["CreditLimit"]` declares it
+`DOCUMENT-NO-WORD-NO-IDENTITY`, citing `adcp.types.domains.account.sync_accounts_response.CreditLimit`.
+A word declared anywhere in the package is a decision, which is why
+`test_every_word_our_source_imports_from_adcp_types_resolves_or_is_declared` passes with it
+present. Re-deciding it is a separate question from these 27 and I have not touched it.
+
+**`is_adcp_error` / `is_adcp_success` — the import is dropped.** `src/adcp/__init__.py`
+routed both to `adcp.types.guards` and imported them in the `TYPE_CHECKING` block. That
+module defines neither, and its own `__adcp_refused__` records both as
+`NO-DOCUMENT-NO-SUBJECT` alongside fifteen siblings refused the same way — a response-shape
+predicate is not something a document states about an instance. So they go by the rule the
+three TMPX/asset-type words went by. Neither was in `__all__`, so nothing advertised
+changes; what goes is a lazy route that could only ever raise.
+
+`tests/test_type_guards.py` still fails to collect on those two words imported straight from
+`guards`. That is the other half of the owner's "either define them there or drop the
+import", and `src/adcp/types/guards.py` is outside this task's write scope, so it is
+reported rather than taken.
+
+**`adcp.types._generated` — confirmed false positive**, as classified. The module imports
+and `hasattr(adcp.types, "_generated")` is `True`; nothing to do.
 
 ### (c) `_adapter.py`'s twin rows are stale and I may not touch them
+
+**And §5(b)'s layer makes every one of them group (B) outright, not merely arguably so.**
+Before it, a row like `_adapter.__adcp_refused__["SyncAudiencesAudience"]` could still be
+read as describing `adcp.types`, where the word genuinely did not resolve. Now it does, so
+each row is a refusal standing beside a live binding at the very surface it is consulted
+for.
 
 `adcp.types._adapter.__adcp_refused__` carries its own rows for several of the 24 now bound
 (`MediaBuyPackage`, `SyncAudiencesAudience`, `AssetInstanceType`, `BrandIdentity`,
@@ -340,11 +406,19 @@ unrelated reason — `scripts/export_resolution.py:49`, `module 'adcp.types.doma
 attribute 'DOMAINS'` — which has to be fixed before the regeneration
 (`scripts/regenerate_public_api_snapshot.py`) can run at all.
 
-### (e) Two `tests/type_checks/` fixtures still fail, for words outside the 27
+### (e) Two `tests/type_checks/` fixtures still fail — and it is mypy's view, not the runtime
 
-`brand_identity_imports.py` wants `adcp.types.buyer.BrandIdentity` and
-`authorized_agents_variants.py` wants the bare `adcp.types.AuthorizedAgents` — neither is
-one of the 27, and both are the flat-surface layer of (b). Left as found.
+`adcp.types.BrandIdentity` now RESOLVES at runtime through §5(b)'s layer, so the import
+those fixtures write is live. `mypy --strict` still reports them, and that is a different
+thing: a module-level `__getattr__` reveals `object` to a type checker, and `adcp.types`
+carries no `TYPE_CHECKING` re-export block for these words the way `adcp/__init__.py` does.
+Measured, `mypy --strict tests/type_checks/` is unmoved at 323 errors in 30 files either
+side of the layer.
+
+What is left in the two is outside the 27 regardless: `brand_identity_imports.py` wants
+`adcp.types.buyer.BrandIdentity` (whose own `__adcp_refused__` row lives in a generated
+file) and `authorized_agents_variants.py` wants the bare `adcp.types.AuthorizedAgents`.
+Left as found.
 
 ---
 
@@ -353,10 +427,22 @@ one of the 27, and both are the flat-surface layer of (b). Left as found.
 | file | change |
 |---|---|
 | `src/adcp/types/aliases.py` | 24 bindings added (20 re-exports + 4 restated unions); `__all__` 104 -> 127; `__adcp_refused__` emptied — all 14 rows were overturned by pointer |
-| `src/adcp/__init__.py` | 3 words out of `__all__` (748 -> 745); the 10 bound words that pointed at `adcp.types` repointed to the existing `adcp.types.aliases` group in `_LAZY_MODULES` and in the `TYPE_CHECKING` block |
+| `src/adcp/__init__.py` | 3 words out of `__all__` (748 -> 745); the 10 bound words that pointed at `adcp.types` repointed to the existing `adcp.types.aliases` group in `_LAZY_MODULES` and in the `TYPE_CHECKING` block; the `adcp.types.guards` group and its `TYPE_CHECKING` import dropped (`is_adcp_error`, `is_adcp_success` — see §5(b2)) |
+| `src/adcp/types/__init__.py` | one layer added to `__getattr__`: `adcp.types.aliases`, consulted LAST, after `legacy_names`. Hand-written file, not generated. §5(b) is the measurement |
 | `tests/test_literal_discriminator_defaults.py` | one class deleted |
 | `tests/test_public_api.py` | two tests' refusal assertions replaced by identity assertions |
 | `tests/type_checks/asset_instance_narrowing.py` | rewritten; now clean under `mypy --strict` |
 
-Not touched: `codegen/`, `src/adcp/types/_schemas/`, `tests_emit/`, and every generated
-layer of the flat surface.
+Not touched: `codegen/`, `src/adcp/types/_schemas/`, `tests_emit/`, `src/adcp/types/guards.py`,
+and every generated layer of the flat surface (`compat.py`, `_adapter.py`, `_restored.py`,
+`legacy_names.py`, `_surface/`).
+
+---
+
+## 7. Not chased, on the owner's instruction
+
+This branch predates `f2744af85` on `ours/9.6.1`, which fixes `module 'adcp.types.domains'
+has no attribute 'DOMAINS'`. That is 1 of the 31 collection errors (`test_domain_roots_import_in_any_order.py`)
+and it is also what stops `scripts/export_resolution.py:49`, hence
+`test_public_api_surface_matches_snapshot` and the snapshot regeneration in §5(d). It goes
+away on a rebase or merge and is not touched here.
