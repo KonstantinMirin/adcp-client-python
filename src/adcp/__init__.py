@@ -818,10 +818,16 @@ _LAZY_MODULES: dict[str, tuple[str, ...]] = {
         "TaskStatus",
         "WebhookMetadata",
     ),
-    "adcp.types.guards": (
-        "is_adcp_error",
-        "is_adcp_success",
-    ),
+    # ``adcp.types.guards`` HAS NO GROUP HERE, and the module is why.  It declares
+    # ``is_adcp_error`` and ``is_adcp_success`` NOWHERE, and its own
+    # ``__adcp_refused__`` records both as ``NO-DOCUMENT-NO-SUBJECT`` alongside
+    # fifteen siblings refused identically -- a response-shape predicate is not
+    # something a document states about an instance.  So the two words leave by the
+    # same rule the three TMPX/asset-type words left by: a promise with no subject
+    # BREAKS rather than resolving to something that is not what the caller asked
+    # for.  Neither was in ``__all__``, so nothing advertised changes; what goes is
+    # a lazy route that could only ever raise, and the ``TYPE_CHECKING`` import of
+    # them below, which typed both as whatever ``guards`` does not define.
     "adcp.types.registry": (
         "AgentCapabilities",
         "AgentCompliance",
@@ -2542,7 +2548,6 @@ if TYPE_CHECKING:
         TaskStatus,
         WebhookMetadata,
     )
-    from adcp.types.guards import is_adcp_error, is_adcp_success  # noqa: F401
     from adcp.types.registry import (
         AgentCapabilities,
         AgentCompliance,
