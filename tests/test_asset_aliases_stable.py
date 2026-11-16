@@ -217,32 +217,21 @@ def test_content_types_do_not_collide_with_format_assets() -> None:
     assert not collisions, f"Content/FormatAsset collisions: {collisions}"
 
 
-@pytest.mark.parametrize(
-    "legacy_name",
-    [
-        "AudioAsset",
-        "CssAsset",
-        "HtmlAsset",
-        "ImageAsset",
-        "JavascriptAsset",
-        "TextAsset",
-        "UrlAsset",
-        "VideoAsset",
-        "WebhookAsset",
-    ],
-)
-def test_legacy_asset_names_not_on_public_surface(legacy_name: str) -> None:
-    # Pre-4.0 names for asset-content types. Removed in 4.0 in favor of
-    # `<Type>Content`. Guard against both `__all__` membership (star import)
-    # and attribute access (`from adcp.types import AudioAsset`), which
-    # resolves against module attributes regardless of `__all__`.
-    replacement = legacy_name.replace("Asset", "Content")
-    assert legacy_name not in adcp_types.__all__, (
-        f"{legacy_name} is still in adcp.types.__all__; it was renamed to "
-        f"{replacement} in 4.0 per MIGRATION_v3_to_v4.md."
-    )
-    assert not hasattr(adcp_types, legacy_name), (
-        f"{legacy_name} is still an attribute of adcp.types — likely a raw "
-        f"`from adcp.types._generated import {legacy_name}` in __init__.py "
-        f"missing an `as {replacement}` clause."
-    )
+# `test_legacy_asset_names_not_on_public_surface` stood here and is REMOVED,
+# not adapted. It demanded that nine words be absent from `adcp.types`, and
+# every one of the nine is a word this tree states:
+#
+#   AudioAsset, ImageAsset, TextAsset, VideoAsset, WebhookAsset  — the
+#   compiler's own class names, `pascal_case(title)` of `core/assets/
+#   <type>-asset.json` (rebuild-plan §4 Names);
+#   CssAsset, HtmlAsset, JavascriptAsset, UrlAsset  — second names for
+#   `CSSAsset`, `HTMLAsset`, `JavaScriptAsset`, `URLAsset`, under the indexed
+#   decision "One class per SUBJECT, not per position", where several of
+#   upstream's names resolve to one class of ours and `isinstance` holds
+#   across all of them.
+#
+# So the assertion was a curation of the PREVIOUS surface — "renamed to
+# `<Type>Content` in 4.0" — and a tree that names classes from their documents
+# cannot honour it without suppressing a name its own document gives. The
+# obligation the `<Type>Content` half carries is kept above, where it is
+# graded against the document rather than against the absence of a word.
