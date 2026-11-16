@@ -44,7 +44,7 @@ no ``BranchDispatchMixin``, no ``_BRANCH_DISCRIMINATOR``, no branch class -- and
 OTHER documents (``media_buy/package_request.CreativesItem``,
 ``creative/sync_creatives_request.CreativesItem``,
 ``core/creative_representation.CreativeRepresentation``): they extend the class through a
-``$ref``, which is the hierarchy claim working, and they are not arms of this union.
+``$ref``, which is the hierarchy claim working, and they are not branches of this union.
 Keying ``A`` on "has a subclass" therefore reports these two as discriminated unions when
 they are flattenings, which is exactly the thing bucket ``B`` exists to name.  So a CHILD
 column is recorded in full, and the bucket reads only the children whose own
@@ -59,15 +59,15 @@ branch pointer of the union it is credited to.
 
 **AND A BUCKET NAME IS NOT THE WHOLE ANSWER FOR ``C`` AND ``F``.**  "No class at that
 pointer" is a fact about the POINTER, and 37 of ``C``'s 54 and 17 of ``F``'s 287 emit a
-class at a BRANCH pointer while emitting nothing at the union's own -- arms with no base.
+class at a BRANCH pointer while emitting nothing at the union's own -- branches with no base.
 What stands at the union there is an ANNOTATION: ``content-standards/artifact.json``'s
 ``#/$defs/asset_access`` emits ``AssetAccessBearerToken``, ``AssetAccessServiceAccount`` and
 ``AssetAccessSignedUrl``, each deriving ``AdCPBaseModel`` directly, and binds
-``AssetAccess = Annotated[A | B | C, Field(...)]`` at module scope.  So the arms exist and
+``AssetAccess = Annotated[A | B | C, Field(...)]`` at module scope.  So the branches exist and
 nothing of OURS says they are alternatives to each other: there is no root for reading 3's
 "every union root dispatches" to range over, and the hierarchy claim's "union branches
 inherit the union base" has no base at those 54 nodes.  Whether an annotation discharges
-either reading is not this table's call; the ``arm_classes`` column carries the fact so the
+either reading is not this table's call; the ``branch_classes`` column carries the fact so the
 distinction is in the table and not only in this paragraph, and ``--summary`` splits it
 under ``C_and_F_with_arms_and_no_base``.  The remaining 17 + 270 emit nothing at the
 pointer and nothing at any branch of it.
@@ -94,7 +94,7 @@ The seven buckets, which partition the 656::
 ``A`` is NOT keyed on the discriminator either, and the split inside it is the finding
 worth carrying out of this table: of the 115, only 77 carry a non-empty
 ``_BRANCH_DISCRIMINATOR``.  The other 38 are a base with branch children and no key a
-caller can read to learn which arm they hold -- ``tools/parity/census.py``'s
+caller can read to learn which branch they hold -- ``tools/parity/census.py``'s
 ``undiscriminated`` row, measured here against the document that caused it.  A bucket keyed
 on the discriminator would have put those 38 somewhere they do not belong and would have
 left ``A`` and ``B`` not partitioning the 124 object-ish ``oneOf`` occurrences that emit a
@@ -188,7 +188,7 @@ COLUMNS = (
     "fields",
     "branch_children",
     "other_children",
-    "arm_classes",
+    "branch_classes",
 )
 
 
@@ -211,7 +211,7 @@ class Row(NamedTuple):
     fields: str
     branch_children: str
     other_children: str
-    arm_classes: str
+    branch_classes: str
 
     def node(self) -> str:
         """``document#pointer``, the spelling a reader cites an occurrence by."""
@@ -273,7 +273,7 @@ def object_ish(branch: object) -> bool:
 
     A ``type`` stated as a LIST is read too -- draft-07 admits ``["object", "null"]`` -- so
     a nullable object branch is not missed on a spelling.  Measured over bundle 3.2 no
-    branch spells one, so the arm changes no count here; it is written because the
+    branch spells one, so the branch changes no count here; it is written because the
     alternative is a column that is right by accident.
     """
     if not isinstance(branch, Mapping):
@@ -290,7 +290,7 @@ def resolved(
     """``(properties, required)`` of one branch with ``$ref`` followed and ``allOf`` merged.
 
     Read ONLY by :func:`const_keyed`, which has to look inside a branch to answer whether
-    the branches share a const-keyed property -- and in this bundle a union's arms are
+    the branches share a const-keyed property -- and in this bundle a union's branches are
     overwhelmingly ``{"$ref": ...}``, so a reader that stopped at the reference would
     report "no shared key" for every discriminated union the bundle has.
 
@@ -334,7 +334,7 @@ def resolved(
 def _one_value(schema: object) -> bool:
     """Whether a property schema admits exactly one value: a ``const`` or a 1-long ``enum``.
 
-    The two spellings of the same fact.  ``asset-union.json``'s arms key on
+    The two spellings of the same fact.  ``asset-union.json``'s branches key on
     ``asset_type``, and the bundle spells that selector both ways across its documents, so
     a reader of one spelling would answer "no discriminator" for the other half.
     """
@@ -350,11 +350,11 @@ def const_keyed(bundle_dir: Path, document: str, known: frozenset[str], branches
     """The property EVERY object-ish branch pins to one value, or ``""``.
 
     This is the document's own answer to "is there a key a caller can read to learn which
-    arm they hold", asked independently of whether we emitted a ``_BRANCH_DISCRIMINATOR``
+    branch they hold", asked independently of whether we emitted a ``_BRANCH_DISCRIMINATOR``
     from it -- which is the comparison the census is for: a row with a const-keyed property
     and an empty ``_BRANCH_DISCRIMINATOR`` is a key the document states and we dropped.
 
-    Over the OBJECT-ISH branches and not all of them, because a ``{"type": "null"}`` arm
+    Over the OBJECT-ISH branches and not all of them, because a ``{"type": "null"}`` branch
     beside five objects keys on nothing and would veto every candidate.  Several keys
     qualifying is possible and the answer is then all of them, pipe-joined, in sorted
     order: naming one would be picking, and this column is read by a human.
@@ -403,7 +403,7 @@ def emitted() -> list[type[BaseModel]]:
     DECLARATIONS and not names: the screen is ``value.__module__ == name``, which is
     ``tests/_imports_a_tree.py``'s, and it drops a re-export without dropping a class.
     ``__adcp_schema__`` is then read out of ``__dict__`` and never off the class, because
-    a branch class INHERITS its base's and a ``getattr`` would key every arm of a union on
+    a branch class INHERITS its base's and a ``getattr`` would key every branch of a union on
     the union's own pointer.
 
     ``walk_packages`` and no ``ispkg`` screen, for ``_imports_a_tree.py``'s recorded
@@ -457,7 +457,7 @@ def branch_pointers(pointer: str, keyword: str, count: int) -> frozenset[str]:
 
     The root's pointer is ``#`` and a nested one is ``#/properties/x``, so the join is a
     plain concatenation in both cases -- ``#`` + ``/oneOf/0`` is ``#/oneOf/0``, which is
-    what ``core/assets/asset-union.json``'s arms carry.
+    what ``core/assets/asset-union.json``'s branches carry.
     """
     return frozenset(f"{pointer}/{keyword}/{index}" for index in range(count))
 
@@ -495,15 +495,15 @@ def census(bundle_dir: Path) -> list[Row]:
     for document in documents(bundle_dir):
         for pointer, node, keyword, branches, position in occurrences(bundle_dir, document):
             here = index.get((document, pointer), [])
-            arms = branch_pointers(pointer, keyword, len(branches))
+            branches = branch_pointers(pointer, keyword, len(branches))
             #: THE BRANCHES, asked of the pointer index and not of the base's subclasses, which
             #: is how a bucket name stops being the whole answer: 37 of ``C``'s 54 and 17 of
             #: ``F``'s 287 emit a class AT A BRANCH POINTER while emitting nothing at the
-            #: union's own.  Those are arms with no base -- nothing dispatches to them and
+            #: union's own.  Those are branches with no base -- nothing dispatches to them and
             #: nothing of ours states that they are alternatives -- and keying the column on
             #: ``__bases__`` alone would have reported them as "no class at that pointer"
             #: full stop, which is true of the pointer and false of the union.
-            arm_classes = [cls.__name__ for arm in sorted(arms) for cls in index.get((document, arm), [])]
+            branch_classes = [cls.__name__ for branch in sorted(branches) for cls in index.get((document, branch), [])]
             branch_children, other_children = [], []
             for cls in here:
                 for child in children.get(cls, []):
@@ -511,7 +511,7 @@ def census(bundle_dir: Path) -> list[Row]:
                     named = (
                         isinstance(reference, SchemaRef)
                         and reference.document == document
-                        and reference.pointer in arms
+                        and reference.pointer in branches
                     )
                     (branch_children if named else other_children).append(child.__name__)
             count = sum(object_ish(branch) for branch in branches)
@@ -541,7 +541,7 @@ def census(bundle_dir: Path) -> list[Row]:
                     fields="|".join(str(len(cls.model_fields)) for cls in here),
                     branch_children="|".join(sorted(branch_children)),
                     other_children="|".join(sorted(other_children)),
-                    arm_classes="|".join(arm_classes),
+                    branch_classes="|".join(branch_classes),
                 )
             )
     return sorted(rows, key=lambda row: (row.document, row.pointer, row.keyword))
@@ -611,7 +611,7 @@ def summary(bundle_dir: Path, rows: list[Row]) -> dict[str, Any]:
             1 for row in rows if row.bucket == "A" and row.branch_discriminator in ("", "-")
         ),
         "C_and_F_with_arms_and_no_base": {
-            name: sum(1 for row in rows if row.bucket == name and row.arm_classes)
+            name: sum(1 for row in rows if row.bucket == name and row.branch_classes)
             for name in ("C", "F")
         },
         "titled_branch_occurrences": sum(1 for row in rows if row.titled_branches),

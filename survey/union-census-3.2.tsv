@@ -1,4 +1,4 @@
-bucket	document	pointer	keyword	position	branches	object_ish_branches	titled_branches	schema_discriminator	const_keyed_property	classes	branch_discriminator	dispatch_mixin	fields	branch_children	other_children	arm_classes
+bucket	document	pointer	keyword	position	branches	object_ish_branches	titled_branches	schema_discriminator	const_keyed_property	classes	branch_discriminator	dispatch_mixin	fields	branch_children	other_children	branch_classes
 A	a2ui/bound-value.json	#	oneOf	ROOT	5	5	0			A2UIBoundValue	-	yes	0	A2UIBoundValueLiteralBoolean|A2UIBoundValueLiteralNumber|A2UIBoundValueLiteralString|A2UIBoundValueLiteralStringPath|A2UIBoundValuePath		A2UIBoundValueLiteralString|A2UIBoundValueLiteralNumber|A2UIBoundValueLiteralBoolean|A2UIBoundValuePath|A2UIBoundValueLiteralStringPath
 A	account/get-account-financials-response.json	#	oneOf	ROOT	2	2	2			GetAccountFinancialsResponse	-	yes	13	GetAccountFinancialsError|GetAccountFinancialsSuccess		GetAccountFinancialsSuccess|GetAccountFinancialsError
 F	account/get-account-financials-response.json	#/oneOf/1/not	anyOf	RULE	4	4	0									
