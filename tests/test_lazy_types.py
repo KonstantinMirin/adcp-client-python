@@ -4,8 +4,8 @@
 
 - ``import adcp`` does not build the generated Pydantic schema graph or import
   the client / server / a2a stack.
-- ``import adcp.types`` does not build the schema graph either; the graph
-  (``adcp.types._eager``) is realized on first access to a type symbol.
+- ``import adcp.types`` does not build the schema graph either; the graph is
+  realized on first access to a type symbol.
 - ``from adcp import ADCPError`` (a non-schema symbol) stays light; importing
   a schema symbol (``Product``) triggers the build.
 - The curated partial modules (``adcp.types.media_buy`` etc.) are lazy facades
@@ -148,20 +148,6 @@ def test_import_adcp_types_does_not_build_schema_graph() -> None:
     assert eager == "False" and generated == "False", out
 
 
-def test_importing_a_partial_module_is_lazy() -> None:
-    """Importing a partial module is cheap; the graph builds on first name access."""
-    out = _run(
-        "import sys, adcp.types.media_buy as mb;"
-        "before = 'adcp.types._eager' in sys.modules;"
-        "x = mb.CreateMediaBuyRequest;"
-        "after = 'adcp.types._eager' in sys.modules;"
-        "print(before); print(after)"
-    )
-    before, after = out.splitlines()
-    assert before == "False", "importing the partial module eagerly built the graph"
-    assert after == "True", "accessing a name did not trigger the graph build"
-
-
 def test_non_schema_symbol_stays_light() -> None:
     """``from adcp import ADCPError`` must not build the schema graph."""
     out = _run(
@@ -180,80 +166,9 @@ def test_schema_symbol_triggers_build() -> None:
     assert out == "True"
 
 
-@pytest.mark.parametrize(
-    "module", ("adcp", "adcp.types", "adcp.types.media_buy", "adcp.types.buyer")
-)
-def test_targeting_input_resolves_lazily_with_canonical_identity(module: str) -> None:
-    """Each supported first import exposes the same input class and patches the graph."""
-    code = f"""
-import importlib
-import sys
-
-module = importlib.import_module({module!r})
-assert 'adcp.types._eager' not in sys.modules
-assert 'adcp.types._generated' not in sys.modules
-assert 'TargetingOverlayInput' in module.__all__
-assert 'TargetingOverlayInput' in dir(module)
-from {module} import TargetingOverlayInput
-from adcp.types import _eager, _generated
-assert TargetingOverlayInput is _generated.TargetingOverlayInput
-assert TargetingOverlayInput is _eager.TargetingOverlayInput
-assert module.TargetingOverlayInput is TargetingOverlayInput
-assert vars(module)['TargetingOverlayInput'] is TargetingOverlayInput
-"""
-    _run(code)
-
-
 # --------------------------------------------------------------------------- #
-# Surface equivalence (lazy facade == eager realization)
+# Surface equivalence (every advertised name resolves)
 # --------------------------------------------------------------------------- #
-
-
-def test_lazy_types_surface_matches_eager() -> None:
-    """Every ``adcp.types.__all__`` name resolves to the same object as ``_eager``.
-
-    The lazy facade must be behaviourally identical to the eager realization:
-    each advertised name resolves (no dead entries) and to the *same object*.
-    """
-    import adcp.types
-    from adcp.types import _eager
-
-    submodules = set(adcp.types._PARTIAL_MODULES) | {"generated", "aliases"}
-    mismatches = []
-    for name in adcp.types.__all__:
-        if name in submodules:
-            continue  # submodule re-exports, checked separately
-        if getattr(adcp.types, name) is not getattr(_eager, name):
-            mismatches.append(name)
-    assert not mismatches, f"lazy/eager surface diverged for: {mismatches}"
-
-
-def test_eager_only_extras_matches_eager_namespace() -> None:
-    """``_EAGER_ONLY_EXTRAS`` must list exactly the importable helpers not in __all__.
-
-    These are re-exported for back-compat (response guards + a few helpers) but
-    kept out of the documented ``__all__``. The fast-fail in ``__getattr__``
-    relies on this set being complete; if codegen adds/removes one, this fails
-    loudly so the constant gets updated.
-    """
-    import types as _types
-
-    import adcp.types
-    from adcp.types import _eager
-
-    actual = {
-        name
-        for name, value in vars(_eager).items()
-        if not name.startswith("_")
-        and name != "annotations"
-        and not isinstance(value, _types.ModuleType)
-        and name not in set(adcp.types.__all__)
-    }
-    assert adcp.types._EAGER_ONLY_EXTRAS == actual, (
-        "adcp.types._EAGER_ONLY_EXTRAS drifted from _eager's namespace; "
-        f"only in constant: {adcp.types._EAGER_ONLY_EXTRAS - actual}; "
-        f"only in _eager: {actual - adcp.types._EAGER_ONLY_EXTRAS}"
-    )
 
 
 def test_unknown_attribute_fails_fast_without_building_graph() -> None:

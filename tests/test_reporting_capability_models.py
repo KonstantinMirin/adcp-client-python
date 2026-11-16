@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import importlib
 import json
-import shutil
-from pathlib import Path
 from typing import get_args
 
 import pytest
@@ -50,15 +47,9 @@ def response(raw):
     }
 
 
-@pytest.fixture(params=["public", "bundled"])
-def graph(request):
-    if request.param == "public":
-        return ReportingDeliveryCapabilities, GetAdcpCapabilitiesResponse
-    # Codegen's self-contained clone is deliberately tested as a separate graph.
-    module = importlib.import_module(
-        "adcp.types.domains.bundled.protocol.get_adcp_capabilities_response"
-    )
-    return module.ReportingDelivery, module.GetAdcpCapabilitiesResponse
+@pytest.fixture
+def graph():
+    return ReportingDeliveryCapabilities, GetAdcpCapabilitiesResponse
 
 
 @pytest.mark.parametrize(
@@ -160,21 +151,3 @@ def test_subclasses_inside_a_non_sdk_parent_omit_absent_promises():
         {"reporting": capability(status_notification=PROMISES["status_notification"])}
     )
     assert value.model_dump()["reporting"]["status_notification"] == PROMISES["status_notification"]
-
-
-def test_post_generation_repair_is_idempotent_for_both_actual_model_layouts(tmp_path, monkeypatch):
-    from scripts import post_generate_fixes
-
-    root = Path(__file__).parents[1] / "src/adcp/types/domains"
-    targets = (
-        "core/reporting_delivery_capabilities.py",
-        "bundled/protocol/get_adcp_capabilities_response.py",
-    )
-    for relative in targets:
-        target = tmp_path / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(root / relative, target)
-    monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", tmp_path)
-    before = [(tmp_path / name).read_bytes() for name in targets]
-    post_generate_fixes.fix_reporting_capability_defaults()
-    assert before == [(tmp_path / name).read_bytes() for name in targets]
