@@ -133,22 +133,28 @@ def test_sdk_has_no_module_level_type_adapter_construction() -> None:
     assert not offenders
 
 
-def test_build_all_models_returns_after_a_generated_poc_alias_import() -> None:
-    # #1619: the deprecated alias registers the canonical module object under a
-    # second sys.modules key, which used to make the lazy-export walk spin
-    # forever. A subprocess with a timeout turns a regression into a failure
-    # instead of a hung CI job.
+def test_build_all_models_returns_after_a_mirror_module_import() -> None:
+    # #1619: a mirror registers the canonical module object under a second
+    # sys.modules key, which used to make the lazy-export walk spin forever. A
+    # subprocess with a timeout turns a regression into a failure instead of a
+    # hung CI job.
+    #
+    # `adcp.types.generated_poc` was the previous generator's mirror. This
+    # emission's is `adcp.types.domains` -- a `sys.meta_path` finder binding
+    # `adcp.types.domains.<rest>` to the module `adcp.types._schemas.<rest>`
+    # already is, "by one prefix substitution read off `__name__`" -- so it is
+    # the same hazard with the same shape, and it is what the walk must survive.
     program = r"""
 import sys
-import warnings
 
-warnings.simplefilter("ignore", DeprecationWarning)
-import adcp.types.generated_poc.core.format_id as alias
-import adcp.types.domains.core.format_id as canonical
+import adcp.types.domains.core.format_id as alias
+import adcp.types._schemas.core.format_id as canonical
 assert alias is canonical
-# A split name is served by its own shim module rather than the canonical object.
-from adcp.types.generated_poc.brand import Brand  # noqa: F401
-assert "adcp.types.generated_poc.brand" in sys.modules
+assert "adcp.types.domains.core.format_id" in sys.modules
+assert "adcp.types._schemas.core.format_id" in sys.modules
+
+from adcp.types.domains.brand import Brand  # noqa: F401
+assert "adcp.types.domains.brand" in sys.modules
 
 from adcp.testing import build_all_models
 build_all_models()

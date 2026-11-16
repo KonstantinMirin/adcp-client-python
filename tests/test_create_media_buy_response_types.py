@@ -20,12 +20,23 @@ import pytest
 
 
 def test_submitted_alias_resolves_to_third_branch() -> None:
-    """The submitted alias must point at CreateMediaBuyResponse3 — the
-    branch with status='submitted' + task_id."""
-    from adcp.types import CreateMediaBuySubmittedResponse
-    from adcp.types.canonical_creative import CreateMediaBuyResponse3
+    """The submitted alias must point at the branch with status='submitted' + task_id.
 
+    That branch is ``media-buy/create-media-buy-response.json#/oneOf/2``, and the
+    surface names it from its own ``title`` -- ``CreateMediaBuyResponseSubmitted``
+    on ``adcp.types.media_buy``. There is no ``adcp.types.canonical_creative``
+    module in this emission; the numbered generator spelling
+    ``CreateMediaBuyResponse3`` is still bound in the module the document
+    compiled to, and is read here so the branch INDEX is graded too.
+    """
+    from adcp.types._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse3
+    from adcp.types.media_buy import CreateMediaBuyResponseSubmitted
+
+    from adcp.types import CreateMediaBuySubmittedResponse
+
+    assert CreateMediaBuySubmittedResponse is CreateMediaBuyResponseSubmitted
     assert CreateMediaBuySubmittedResponse is CreateMediaBuyResponse3
+    assert CreateMediaBuySubmittedResponse.__adcp_schema__.pointer == "#/oneOf/2"
 
 
 def test_submitted_payload_validates() -> None:

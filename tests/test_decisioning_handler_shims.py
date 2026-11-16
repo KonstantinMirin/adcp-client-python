@@ -364,18 +364,21 @@ async def test_preview_workflow_requires_allow_async(executor) -> None:
 async def test_creative_shims_reject_hand_rolled_submitted_responses(executor) -> None:
     """Only framework-issued, registry-backed Submitted envelopes are valid."""
     from adcp.types import PushNotificationConfig
-    from adcp.types.legacy import (
-        LegacyBuildCreativeRequest,
-        LegacyBuildCreativeResponse6,
-        LegacyPreviewCreativeRequest,
-    )
+
+    # `media-buy/build-creative-response.json#/oneOf/5` titles itself "Build
+    # Creative Submitted", so that is the branch's name; the numbered spelling
+    # `LegacyBuildCreativeResponse6` was the previous generator's.
+    from adcp.types.legacy import LegacyBuildCreativeRequest, LegacyPreviewCreativeRequest
+    from adcp.types.media_buy import BuildCreativeResponseSubmitted
 
     class _CreativeBuilder(DecisioningPlatform):
         capabilities = DecisioningCapabilities(specialisms=["creative-generative"])
         accounts = SingletonAccounts(account_id="hello")
 
         def build_creative_legacy(self, req, ctx):
-            return LegacyBuildCreativeResponse6(task_id="unregistered-build")
+            return BuildCreativeResponseSubmitted(
+                status="submitted", task_id="unregistered-build"
+            )
 
         def preview_creative_legacy(self, req, ctx):
             return {"status": "submitted", "task_id": "unregistered-preview"}

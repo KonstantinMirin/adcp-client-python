@@ -158,10 +158,20 @@ def test_adcp_root_model_parametrizes_deferred() -> None:
 
 
 def test_generated_root_models_parametrize_adcp_root_model() -> None:
-    from adcp.types.domains.adagents import AdcpAgentsAuthorization
-    from adcp.types.domains.core.format import CanonicalParameters
+    """A composing root parametrizes the deferred base, not bare ``RootModel``.
 
-    for root in (AdcpAgentsAuthorization, CanonicalParameters):
+    ``class X(RootModel[A | B])`` builds at the ``RootModel[...]`` expression,
+    before any config ``X`` declares, so a generated composing root parametrizes
+    ``adcp.types.base.AdCPRootModel`` instead and stays deferred.
+
+    The two roots named here are measured examples of that shape.
+    ``core/format.json`` contributes no root model at all in this emission and
+    states no ``CanonicalParameters``; ``adagents.json``'s root is a plain
+    model, not a composing one.
+    """
+    from adcp.types.core import AcceptancePolicyProfileIDs, ForecastPointDimensions
+
+    for root in (AcceptancePolicyProfileIDs, ForecastPointDimensions):
         assert issubclass(root, AdCPRootModel), root
         assert root.model_config.get("defer_build") is True
 
