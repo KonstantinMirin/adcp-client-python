@@ -62,13 +62,14 @@ def _current(
 ) -> GetPrincipalResponse:
     return GetPrincipalResponse.model_validate(
         {
+            "status": "completed",
             "result": {
                 "kind": "current",
                 "principal_id": "principal-1",
                 "principal_kind": "buyer_agent",
                 "configuration_version": "version-7",
                 "configuration": _state(destination_state, destination_ref),
-            }
+            },
         }
     )
 
@@ -76,6 +77,7 @@ def _current(
 def _applied(destination_state: str = "ready") -> SyncPrincipalResponse:
     return SyncPrincipalResponse.model_validate(
         {
+            "status": "completed",
             "result": {
                 "kind": "applied",
                 "action": "updated",
@@ -84,7 +86,7 @@ def _applied(destination_state: str = "ready") -> SyncPrincipalResponse:
                 "principal_kind": "buyer_agent",
                 "configuration_version": "version-8",
                 "configuration": _state(destination_state),
-            }
+            },
         }
     )
 
@@ -170,15 +172,19 @@ async def test_sync_polls_validating_destination_to_action_required() -> None:
 
 @pytest.mark.asyncio
 async def test_wait_for_destinations_rejects_missing_readback() -> None:
+    # core/principal-state.json states `minProperties: 1`, so the readback that is MISSING
+    # the destination is one carrying an empty `reporting_destinations` section, not an
+    # empty configuration object -- which the document refuses.
     response = GetPrincipalResponse.model_validate(
         {
+            "status": "completed",
             "result": {
                 "kind": "current",
                 "principal_id": "principal-1",
                 "principal_kind": "buyer_agent",
                 "configuration_version": "version-7",
-                "configuration": {},
-            }
+                "configuration": {"reporting_destinations": []},
+            },
         }
     )
 
@@ -212,10 +218,13 @@ async def test_wait_for_destinations_rejects_a_replaced_generation() -> None:
 async def test_payload_failure_is_not_treated_as_success() -> None:
     failed = SyncPrincipalResponse.model_validate(
         {
+            # protocol/sync-principal-response.json's if/then: result.kind == "failed"
+            # constrains the envelope status to one of "failed" or "rejected".
+            "status": "rejected",
             "result": {
                 "kind": "failed",
                 "errors": [{"code": "CONFLICT", "message": "stale configuration"}],
-            }
+            },
         }
     )
 
@@ -227,8 +236,10 @@ async def test_payload_failure_is_not_treated_as_success() -> None:
 
 def test_principal_semantic_types_are_public() -> None:
     from adcp import PrincipalCurrentResult as RootPrincipalCurrentResult
-    from adcp.types.protocol import PrincipalState as PartialPrincipalState
+    from adcp.types.core import PrincipalState as DomainPrincipalState
 
     assert RootPrincipalCurrentResult is PrincipalCurrentResult
-    assert PartialPrincipalState is PrincipalState
+    # core/principal-state.json is where the subject is DEFINED, so the domain path that
+    # binds it is `adcp.types.core`; the flat name is the same class, not a copy.
+    assert DomainPrincipalState is PrincipalState
     assert PrincipalConfiguration.model_fields["declarations"]

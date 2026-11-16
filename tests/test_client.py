@@ -263,6 +263,10 @@ def test_get_products_preserves_canonical_format_options():
         status=TaskStatus.COMPLETED,
         success=True,
         data={
+            # core/protocol-envelope.json has required: ["status"] and is composed into
+            # every task response, so a mocked wire payload carries it too: "Agents
+            # shipping responses without a top-level `status` are non-conformant."
+            "status": "completed",
             "products": [
                 _get_products_product(
                     format_options=[
@@ -273,7 +277,7 @@ def test_get_products_preserves_canonical_format_options():
                         }
                     ]
                 )
-            ]
+            ],
         },
     )
 
@@ -285,7 +289,11 @@ def test_get_products_preserves_canonical_format_options():
     assert len(result.data.products) == 1
     declaration = result.data.products[0].format_options[0]
     assert declaration.format_kind == "image"
-    assert declaration.params == {"width": 300, "height": 250}
+    # core/product-format-declaration.json's "Image Format Declaration" arm states
+    # params as a $ref to formats/canonical/image.json, so params is that canonical
+    # form -- the two dimensions the payload supplies are preserved, and what it omits
+    # takes the defaults formats/canonical/image.json itself states.
+    assert (declaration.params.width, declaration.params.height) == (300, 250)
     assert result.metadata == {"projection": {"diagnostics": []}}
 
 
@@ -305,6 +313,7 @@ def test_get_products_still_projects_legacy_format_ids():
         status=TaskStatus.COMPLETED,
         success=True,
         data={
+            "status": "completed",
             "products": [
                 _get_products_product(
                     format_ids=[
@@ -314,7 +323,7 @@ def test_get_products_still_projects_legacy_format_ids():
                         }
                     ]
                 )
-            ]
+            ],
         },
     )
 
@@ -776,6 +785,11 @@ async def test_all_client_methods():
                 "plan_id": "plan_123",
                 "outcome": "completed",
                 "governance_context": "ctx-abc-123-governance",
+                # governance/report-plan-outcome-request.json allOf[1] states if/then:
+                # outcome == "completed" requires check_id, governance_context and
+                # seller_response.
+                "check_id": "check_123",
+                "seller_response": {"seller_reference": "mb_123"},
             },
         ),
         (
@@ -877,7 +891,11 @@ async def test_all_client_methods():
         (
             "comply_test_controller",
             "ComplyTestControllerRequest",
-            {"scenario": "list_scenarios"},
+            # compliance/comply-test-controller-request.json states
+            # required: ["scenario", "account"], and the account object requires
+            # `sandbox` with const true: "The runner MUST set sandbox: true on every
+            # comply_test_controller request."
+            {"scenario": "list_scenarios", "account": {"sandbox": True}},
         ),
         # Note: preview_creative, create_media_buy, update_media_buy, and build_creative
         # are tested separately with full request validation since their schemas are complex
@@ -958,7 +976,7 @@ async def test_multi_agent_parallel_execution():
 
     mock_result = TaskResult(
         status=TaskStatus.COMPLETED,
-        data={"products": []},
+        data={"status": "completed", "products": []},
         success=True,
     )
 
@@ -1002,6 +1020,7 @@ async def test_list_creative_formats_parses_mcp_response():
 
     # Mock MCP response with content array containing JSON
     formats_data = {
+        "status": "completed",
         "formats": [
             {
                 "format_id": {"agent_url": "https://creative.example.com", "id": "banner_300x250"},
@@ -1013,7 +1032,7 @@ async def test_list_creative_formats_parses_mcp_response():
                 "name": "Video 16:9",
                 "type": "video",
             },
-        ]
+        ],
     }
 
     mock_result = TaskResult(
@@ -1052,13 +1071,14 @@ async def test_list_creative_formats_parses_a2a_response():
 
     # Mock A2A response with direct dict data
     formats_data = {
+        "status": "completed",
         "formats": [
             {
                 "format_id": {"agent_url": "https://creative.example.com", "id": "native_feed"},
                 "name": "Native Feed Ad",
                 "type": "native",
             }
-        ]
+        ],
     }
 
     mock_result = TaskResult(
@@ -1209,6 +1229,10 @@ async def test_get_media_buys_parses_response():
     client = ADCPClient(config)
 
     media_buys_data = {
+        # The envelope's own `status`, required by core/protocol-envelope.json. The
+        # per-media-buy `status` below is the resource's lifecycle state, a different
+        # field in a different namespace.
+        "status": "completed",
         "media_buys": [
             {
                 "media_buy_id": "mb-1",
@@ -1226,7 +1250,7 @@ async def test_get_media_buys_parses_response():
                     }
                 ],
             }
-        ]
+        ],
     }
 
     mock_result = TaskResult(
@@ -1275,6 +1299,7 @@ async def test_get_media_buys_parses_snapshot_response():
     client = ADCPClient(config)
 
     media_buys_data = {
+        "status": "completed",
         "media_buys": [
             {
                 "media_buy_id": "mb-2",
@@ -1311,7 +1336,7 @@ async def test_get_media_buys_parses_snapshot_response():
                     },
                 ],
             }
-        ]
+        ],
     }
 
     mock_result = TaskResult(

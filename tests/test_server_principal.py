@@ -4,6 +4,7 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
+from pydantic import ValidationError
 
 from adcp.server import InMemoryPrincipalRecordStore, PrincipalIdentity, PrincipalService
 
@@ -342,28 +343,44 @@ async def test_inactive_config_still_enforces_webhook_and_destination_security()
 @pytest.mark.asyncio
 async def test_rejects_invalid_notification_event_scope_and_missing_acknowledgment() -> None:
     service = PrincipalService()
-    for key, event_type, expected in (
-        ("principal-server-key-0015", "scheduled", "media-buy-anchored"),
-        ("principal-server-key-0016", "creative.status_changed", "all_authorized_accounts"),
-    ):
-        response = await service.sync_principal(
-            IDENTITY,
-            _request(
-                key,
-                {
-                    "notification_configs": [
-                        {
-                            "subscriber_id": "events",
-                            "url": "https://127.0.0.1/hook",
-                            "event_types": [event_type],
-                            "active": False,
-                        }
-                    ]
-                },
-            ),
+
+    def _notification(key: str, event_type: str):
+        return _request(
+            key,
+            {
+                "notification_configs": [
+                    {
+                        "subscriber_id": "events",
+                        "url": "https://127.0.0.1/hook",
+                        "event_types": [event_type],
+                        "active": False,
+                    }
+                ]
+            },
         )
-        assert response.result.kind == "failed"
-        assert expected in response.result.errors[0].message
+
+    # protocol/sync-principal-request.json states, at
+    # configuration.notification_configs.items.allOf[0].properties.event_types.items.allOf[1],
+    # not: {"enum": ["scheduled", "final", "delayed", "adjusted", "window_update",
+    # "impairment"]} -- the media-buy-anchored types are refused by the REQUEST type, so
+    # the value never reaches the service's own scope check. Assert the refusal and the
+    # field it names rather than the service's prose for a request it cannot be handed.
+    with pytest.raises(ValidationError) as refused:
+        await service.sync_principal(
+            IDENTITY, _notification("principal-server-key-0015", "scheduled")
+        )
+    assert [error["loc"] for error in refused.value.errors()] == [
+        ("configuration", "notification_configs", 0, "event_types", 0)
+    ]
+
+    # The account-anchored types ARE admitted here; what the same document's if/then
+    # requires of them is the explicit all_authorized_accounts acknowledgment, and that
+    # is the service's refusal.
+    response = await service.sync_principal(
+        IDENTITY, _notification("principal-server-key-0016", "creative.status_changed")
+    )
+    assert response.result.kind == "failed"
+    assert "all_authorized_accounts" in response.result.errors[0].message
 
 
 @pytest.mark.asyncio
