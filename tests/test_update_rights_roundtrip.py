@@ -87,8 +87,14 @@ def _rights_constraint(rights_id: str) -> dict[str, Any]:
 
 
 def _success_response(rights_id: str, **overrides: Any) -> dict[str, Any]:
-    """A complete AdCP 3.2 update_rights success response."""
+    """A complete AdCP 3.2 update_rights success response.
+
+    ``status`` is required by ``core/protocol-envelope.json`` one ``allOf``
+    above ``UpdateRightsResponse``; without it the client reports a parse
+    failure and every assertion below reads that instead of the round trip.
+    """
     response: dict[str, Any] = {
+        "status": "completed",
         "rights_id": rights_id,
         "terms": _full_terms(),
         "generation_credentials": [],
@@ -161,11 +167,13 @@ class TestUpdateRightsA2A:
 
         assert result.success is True, result.error
         assert result.data is not None
-        # Data is a concrete variant of the Union (UpdateRightsResponse1 or 2).
-        import typing as _t
-
-        union_args = set(_t.get_args(UpdateRightsResponse))
-        assert type(result.data) in union_args or isinstance(result.data, tuple(union_args))
+        # Data is a concrete BRANCH of the response union. §4 emits a
+        # ``oneOf`` of object types as a base plus one class per branch rather
+        # than a ``Union[...]`` alias, so ``get_args`` has nothing to return
+        # and ``isinstance`` against the parent is what holds.
+        assert isinstance(result.data, UpdateRightsResponse)
+        assert type(result.data) is not UpdateRightsResponse
+        assert type(result.data) in set(UpdateRightsResponse._branch_models)
 
 
 class TestUpdateRightsMCP:
