@@ -52,7 +52,7 @@ def test_the_reported_entry_points_import_first(statement: str) -> None:
     assert result.stdout.strip() == "imported"
 
 
-@pytest.mark.parametrize("domain", sorted(domains.DOMAINS))
+@pytest.mark.parametrize("domain", domains.mirrored())
 def test_each_domain_root_imports_first_and_binds_its_names(domain: str) -> None:
     statement = (
         f"import adcp.types.domains.{domain} as root\n"

@@ -50,55 +50,17 @@ def snapshot_modules() -> tuple[tuple[str, str], ...]:
 
 
 def _domains() -> tuple[str, ...]:
-    """The generated domains, DERIVED from the tree the compiler wrote.
+    """The generated domains, from the module that owns the question.
 
-    This read ``adcp.types.domains.DOMAINS`` until 2026-11-16, and that list went with
-    v9.6's layout: ``adcp.types.domains`` is now a ``sys.meta_path`` COMPATIBILITY MIRROR
-    of ``adcp.types._schemas`` whose own docstring says "NOTHING HERE IS A DECLARATION",
-    so there is no list on it to read and this whole screen raised
-    ``AttributeError: module 'adcp.types.domains' has no attribute 'DOMAINS'`` --
-    ``tests/test_public_api.py`` with it.  An instrument that cannot run is an instrument
-    that grades nothing, and this one is what catches "a name starts meaning a different
-    object", so the enumeration has to come off something that exists.
-
-    That is the private tree's own subpackages: ``docs/plan/rebuild-plan.md`` §1 writes a
-    document's module to ``adcp.types._schemas.<domain>.<stem>``, so the domains ARE its
-    packages -- 23 of them over bundle 3.2, which is the figure ``adcp/types/__init__.py``
-    states ("23 domains carrying 1,951 names").  Nothing is enumerated by hand and a
-    domain added upstream is covered the moment the compiler writes it, which is this
-    module's own rule for exports read one level up.
-
-    **The MIRROR path is still what is snapshotted, not the domain surface.**
-    ``adcp.types.<domain>`` is the public path §1 declares, and keying on it instead would
-    repoint every generated entry in ``tests/fixtures/public_api_snapshot.json`` at once --
-    a wholesale re-take of the baseline, which would destroy exactly the comparison the
-    snapshot exists to make.  The mirror resolves all 23, so the keys are unchanged and
-    this is a repair and not a re-pin.
-
-    **A PACKAGE OR A TOP-LEVEL MODULE, because a root document is neither less generated
-    nor less public than a domain's.**  §1 writes ``core/account.json`` to
-    ``_schemas.core.account`` and ``adagents.json`` to ``_schemas.adagents``, so the second
-    is a module where the first is a package, and a read that took only packages dropped it.
-
-    **AND NO HAND-KEPT EXCEPTION**, which is this module's own rule one level up -- "the
-    keys are derived from the live objects, so nothing here is enumerated and a new export
-    is covered the moment it exists".  The comment above this function says
-    ``error_details`` is "deliberately absent"; the committed snapshot CARRIES
-    ``adcp.types.domains.error_details``, so the prose and the artifact disagree and an
-    exception honouring the prose would silently drop a key the baseline holds.  Reading
-    the tree plainly leaves that disagreement where the gate can report it.
+    This read ``adcp.types.domains.DOMAINS`` until 2026-11-16; that constant went with
+    v9.6's published tree, and its absence made this whole screen raise -- so
+    ``tests/test_public_api.py`` died in its own setup rather than comparing a surface.
+    ``domains.mirrored()`` derives the same names off ``adcp.types._schemas``, and lives
+    beside the mirror that resolves them so a second reader cannot drift from a first.
     """
-    import pkgutil
+    import adcp.types.domains as domains
 
-    import adcp.types._schemas as schemas
-
-    return tuple(
-        sorted(
-            name
-            for info in pkgutil.iter_modules(schemas.__path__)
-            if not (name := info.name.rpartition(".")[2]).startswith("_")
-        )
-    )
+    return domains.mirrored()
 
 
 #: Stripped from a key for brevity. Every generated class lives under it.

@@ -92,6 +92,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import pkgutil
 import sys
 from importlib.machinery import ModuleSpec
 from types import ModuleType
@@ -213,6 +214,34 @@ def there_is_a_tree_to_mirror() -> bool:
         return importlib.util.find_spec(GENERATED) is not None
     except (ImportError, AttributeError, ValueError):
         return False
+
+
+def mirrored() -> tuple[str, ...]:
+    """The top-level names this mirror resolves, read off the tree it mirrors.
+
+    **DERIVED AND THEREFORE NOT A DECLARATION**, which is what lets it live in a module
+    whose own docstring says nothing here is one: it holds no list, it asks
+    ``adcp.types._schemas`` what the compiler wrote.  A domain added upstream appears here
+    the moment the run emits it.
+
+    This replaces a ``DOMAINS`` constant that went with v9.6's published tree.  Two readers
+    outlived it and both failed on its absence -- ``scripts/export_resolution.py``, which
+    is how the project reads its root census, and
+    ``tests/test_domain_roots_import_in_any_order.py``, which parametrizes on it at
+    COLLECTION time and so took its whole file with it.
+
+    A PACKAGE OR A MODULE: ``core/account.json`` makes ``_schemas.core.account`` under a
+    package, and ``adagents.json`` makes ``_schemas.adagents``, a module at the top with no
+    package of its own.  Both are mirrored, so both are here.
+    """
+    schemas = importlib.import_module(GENERATED)
+    return tuple(
+        sorted(
+            name
+            for info in pkgutil.iter_modules(schemas.__path__)
+            if not (name := info.name.rpartition(".")[2]).startswith("_")
+        )
+    )
 
 
 if not installed() and there_is_a_tree_to_mirror():
