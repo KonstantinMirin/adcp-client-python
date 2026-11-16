@@ -75,11 +75,11 @@ def _camel(stem: str) -> str:
 def _response_branches() -> list[tuple[str, str, type[BaseModel]]]:
     """Every branch of every response union whose tool is on the ``Legacy*`` surface.
 
-    ``(tool, branch name, branch class)``. The branches come from the declaring
-    module's own ``<Tool>Response`` base and the subclasses that module itself
-    declares, so a document that gains or loses a ``oneOf`` entry changes this
-    list with no edit here. A response that is one class rather than a union
-    contributes that class as its only branch.
+    ``(tool, branch name, branch class)``. The branches come from the class the
+    module's document roots at and the subclasses that module itself declares,
+    so a document that gains or loses a ``oneOf`` entry changes this list with
+    no edit here. A response that is one class rather than a union contributes
+    that class as its only branch.
     """
 
     branches: list[tuple[str, str, type[BaseModel]]] = []
@@ -91,14 +91,34 @@ def _response_branches() -> list[tuple[str, str, type[BaseModel]]]:
         module = importlib.import_module(
             ".".join([_DECLARED_ROOT, *relative.parts[:-1], relative.stem])
         )
-        base = getattr(module, f"{tool}Response", None)
-        if not (isinstance(base, type) and issubclass(base, BaseModel)):
-            continue
+        base = _document_root(module)
         members = [
             child for child in base.__subclasses__() if child.__module__ == module.__name__
         ] or [base]
         branches.extend((tool, member.__name__, member) for member in members)
     return branches
+
+
+def _document_root(module: object) -> type[BaseModel]:
+    """The class the module's document compiles AT ITS ROOT, by its own pointer.
+
+    Read off ``__adcp_schema__`` rather than looked up as ``<Tool>Response``,
+    because the root takes the document's title and a title is not a template:
+    ``creative/list-creative-formats-response.json`` roots at
+    ``ListCreativeFormatsResponseCreativeAgent``, and a name convention skips
+    that document silently while reporting a full set.
+    """
+    roots = [
+        value
+        for value in vars(module).values()
+        if isinstance(value, type)
+        and issubclass(value, BaseModel)
+        and value.__module__ == getattr(module, "__name__", None)
+        and getattr(value, "__adcp_schema__", None) is not None
+        and value.__adcp_schema__.pointer == "#"
+    ]
+    assert len(roots) == 1, (module, [root.__name__ for root in roots])
+    return roots[0]
 
 
 BRANCHES = _response_branches()
@@ -125,16 +145,18 @@ def test_the_derived_sets_are_not_empty() -> None:
 def test_each_branch_states_the_oneof_entry_it_compiles() -> None:
     """What makes the derivation above a reading of the documents.
 
-    A subclass of the response base is a branch because its ``__adcp_schema__``
-    points at an entry of the document's own union, and the base points at the
-    document root. Without this the set would be "whatever subclasses the
-    module happens to declare", which is a name pattern wearing a class graph.
+    A subclass of the response root is a branch because its ``__adcp_schema__``
+    points at an entry of the document's own union. Without this the set would
+    be "whatever subclasses the module happens to declare", which is a name
+    pattern wearing a class graph. A pointer of ``#`` is the exemption and the
+    only one: a document that states no union contributes its root as its only
+    branch.
     """
     unpointed = [
-        f"{tool}:{name}"
+        f"{tool}:{name} -> {branch.__adcp_schema__.pointer}"
         for tool, name, branch in BRANCHES
-        if "/oneOf/" not in typing.cast("str", branch.__adcp_schema__.pointer)
-        and branch.__name__ != f"{tool}Response"
+        if typing.cast("str", branch.__adcp_schema__.pointer) != "#"
+        and "/oneOf/" not in typing.cast("str", branch.__adcp_schema__.pointer)
     ]
     assert unpointed == [], unpointed
 
