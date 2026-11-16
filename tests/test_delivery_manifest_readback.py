@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 
 import pytest
+from adcp.types.domains.core.creative_manifest import (
+    CreativeManifest as WireCreativeManifest,
+)
+from adcp.types.domains.core.creative_variant import (
+    CreativeVariant as WireCreativeVariant,
+)
 from pydantic import ValidationError
 
-import adcp.types as public_types
 from adcp.protocols.mcp import MCPAdapter
 from adcp.types import (
     CanonicalFormatKind,
@@ -18,19 +24,29 @@ from adcp.types import (
     LegacyGetCreativeDeliveryResponse,
 )
 from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus
-from adcp.types.domains.core.creative_manifest import (
-    CreativeManifest as WireCreativeManifest,
-)
-from adcp.types.domains.core.creative_variant import (
-    CreativeVariant as WireCreativeVariant,
-)
 
-FUTURE_KIND = "future_canonical_format"
+#: A kind the DOCUMENT ADMITS -- same correction as tests/test_manifest_response_readback.py.
+#:
+#: This was `"future_canonical_format"`, which `core/canonical-format-kind.json` refuses:
+#: that document is a closed `enum` of 16 members and carries nothing that opens the
+#: vocabulary.  rebuild-plan.md §6 decided it -- *"the document's accepted set is the
+#: closed `enum` beside them and a closed `StrEnum` is faithful to it"* -- and accepting an
+#: unknown member would FAIL our own grading, which draws "outside the enum" as a
+#: counterexample and requires refusal.  The layer that supplied that behaviour upstream
+#: (`adcp.types._forward_compat`) is deliberately not restored here.
+#:
+#: What this file grades -- that a nested manifest survives readback through the task,
+#: webhook, MCP and A2A boundaries without being rewritten -- does not depend on which
+#: admitted kind rides along.
+OTHER_KIND = "sponsored_placement"
 RESPONSE_MODELS = (GetCreativeDeliveryResponse, LegacyGetCreativeDeliveryResponse)
 
 
 def delivery_payload():
     return {
+        # The envelope's own `status`, required by `core/protocol-envelope.json`, which
+        # this document composes via `allOf`.
+        "status": "completed",
         "currency": "USD",
         "reporting_period": {
             "start": "2026-09-01T00:00:00Z",
@@ -39,7 +55,7 @@ def delivery_payload():
         "creatives": [
             {
                 "creative_id": "creative-1",
-                "format_kind": FUTURE_KIND,
+                "format_kind": OTHER_KIND,
                 "variants": [
                     {
                         "variant_id": "variant-known",
@@ -50,7 +66,7 @@ def delivery_payload():
                         "variant_id": "variant-future",
                         "manifest": {
                             "assets": {},
-                            "format_kind": FUTURE_KIND,
+                            "format_kind": OTHER_KIND,
                             "vendor_annotation": {"notes": ["preserved"]},
                         },
                         "locale_variant_id": "fr-FR",
@@ -64,7 +80,7 @@ def delivery_payload():
 
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
 @pytest.mark.parametrize("json_input", [False, True], ids=["python", "json"])
-def test_delivery_response_round_trips_unknown_nested_manifest(model, json_input):
+def test_delivery_response_round_trips_nested_manifest(model, json_input):
     payload = delivery_payload()
     response = (
         model.model_validate_json(json.dumps(payload))
@@ -72,60 +88,56 @@ def test_delivery_response_round_trips_unknown_nested_manifest(model, json_input
         else model.model_validate(payload)
     )
     creative = response.creatives[0]
-    assert creative.format_kind == FUTURE_KIND
+    assert creative.format_kind == OTHER_KIND
     assert creative.variants[0].manifest.format_kind == CanonicalFormatKind.image
     variant = creative.variants[1]
-    assert variant.manifest.format_kind == FUTURE_KIND
+    assert variant.manifest.format_kind == OTHER_KIND
     assert variant.impressions == 7
     assert variant.locale_variant_id == "fr-FR"
 
     wire = json.loads(response.model_dump_json())
     manifest = wire["creatives"][0]["variants"][1]["manifest"]
-    assert manifest["format_kind"] == FUTURE_KIND
+    assert manifest["format_kind"] == OTHER_KIND
     assert manifest["vendor_annotation"] == {"notes": ["preserved"]}
     reparsed = model.model_validate(wire)
-    assert reparsed.creatives[0].variants[1].manifest.format_kind == FUTURE_KIND
+    assert reparsed.creatives[0].variants[1].manifest.format_kind == OTHER_KIND
 
 
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
 @pytest.mark.parametrize("input_model", [CreativeManifest, WireCreativeManifest])
 @pytest.mark.parametrize("reuse_instance", [False, True], ids=["dump", "instance"])
 def test_delivery_manifest_cannot_bypass_strict_input(model, input_model, reuse_instance):
-    """What a read-back manifest does when handed to an input model.
+    """A read-back manifest round-trips into the input model, as a dump or as an instance.
 
-    #1241 asked that delivery tolerance not weaken creative INPUT validation.
-    That question had an answer while the vocabulary was a type: delivery was
-    tolerant, input was strict, and the two had to stay apart. The
-    open-vocabulary decision removes the premise — ``format_kind`` is ``str``
-    on every model and NO model refuses a value, because a pinned SDK cannot
-    tell a kind invented by a seller from a kind defined after its pin (see
-    :mod:`adcp.types.canonical_creative`). So there is no longer a strict side
-    to weaken, and what this test grades is what remains true:
+    #1241 asked that delivery tolerance not weaken creative INPUT validation.  The
+    premise of the old answer is gone in BOTH of its halves, and measurement is what
+    says so rather than either half's own account of itself:
 
-    * a dump round-trips into either input model and RETAINS the unknown kind;
-    * an instance is accepted or refused by ordinary pydantic class rules, not
-      by anything about the vocabulary — the canonical response nests a
-      subclass of the generated manifest, so the instance revalidates and
-      passes; the legacy response nests a ``_forward_compat`` clone that
-      inherits from nothing, so it is refused as ``model_type``.
+    * `format_kind` is NOT `str`-and-nothing-refuses.  `core/canonical-format-kind.json`
+      is a closed `enum` of 16 members, every model enforces it, and rebuild-plan.md §6
+      decided that a closed `StrEnum` is the faithful reading.  `OTHER_KIND` above
+      records the correction.
+    * there is no clone that "inherits from nothing".  That was
+      `adcp.types._forward_compat`, which this tree deliberately does not restore (see
+      `adcp/types/_restored.py`), so the branch that expected a `model_type` refusal from
+      the legacy route cannot fire -- measured, all four combinations ACCEPT.
 
-    Deciding which kinds to accept is the caller's, through
-    ``adcp.types.is_canonical_format_kind``, and
-    ``tests/test_open_format_kind_vocabulary.py`` grades that.
+    AND THE TWO PARAMETRIZATIONS ARE ONE CASE EACH, TWICE.  Measured,
+    `LegacyGetCreativeDeliveryResponse is GetCreativeDeliveryResponse` and
+    `CreativeManifest is WireCreativeManifest` -- the flat spelling and the domain path
+    name ONE object, which is `aliases.py`'s own rule that an alias is a name and never a
+    second type.  So this grades one surface four times, and the ids promise four.  Left
+    standing rather than collapsed, because whether the `Legacy*` names OUGHT to denote
+    distinct classes is a live surface question (`tests/test_legacy_surface_names_*`), not
+    something to settle by deleting a parameter here.
+
+    Deciding which kinds to accept is the caller's, and
+    `tests/test_open_format_kind_vocabulary.py` grades that.
     """
     response = model.model_validate(delivery_payload())
     manifest = response.creatives[0].variants[1].manifest
     value = manifest if reuse_instance else manifest.model_dump(mode="json")
-
-    if not reuse_instance:
-        assert input_model.model_validate(value).format_kind == FUTURE_KIND
-    elif input_model is CreativeManifest or model is not GetCreativeDeliveryResponse:
-        # Not an instance of the field's class: refused structurally.
-        with pytest.raises(ValidationError) as error:
-            input_model.model_validate(value)
-        assert error.value.errors()[0]["type"] == "model_type"
-    else:
-        assert input_model.model_validate(value).format_kind == FUTURE_KIND
+    assert input_model.model_validate(value).format_kind == OTHER_KIND
     # ``assert not isinstance(manifest, input_model)`` used to stand here and is now
     # false by construction: phase 2 (feat/no-clones-and-arm-names) made every
     # canonical model a real subclass of the generated wire model it refines, so the
@@ -148,10 +160,10 @@ def test_delivery_variant_cannot_bypass_strict_input(model, input_model):
     variant = response.creatives[0].variants[1]
     dumped = variant.model_dump(mode="json")
 
-    assert input_model.model_validate(dumped).manifest.format_kind == FUTURE_KIND
+    assert input_model.model_validate(dumped).manifest.format_kind == OTHER_KIND
 
     if input_model is not CreativeVariant and model is GetCreativeDeliveryResponse:
-        assert input_model.model_validate(variant).manifest.format_kind == FUTURE_KIND
+        assert input_model.model_validate(variant).manifest.format_kind == OTHER_KIND
     else:
         with pytest.raises(ValidationError) as error:
             input_model.model_validate(variant)
@@ -173,13 +185,31 @@ def test_delivery_variants_keep_non_kind_constraints(model):
     )
 
 
+def assert_publicly_addressed(cls):
+    """§4: this class is reachable at its own domain path, which is a supported import.
+
+    **THE DOMAIN PATH AND NOT THE FLAT NAMESPACE.**  The generated domain tree is the ONE
+    public type surface -- no private tree behind it, no re-export tree in front -- so
+    every emitted class has a public address.  The flat `adcp.types` namespace is a weaker
+    claim: it cannot bind every name, because several schemas declare the same word.
+
+    What stood here asserted the OPPOSITE, that these are "delivery-only types" absent
+    from the public surface.  Measured, `CreativeVariant` and `CanonicalFormatManifest` are
+    both in `adcp.types.__all__`; the previous generator's numbered anonymous classes
+    (`Assets162`, `Idempotency3`) were what that claim described.
+    """
+    module = importlib.import_module(
+        cls.__module__.replace("adcp.types._schemas", "adcp.types.domains")
+    )
+    assert getattr(module, cls.__name__, None) is cls
+
+
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
-def test_delivery_only_types_are_not_top_level_exports(model):
+def test_delivery_types_are_addressable_at_their_domain_path(model):
     response = model.model_validate(delivery_payload())
     variant = response.creatives[0].variants[1]
-    for model in (type(variant), type(variant.manifest)):
-        assert model.__name__ not in public_types.__all__
-        assert not hasattr(public_types, model.__name__)
+    for cls in (type(variant), type(variant.manifest)):
+        assert_publicly_addressed(cls)
 
 
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
@@ -195,7 +225,7 @@ def test_adapter_keeps_successful_delivery_result(model, mcp_content):
     result = adapter._parse_response(TaskResult(status=TaskStatus.COMPLETED, data=data), model)
     assert result.success, result.error
     assert result.status is TaskStatus.COMPLETED
-    assert result.data.creatives[0].variants[1].manifest.format_kind == FUTURE_KIND
+    assert result.data.creatives[0].variants[1].manifest.format_kind == OTHER_KIND
 
 
 @pytest.mark.parametrize("model", RESPONSE_MODELS, ids=["canonical", "legacy"])
