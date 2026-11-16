@@ -302,10 +302,9 @@ async def test_public_completed_task_parser_keeps_manifest_readback(case):
 
 
 @pytest.mark.parametrize("case", CASES)
-@pytest.mark.parametrize("input_model", [CreativeManifest, InputManifest])
 @pytest.mark.parametrize("reuse_instance", [False, True], ids=["dump", "instance"])
-def test_manifest_readback_cannot_bypass_input_validation(case, input_model, reuse_instance):
-    """What a read-back manifest does when handed to an input model.
+def test_manifest_readback_is_the_input_model_s_own_branch(case, reuse_instance):
+    """What a read-back manifest does when handed back to the input model.
 
     The vocabulary half of this test is gone with the open-vocabulary decision:
     ``format_kind`` is ``str`` on every model and none of them refuses a value,
@@ -314,23 +313,38 @@ def test_manifest_readback_cannot_bypass_input_validation(case, input_model, reu
     which kinds to accept is the caller's, through
     ``adcp.types.is_canonical_format_kind``.
 
-    What remains, and is graded here, is the STRUCTURAL half, which never
-    depended on the vocabulary: a readback node is an instance of neither
-    input model, so an instance is refused as ``model_type``, while its dump
-    round-trips and retains the kind it was given.
+    **AND THE STRUCTURAL HALF REVERSES.**  What stood here asserted
+    ``not isinstance(manifest, input_model)`` and a ``model_type`` refusal of the
+    instance -- true of the FLAT emission, where a readback node was an unrelated
+    class.  `CLAUDE.md` records the decision this one makes: ``core/creative-
+    manifest.json#`` emits ``CreativeManifest`` as the base with
+    ``NamedFormatManifest`` / ``CanonicalFormatManifest`` as its branches, and
+    *"``isinstance`` holds against the parent"*.  Measured, the readback node's
+    mro is ``CanonicalFormatManifest -> CreativeManifest -> …``, so refusing it
+    would be refusing the document's own branch.
+
+    So both halves of the handoff are graded here: the instance is accepted,
+    unchanged and still its branch, and the dump validates back into the same
+    branch with the kind it was given.
+
+    The two spellings of the input model are ONE object -- ``adcp.types``'s flat
+    name and the domain path are the same class, asserted below -- so the model
+    is no longer parametrized over them.
     """
+    assert CreativeManifest is InputManifest
+
     model, payload = response_case(case)
     manifest = read_manifest(model.model_validate(payload), case)
+    assert isinstance(manifest, CreativeManifest)
+
     value = manifest if reuse_instance else manifest.model_dump(mode="json")
+    readback = CreativeManifest.model_validate(value)
 
+    assert type(readback) is type(manifest)
+    assert readback.format_kind == OTHER_KIND
     if reuse_instance:
-        with pytest.raises(ValidationError) as error:
-            input_model.model_validate(value)
-        assert error.value.errors()[0]["type"] == "model_type"
-    else:
-        assert input_model.model_validate(value).format_kind == OTHER_KIND
-
-    assert not isinstance(manifest, input_model)
+        # An instance of a branch is not revalidated into a copy.
+        assert readback is manifest
 
 
 @pytest.mark.parametrize("case", ["build-variants", "context-match", "provider-context-match"])
