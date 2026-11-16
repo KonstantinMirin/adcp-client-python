@@ -494,8 +494,23 @@ def _make_request(*, with_url: bool = True, idem_suffix: str = "x") -> CreateMed
         "idempotency_key": f"idem_aaaa12345678{idem_suffix}",
         "start_time": "2026-05-01T00:00:00Z",
         "end_time": "2026-05-31T23:59:59Z",
-        # create-media-buy-request.json requires packages, a budget, or a proposal.
-        "packages": [{"buyer_ref": "pkg_1", "product_id": "prod_1", "pricing_option_id": "cpm"}],
+        # `media-buy/create-media-buy-request.json` offers three COMPLETE allocation
+        # modes and this must satisfy one of them, not merely carry `packages`:
+        #   anyOf[0] ExplicitPackagesWithFixedAllocation          packages[].budget
+        #   anyOf[1] ExplicitPackagesWithSellerOptimizedAllocation total_budget +
+        #                                                          budget_allocation
+        #   anyOf[2] CommittedProposalExecution                   proposal_id +
+        #                                                          total_budget
+        # This is mode 0, so the package carries its own `budget`; without it the payload
+        # satisfies none and the union reports a missing field from each in turn.
+        "packages": [
+            {
+                "buyer_ref": "pkg_1",
+                "product_id": "prod_1",
+                "pricing_option_id": "cpm",
+                "budget": 1000,
+            }
+        ],
     }
     if with_url:
         payload["push_notification_config"] = {
@@ -519,11 +534,23 @@ class _SyncSuccessPlatform(DecisioningPlatform):
             confirmed_at="2026-05-01T00:00:00Z",
             revision=1,
             packages=[],
-            status="active",
+            # TWO different statuses, and this conflated them.  `status` is the task
+            # envelope's (`TaskStatus`: submitted, working, completed, ...), required by
+            # `core/protocol-envelope.json`; `media_buy_status` is the media buy's own
+            # lifecycle (`MediaBuyStatus`: pending_creatives, pending_start, active,
+            # paused, ...).  "active" is only a member of the second.
+            status="completed",
+            media_buy_status="active",
         )
 
     def update_media_buy(self, media_buy_id, patch, ctx):
-        return {"media_buy_id": media_buy_id, "revision": 2, "status": "active"}
+        # As above: the envelope's task status, with the media buy's own beside it.
+        return {
+            "media_buy_id": media_buy_id,
+            "revision": 2,
+            "status": "completed",
+            "media_buy_status": "active",
+        }
 
     def sync_creatives(self, req, ctx):
         return {"creatives": []}
@@ -552,7 +579,13 @@ class _HandoffPlatform(DecisioningPlatform):
         return ctx.handoff_to_task(_review)
 
     def update_media_buy(self, media_buy_id, patch, ctx):
-        return {"media_buy_id": media_buy_id, "revision": 2, "status": "active"}
+        # As above: the envelope's task status, with the media buy's own beside it.
+        return {
+            "media_buy_id": media_buy_id,
+            "revision": 2,
+            "status": "completed",
+            "media_buy_status": "active",
+        }
 
     def sync_creatives(self, req, ctx):
         return {"creatives": []}
