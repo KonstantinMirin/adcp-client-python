@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 
 import pytest
@@ -18,7 +19,6 @@ from adcp.types.domains.trusted_match.provider_context_match_response import (
 )
 from pydantic import TypeAdapter, ValidationError
 
-import adcp.types as public_types
 from adcp import ADCPClient
 from adcp.protocols.mcp import MCPAdapter
 from adcp.types import (
@@ -58,6 +58,27 @@ from adcp.types.core import AgentConfig, Protocol, TaskResult, TaskStatus
 OTHER_KIND = "sponsored_placement"
 TASK_CASES = ("preview", "build-single", "build-multi", "build-variants")
 CASES = (*TASK_CASES, "context-match", "provider-context-match")
+
+
+def assert_publicly_addressed(cls):
+    """§4: this class is reachable at its own domain path, which is a supported import.
+
+    **THE DOMAIN PATH AND NOT THE FLAT NAMESPACE.**  The generated domain tree is the ONE
+    public type surface -- no private tree behind it, no re-export tree in front -- so every
+    emitted class has a public address.  The FLAT `adcp.types` namespace is a different
+    claim and a weaker one: it cannot bind every name, because several schemas declare the
+    same word, so `CreativesItem` is absent from `adcp.types.__all__` while being perfectly
+    public at `adcp.types.domains.creative.list_creatives_response`.  Measured, that is
+    exactly the case for this one.
+
+    What stood here asserted the OPPOSITE -- that the class is not public at all -- which
+    was true of the previous generator's numbered anonymous classes (`Assets162`,
+    `Idempotency3`) and is not true of anything this tree emits.
+    """
+    module = importlib.import_module(
+        cls.__module__.replace("adcp.types._schemas", "adcp.types.domains")
+    )
+    assert getattr(module, cls.__name__, None) is cls
 
 
 def _response_case(case, kind=OTHER_KIND):
@@ -113,6 +134,10 @@ def _response_case(case, kind=OTHER_KIND):
             ContextMatchResponse if case == "context-match" else ContextMatchResponseProviderRouter
         )
         return model, {
+            # `type` is a required `Literal["context_match_response"]` on both routes --
+            # the document pins it with a `const`, so it is not inferable and not
+            # defaultable.
+            "type": "context_match_response",
             "request_id": "request-1",
             "offers": [{"package_id": "package-1", "creative_manifest": manifest}],
         }
@@ -180,16 +205,7 @@ def test_manifest_response_round_trip(case, kind, json_input):
     assert model.model_validate_json(response.model_dump_json()).model_dump(mode="json") == (
         response.model_dump(mode="json")
     )
-    # **EVERY EMITTED CLASS HAS A PUBLIC ADDRESS**, which is the reverse of what stood
-    # here.  §4 makes the generated domain tree the ONE public type surface -- there is no
-    # private tree behind it and no re-export tree in front of it -- so a node's class is
-    # named and exported rather than anonymous.  The previous generator produced numbered
-    # anonymous classes (`Assets162`, `Idempotency3`) that adopters were not meant to name,
-    # and these two lines asserted that.  `CanonicalFormatManifest` is a decided public
-    # branch of `CreativeManifest`, measured: both branches and the parent are in
-    # `adcp.types.__all__` and `isinstance` holds against the parent.
-    assert type(manifest).__name__ in public_types.__all__
-    assert hasattr(public_types, type(manifest).__name__)
+    assert_publicly_addressed(type(manifest))
 
 
 @pytest.mark.parametrize("case", CASES)
@@ -326,16 +342,7 @@ def test_nested_readback_accepts_known_source_models(case):
     response = model.model_validate(payload)
     assert read_manifest(response, case).format_kind == CanonicalFormatKind.image
     node = getattr(response, collection)[0]
-    # **EVERY EMITTED CLASS HAS A PUBLIC ADDRESS**, which is the reverse of what stood
-    # here.  §4 makes the generated domain tree the ONE public type surface -- there is no
-    # private tree behind it and no re-export tree in front of it -- so a node's class is
-    # named and exported rather than anonymous.  The previous generator produced numbered
-    # anonymous classes (`Assets162`, `Idempotency3`) that adopters were not meant to name,
-    # and these two lines asserted that.  `CanonicalFormatManifest` is a decided public
-    # branch of `CreativeManifest`, measured: both branches and the parent are in
-    # `adcp.types.__all__` and `isinstance` holds against the parent.
-    assert type(node).__name__ in public_types.__all__
-    assert hasattr(public_types, type(node).__name__)
+    assert_publicly_addressed(type(node))
 
 
 def test_nested_build_readback_preserves_envelopes_and_constraints():
@@ -345,9 +352,7 @@ def test_nested_build_readback_preserves_envelopes_and_constraints():
     variant = creative.variants[0]
     for node in (creative, variant):
         assert isinstance(node, AdcpVersionEnvelope)
-        # As above: §4's one public surface means the class is named, not anonymous.
-        assert type(node).__name__ in public_types.__all__
-        assert hasattr(public_types, type(node).__name__)
+        assert_publicly_addressed(type(node))
 
     payload["creatives"][0]["variants"][0]["rank"] = 0
     with pytest.raises(ValidationError) as invalid_rank:
