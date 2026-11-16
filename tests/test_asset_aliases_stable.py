@@ -1,18 +1,22 @@
 """Stability contract for creative-format asset aliases.
 
-`adcp.types.aliases` pins semantic names onto ``AssetsNN`` generated classes
-so downstream consumers never import the numbered form. datamodel-codegen
-renumbers these whenever the upstream ``$defs`` ordering shifts, which
-silently breaks consumers that pinned to ``Assets5`` or ``Assets14``.
+A semantic name — ``ImageFormatAsset``, ``RepeatableAssetGroup`` — is a public
+word for one branch of ``core/format.json``'s ``assets`` union, and the branch
+it lands on is what a consumer's ``isinstance`` and payloads depend on. The
+compiler names the branches from the document (``IndividualImageAsset``,
+``RepeatableGroupAsset``, §4 Names), and ``src/adcp/types/legacy_names.py``
+binds upstream's published words — including the numbered ``Assets``/``Assets29``
+spellings upstream shipped — to those same classes. A name is never a second
+type: every spelling here is a re-export of one class.
 
-These tests assert each semantic alias still resolves to a class whose
-``asset_type`` (or ``item_type`` for the group container) discriminator
-default matches the expected literal. If a test here fails after a schema
-regeneration, the generator renumbered something and the corresponding
-alias in ``src/adcp/types/aliases.py`` needs its numbered import updated.
+These tests assert each semantic name still resolves to the branch whose
+``asset_type`` (and, for an individual asset, ``item_type``) discriminator says
+what the name says. If one fails, a public word has moved to another branch —
+the one failure mode no amount of naming stability prevents — and the binding
+in ``legacy_names.py`` is what has to be put back on the branch its word means.
 
-The contract is intentionally loud: add/remove aliases here in lockstep
-with ``aliases.py`` so the public API remains stable across generator runs.
+The contract is intentionally loud: add and remove names here in lockstep with
+that module, so the public surface stays answerable across compiler runs.
 """
 
 from __future__ import annotations
@@ -60,12 +64,12 @@ def _literal_value(cls, field_name: str) -> str | None:
     """Return the single literal value on a Pydantic discriminator field.
 
     Parses the field's ``annotation`` (the ``Literal[...]`` type) rather
-    than reading ``FieldInfo.default`` — several generated discriminator
+    than reading ``FieldInfo.default`` — several compiled discriminator
     fields declare the literal as the annotation without also setting a
     default, which would make ``FieldInfo.default`` return
     ``PydanticUndefined`` and any equality comparison vacuously pass.
-    Reading the annotation catches renumbering even when defaults aren't
-    populated on the field.
+    Reading the annotation catches a word that has moved to another branch
+    even when defaults aren't populated on the field.
     """
     from typing import get_args, get_origin
 
@@ -94,9 +98,10 @@ def test_individual_asset_alias_resolves_to_expected_discriminator(
     asset_type = _literal_value(cls, "asset_type")
     assert asset_type == expected_asset_type, (
         f"{alias_name} resolved to class with asset_type={asset_type!r}; "
-        f"expected {expected_asset_type!r}. The generator likely renumbered "
-        "AssetsNN — update the numbered import in src/adcp/types/aliases.py "
-        "to point at the class matching this asset_type."
+        f"expected {expected_asset_type!r}. The public word has landed on "
+        "another branch of core/format.json — put the binding in "
+        "src/adcp/types/legacy_names.py back on the class matching this "
+        "asset_type."
     )
     item_type = _literal_value(cls, "item_type")
     assert item_type == "individual", (
@@ -115,9 +120,10 @@ def test_group_asset_alias_resolves_to_expected_discriminator(
     asset_type = _literal_value(cls, "asset_type")
     assert asset_type == expected_asset_type, (
         f"{alias_name} resolved to class with asset_type={asset_type!r}; "
-        f"expected {expected_asset_type!r}. The generator likely renumbered "
-        "AssetsNN — update the numbered import in src/adcp/types/aliases.py "
-        "to point at the class matching this asset_type."
+        f"expected {expected_asset_type!r}. The public word has landed on "
+        "another branch of core/format.json — put the binding in "
+        "src/adcp/types/legacy_names.py back on the class matching this "
+        "asset_type."
     )
 
 
