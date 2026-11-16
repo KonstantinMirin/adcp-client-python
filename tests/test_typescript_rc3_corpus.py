@@ -49,13 +49,20 @@ _CORPUS_SHA256 = {
 
 
 def _legacy_identity_paths(value: Any, path: str = "$") -> list[str]:
+    """Every path at which a v1 format IDENTITY was synthesized onto the wire.
+
+    `v1_format_ref` is not one: `core/product-format-declaration.json` states it
+    as the seller's own authoritative v2 -> v1 link, so a declaration that carries
+    it keeps it -- suppressing a stated property would make the class narrower
+    than its document. What must never appear is a `format_id`/`format_ids` the
+    fixture did not author, because `kind -> id` is not derivable
+    (`registries/v1-canonical-mapping.json`, "Direction of truth (normative)").
+    """
     found: list[str] = []
     if isinstance(value, dict):
         for key, item in value.items():
             child = f"{path}.{key}"
-            if key in {"format_id", "format_ids", "v1_format_ref"}:
-                found.append(child)
-            if key == "agent_url":
+            if key in {"format_id", "format_ids"}:
                 found.append(child)
             found.extend(_legacy_identity_paths(item, child))
     elif isinstance(value, list):
@@ -89,18 +96,22 @@ def test_every_rc3_canonical_product_crosses_the_primary_boundary() -> None:
         raw = json.loads(path.read_text(encoding="utf-8"))
         assert raw["format_options"], path.name
         # Consume every exact RC3 declaration, including its v1_format_ref.
-        # Format stores that route in private compatibility state; passing the
-        # resulting models into Product proves the unmodified fixture can cross
-        # the canonical boundary without exposing the route on the wire.
+        # The document states that property, so Format carries it as a field and
+        # passing the resulting models into Product proves the unmodified fixture
+        # crosses the canonical boundary with the seller's link intact and nothing
+        # added.
         declarations = [Format.model_validate(option) for option in raw["format_options"]]
         product = Product.model_validate({**raw, "format_options": declarations})
         for source, declaration in zip(raw["format_options"], declarations, strict=True):
             assert [
                 ref.model_dump(mode="json", exclude_none=True)
-                for ref in declaration.legacy_format_refs
+                for ref in declaration.v1_format_ref or []
             ] == source.get("v1_format_ref", [])
         dumped = product.model_dump(mode="json")
         assert not _legacy_identity_paths(dumped), path.name
+        assert [
+            option.get("v1_format_ref") for option in dumped["format_options"]
+        ] == [option.get("v1_format_ref") for option in raw["format_options"]], path.name
 
 
 def test_rc3_catalog_and_community_snapshots_are_complete() -> None:

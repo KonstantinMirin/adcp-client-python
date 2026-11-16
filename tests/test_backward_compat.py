@@ -7,6 +7,8 @@ old names must not get ImportError or silently wrong types.
 
 from __future__ import annotations
 
+import pytest
+
 
 class TestPricingTypeRenames:
     """Upstream merged auction/fixed variants into single types."""
@@ -85,22 +87,38 @@ class TestPreviewAliasRenames:
 
 
 class TestStatusTypeBackwardCompat:
-    """Status must resolve to delivery status, not invoice status."""
+    """`Status` is DECLINED as a flat word; the delivery statuses keep their path."""
 
-    def test_status_is_delivery_status(self):
-        """Status from adcp.types should be the media buy delivery status."""
-        from adcp.types import MediaBuyDeliveryStatus, Status
+    def test_the_bare_word_status_is_declined_and_says_so(self):
+        """Three documents state a `Status`, so the flat namespace binds none of them.
 
-        assert Status is MediaBuyDeliveryStatus
+        `adcp.types._surface._flat` states the rule in its own docstring: "A word
+        more than one domain publishes is DECLINED rather than resolved to a
+        winner ... picking one would hand a consumer a class whose document they
+        did not name." The decline is recorded with its candidates, so the answer
+        to `from adcp.types import Status` is the candidate list and not a guess.
 
-    def test_status_has_delivery_values(self):
-        """Status should accept delivery status enum values."""
-        from adcp.types import Status
+        What stood here asserted `Status is MediaBuyDeliveryStatus` -- the
+        previous generator's resolution of exactly this collision.
+        """
+        import adcp.types._surface._flat as flat
 
-        # Media buy delivery status values
+        assert flat.__adcp_alias_declined__["Status"] == (
+            "governance.sync_plans_response.PlansItemStatus",
+            "media_buy.get_products_response.RefinementAppliedItemRequestStatus",
+            "sponsored_intelligence.si_sponsored_context_receipt.HostReceiptStatus",
+        )
+        with pytest.raises(ImportError):
+            from adcp.types import Status  # noqa: F401
+
+    def test_the_delivery_status_enum_accepts_its_delivery_values(self):
+        """The subject the old flat word meant, reached at its own domain path."""
+        from adcp.types.media_buy import (
+            MediaBuyDeliveryWebhookResultMediaBuyDeliveriesItemStatus as DeliveryStatus,
+        )
+
         for value in ["pending", "active", "paused", "completed", "failed"]:
-            status = Status(value)
-            assert status.value == value
+            assert DeliveryStatus(value).value == value
 
 
 class TestCatalogGroupBinding:
@@ -126,20 +144,35 @@ class TestCatalogGroupBinding:
 class TestBrandIdentity:
     """Private generated Brand imports have a collision-safe public target."""
 
-    def test_brand_identity_is_public_everywhere(self):
+    def test_brand_identity_is_one_object_at_its_one_domain_path(self):
+        """`brand.json#/definitions/brand` has ONE public path, and two alias words.
+
+        §1: "There is one import path per class, and never a second way to reach
+        the same class. ... The one path is the domain surface's." That path is
+        `adcp.types.brand.BrandDiscoveryBrand`. `BrandIdentity` is reading 10's
+        alias word for it and resolves at the flat compatibility namespace only;
+        `adcp.types.buyer` publishes no such name, because the class's declaring
+        position is not in that domain.
+        """
         from adcp import BrandIdentity as RootBrandIdentity
         from adcp.types import BrandIdentity
-        from adcp.types.buyer import BrandIdentity as BuyerBrandIdentity
-        from adcp.types.domains.brand_discovery import Brand
+        from adcp.types.brand import BrandDiscoveryBrand
+        from adcp.types.domains.brand import Brand
 
-        assert RootBrandIdentity is BrandIdentity is BuyerBrandIdentity is Brand
+        assert RootBrandIdentity is BrandIdentity is BrandDiscoveryBrand is Brand
+
+        import adcp.types.buyer as buyer
+
+        assert not hasattr(buyer, "BrandIdentity")
 
     def test_brand_identity_preserves_brand_json_shape(self):
         from adcp.types import BrandIdentity
 
         brand = BrandIdentity(id="acme", names=[{"en": "Acme"}])
-        assert brand.id.root == "acme"
-        assert brand.names[0].root == {"en": "Acme"}
+        # A scalar root and a mapping root are their own Python values here --
+        # §4 compiles both to an alias, so neither carries a `.root` wrapper.
+        assert brand.id == "acme"
+        assert brand.names[0] == {"en": "Acme"}
         assert len(BrandIdentity.model_fields) == 29
 
     def test_brand_identity_field_contract_and_collision_separation(self):

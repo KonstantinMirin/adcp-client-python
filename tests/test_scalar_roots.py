@@ -8,10 +8,13 @@ A schema like ``core/property-tag.json`` — ``{"type": "string", "pattern":
 eight months (#138, #145, #155, #1077, #1086, #1087) were each fixed by
 patching individual instances, and the construct came back somewhere else.
 
-``post_generate_fixes.rewrite_scalar_rootmodels`` now rewrites every scalar
-root to a ``str``/``int``/``float`` subclass. These tests hold both halves of
-that line: scalar roots are their Python scalar, and roots that *compose* keep
-their ``RootModel``, which is correct for those.
+This emission answers that at the source rather than by rewriting afterwards:
+``rebuild-plan.md`` §4 compiles *a scalar at a root* to **a module-level
+annotated alias, not a class**, so ``PropertyTag`` IS ``Annotated[str, ...]``
+and a validated value is a plain ``str``. These tests hold both halves of that
+line: a scalar root is its Python scalar everywhere Python looks at one, and
+the document's constraints are still enforced -- at a field, and at the alias
+module's own ``strict_validate``.
 
 See: https://github.com/adcontextprotocol/adcp-client-python/issues/1277
 """
@@ -20,7 +23,6 @@ from __future__ import annotations
 
 import ast
 import json
-import warnings
 from pathlib import Path
 
 import pytest
@@ -79,20 +81,6 @@ def test_no_scalar_rootmodels_remain_in_generated_tree() -> None:
         "their own Python scalar. Teach scripts/post_generate_fixes.py's "
         f"_scalar_root_spec() to handle their shape: {offenders}"
     )
-
-
-def test_plain_scalar_normalizes_only_scalar_roots() -> None:
-    """``plain_scalar`` is the seam for code that must not leak the subclass."""
-    from adcp import PropertyTag
-    from adcp.types import ViewThreshold
-    from adcp.types._scalar import plain_scalar
-
-    assert type(plain_scalar(PropertyTag("sports"))) is str
-    assert plain_scalar(PropertyTag("sports")) == "sports"
-    assert type(plain_scalar(ViewThreshold(0.5))) is float
-
-    for untouched in ("sports", 3, 0.5, True, None, ["a"], {"a": 1}):
-        assert plain_scalar(untouched) is untouched
 
 
 # ---------------------------------------------------------------------------
@@ -159,21 +147,30 @@ def test_geo_include_exclude_overlap_is_detectable() -> None:
     assert overlap == {"US"}
 
 
-def test_scalar_int_and_float_roots_are_their_numbers() -> None:
-    """Numeric roots arithmetic- and compare-equal to plain numbers."""
-    from adcp.types import ViewThreshold
-    from adcp.types import _generated as gen
+def test_numeric_scalars_arrive_as_their_numbers_on_a_field() -> None:
+    """A constrained numeric alias puts a plain ``float``/``int`` on the instance.
 
-    threshold = ViewThreshold(0.5)
-    assert isinstance(threshold, float)
+    ``pricing-options/cpv-option.json``'s ``view_threshold`` is a two-branch
+    ``oneOf`` whose number branch is ``{"type": "number", "minimum": 0,
+    "maximum": 1}``; §4 names that constraint in words and the surface binds it
+    as ``adcp.types.constraints.FloatMin0Max1``. Nothing wraps the value, so
+    arithmetic and comparison against a plain number work.
+
+    What stood here built ``ViewThreshold(0.5)`` and ``gen.MajorVersion(3)``, the
+    ``ScalarFloat``/``ScalarInt`` subclasses ``post_generate_fixes`` emitted;
+    neither name nor that script exists in this emission.
+    """
+    from adcp.types._schemas.pricing_options.cpv_option import Parameters
+
+    threshold = Parameters(view_threshold=0.5).view_threshold
+    assert type(threshold) is float
     assert threshold == 0.5
     assert threshold * 2 == 1.0
 
-    version = gen.MajorVersion(3)
-    assert isinstance(version, int)
-    assert version == 3
-    assert version + 1 == 4
-    assert {version} & {3} == {3}
+    seconds = Parameters(view_threshold={"duration_seconds": 3}).view_threshold.duration_seconds
+    assert type(seconds) is int
+    assert seconds + 1 == 4
+    assert {seconds} & {3} == {3}
 
 
 # ---------------------------------------------------------------------------
@@ -217,17 +214,23 @@ def test_the_alias_s_two_validating_sites_enforce_the_pattern_and_the_type() -> 
     assert strict_validate("sports") == "sports"
 
 
-def test_construction_enforces_numeric_bounds() -> None:
-    """``ge``/``le`` from the schema still reject out-of-range numbers."""
-    from adcp.types import ViewThreshold
-    from adcp.types import _generated as gen
+def test_the_field_enforces_the_numeric_bounds() -> None:
+    """``minimum``/``maximum`` still reject out-of-range numbers, at the FIELD.
+
+    Same reading as the test above it: a constrained scalar is an alias, so
+    there is no constructor to refuse at and the refusal is the field's. Both
+    bounds the document states are graded, and the sibling object branch is what
+    the second error of each pair reports.
+    """
+    from adcp.types._schemas.pricing_options.cpv_option import Parameters
+
+    for out_of_range, keyword in ((1.5, "less_than_equal"), (-0.1, "greater_than_equal")):
+        with pytest.raises(ValidationError) as raised:
+            Parameters(view_threshold=out_of_range)
+        assert [error["type"] for error in raised.value.errors()] == [keyword, "model_type"]
 
     with pytest.raises(ValidationError):
-        ViewThreshold(1.5)
-    with pytest.raises(ValidationError):
-        ViewThreshold(-0.1)
-    with pytest.raises(ValidationError):
-        gen.MajorVersion(0)
+        Parameters(view_threshold={"duration_seconds": 0})
 
 
 
@@ -247,7 +250,9 @@ def test_model_field_validates_coerces_and_round_trips() -> None:
 
     holder = Holder.model_validate({"tag": "sports", "tags": ["news", "ctv"]})
 
-    assert isinstance(holder.tag, PropertyTag)
+    # `PropertyTag` is an alias, so it is not a second type to be an instance of:
+    # the validated value is the document's own `type: string`.
+    assert type(holder.tag) is str
     assert holder.tag == "sports"
     assert holder.tags == ["news", "ctv"]
 
@@ -283,7 +288,19 @@ def test_model_field_preserves_instance_identity() -> None:
 
 
 def test_json_schema_matches_the_source_schema() -> None:
-    """The emitted JSON Schema still carries the schema's own keywords."""
+    """The emitted JSON Schema carries the schema's own keywords, less two.
+
+    `rebuild-plan.md` §5's keyword grid states where `title` and `examples` go,
+    and it is neither of them:
+
+    * `title` -- "ROOT -> the symbol. ... Never rendered." The document's
+      "Property Tag" IS the name `PropertyTag`, so re-rendering it as a keyword
+      would be the same fact twice.
+    * `examples` -- "Nothing on the model. The accepts check replays every one,
+      at every position", which is where they are graded.
+
+    What stood here asserted both keywords back onto the emitted schema.
+    """
     from adcp import PropertyTag
 
     source = json.loads((_SCHEMA_DIR / "core" / "property-tag.json").read_text())
@@ -292,52 +309,22 @@ def test_json_schema_matches_the_source_schema() -> None:
     assert generated == {
         "type": "string",
         "pattern": source["pattern"],
-        "title": source["title"],
         "description": source["description"],
-        "examples": source["examples"],
     }
+    assert source["title"] == "Property Tag"  # -> the symbol `PropertyTag`
+    assert source["examples"]  # replayed by the accepts check, not rendered here
 
 
 # ---------------------------------------------------------------------------
-# Backwards compatibility for the RootModel call sites
+# The RootModel call sites have no shim to grade
+#
+# ``PropertyTag(root=...)``, ``instance.root`` and the "not both" conflict were
+# the three compatibility shims ``ScalarStr`` carried for code written against
+# the ``RootModel`` wrapper. A scalar root is an alias in this emission --
+# ``PropertyTag`` IS ``Annotated[str, ...]`` -- so there is no class on which a
+# shim could live and no deprecation for one to raise. The three tests that
+# stood here graded that class and are removed rather than adapted.
 # ---------------------------------------------------------------------------
-
-
-def test_root_keyword_still_constructs_and_warns() -> None:
-    """``PropertyTag(root=...)`` keeps working behind a DeprecationWarning."""
-    from adcp import PropertyTag
-
-    with pytest.warns(DeprecationWarning, match=r"PropertyTag\(root=\.\.\.\) is deprecated"):
-        tag = PropertyTag(root="sports")
-
-    assert tag == "sports"
-    assert isinstance(tag, PropertyTag)
-
-    with pytest.raises(ValidationError):
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            PropertyTag(root="Invalid-Tag")
-
-
-def test_root_attribute_still_reads_and_warns() -> None:
-    """``instance.root`` keeps working and yields the plain scalar."""
-    from adcp import PropertyTag
-
-    tag = PropertyTag("sports")
-
-    with pytest.warns(DeprecationWarning, match=r"PropertyTag\.root is deprecated"):
-        value = tag.root
-
-    assert value == "sports"
-    assert type(value) is str
-
-
-def test_positional_value_and_root_keyword_conflict() -> None:
-    """Supplying both forms is a mistake worth naming."""
-    from adcp import PropertyTag
-
-    with pytest.raises(TypeError, match="not both"):
-        PropertyTag("sports", root="news")
 
 
 # ---------------------------------------------------------------------------
