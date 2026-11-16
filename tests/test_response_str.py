@@ -6,11 +6,10 @@ suitable for MCP tool results, A2A task communications, and REST API responses.
 
 from __future__ import annotations
 
+from adcp.types import BuildCreativeError, BuildCreativeSuccess
 from adcp.types._generated import (
     ActivateSignalResponse1,
     ActivateSignalResponse2,
-    BuildCreativeResponse1,
-    BuildCreativeResponse2,
     CreateMediaBuyResponse1,
     CreateMediaBuyResponse2,
     GetMediaBuyDeliveryResponse,
@@ -255,14 +254,19 @@ class TestBuildCreativeResponseMessage:
 
     def test_success(self):
         """Success message is simple confirmation."""
-        response = BuildCreativeResponse1.model_construct(
+        response = BuildCreativeSuccess.model_construct(
             assets=[{"url": "https://example.com/asset"}]
         )
         assert response.model_summary() == "Creative built successfully."
 
     def test_error(self):
         """Error message includes error count."""
-        response = BuildCreativeResponse2.model_construct(
+        # Named for the branch, not for its index. ``BuildCreativeResponse2``
+        # is NOT this class: ``adcp.types.BuildCreativeResponse2`` resolves to
+        # ``BuildCreativeMultiSuccess`` while ``LegacyBuildCreativeResponse2``
+        # resolves here, the two compat tables disagreeing at 2, 3 and 5 (see
+        # FINDINGS-rest.md). The branch's own name is unambiguous.
+        response = BuildCreativeError.model_construct(
             errors=[{"code": "build_failed", "message": "Failed"}]
         )
         assert response.model_summary() == "Creative build failed with 1 error."

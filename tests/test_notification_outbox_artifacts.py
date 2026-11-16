@@ -39,7 +39,10 @@ def installation(tmp_path_factory: pytest.TempPathFactory) -> tuple[Path, Path]:
     with zipfile.ZipFile(wheel) as archive:
         assert "adcp/notification_outbox.sql" in archive.namelist()
         assert "adcp/py.typed" in archive.namelist()
-        assert "adcp/types/v32.pyi" in archive.namelist()
+        # The version-pinned typing surface ships as a real module, not a stub:
+        # this emission writes ``adcp/types/v32.py`` and there is no ``.pyi``
+        # beside it.
+        assert "adcp/types/v32.py" in archive.namelist()
     uv = shutil.which("uv")
     assert uv is not None, "uv is required for isolated artifact installation"
     venv = directory / "installed"

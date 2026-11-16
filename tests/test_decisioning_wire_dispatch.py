@@ -201,8 +201,17 @@ async def test_wire_dispatch_non_sales_tool_does_not_crash(executor) -> None:
 
     handler._platform.build_creative_legacy = _capture  # type: ignore[method-assign]
 
+    # ``target_format_id`` is what makes this a document-valid build: the
+    # request states a ``oneOf`` over presence clauses and every one of them
+    # names a target (``refine_from_build_variant_id``, ``target_capability_id``,
+    # ``target_capability_ids``, ``target_format_id``, ``target_format_ids``),
+    # so a brief alone is refused before the dispatcher is reached.
     result = await caller(
-        {"brief": "synthesize a 30s spot", "idempotency_key": "emma-test-build-creative-001"}
+        {
+            "brief": "synthesize a 30s spot",
+            "target_format_id": {"agent_url": "https://creative.example", "id": "video_30s"},
+            "idempotency_key": "emma-test-build-creative-001",
+        }
     )
     assert "creative_manifest" in result
     # Same regression guard as get_products — the platform must see a
