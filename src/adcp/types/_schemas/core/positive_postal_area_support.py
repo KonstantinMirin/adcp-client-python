@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from adcp.types._base import OmittedNotNull, SchemaRef
 from adcp.types._runtime import PropertyCount, Rule
@@ -22,17 +22,17 @@ class PositivePostalAreaSupport(PostalAreaSupport):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         PropertyCount(minimum=1, maximum=None),
     )
-    us_zip: Annotated[Literal[True] | None, OmittedNotNull] = None
-    us_zip_plus_four: Annotated[Literal[True] | None, OmittedNotNull] = None
-    gb_outward: Annotated[Literal[True] | None, OmittedNotNull] = None
-    gb_full: Annotated[Literal[True] | None, OmittedNotNull] = None
-    ca_fsa: Annotated[Literal[True] | None, OmittedNotNull] = None
-    ca_full: Annotated[Literal[True] | None, OmittedNotNull] = None
-    de_plz: Annotated[Literal[True] | None, OmittedNotNull] = None
-    fr_code_postal: Annotated[Literal[True] | None, OmittedNotNull] = None
-    au_postcode: Annotated[Literal[True] | None, OmittedNotNull] = None
-    ch_plz: Annotated[Literal[True] | None, OmittedNotNull] = None
-    at_plz: Annotated[Literal[True] | None, OmittedNotNull] = None
+    us_zip: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    us_zip_plus_four: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    gb_outward: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    gb_full: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    ca_fsa: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    ca_full: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    de_plz: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    fr_code_postal: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    au_postcode: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    ch_plz: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
+    at_plz: Annotated[Literal[True] | None, Field(deprecated=True), OmittedNotNull] = None
 
 
 __all__ = ["PositivePostalAreaSupport"]

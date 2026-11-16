@@ -69,12 +69,28 @@ def constraining(node: Mapping[str, Any]) -> dict[str, Any]:
 
 #: The annotations a FIELD renders, so the two a restatement can differ about in a way
 #: a READER sees.  :func:`fields` reads exactly these off the declaration --
-#: ``description`` into ``Field(description=...)`` and ``default`` into the field's
-#: default -- and the rest of the keys whose cell carries nothing (``title``,
-#: ``$comment``,
+#: ``description`` into ``Field(description=...)``, ``default`` into the field's
+#: default, ``deprecated`` into ``Field(deprecated=True)`` -- and the rest of the keys
+#: whose cell carries nothing (``title``, ``$comment``,
 #: ``$schema``) reach nothing on a field, so a restatement differing only in one of
 #: those renders the same field and states nothing to anyone.
-RENDERED = ("default", "description")
+#:
+#: **``deprecated`` WAS MISSING AND IT IS THE ONE RENDERED ANNOTATION THE GAP-FILL DID NOT
+#: CARRY** (2026-11-16, ``adcp-client-python-p5of``'s residue).  ``render.py`` has written
+#: it since the keyword landed -- ``if decided.deprecated: extras["deprecated"] = True`` --
+#: so this tuple disagreed with its OWN definition, "the annotations a FIELD renders".
+#: The effect is at the gap-fill below: a child that restates a property and is silent
+#: about ``deprecated`` dropped the base's, where §6 clause 3 says silence INHERITS.
+#:
+#: Measured before the fix: **21 fields on 11 classes** lost a base's ``deprecated``.
+#: ``PositivePostalAreaSupport``'s 11 postal flags lost ``PostalAreaSupport``'s, and ten
+#: request roots -- ``ListProductsRequest``, ``BuyProductsRequest``,
+#: ``AcceptProposalRequest`` and seven more -- lost ``AdCPVersionEnvelope``'s on
+#: ``adcp_major_version``, which ``core/version-envelope.json`` states as
+#: ``{"deprecated": true, "x-removed-in": "4.0.0"}``.  That second family is the
+#: consumer-visible one: a buyer reading ``ListProductsRequest``'s field metadata, or a
+#: JSON schema generated from it, was not told the field is removed in 4.0.
+RENDERED = ("default", "description", "deprecated")
 
 
 def annotates_differently(child: dict, base: dict) -> bool:

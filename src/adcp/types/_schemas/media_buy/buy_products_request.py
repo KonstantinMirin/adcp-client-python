@@ -3,10 +3,11 @@ from __future__ import annotations
 
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, NonNegativeFloat, StrictBool
+from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import MediaBuyName, StrMaxLen100, StrMinLen1, StrMinLen1MaxLen255, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
 
@@ -84,7 +85,7 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
     budget_cap_timezone: Annotated[StrMinLen1 | None, Field(description='Optional IANA timezone override shared by every aggregate and purchase daily cap. Requires buyer_timezone_override support; otherwise rejected with UNSUPPORTED_FEATURE. When omitted, budget_capping.timezone_basis selects Account.timezone or fixed_timezone.'), OmittedNotNull] = None
     budget_allocation: Annotated[CanonicalBudgetAllocation | None, OmittedNotNull] = None
     start_time: StartTiming
-    end_time: AwareDatetime
+    end_time: WireDatetime
     pacing: Annotated[Pacing | None, Field(description='Aggregate media-buy pacing. In seller-optimized allocation, a seller declaring media_buy.features.seller_optimized_budget MUST accept omission and `even`; it MAY reject `asap` or `front_loaded` with UNSUPPORTED_FEATURE (error.field `pacing`) before any provider mutation and MUST NOT silently coerce them to `even`. Fixed-allocation semantics are unchanged.'), OmittedNotNull] = None
     bidding: Annotated[BiddingPolicy | None, OmittedNotNull] = None
     paused: Annotated[StrictBool | None, OmittedNotNull] = False

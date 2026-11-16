@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field
 
 from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule, UniqueItems
-from adcp.types.constraints import BrandReferenceKitOverrideColorsAccent
+from adcp.types.constraints import BrandReferenceKitOverrideColorsAccent, EmailAddress
 
 from .assets.image_asset import ImageAsset
 from .brand_id import BrandID
@@ -28,7 +28,7 @@ class DataSubjectContestation(AdCPBaseModel):
         RequiredGroups((('url',), ('email',)), 'anyOf'),
     )
     url: Annotated[HTTPSURL | None, OmittedNotNull] = None
-    email: Annotated[str | None, Field(json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    email: Annotated[EmailAddress | None, OmittedNotNull] = None
     languages: Annotated[list[str] | None, OmittedNotNull] = None
 
 

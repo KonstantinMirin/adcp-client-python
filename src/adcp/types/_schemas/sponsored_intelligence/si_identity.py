@@ -8,7 +8,7 @@ from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._wire import WireDatetime
-from adcp.types.constraints import HostedUrl
+from adcp.types.constraints import EmailAddress, HostedUrl
 
 
 class ConsentScopeItem(StrEnum):
@@ -62,7 +62,7 @@ class User(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='sponsored-intelligence/si-identity.json', pointer='#/properties/user')
-    email: Annotated[str | None, Field(description="User's email address", json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    email: Annotated[EmailAddress | None, Field(description="User's email address"), OmittedNotNull] = None
     name: Annotated[str | None, Field(description="User's display name"), OmittedNotNull] = None
     locale: Annotated[str | None, Field(description="User's locale (e.g., en-US)"), OmittedNotNull] = None
     phone: Annotated[str | None, Field(description="User's phone number"), OmittedNotNull] = None

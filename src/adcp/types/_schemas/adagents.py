@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictBool
+from pydantic import ConfigDict, Field, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
@@ -82,7 +83,7 @@ class AdCPAgentsAuthorizationAuthoritativeLocation(AdCPAgentsAuthorization):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/0')
     schema_: Annotated[str | None, Field(alias='$schema', description='JSON Schema identifier for this adagents.json file'), OmittedNotNull] = None
     authoritative_location: Annotated[HTTPSURL, Field(description="HTTPS URL of the authoritative adagents.json file. When present, this file is a reference and the authoritative location contains the actual agent authorization data. Because one deploy can change authorization across every publisher in the network, validators MUST cap response size, refuse redirects on the fetch, enforce short timeouts, and serve the previously cached file on transient 5xx. Two-tier size cap: pointer files served at `/.well-known/adagents.json` use the general 5 MB SSRF cap; dereferenced authoritative files (this URL's response, after the indirection) use a recommended 20 MB cap because the origin has explicitly opted in to fanning out across a publisher network. See docs/governance/property/managed-networks#security-considerations.")]
-    last_updated: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp indicating when this reference was last updated'), OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp indicating when this reference was last updated'), OmittedNotNull] = None
 
 
 class Contact(AdCPBaseModel):
@@ -125,7 +126,7 @@ class RevokedPublisherDomainsItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/revoked_publisher_domains/items')
     publisher_domain: Annotated[DomainName, Field(description='Publisher domain being revoked. Matches against the same canonicalized form used in `publisher_properties[].publisher_domain`.')]
-    revoked_at: Annotated[AwareDatetime, Field(description='ISO 8601 timestamp when this publisher was revoked. Validators MAY use this to order revocations against their own cached state.')]
+    revoked_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when this publisher was revoked. Validators MAY use this to order revocations against their own cached state.')]
     reason: Annotated[Reason | None, Field(description='Reason for revocation. **Operator-internal self-classification for review routing — not a public accusation.** `relationship_ended` is the routine commercial case. `compliance_violation` SHOULD be used only when the network has itself determined the publisher is out of policy; for un-adjudicated third-party allegations (regulator inquiries, advertiser complaints, ongoing investigations), use `other` to avoid making a discoverable adverse statement. `publisher_request` is for publisher-initiated exits. Compare to sellers.json, which deliberately carries no reason field for the same exposure concern.'), OmittedNotNull] = None
 
 
@@ -276,8 +277,8 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemProperty
     delegation_type: Annotated[DelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint."), OmittedNotNull] = None
     exclusive: Annotated[StrictBool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory."), OmittedNotNull] = None
     countries: Annotated[list[CountryCode] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.'), OmittedNotNull] = None
-    effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.'), OmittedNotNull] = None
+    effective_from: Annotated[WireDatetime | None, Field(description='Optional start time for this authorization window.'), OmittedNotNull] = None
+    effective_until: Annotated[WireDatetime | None, Field(description='Optional end time for this authorization window.'), OmittedNotNull] = None
 
 
 AuthorizedAgentsItemPropertyTagsDelegationType = DelegationType
@@ -303,8 +304,8 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemProperty
     delegation_type: Annotated[AuthorizedAgentsItemPropertyTagsDelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint."), OmittedNotNull] = None
     exclusive: Annotated[StrictBool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory."), OmittedNotNull] = None
     countries: Annotated[list[CountryCode] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.'), OmittedNotNull] = None
-    effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.'), OmittedNotNull] = None
+    effective_from: Annotated[WireDatetime | None, Field(description='Optional start time for this authorization window.'), OmittedNotNull] = None
+    effective_until: Annotated[WireDatetime | None, Field(description='Optional end time for this authorization window.'), OmittedNotNull] = None
 
 
 AuthorizedAgentsItemInlinePropertiesDelegationType = DelegationType
@@ -330,8 +331,8 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlinePr
     delegation_type: Annotated[AuthorizedAgentsItemInlinePropertiesDelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint."), OmittedNotNull] = None
     exclusive: Annotated[StrictBool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory."), OmittedNotNull] = None
     countries: Annotated[list[CountryCode] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.'), OmittedNotNull] = None
-    effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.'), OmittedNotNull] = None
+    effective_from: Annotated[WireDatetime | None, Field(description='Optional start time for this authorization window.'), OmittedNotNull] = None
+    effective_until: Annotated[WireDatetime | None, Field(description='Optional end time for this authorization window.'), OmittedNotNull] = None
 
 
 AuthorizedAgentsItemPublisherPropertiesDelegationType = DelegationType
@@ -357,8 +358,8 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublishe
     delegation_type: Annotated[AuthorizedAgentsItemPublisherPropertiesDelegationType | None, Field(description="Commercial relationship for this inventory path. 'direct' means the publisher treats this as a direct way to buy from them, even if a third party operates the software. 'delegated' means the agent is authorized to sell on the publisher's behalf. 'ad_network' means the inventory is sold as part of a network/package context rather than as the publisher's direct endpoint."), OmittedNotNull] = None
     exclusive: Annotated[StrictBool | None, Field(description="Whether this agent is the publisher's sole authorized path for the scoped inventory slice. When false or absent, other authorized agents may also sell the same inventory."), OmittedNotNull] = None
     countries: Annotated[list[CountryCode] | None, Field(description='Optional ISO 3166-1 alpha-2 country codes limiting where this authorization applies. Omit for worldwide authorization.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
-    effective_from: Annotated[AwareDatetime | None, Field(description='Optional start time for this authorization window.'), OmittedNotNull] = None
-    effective_until: Annotated[AwareDatetime | None, Field(description='Optional end time for this authorization window.'), OmittedNotNull] = None
+    effective_from: Annotated[WireDatetime | None, Field(description='Optional start time for this authorization window.'), OmittedNotNull] = None
+    effective_until: Annotated[WireDatetime | None, Field(description='Optional end time for this authorization window.'), OmittedNotNull] = None
 
 
 class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds(AuthorizedAgentBaseFields):
@@ -437,7 +438,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistry(AdCPAgentsAuthorization):
     tags: Annotated[dict[str, TagsValue] | None, Field(description='Metadata for each tag referenced by properties. Provides human-readable context for property tag values.'), OmittedNotNull] = None
     placement_tags: Annotated[dict[str, PlacementTagsValue] | None, Field(description='Metadata for each tag referenced by placements. Provides human-readable context for publisher-defined placement tag values used in grouping and authorization.'), OmittedNotNull] = None
     authorized_agents: Annotated[list[AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds | AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags], Field(description='Array of sales agents authorized to make inventory from this file available to buyers. Authorization can be scoped to specific properties, collections, countries, and time windows, with optional delegation metadata indicating whether the path is direct, delegated, or network-mediated. MAY be empty (`[]`) for a catalog-only community mirror — a file that publishes `formats`/`properties`/`placements` (with `catalog_etag`) for a platform that has not adopted AdCP, where there is no sales agent to authorize (see `catalog_etag`, `formats`, `superseded_by`). An empty array asserts *no sales authorization*: validators MUST NOT read it as deny-all, authorize-all, or a revocation, MUST NOT treat its presence as an error, and MUST still consume the catalog arrays.')]
-    last_updated: Annotated[AwareDatetime | None, Field(description='ISO 8601 timestamp indicating when this file was last updated'), OmittedNotNull] = None
+    last_updated: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp indicating when this file was last updated'), OmittedNotNull] = None
     property_features: Annotated[list[PropertyFeaturesItem] | None, Field(description='[AdCP 3.0] Optional list of agents that provide property feature data (certifications, scores, compliance status). Used for discovery - actual data is accessed through property list filters.'), OmittedNotNull] = None
     signals: Annotated[list[SignalDefinition] | None, Field(description="Signal definitions published by this domain. Each entry defines a signal id within this file's publishing-domain namespace; entries do not include signal_ref objects. Signals Protocol discovery and media-buy product targeting reference these through signal_ref scope 'data_provider', with data_provider_domain set to this file's publishing domain and signal_id set to signals[].id.", min_length=1), OmittedNotNull] = None
     signal_tags: Annotated[dict[str, SignalTagsValue] | None, Field(description='Metadata for each tag referenced by signals. Provides human-readable context for signal tag values.'), OmittedNotNull] = None

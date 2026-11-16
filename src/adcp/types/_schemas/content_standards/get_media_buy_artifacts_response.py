@@ -4,9 +4,10 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar
 
-from pydantic import AwareDatetime, ConfigDict, Field, StrictFloat, StrictInt
+from pydantic import ConfigDict, Field, StrictFloat, StrictInt
 
 from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import SchemaIntegral
 from adcp.types.envelopes import AdcpResponse, FailedResponse
 
@@ -62,7 +63,7 @@ class LocalVerdict(StrEnum):
 class ArtifactsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/get-media-buy-artifacts-response.json', pointer='#/oneOf/0/properties/artifacts/items')
     record_id: Annotated[str, Field(description='Unique identifier for this delivery record')]
-    timestamp: Annotated[AwareDatetime | None, Field(description='When the delivery occurred'), OmittedNotNull] = None
+    timestamp: Annotated[WireDatetime | None, Field(description='When the delivery occurred'), OmittedNotNull] = None
     package_id: Annotated[str | None, Field(description='Which package this delivery belongs to'), OmittedNotNull] = None
     artifact: Annotated[Artifact, Field(description='Full artifact with content assets')]
     country: Annotated[str | None, Field(description='ISO 3166-1 alpha-2 country code where delivery occurred'), OmittedNotNull] = None

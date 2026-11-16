@@ -19,6 +19,7 @@ from adcp.types._runtime import (
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     CanonicalProductCatalogMatchMatchedGtinsItem,
+    EmailAddress,
     FloatGt0,
     HostedUrl,
     IntMin1,
@@ -257,7 +258,7 @@ class MaterialSubmission(AdCPBaseModel):
         PropertyCount(minimum=1, maximum=None),
     )
     url: Annotated[HTTPSURL | None, Field(description='HTTPS URL for uploading or submitting physical creative materials'), OmittedNotNull] = None
-    email: Annotated[str | None, Field(description='Email address for creative material submission', json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    email: Annotated[EmailAddress | None, Field(description='Email address for creative material submission'), OmittedNotNull] = None
     instructions: Annotated[StrMaxLen2000 | None, Field(description='Human-readable instructions for material submission (file naming conventions, shipping address, etc.)'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

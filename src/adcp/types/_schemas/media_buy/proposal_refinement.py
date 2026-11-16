@@ -4,10 +4,11 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import Annotated, ClassVar, Literal
 
-from pydantic import AwareDatetime, ConfigDict, Field, TypeAdapter
+from pydantic import ConfigDict, Field, TypeAdapter
 
 from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule
+from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatGt0, IntMin2Max10, StrMinLen1
 
 from ..core.currency_code import CurrencyCode
@@ -70,8 +71,8 @@ class Flight(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('start_no_later_than',), ('end_no_earlier_than',)), 'anyOf'),
     )
-    start_no_later_than: Annotated[AwareDatetime | None, OmittedNotNull] = None
-    end_no_earlier_than: Annotated[AwareDatetime | None, OmittedNotNull] = None
+    start_no_later_than: Annotated[WireDatetime | None, OmittedNotNull] = None
+    end_no_earlier_than: Annotated[WireDatetime | None, OmittedNotNull] = None
 
 
 class Constraints(AdCPBaseModel):

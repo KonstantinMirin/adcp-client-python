@@ -122,6 +122,37 @@ FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
     "date-time": lambda node: "adcp.types._wire.WireDatetime",
     "date": lambda node: "datetime.date",
     "uri": constraints_module.url_type,
+    #: ``WireUuid`` for ``date-time``'s reason and by the owner's decision -- "use
+    #: WireUuid, because it normalizes and refuses non-uuid".  It SUBCLASSES
+    #: ``uuid.UUID`` and serializes the text it parsed, so a digest over the entry's
+    #: declared fields survives a parse-and-dump (#1610).  Measured against
+    #: ``jsonschema``'s own ``is_uuid`` on both sides: ``not-a-uuid``, ``''`` and ``123``
+    #: refused by both, a v7 UUID admitted by both.
+    #:
+    #: **AND IT SELECTS ON NO NODE OF THIS BUNDLE TODAY, BY THE GATE BELOW AND
+    #: CORRECTLY** (measured 2026-11-16: 0 fields).  The gate is ``fmt in mod.asserted``,
+    #: and :func:`emit.asserted_formats` reads the DOCUMENT'S OWN draft --
+    #: ``validator_for(doc).FORMAT_CHECKER`` -- which for draft-07 has no ``uuid``
+    #: checker at all; ``uuid`` entered the vocabulary in 2019-09.  Every document here
+    #: is draft-07, so ``format: uuid`` rides as ``json_schema_extra`` and the class
+    #: stays exactly as wide as its document.  That is §2's direction and not a gap.
+    #:
+    #: It is kept because the entry is the RIGHT answer the moment a document's draft
+    #: asserts the format, and because the alternative -- enforcing it anyway -- would be
+    #: a NARROWING of a draft-07 document that §2 would then require declared.
+    #: ``src/adcp/validation/schema_loader._build_format_checker`` builds the GLOBAL
+    #: ``FormatChecker()``, which does assert ``uuid``, so the SDK's two shipped
+    #: validators disagree about this one format and
+    #: ``tests/conformance/test_schema_model_parity.py`` reports it -- 5 divergences on
+    #: ``context_match/property_rid``.  Which side moves is the owner's call, not this
+    #: table's.
+    "uuid": lambda node: "adcp.types._wire.WireUuid",
+    #: ``format: email`` as the BUNDLED SCHEMA grades it, which is ``jsonschema``'s
+    #: ``is_email`` -- ``"@" in instance``.  ``constraints.EmailAddress`` carries the
+    #: reading and the reason ``EmailStr`` is not it: that would be NARROWER than the
+    #: document (``adcp-client-python-87ll``) and would reverse the parity failure rather
+    #: than close it.
+    "email": lambda node: f"{constraints_module.MODULE}.EmailAddress",
 }
 
 #: The formats whose selected type is a URL type, which is what the one refusal

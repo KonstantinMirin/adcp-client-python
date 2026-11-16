@@ -14,6 +14,7 @@ from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
     DataSubjectRightsResponseSlaDays,
     DataSubjectRightsUpstreamSourceDomain,
+    EmailAddress,
     HostedUrl,
     IntMin1,
     StrMaxLen500,
@@ -368,7 +369,7 @@ class ChannelsItem(AdCPBaseModel):
     )
     rights: Annotated[list[RightsItem], Field(description='Rights supported by this channel.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     url: Annotated[HTTPSURL | None, Field(description='HTTPS URL for submitting the rights request.'), OmittedNotNull] = None
-    email: Annotated[str | None, Field(description='Email address for submitting the rights request.', json_schema_extra={'format': 'email'}), OmittedNotNull] = None
+    email: Annotated[EmailAddress | None, Field(description='Email address for submitting the rights request.'), OmittedNotNull] = None
     languages: Annotated[list[str] | None, Field(description='BCP 47 language tags supported by this channel.'), OmittedNotNull] = None
     countries: Annotated[list[CountryCode] | None, Field(description='ISO 3166-1 alpha-2 countries this channel serves, when the provider routes rights by country.'), OmittedNotNull] = None
 
