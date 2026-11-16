@@ -91,28 +91,87 @@ def test_core_attributes_schema_and_json_round_trip_do_not_synthesize_promises(g
     assert fields == value.model_fields_set
 
 
-@pytest.mark.parametrize(
-    "field,tier",
-    [("readiness_notification", "managed_delivery"), ("receipt_task", "reconciled_billing")],
-)
 @pytest.mark.parametrize("flag", [None, False])
-def test_inverse_tier_validation_runs_in_both_standalone_and_nested_graphs(
-    graph, field, tier, flag
-):
+def test_readiness_notification_needs_managed_delivery_in_both_graphs(graph, flag):
+    """`#/allOf/7`, read in two halves because the class carries one of them.
+
+        {"if": {"required": ["readiness_notification"]},
+         "then": {"properties": {"managed_delivery": {"const": true}},
+                  "required": ["managed_delivery"]}}
+
+    The `required` half lowers to a rule -- measured,
+    ``ConditionalRequired(when=Match(key='readiness_notification', present=True),
+    require=('managed_delivery',))`` -- so an ABSENT tier flag is refused at
+    construction, standalone and nested.
+
+    The `const: true` half does not: §5's `then` row puts a conditional's
+    `properties` on the schema half and not on the model, and the class DECLARES
+    the gap rather than hiding it --
+    ``Approximation(pointer='#/allOf/7', keyword='if', kind='WIDENED',
+    rung='KEYWORD')``.  So `managed_delivery: false` beside the doorbell is
+    refused by the document and admitted by the class, and that is a decision
+    already taken, not a defect.  It is graded through ``strict_validate``, which
+    IS the document.
+
+    What stood here expected both halves at construction, under the message of a
+    hand-written validator the previous emission carried
+    ("readiness_notification requires managed_delivery").
+    """
     model, envelope = graph
-    raw = capability(**{field: PROMISES[field], **({tier: flag} if flag is not None else {})})
-    with pytest.raises(ValidationError, match=f"{field} requires {tier}"):
-        model.model_validate(raw)
-    with pytest.raises(ValidationError, match=f"{field} requires {tier}"):
-        envelope.model_validate(response(raw))
+    raw = capability(
+        readiness_notification=PROMISES["readiness_notification"],
+        **({"managed_delivery": flag} if flag is not None else {}),
+    )
+
+    if flag is None:
+        for cls, body in ((model, raw), (envelope, response(raw))):
+            with pytest.raises(ValidationError, match="required when readiness_notification"):
+                cls.model_validate(body)
+    else:
+        assert model.model_validate(raw).managed_delivery is False
+        with pytest.raises(ValidationError, match="True was expected"):
+            model.strict_validate(raw)
+
+
+def test_receipt_task_alone_is_admitted_because_no_node_states_the_inverse() -> None:
+    """The document states the implication in ONE direction, and this is the other.
+
+    `#/allOf/4` is ``if reconciled_billing const true -> then required
+    ['receipt_task']``, and `receipt_task`'s own description says "Required when
+    reconciled_billing is true".  Measured over bundle 3.2, NO node anywhere keys
+    an `if` on `receipt_task`, so "receipt_task requires reconciled_billing" is
+    stated nowhere -- and both halves agree: the class admits it and
+    ``strict_validate``, the document itself, admits it too.
+
+    The stated direction is graded by
+    :func:`test_reconciled_billing_requires_a_receipt_task`.
+    """
+    model = ReportingDeliveryCapabilities
+    raw = capability(receipt_task=PROMISES["receipt_task"])
+    assert model.model_validate(raw).receipt_task == PROMISES["receipt_task"]
+    model.strict_validate(raw)
 
 
 @pytest.mark.parametrize("managed", [None, False])
-def test_reconciled_is_cumulative_even_without_a_receipt_task(graph, managed):
+def test_reconciled_billing_requires_a_receipt_task(graph, managed):
+    """`#/allOf/4`'s `required` half: the tier flag owes the task, in both graphs.
+
+    ``ConditionalRequired(when=Match(key='reconciled_billing', allowed=(True,)),
+    require=('receipt_task',))``, measured on ``_adcp_rules``, and it fires
+    whether the OTHER tier flag is absent or explicitly false, because the
+    document keys this conditional on `reconciled_billing` alone.
+
+    What stood here expected "reconciled_billing requires managed_delivery".  No
+    node of bundle 3.2 states that implication in that direction -- `#/allOf/3`
+    keys on `managed_delivery` and requires retention and revocation windows, and
+    `#/allOf/5` reaches `managed_delivery` from an offering's `method`.  It was
+    the previous emission's hand-written validator, and the refusal it was
+    reading is this one.
+    """
     model, envelope = graph
     raw = capability(reconciled_billing=True, managed_delivery=managed)
     for cls, body in ((model, raw), (envelope, response(raw))):
-        with pytest.raises(ValidationError, match="reconciled_billing requires managed_delivery"):
+        with pytest.raises(ValidationError, match="required when reconciled_billing=True"):
             cls.model_validate(body)
 
 
