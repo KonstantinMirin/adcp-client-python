@@ -11,13 +11,22 @@ from asgi_lifespan import LifespanManager
 from pydantic import TypeAdapter
 
 from adcp.decisioning import DecisioningCapabilities, DecisioningPlatform, SingletonAccounts
-from adcp.decisioning.capabilities import Features, MediaBuy
+from adcp.decisioning.capabilities import MediaBuy
 from adcp.decisioning.handler import PlatformHandler
 from adcp.decisioning.task_registry import InMemoryTaskRegistry
 from adcp.decisioning.types import AdcpError
 from adcp.property_lists import MCPPropertyListFetcher, check_property_list_reference
 from adcp.server import GovernanceHandler, ToolContext, create_mcp_server
 from adcp.types import ListProductsRequest, ListProductsResponse
+
+# `Features` is a word more than one node of `protocol/get-adcp-capabilities-response.json`
+# publishes, and `adcp.decisioning.capabilities.Features` binds the SIGNALS one
+# (`#/properties/signals/properties/features`).  The field exercised here is the MEDIA-BUY
+# one, `#/properties/media_buy/properties/features`, whose class narrows
+# `core/media-buy-features.json` with the document's four `if`/`then` conditionals -- so it
+# is a distinct subject and the signals class does not validate into the field.  Named from
+# the `protocol` domain path, which is where the schema that states it is exported.
+from adcp.types.protocol import GetAdCPCapabilitiesResponseMediaBuyFeatures as MediaBuyFeatures
 from adcp.validation import validate_response
 
 
@@ -48,7 +57,7 @@ async def test_list_products_dispatch_filters_compact_criteria(model_response):
     class Seller(DecisioningPlatform):
         capabilities = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
-            media_buy=MediaBuy(features=Features(property_list_filtering=True)),
+            media_buy=MediaBuy(features=MediaBuyFeatures(property_list_filtering=True)),
         )
         accounts = SingletonAccounts(account_id="account")
 
@@ -120,7 +129,7 @@ async def test_projected_list_products_requests_inventory_before_filtering(
     class Seller(DecisioningPlatform):
         capabilities = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
-            media_buy=MediaBuy(features=Features(property_list_filtering=True)),
+            media_buy=MediaBuy(features=MediaBuyFeatures(property_list_filtering=True)),
         )
         accounts = SingletonAccounts(account_id="account")
 
@@ -284,7 +293,7 @@ async def test_request_proposals_filters_without_breaking_bound_references(
     class Seller(DecisioningPlatform):
         capabilities = DecisioningCapabilities(
             specialisms=["sales-non-guaranteed"],
-            media_buy=MediaBuy(features=Features(property_list_filtering=True)),
+            media_buy=MediaBuy(features=MediaBuyFeatures(property_list_filtering=True)),
         )
         accounts = SingletonAccounts(account_id="account")
 
@@ -310,6 +319,14 @@ async def test_request_proposals_filters_without_breaking_bound_references(
     request = RequestProposalsRequest.model_validate(
         {
             "idempotency_key": "proposal-request-1234",
+            # `media-buy/request-proposals-request.json` states a root `anyOf` over
+            # `required: ['brand']` and an `account` carrying `brand` + `operator`, so a
+            # brand source is NOT optional here.  `core/canonical-account-ref.json`'s
+            # `account_id` branch is `additionalProperties: false`, which leaves the
+            # top-level `brand` as the only branch an id-keyed account can take -- and the
+            # root `allOf`'s `not` is quiet, because it fires only where the account
+            # carries `brand` + `operator` beside a top-level one.
+            "brand": {"domain": "buyer.example.com"},
             "account": {"account_id": "account"},
             "brief": "News",
             "criteria": {

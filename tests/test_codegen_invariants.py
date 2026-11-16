@@ -79,6 +79,20 @@ def test_postal_overlay_support_preserves_only_explicit_legacy_flags(field: str,
     payload = {field: {flag: True}}
     model = adapter.validate_python(payload)
     assert model.model_dump(mode="json", exclude_none=True) == payload
+    # **The deprecation is this document's own and not a sibling's.** Both fields reach
+    # `core/positive-postal-area-support.json`, whose `allOf[0]` is a `$ref` to
+    # `core/postal-area-support.json` -- which marks all 11 flags `deprecated: true` --
+    # while its `allOf[1]` adds the `const: true` the `pytest.raises` below grades. Under
+    # `allOf` both conjuncts apply to the same instance, so the mark is stated AT THIS
+    # NODE; the emission agrees about the relation (`class PositivePostalAreaSupport(
+    # PostalAreaSupport)`) and then redeclares the 11 flags to carry the `const`, which
+    # drops the base's `Field(deprecated=True)`.
+    #
+    # LEFT RED ON PURPOSE. The repair is `intersect.RENDERED`, which names `default` and
+    # `description` as the annotations a narrowing restatement inherits and omits
+    # `deprecated` even though `render.py` renders it -- `codegen/` is not this
+    # worktree's to write. 21 fields across 11 classes lose a base's mark this way; see
+    # FINDINGS-features.md.
     assert type(getattr(model, field)).model_fields[flag].deprecated is True
     with pytest.raises(ValidationError):
         adapter.validate_python({field: {flag: False}})
