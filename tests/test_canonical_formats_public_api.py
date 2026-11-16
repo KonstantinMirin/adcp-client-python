@@ -10,18 +10,26 @@ from __future__ import annotations
 
 import adcp.types as types
 
+# Every name here is this emission's, derived by §4: a document's root takes
+# the document's title and a NESTED node takes ``pascal_case(property)``
+# prefixed by its declaring position. So ``asset_source`` is named for the
+# format that declares it (and there are TWO of them, which is why there is no
+# one ``CanonicalAssetSource``), ``seller_preference`` is named for the
+# "Product Format Declaration" document, and the mapping registry's nested
+# nodes carry the chain down from its root.
 _EXPECTED_EXPORTS = (
     # Kind enum + projection ref
     "CanonicalFormatKind",
     "CanonicalProjectionReference",
-    "CanonicalAssetSource",
-    "CanonicalSlotOverride",
+    "CanonicalFormatHostedAudioAssetSource",
+    "CanonicalFormatNativeInFeedAssetSource",
+    "CanonicalProjectionSlotOverride",
     # Declaration
     "ProductFormatDeclaration",
-    "ProductFormatSellerPreference",
+    "ProductFormatDeclarationSellerPreference",
     # 13 canonical format classes
     "CanonicalFormatBase",
-    "CanonicalCompositionModel",
+    "CanonicalFormatBaseCompositionModel",
     "CanonicalFormatImage",
     "CanonicalFormatHtml5Banner",
     "CanonicalFormatDisplayTag",
@@ -32,8 +40,8 @@ _EXPECTED_EXPORTS = (
     "CanonicalFormatDaastAudio",
     "CanonicalFormatNativeInFeed",
     "CanonicalFormatResponsiveCreative",
-    "CanonicalFormatAgentPlacement",
-    "CanonicalFormatSponsoredPlacement",
+    "CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement",
+    "CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven",
     # Pixel tracker asset
     "PixelTrackerAsset",
     "PixelTrackerEvent",
@@ -41,11 +49,12 @@ _EXPECTED_EXPORTS = (
     # Registry types
     "V1V2CanonicalFormatMappingRegistry",
     "V1CanonicalMapping",
-    "V1CanonicalGlobPattern",
-    "V1CanonicalStructuralPattern",
-    "V1CanonicalStructural",
-    "V1CanonicalV2Projection",
-    "V1CanonicalDimensions",
+    "V1PatternFormatIdGlob",
+    "V1PatternStructural",
+    "V1V2CanonicalFormatMappingRegistryMappingsItem",
+    "V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructural",
+    "V1V2CanonicalFormatMappingRegistryMappingsItemV1PatternStructuralStructuralDimensions",
+    "V1V2CanonicalFormatMappingRegistryMappingsItemV2",
     # Error envelope sub-enums (for SDK-source advisory construction)
     "Recovery",
     "Source",
