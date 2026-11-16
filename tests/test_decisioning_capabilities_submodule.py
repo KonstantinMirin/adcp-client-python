@@ -482,7 +482,9 @@ def test_decisioning_capabilities_accepts_structured_fields() -> None:
 
     # Spot-check that the typed fields round-trip.
     assert caps.adcp is not None
-    assert caps.adcp.major_versions[0].root == 3
+    # A major version is a scalar root, so it IS its `int` (§4: a scalar at a
+    # root compiles to an annotated alias, which has no `.root` to read).
+    assert caps.adcp.major_versions[0] == 3
     assert caps.account is not None
     assert caps.media_buy is not None
     assert caps.media_buy.execution is not None
