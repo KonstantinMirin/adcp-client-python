@@ -12,6 +12,7 @@ from typing import Any
 
 import pytest
 import rfc8785
+from pydantic import ValidationError
 
 from adcp.reporting.adjustment_evidence import (
     ReportingAdjustmentEvidence,
@@ -250,12 +251,32 @@ def test_temporal_checks_preserve_sub_microsecond_precision() -> None:
     assert build(evidence, observed_at=NOW.replace(microsecond=1)).status == "accepted"
 
 
-def test_generated_default_does_not_repair_a_missing_required_wire_field() -> None:
+def test_a_missing_required_wire_field_is_refused_by_the_model_and_the_capture() -> None:
+    """Both halves now refuse it, where the generated default used to repair one.
+
+    `core/reporting-control-total.json` is a two-branch `oneOf`
+    (IntegerReportingControlTotal, DecimalReportingControlTotal) and BOTH branches
+    state `required: ['name', 'value', 'value_type']`, so there is no branch a delta
+    without a `value_type` can reach.  What stood here asserted the model ADMITS the
+    payload -- a default the previous emission supplied for a property the document
+    requires -- and left the wire schema as the only thing refusing it.  The gap is
+    closed, so the grade is that both halves agree.
+    """
     raw = adjustment()
+    typed = ReportingAdjustment.model_validate(raw)
     del raw["control_total_deltas"][0]["value_type"]
-    # Generated models accept a default here; the authoritative wire schema does not.
-    ReportingAdjustment.model_validate(raw)
-    rejected("INVALID_EVIDENCE", lambda: capture(raw))
+    with pytest.raises(ValidationError) as refused:
+        ReportingAdjustment.model_validate(raw)
+    assert [e["type"] for e in refused.value.errors()] == ["oneOf"]
+    # The capture is still graded, and the typed adjustment has to be built BEFORE
+    # the deletion now: the helper builds it from the same mapping, and a mapping
+    # with no reachable branch yields no model to supply.  Handing the capture a
+    # well-formed typed adjustment beside the refused wire payload is the case it
+    # exists to catch, and it still answers INVALID_EVIDENCE.
+    rejected(
+        "INVALID_EVIDENCE",
+        lambda: capture_reporting_adjustment_evidence(raw, typed_adjustment=typed, scope=SCOPE),
+    )
 
 
 @pytest.mark.parametrize(
