@@ -7,47 +7,19 @@ import json
 import pytest
 from pydantic import BaseModel, ValidationError
 
-
-def test_response_dispatch_omits_newer_pydantic_keywords_at_their_defaults() -> None:
-    from adcp.types.response_dispatch import _model_validate_json_kwargs, _model_validate_kwargs
-
-    assert _model_validate_kwargs(
-        strict=None,
-        extra=None,
-        from_attributes=None,
-        context=None,
-        by_alias=None,
-        by_name=None,
-    ) == {"strict": None, "from_attributes": None, "context": None}
-    assert _model_validate_kwargs(
-        strict=True,
-        extra="forbid",
-        from_attributes=True,
-        context={"trace_id": "trace_1"},
-        by_alias=True,
-        by_name=False,
-    ) == {
-        "strict": True,
-        "extra": "forbid",
-        "from_attributes": True,
-        "context": {"trace_id": "trace_1"},
-        "by_alias": True,
-        "by_name": False,
-    }
-    assert _model_validate_json_kwargs(
-        strict=None,
-        extra=None,
-        context=None,
-        by_alias=None,
-        by_name=None,
-    ) == {"strict": None, "context": None}
+# `adcp.types.response_dispatch` was the previous generator's compatibility seam
+# over `model_validate` -- two private helpers that dropped post-2.0 pydantic
+# keywords left at their defaults. It was removed with the rest of that layer
+# (`639134c75`, "the seam their behavioural code reaches types through"), and no
+# document states it, so the test that graded its two helpers is gone with it.
 
 
 def test_product_signal_targeting_option_keeps_discriminated_signal_ref() -> None:
     from typing import get_args
 
-    from adcp import ProductSignalTargetingOption
     from adcp.types.domains.core.signal_ref import SignalRef
+
+    from adcp import ProductSignalTargetingOption
 
     # SignalRef is Annotated[SignalRef1 | SignalRef2 | SignalRef3, Field(...)];
     # Pydantic lifts the metadata into FieldInfo and keeps the union.
@@ -75,9 +47,10 @@ def test_product_signal_targeting_option_keeps_discriminated_signal_ref() -> Non
 
 
 def test_creative_representation_keeps_canonical_format_contract() -> None:
+    from adcp.types.domains.core.creative_representation import CreativeRepresentation
+
     from adcp import LegacyBuildCreativeRequest
     from adcp.types import CanonicalFormatKind
-    from adcp.types.domains.core.creative_representation import CreativeRepresentation
 
     # ``str``, not the enum: the vocabulary is open at every reference and
     # governed by a validator on the request models. Asserting membership of
@@ -141,8 +114,9 @@ def test_creative_representation_keeps_canonical_format_contract() -> None:
 
 
 def test_transformer_requires_a_canonical_or_legacy_output_declaration() -> None:
-    from adcp.types import ListTransformersResponse
     from adcp.types.domains.core.transformer import Transformer
+
+    from adcp.types import ListTransformersResponse
 
     base_transformer = {"transformer_id": "transformer_1", "name": "Test transformer"}
     with pytest.raises(ValidationError):
@@ -166,19 +140,6 @@ def test_transformer_requires_a_canonical_or_legacy_output_declaration() -> None
 
 
 def test_public_response_bases_remain_constructible_and_arms_remain_specific() -> None:
-    from adcp.types import (
-        ComplyTestControllerResponse,
-        CreateContentStandardsResponse,
-        ListContentStandardsResponse,
-        SyncGovernanceResponse,
-        UpdateContentStandardsResponse,
-    )
-    from adcp.types.aliases import (
-        ComplyListScenariosResponse,
-        CreateContentStandardsSuccessResponse,
-        ListContentStandardsSuccessResponse,
-        UpdateContentStandardsSuccessResponse,
-    )
     from adcp.types.domains.account.sync_governance_response import SyncGovernanceResponse1
     from adcp.types.domains.compliance.comply_test_controller_response import (
         ComplyTestControllerResponse1,
@@ -192,6 +153,25 @@ def test_public_response_bases_remain_constructible_and_arms_remain_specific() -
     from adcp.types.domains.content_standards.update_content_standards_response import (
         UpdateContentStandardsResponse1,
     )
+
+    from adcp.types import (
+        ComplyTestControllerResponse,
+        CreateContentStandardsResponse,
+        ListContentStandardsResponse,
+        SyncGovernanceResponse,
+        UpdateContentStandardsResponse,
+    )
+    from adcp.types.aliases import (
+        CreateContentStandardsSuccessResponse,
+        ListContentStandardsSuccessResponse,
+        UpdateContentStandardsSuccessResponse,
+    )
+
+    # `compliance/comply-test-controller-response.json#/oneOf/0` is titled
+    # "List Scenarios Success", so that is the branch's name; upstream's
+    # `ComplyListScenariosResponse` is a word no node of the document states and
+    # `aliases.py` declines to invent it.
+    from adcp.types.compliance import ListScenariosSuccess as ComplyListScenariosResponse
     from adcp.utils.response_parser import parse_json_or_text
 
     responses = (
