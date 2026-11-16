@@ -134,9 +134,7 @@ def make_webhook(
     #: product/pricing_options".
     if str(body["notification_type"]).startswith("product."):
         payload = event.get("payload") or {}
-        body["product_payload_view"] = (
-            "canonical" if "canonical_product" in payload else "legacy"
-        )
+        body["product_payload_view"] = "canonical" if "canonical_product" in payload else "legacy"
     return WholesaleFeedWebhook.model_validate(body)
 
 
