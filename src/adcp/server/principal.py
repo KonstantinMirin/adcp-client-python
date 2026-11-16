@@ -372,7 +372,11 @@ class PrincipalService:
         record = await self._store.get(identity.subject)
         if record is None:
             return GetPrincipalResponse.model_validate(
-                {"result": {"kind": "unconfigured"}, "context": request.context}
+                {
+                    "status": "completed",
+                    "result": {"kind": "unconfigured"},
+                    "context": request.context,
+                }
             )
         if record.principal_kind != identity.kind:
             return GetPrincipalResponse.model_validate(
@@ -393,6 +397,7 @@ class PrincipalService:
         if record.configuration is None or record.configuration_version is None:
             return GetPrincipalResponse.model_validate(
                 {
+                    "status": "completed",
                     "result": {
                         "kind": "recognized",
                         "principal_id": record.principal_id,
@@ -470,6 +475,7 @@ class PrincipalService:
                 )
                 return SyncPrincipalResponse.model_validate(
                     {
+                        "status": "completed",
                         "result": {"kind": "validated", "action": action, "dry_run": True},
                         "context": request.context,
                     }
@@ -486,6 +492,7 @@ class PrincipalService:
             action = "cleared" if changed and cleared else "updated" if changed else "unchanged"
             response = SyncPrincipalResponse.model_validate(
                 {
+                    "status": "completed",
                     "result": {
                         "kind": "applied",
                         "action": action,
@@ -802,6 +809,7 @@ class PrincipalService:
     ) -> GetPrincipalResponse:
         return GetPrincipalResponse.model_validate(
             {
+                "status": "completed",
                 "result": {
                     "kind": "current",
                     "principal_id": record.principal_id,
