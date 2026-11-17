@@ -545,17 +545,77 @@ over the catalogue entries beneath, which is what §3a's "rather than over raw J
 references are resolved to what they name before keying — an unresolved key UNDERCOUNTS, measurably
 so at the array layer.
 
-**THE KEY IS THE VALUE LIST, not the structural identity §3a named.** The reading is *"each
+**AT L0 THE KEY IS THE VALUE LIST, not the structural identity §3a named.** The reading is *"each
 distinct vocabulary is one type"*, and a vocabulary is a set of admitted values. Where two
 structural identities appear over one value list, the whole of the difference is a redundant
 `type: "string"` beside an all-string enum — a keyword that
 admits not one value more. Keying on structural identity therefore splits entries that are one
 vocabulary, on a distinction no payload can see.
 
+**AND THE THREE WORDS "AT L0" ARE A CORRECTION, NOT A CLARIFICATION.** The sentence stood
+unqualified, and read as §3a's rule rather than as L0's it says the entry key of every layer is a
+value list — which leaves L2 and L3 with **no key at all**, because an object type has no value
+list to be keyed on. That reading contradicts the paragraphs directly above it, which already
+derive the structural key and name what it holds, and it contradicts the compiler, where
+`catalogue.Admitted` is a structural key and L2, L2C and L2A all share it. The layers were
+nonetheless built as though the composite had no identity, and the subsection below is what that
+cost.
+
 **And the guard that makes this safe rather than loose is the converse:** a group whose members
 differ in a keyword that **narrows** must redden a check, not collapse in the compiler. Two value
 lists that look alike and admit differently are two vocabularies, and the compiler must never be
 the thing that decides they are one.
+
+### A COMPOSITION WHOSE ONLY CONJUNCT IS A `$ref` IS THAT REFERENCE, AND MINTS NOTHING
+
+**THE SHAPE, AND WHY THE BUNDLE IS FULL OF IT.** In draft-07 a keyword stated beside a `$ref` is
+ignored, so an author who wants to annotate a reference has one idiom available and uses it:
+
+```json
+{"allOf": [{"$ref": ".../core/canonical-account-ref.json"}],
+ "description": "Execution account. A natural-key account is the single brand source."}
+```
+
+That node asserts a reference and a sentence. It states no property, no `required`, no narrowing
+keyword — **nothing an instance can tell apart from the target itself.** Measured over the 1,054
+portable documents of `schemas/cache/3.2`, with `catalogue.ANNOTATIONS` deciding what an
+annotation is: **156 stating positions over 104 documents** are exactly this shape, and **122 of
+them carry a `description` or a `title`** — the idiom, not a coincidence. A further 382 occur
+inside `$defs`/`definitions` mirrors, which the section rule above already takes out of the key.
+
+**SO THE RULE IS DERIVED AND NOT CHOSEN: such a position is a §5 `$ref` row.** The key test this
+section already states is admission-equivalence — *in the key if and only if some instance turns
+on it* — and the whole of the difference between the wrapper and its target is annotations the key
+drops. A node that admits exactly what the target admits is not a second type, and the compiler
+may not be the thing that decides it is one.
+
+**WHAT IT COST WHILE THE KEY WAS ABSENT, read off the emitted tree.** At 45 of the 156 the emitter
+declares a class, and each is a wrapper named from the PROPERTY PATH where the `$ref` already
+names the concept — `PostClick` and `PostView` for two durations, `Window` and `Suppress` on a
+frequency cap, `Period`, `Bidding`, `Forecast`. The three `properties/account` positions of
+`buy-products-request`, `list-products-request` and `request-proposals-request` are the same shape
+reached through an `anyOf`, and there the wrapper is composed with the target's two branches, so
+one concept becomes **three classes per request** — a local base crossed with a foreign one, which
+is §4's two-base emission doing exactly what it is told at a position that should have told it
+nothing.
+
+**THE CATALOGUE ALREADY SEES THE GROUP AND DECLINES IT, which is the sharper half of this.**
+`collect_shapes(admitted, "L2C", standing)` returns **0 entries and 28 untitled groups**, and the
+account group is one of them — three positions, one structural identity, no `title` at any of
+them. L2C's evidence rule is that the bundle must title every stating position with one and the
+same word, so a group the bundle titles nowhere is withheld for want of evidence. **That rule is
+right and stays.** It is what stops a coincidental overlap being collapsed into one class. But it
+is a rule about a group of DISTINCT nodes needing a name, and a bare annotated `$ref` is not that
+case: the name is not missing, it is on the document the `$ref` reaches.
+
+**AND THE TWO CASES MUST NOT BE CONFLATED, because only one of them is ours to fix.** Where the
+position's own text states something an instance can see — a `required` the target does not carry,
+a property the target does not declare, a narrowing of one of its branches — the crossing is the
+document's own meaning and the compiler is transcribing it correctly (§5: the compiler transcribes
+a document; it never decides whether the document is satisfiable). Those positions are
+**candidates for an upstream schema fix** and are carried to the owner as such, never silently
+collapsed here. The line between them is the admission key and nothing softer: no judgement about
+which keywords look important, only whether a payload can tell.
 
 **AN UNTITLED ENTRY WITH NO NAMING POSITION LIVES IN A MODULE WITH NO DOCUMENT**, which the export
 record permits now that it is keyed on the module. The module sits in the namespace §3a's
