@@ -311,7 +311,10 @@ class TestUnionTypeValidation:
 
     def test_success_response_from_dict(self):
         """CreateMediaBuySuccessResponse should validate success from dict."""
+        # `status` is not on the branch's own node; `core/protocol-envelope.json`
+        # requires it one `allOf` up, and requiredness is the conjunction.
         data = {
+            "status": "completed",
             "media_buy_id": "mb_123",
             "buyer_ref": "ref_456",
             "packages": [],
@@ -324,7 +327,9 @@ class TestUnionTypeValidation:
 
     def test_error_response_from_dict(self):
         """CreateMediaBuyErrorResponse should validate error from dict."""
+        # `status` is required by the envelope conjunct, as above.
         data = {
+            "status": "failed",
             "errors": [{"code": "invalid", "message": "Invalid request"}],
         }
         response = CreateMediaBuyErrorResponse.model_validate(data)
@@ -919,7 +924,9 @@ class TestRootModelUnwrapForSubclassing:
         class MySuccessResponse(CreateMediaBuySuccessResponse):
             model_config = ConfigDict(extra="forbid")
 
+        # `status` comes from the envelope conjunct, as everywhere else here.
         resp = MySuccessResponse(
+            status="completed",
             media_buy_id="mb_123",
             packages=[],
             confirmed_at="2026-05-27T12:00:00Z",
@@ -930,6 +937,7 @@ class TestRootModelUnwrapForSubclassing:
         # extra='forbid' should reject unknown fields
         with pytest.raises(ValidationError):
             MySuccessResponse(
+                status="completed",
                 media_buy_id="mb_123",
                 packages=[],
                 unknown_field="should fail",
