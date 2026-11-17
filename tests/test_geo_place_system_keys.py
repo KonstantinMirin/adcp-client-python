@@ -28,7 +28,13 @@ _CAPABILITY = {
     "catalog": {
         "current_version": "v1",
         "supported_versions": ["v1"],
-        "resolver": {"url": "https://seller.example/resolve", "auth": "none"},
+        # `core/geo-place-resolver.json` requires all three of `url`, `auth` and
+        # `protocol`; the last is a `const` naming the resolver contract version.
+        "resolver": {
+            "url": "https://seller.example/resolve",
+            "auth": "none",
+            "protocol": "adcp_geo_place_resolver_v1",
+        },
     },
 }
 _MODELS = [
