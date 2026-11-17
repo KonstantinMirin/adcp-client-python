@@ -181,14 +181,25 @@ BOOKKEEPING = ("widening", "undeclared", "admits")
 
 
 def _cells(row: str) -> dict[str, str]:
-    """A row's cells, read as the artifact spells them.
+    """A row's cells, keyed by :data:`harness.COLUMNS` -- the ONE declaration of the
+    row's shape, which is also what writes the TSV header.
 
-    `csv.DictReader` over the real header is the only reader for `verdicts.tsv`, and
-    this is its per-row equivalent: a `split("=")` by hand answered 0 graded pairs for a
-    file holding 2,550 of them, minutes before a correct read answered 101. A hand-rolled
-    reader that is wrong is worse than no reader, because it reports.
+    **NOT a `split("=")`**, which is what stood here and dropped every BARE column:
+    `document`, `pointer`, `class` and `note` carry no `key=` prefix, so the failure
+    message said `?` for the site and omitted the note entirely -- the two things a
+    reader needs. The note is the harness's own sentence about what the class did, and
+    leaving it out of the artifact is why every question about these failures turned into
+    a hand-written probe against the schemas. The artifact must carry the answer.
+
+    Positions come from `COLUMNS` and the values are taken as-is, so a column added
+    there appears here without a second list to keep in step.
     """
-    return dict(field.split("=", 1) for field in row.split("\t") if "=" in field)
+    from codegen import harness
+
+    fields = row.split("\t")
+    return {
+        name: fields[i] for i, name in enumerate(harness.COLUMNS) if i < len(fields)
+    }
 
 
 def test_this_pair_meets_the_contract(pair_index: int, setup: Any) -> None:
@@ -217,10 +228,11 @@ def test_this_pair_meets_the_contract(pair_index: int, setup: Any) -> None:
             #: Comparing it to the check's NAME is the mistake that made every one of
             #: 2,609 pairs fail on this gate's first run -- a hand-rolled reader being
             #: wrong in the commit that exists to stop hand-rolling readers.
-            if cells.get(check, "") != "pass":
+            if cells.get(check, "") != f"{check}=pass":
                 where = f"{cells.get('document', '?')}{cells.get('pointer', '')}"
-                bad.append(f"{where}: {cells.get(check)}")
-    assert not bad, f"{len(bad)} contract failures:\n" + "\n".join("  " + b[:220] for b in bad[:10])
+                note = (cells.get("note") or "").strip()
+                bad.append(f"{where} [{cells.get(check)}] {note}")
+    assert not bad, f"{len(bad)} contract failures:\n" + "\n".join("  " + b[:700] for b in bad[:10])
 
 
 def test_this_pair_has_no_undeclared_approximation(pair_index: int, setup: Any) -> None:
@@ -251,9 +263,10 @@ def test_this_pair_has_no_undeclared_approximation(pair_index: int, setup: Any) 
             #: a check never put to the pair is no evidence about the class and so is
             #: not a pass. Verified against the artifact: 22 pairs fail here, 14 fail
             #: the contract.
-            if (cells.get(check) or "").startswith("fail"):
+            if (cells.get(check) or "").startswith(f"{check}=fail"):
                 where = f"{cells.get('document', '?')}{cells.get('pointer', '')}"
-                bad.append(f"{where}: {check}={cells.get(check)}")
+                note = (cells.get("note") or "").strip()
+                bad.append(f"{where} [{cells.get(check)}] {note}")
     assert not bad, f"{len(bad)} bookkeeping failures:\n" + "\n".join(
-        "  " + b[:220] for b in bad[:10]
+        "  " + b[:700] for b in bad[:10]
     )
