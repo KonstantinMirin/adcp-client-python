@@ -92,6 +92,7 @@ from __future__ import annotations
 
 import importlib
 import importlib.util
+import pkgutil
 import sys
 from importlib.machinery import ModuleSpec
 from types import ModuleType
@@ -217,3 +218,41 @@ def there_is_a_tree_to_mirror() -> bool:
 
 if not installed() and there_is_a_tree_to_mirror():
     sys.meta_path.insert(0, _Mirror())
+
+
+def mirrored() -> tuple[str, ...]:
+    """The top-level names this mirror resolves, read off the tree it mirrors.
+
+    **DERIVED AND THEREFORE NOT A DECLARATION**, which is what lets it live in a module
+    whose own docstring says nothing here is one: it holds no list, it asks
+    ``adcp.types._schemas`` what the compiler wrote.  A domain added upstream appears here
+    the moment the run emits it.
+
+    This replaces a ``DOMAINS`` constant that went with v9.6's published tree.  Two readers
+    outlived it and both failed on its absence -- ``scripts/export_resolution.py``, which
+    is how the project reads its root census, and
+    ``tests/test_domain_roots_import_in_any_order.py``, which parametrizes on it at
+    COLLECTION time and so took its whole file with it.
+
+    **AND IT LIVES HERE, IN THE GENERATOR'S SOURCE, BECAUSE IT WAS ONCE ONLY IN THE
+    ARTIFACT.**  ``src/adcp/types/domains/__init__.py`` is a verbatim copy of this file, so
+    a function added to the copy survives exactly until the next whole re-emission
+    overwrites it.  That is what happened: the emission that collapsed the bare-``$ref``
+    wrappers wrote this file's 219 lines over the artifact's 248, ``mirrored`` went with
+    the difference, and ``tests/test_domain_roots_import_in_any_order.py`` failed at
+    COLLECTION -- taking the entire SDK suite down with ``Interrupted: 1 error during
+    collection``, so nothing could be measured at all.  A hand-edit to a generated file is
+    a change with a deletion already scheduled.
+
+    A PACKAGE OR A MODULE: ``core/account.json`` makes ``_schemas.core.account`` under a
+    package, and ``adagents.json`` makes ``_schemas.adagents``, a module at the top with no
+    package of its own.  Both are mirrored, so both are here.
+    """
+    schemas = importlib.import_module(GENERATED)
+    return tuple(
+        sorted(
+            name
+            for info in pkgutil.iter_modules(schemas.__path__)
+            if not (name := info.name.rpartition(".")[2]).startswith("_")
+        )
+    )
