@@ -1,32 +1,88 @@
 # The files that could not collect: what was wrong, and what they found once they could
 
 30 test files failed COLLECTION before this change, so **nothing in them had ever been
-graded**. All 30 collect now. The population is the 30 the suite reported, not the 30
-`TASK.md` describes: measured with `.venv/bin/python -m pytest tests/ --collect-only -q`,
-which `pyproject.toml`'s `pythonpath` pins to this checkout, **none** of the 30 is a
-`test_pg_*` file. `addopts` carries `-m 'not integration'` and the PostgreSQL conformance
-tests are marked `integration`, so they are deselected before collection and never appear.
-The task's "14 are `test_pg_*`" is a count from a run without that filter.
+graded**. All 30 collect now: 24 were repaired and 6 were removed with the layer they
+graded.
+
+The population is the 30 the suite reports as ERRORS, and **none of them is a
+`test_pg_*` file**. Measured with `.venv/bin/python -m pytest tests/ --collect-only -q`,
+which `pyproject.toml`'s `pythonpath` pins to this checkout: the PostgreSQL files do not
+error, they SKIP at module scope on `could not import 'psycopg_pool'`, so they never
+appear in the error list. They are the source of the task's "14 are `test_pg_*`", because
+they do appear in the JSON report's `collectors` list with `outcome == "skipped"` — see
+the next section, where the two counts are reconciled. Nothing under `test_pg_*` was
+touched.
 
 ## The two halves, separately
 
 | | before | after |
 |---|---|---|
-| **collection errors** (`pytest tests/ --collect-only`) | **30** | **0** |
-| **collector entries not passing** (`len([c for c in report["collectors"] if c["outcome"] != "passed"])`) | **47** | **0** |
+| **collection ERRORS** (`pytest tests/ --collect-only`) | **30** | **0** |
+| **collector entries not passing** (`len([c for c in report["collectors"] if c["outcome"] != "passed"])`) | **47** | **17** |
+| &nbsp;&nbsp;…of those, `outcome == "error"` | 30 | **0** |
+| &nbsp;&nbsp;…of those, `outcome == "skipped"` | 17 | 17 |
 | tests COLLECTED | 17,893 | 18,994 |
-| `failed` | 141 | see §"The delta" |
-| `error` | 4 | see §"The delta" |
+| `passed` | 14,919 | 15,845 |
+| `failed` | **141** | **316** |
+| `error` | 4 | 4 |
 
-The two collection-error rows count the same event differently and both are reported
-because the task asks for the second. `--collect-only` prints one line per file that
-raised; the JSON report's `collectors` list also marks every ANCESTOR of such a file, so
-one broken file in `tests/` shows up as the file plus its directory. 30 files, 47 entries.
+**The second row is not all errors, and that is where the task's "14 are `test_pg_*`"
+comes from.** The task's formula counts every collector whose outcome is not `passed`, and
+17 of the 47 were `skipped` rather than `error` — the PostgreSQL files, each skipping at
+module scope on `could not import 'psycopg_pool'`. 14 of those 17 are under
+`tests/conformance/`. They are untouched and they still skip; what went to zero is the
+ERROR half, 30 of 30.
 
-**The failure count goes UP, and that is the point rather than a regression.** A file that
-could not collect contributed ZERO failures, so every failure the table in §"The delta"
-shows as new is a test that was already broken and was invisible. The collection-error
-count is reported above, separately, so unhiding is not mistaken for fixing.
+**The failure count goes UP, and that is the point rather than a regression.** 141 → 316,
++175. A file that could not collect contributed ZERO failures, so 174 of those 175 are
+tests that were already broken and were invisible — they are listed per file in §"The
+delta", and the collection-error count is reported separately above so unhiding is not
+mistaken for fixing. Measured node by node against `before.json`, **exactly one test
+passed before and fails after**, and it is the one in §"Outside the write scope" item 5.
+**Zero tests went the other way**: nothing that was failing before passes now, because
+nothing outside the 30 files was touched.
+
+## The delta, per file
+
+Every file whose count moved. All but the last had never been graded at all.
+
+| file | before (tot/pass/fail) | after (tot/pass/fail) |
+|---|---|---|
+| `test_account_v3_wire.py` | 0 / 0 / 0 | 30 / 27 / 3 |
+| `test_adcp_3_1_14_schema_backport.py` | 0 / 0 / 0 | 3 / 3 / **0** |
+| `test_adcp_3_1_27_macro_urls.py` | 0 / 0 / 0 | 191 / 191 / **0** |
+| `test_canonical_formats_compatibility.py` | 0 / 0 / 0 | 36 / 36 / **0** |
+| `test_canonical_formats_roundtrip.py` | 0 / 0 / 0 | 31 / 16 / 15 |
+| `test_canonical_formats_v1_to_v2.py` | 0 / 0 / 0 | 41 / 15 / 26 |
+| `test_composability_invariant.py` | 0 / 0 / 0 | 6 / 6 / **0** |
+| `test_constrained_array_empty_branches.py` | 0 / 0 / 0 | 14 / 14 / **0** |
+| `test_discriminated_unions.py` | 0 / 0 / 0 | 66 / 45 / 21 |
+| `test_extra_policy.py` | 0 / 0 / 0 | 17 / 17 / **0** |
+| `test_format_assets.py` | 0 / 0 / 0 | 18 / 17 / 1 |
+| `test_forward_compat_assets.py` | 0 / 0 / 0 | 65 / 65 / **0** |
+| `test_geo_place_system_keys.py` | 0 / 0 / 0 | 111 / 59 / 52 |
+| `test_legacy_asset_helpers.py` | 0 / 0 / 0 | 16 / 14 / 2 |
+| `test_nested_no_explicit_null_round_trip.py` | 0 / 0 / 0 | 35 / 27 / 8 |
+| `test_preview_html.py` | 0 / 0 / 0 | 16 / 7 / 9 |
+| `test_protocol_envelope_inheritance.py` | 0 / 0 / 0 | 27 / 27 / **0** |
+| `test_rc6_adoption.py` | 0 / 0 / 0 | 216 / 215 / 1 |
+| `test_reporting_consumer_loop.py` | 0 / 0 / 0 | 55 / 55 / **0** |
+| `test_rootmodel_proxy.py` | 0 / 0 / 0 | 8 / 8 / **0** |
+| `test_simple_api.py` | 0 / 0 / 0 | 9 / 8 / 1 |
+| `test_targeting_overlay_schema.py` | 0 / 0 / 0 | 5 / 5 / **0** |
+| `test_type_aliases.py` | 0 / 0 / 0 | 44 / 33 / 11 |
+| `test_type_coercion.py` | 0 / 0 / 0 | 41 / 17 / 24 |
+| `test_native_ci.py` | 8 / 8 / **0** | 8 / 7 / **1** |
+| **total** | **8 / 8 / 0** | **1,109 / 934 / 175** |
+
+Eleven of the 24 repaired files pass completely. The six removed files
+(`test_type_guards.py`, `test_type_validation_helpers.py`, `test_generated_poc_alias.py`,
+`test_sync_schemas.py`, `test_sync_schemas_signed_release.py`,
+`test_task_message_lattice.py`) contribute no rows, because they contributed no tests
+before either.
+
+`ruff check tests/` moved 99 → 79 over the same change, and `./check` is unmoved:
+**emitted 1059 / refused 0**.
 
 ## The rule applied, per missing name
 
@@ -147,13 +203,16 @@ state. REQUIREDNESS IS A CONJUNCTION:
 A union's parts are BRANCHES. `tests/test_constrained_array_empty_arms.py` is
 `git mv`-ed to `tests/test_constrained_array_empty_branches.py`, and the word is gone from
 that file, from `test_protocol_envelope_inheritance.py`,
-`test_forward_compat_assets.py` and `test_rootmodel_proxy.py`. The `arm` in the EMITTED
+`test_forward_compat_assets.py`, `test_rootmodel_proxy.py`,
+`test_discriminated_unions.py`, `test_geo_place_system_keys.py` and
+`test_targeting_overlay_schema.py`. The `arm` in the EMITTED
 tree and in the schemas is the document's own property name and is untouched.
 
 ## Outside the write scope — for the owner
 
-`src/`, `codegen/`, `scripts/` and `tests_emit/` are out of scope here. Four things found
-from inside `tests/` that belong there.
+`src/`, `codegen/`, `scripts/` and `tests_emit/` are out of scope here. Five things found
+from inside `tests/` that belong there, the third of which is a one-line fix that a CI job
+needs.
 
 **1. A required property the document PINS with a `const` does not default to it.** The
 decision index states the opposite, citing
@@ -179,12 +238,24 @@ its module by the `filename:` comment the old generator wrote into each file;
 `generated_module_by_schema(Path("src/adcp/types/_schemas"))` finds **0 of them**. Its
 docstring names three consumers and two of them are deleted modules.
 
-**3. Removing `tests/test_task_message_lattice.py` leaves a claim ungraded in `tests/`** —
+**3. `scripts/ci/run_native_tests.py` names a file this change deleted, and that is the
+one true regression in the suite.** `COMPATIBILITY_TESTS` lists
+`"tests/test_type_guards.py"`, which went with `adcp.types.guards`, so
+`tests/test_native_ci.py::test_compatibility_suite_checks_runtime_on_every_interpreter_without_adopter_rebuilds`
+— which asserts every path in that tuple `is_file()` — now fails. It is the only test in
+the suite that passed before this change and fails after it.
+
+The fix is deleting one line from `scripts/ci/run_native_tests.py`. This task's write scope
+is `tests/` plus this file, so it is recorded here rather than applied. It is also worth
+deciding whether `tests/test_type_aliases.py` should stay in that tuple: it is listed
+beside the deleted one, and 11 of its 44 tests fail.
+
+**4. Removing `tests/test_task_message_lattice.py` leaves a claim ungraded in `tests/`** —
 that every task message in the registry resolves to a root class in the
 `AdcpRequest`/`AdcpResponse` lattice. There may be an equivalent under `tests_emit/`; I did
 not add one, because both trees are out of scope.
 
-**4. Three words that look like `aliases.py` gaps, offered as questions and not as
+**5. Three words that look like `aliases.py` gaps, offered as questions and not as
 defects.** Each has a plausible reading on which it is a decision, which is why none is
 filed as a bug:
 
