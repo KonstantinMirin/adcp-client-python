@@ -1,8 +1,8 @@
 # Findings — the 53 failures across the v1 → v2 canonical-format suites
 
 30 repaired in the tests, **23 left red because the repair is in `src/`**, and one
-further `src/` defect that no test in this list grades — so it would have stayed
-invisible.
+further `src/` defect — narrow, and on a deprecated helper — that no test in this
+list grades, so it would have stayed invisible.
 
 | file | before | after | what the red that remains is |
 | --- | --- | --- | --- |
@@ -174,7 +174,11 @@ declaration and reaches this line. The `getattr(..., {})` default means the
 dict-shaped read was never grading a declaration — it was grading the absence of
 one.
 
-### D. `normalize_assets_required` is bound to the image branch, not to the union — 0 red, and that is the point
+### D. `normalize_assets_required` is bound to the image branch, not to the union — 0 red, and the NARROWEST of the four
+
+**The binding is wrong and the consequence is a refusal, not a mis-construction.** An
+earlier draft of this section said the function "constructs an image slot whatever it
+is handed"; it does not, and the difference is the whole severity of the finding.
 
 `src/adcp/utils/format_assets.py:24`:
 
@@ -183,19 +187,33 @@ from adcp.types.domains.core.format import Assets as AssetsModel   # Assets = In
 ```
 
 `Assets` is the generated member alias for the FIRST branch of the individual-slot
-union, so `normalize_assets_required` constructs an image slot whatever it is handed:
+union — `SchemaRef(core/format.json, '#/properties/assets/items/oneOf/0/oneOf/0')` —
+and not the union. Measured, what that produces at `format_assets.py:124` is a
+pydantic refusal:
 
 ```
 normalize_assets_required([{"asset_id": "v", "asset_type": "video", "item_type": "individual"}])
   -> ValidationError: 1 validation error for IndividualImageAsset
-     asset_type  Input should be 'image' [input_value='video']
+     asset_type  Input should be 'image' [type=literal_error, input_value='video']
 ```
+
+The branch's `asset_type: Literal['image']` refuses `'video'` rather than accepting
+it, so **there is no silent wrong-type data path here** — no caller receives an image
+slot built from a video entry. The function fails closed on 20 of the 21 asset types
+the document states.
 
 The dispatching base is right there and answers correctly —
 `AssetsItemIndividual(asset_id="v", item_type="individual", required=True,
-asset_type="video")` constructs `IndividualVideoAsset`. So the one-line fix is to
-import the base.
+asset_type="video")` constructs `IndividualVideoAsset`. So the fix is one import line.
 
-**No test grades this.** All three `TestNormalizeAssetsRequired` cases are image
-assets, so the function's only non-image path is ungraded, and the deprecated public
-helper raises on 20 of the 21 asset types the document states.
+**How to rank it.** `normalize_assets_required` is a DEPRECATED helper: it emits
+`DeprecationWarning` on every call ("the assets_required field was removed in ADCP
+3.0.0-beta.2. This function will be removed in a future version"), and all three of
+its tests assert that warning. A deprecated helper that refuses non-image input is a
+real but narrow defect — an availability bug on a path already scheduled for removal,
+not a correctness or corruption risk, and well below A, B and C, each of which is
+holding tests red.
+
+**No test grades it.** All three `TestNormalizeAssetsRequired` cases pass
+`asset_type: "image"`, so the only path the binding breaks is the one nothing asks
+about — which is why it is written down rather than left to be rediscovered.
