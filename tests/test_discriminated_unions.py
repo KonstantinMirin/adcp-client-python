@@ -747,18 +747,30 @@ class TestPropertyTagSharedSchema:
     """
 
     def test_public_property_tag_is_from_shared_schema(self):
-        """Public PropertyTag should be from the shared property_tag schema."""
+        """Public PropertyTag should be from the shared property_tag schema.
+
+        An annotated alias is not a class, so it carries no `__module__` of its
+        own -- `typing` owns the object. What identifies the declaring module is
+        IDENTITY with the symbol that module binds, and the module's own
+        `__adcp_schema__` says which document it is.
+        """
+        from adcp.types.domains.core import property_tag
+
         from adcp import PropertyTag
 
         # Should come from the shared schema in core/, not embedded in another schema
-        assert PropertyTag.__module__ == "adcp.types.domains.core.property_tag"
+        assert PropertyTag is property_tag.PropertyTag
+        assert property_tag.__adcp_schema__.document == "core/property-tag.json"
 
     def test_property_id_is_from_shared_schema(self):
         """Public PropertyId should be from the shared property_id schema."""
+        from adcp.types.domains.core import property_id
+
         from adcp import PropertyId
 
         # Should come from the shared schema in core/
-        assert PropertyId.__module__ == "adcp.types.domains.core.property_id"
+        assert PropertyId is property_id.PropertyId
+        assert property_id.__adcp_schema__.document == "core/property-id.json"
 
     def test_property_tag_works_with_publisher_properties_by_tag(self):
         """PropertyTag should work correctly with PublisherPropertiesByTag."""
@@ -793,12 +805,13 @@ class TestPropertyTagSharedSchema:
         adagents_source = inspect.getsource(adagents_module)
         selector_source = inspect.getsource(selector_module)
 
-        # May be on same line as other imports or separate line
-        # Both should import property_tag (from .core or from .) rather than defining their own
-        assert "property_tag" in adagents_source and (
-            "from .core import" in adagents_source or "from . import" in adagents_source
-        )
-        assert "property_tag" in selector_source and "from . import" in selector_source
+        # Each imports the MODULE's symbol by its module path rather than
+        # declaring a second alias of its own, which is what "one class per
+        # subject" means for an alias: `adagents.json` sits a package above
+        # `core/`, so its import is `.core.property_tag`, and the selector is a
+        # sibling in `core/` and imports `.property_tag`.
+        assert "from .core.property_tag import PropertyTag" in adagents_source
+        assert "from .property_tag import PropertyTag" in selector_source
 
     def test_property_tag_validation(self):
         """PropertyTag should validate according to shared schema rules.
