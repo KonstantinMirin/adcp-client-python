@@ -20,13 +20,26 @@ from adcp import (
     UrlVastAsset,
 )
 
-# Keep using generated names for authorization variants
-# Deployment and Destination now have semantic aliases
+# Each authorization branch is named for what it IS. Section 4 emits no
+# positional name: `AuthorizedAgents1` through `AuthorizedAgents3` obliged a
+# caller to count `adagents.json`'s branches to learn which was which, and the
+# three trailing comments in the old import block were that count written down.
+from adcp.types import _generated
+
+AuthorizedAgentsPropertyIds = (
+    _generated.AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds
+)
+AuthorizedAgentsPropertyTags = (
+    _generated.AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags
+)
+AuthorizedAgentsInlineProperties = (
+    _generated.AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties
+)
+AuthorizedAgentsPublisherProperties = (
+    _generated.AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties
+)
+
 from adcp.types._generated import (
-    AuthorizedAgents,  # property_ids variant
-    AuthorizedAgents1,  # property_tags variant
-    AuthorizedAgents2,  # inline_properties variant
-    AuthorizedAgents3,  # publisher_properties variant
     Deployment1,  # Platform
     Deployment2,  # Agent
     Destination1,  # Platform
@@ -43,14 +56,14 @@ PublisherProperties5 = PublisherPropertySelector3
 class TestAuthorizationDiscriminatedUnions:
     """Test authorization_type discriminated unions in adagents.json.
 
-    Note: AuthorizedAgents variants are separate discriminated union types.
+    Note: the authorized-agents branches are separate discriminated union types.
     Pydantic automatically enforces correct field usage based on Literal types.
     No model_validator needed because discrimination happens at type level.
     """
 
     def test_property_ids_authorization(self):
-        """AuthorizedAgents (property_ids variant) requires property_ids and authorization_type."""
-        agent = AuthorizedAgents(
+        """The property_ids branch requires property_ids and authorization_type."""
+        agent = AuthorizedAgentsPropertyIds(
             url="https://agent.example.com",
             authorized_for="All properties",
             authorization_type="property_ids",
@@ -62,21 +75,21 @@ class TestAuthorizationDiscriminatedUnions:
         assert not hasattr(agent, "properties")
 
     def test_property_ids_authorization_from_json(self):
-        """AuthorizedAgents (property_ids) validates from JSON dict."""
+        """The property_ids branch validates from a JSON dict."""
         data = {
             "url": "https://agent.example.com",
             "authorized_for": "All properties",
             "authorization_type": "property_ids",
             "property_ids": ["site1", "site2"],
         }
-        agent = AuthorizedAgents.model_validate(data)
+        agent = AuthorizedAgentsPropertyIds.model_validate(data)
         assert agent.authorization_type == "property_ids"
         assert [p.root for p in agent.property_ids] == ["site1", "site2"]
 
     def test_property_ids_authorization_wrong_type_fails(self):
-        """AuthorizedAgents (property_ids) rejects wrong authorization_type value."""
+        """The property_ids branch rejects a wrong authorization_type value."""
         with pytest.raises(ValidationError) as exc_info:
-            AuthorizedAgents(
+            AuthorizedAgentsPropertyIds(
                 url="https://agent.example.com",
                 authorized_for="All properties",
                 authorization_type="property_tags",  # Wrong value for this variant
@@ -86,8 +99,8 @@ class TestAuthorizationDiscriminatedUnions:
         assert "authorization_type" in error_msg.lower()
 
     def test_property_tags_authorization(self):
-        """AuthorizedAgents1 requires property_tags and authorization_type."""
-        agent = AuthorizedAgents1(
+        """The property_tags branch requires property_tags and authorization_type."""
+        agent = AuthorizedAgentsPropertyTags(
             url="https://agent.example.com",
             authorized_for="All properties",
             authorization_type="property_tags",
@@ -98,8 +111,8 @@ class TestAuthorizationDiscriminatedUnions:
         assert not hasattr(agent, "property_ids")
 
     def test_inline_properties_authorization(self):
-        """AuthorizedAgents2 requires properties and authorization_type."""
-        agent = AuthorizedAgents2(
+        """The inline_properties branch requires properties and authorization_type."""
+        agent = AuthorizedAgentsInlineProperties(
             url="https://agent.example.com",
             authorized_for="All properties",
             authorization_type="inline_properties",
@@ -117,7 +130,7 @@ class TestAuthorizationDiscriminatedUnions:
         assert not hasattr(agent, "property_ids")
 
     def test_inline_properties_authorization_from_json(self):
-        """AuthorizedAgents2 (inline_properties) validates from JSON dict."""
+        """The inline_properties branch validates from a JSON dict."""
         data = {
             "url": "https://agent.example.com",
             "authorized_for": "All properties",
@@ -131,13 +144,13 @@ class TestAuthorizationDiscriminatedUnions:
                 }
             ],
         }
-        agent = AuthorizedAgents2.model_validate(data)
+        agent = AuthorizedAgentsInlineProperties.model_validate(data)
         assert agent.authorization_type == "inline_properties"
         assert len(agent.properties) == 1
 
     def test_publisher_properties_authorization(self):
-        """AuthorizedAgents3 requires publisher_properties and type."""
-        agent = AuthorizedAgents3(
+        """The publisher_properties branch requires publisher_properties and type."""
+        agent = AuthorizedAgentsPublisherProperties(
             url="https://agent.example.com",
             authorized_for="All properties",
             authorization_type="publisher_properties",
@@ -411,9 +424,9 @@ class TestInvalidDiscriminatorValues:
             )
 
     def test_invalid_authorization_type_rejected(self):
-        """AuthorizedAgents with wrong authorization_type should fail."""
+        """The property_ids branch with a wrong authorization_type should fail."""
         with pytest.raises(ValidationError):
-            AuthorizedAgents(
+            AuthorizedAgentsPropertyIds(
                 url="https://agent.example.com",
                 authorized_for="All properties",
                 authorization_type="invalid_type",  # Invalid
@@ -761,8 +774,9 @@ class TestPropertyTagSharedSchema:
 
     def test_shared_schema_prevents_collision(self):
         """Verify that both adagents and publisher_property_selector import from shared schema."""
-        from adcp import PropertyTag
         from adcp.types.domains.core import property_tag
+
+        from adcp import PropertyTag
 
         # The shared schema is the canonical definition in core/
         assert PropertyTag is property_tag.PropertyTag
