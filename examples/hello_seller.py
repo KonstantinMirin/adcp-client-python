@@ -113,6 +113,7 @@ class HelloSeller(DecisioningPlatform):
     ) -> dict[str, Any]:
         """Return a single example product. Sync — no HITL."""
         return {
+            "status": "completed",
             "products": [
                 {
                     "product_id": "display-rotation",
@@ -177,7 +178,8 @@ class HelloSeller(DecisioningPlatform):
 
         return {
             "media_buy_id": f"mb_{ctx.account.id}_{len(packages)}",
-            "status": "active",
+            "status": "completed",
+            "media_buy_status": "active",
             "packages": [
                 {
                     "package_id": f"pkg_{i}",
@@ -239,7 +241,8 @@ class HelloSeller(DecisioningPlatform):
 
         return {
             "media_buy_id": media_buy_id,
-            "status": "active",
+            "status": "completed",
+            "media_buy_status": "active",
             "packages": [],
         }
 
@@ -255,6 +258,7 @@ class HelloSeller(DecisioningPlatform):
         review (see the async-handoff example)."""
         creatives = getattr(req, "creatives", None) or []
         return {
+            "status": "completed",
             "creatives": [
                 {
                     "creative_id": (
@@ -277,6 +281,7 @@ class HelloSeller(DecisioningPlatform):
         ``schemas/cache/media-buy/get-media-buy-delivery-response.json``.
         """
         return {
+            "status": "completed",
             "media_buy_deliveries": [
                 {
                     "media_buy_id": getattr(req, "media_buy_id", "mb_unknown"),
@@ -302,7 +307,7 @@ class HelloSeller(DecisioningPlatform):
         system in production; buyers use this for status polling and
         reconciliation.
         """
-        return {"media_buys": []}
+        return {"status": "completed", "media_buys": []}
 
     def list_creative_formats_legacy(
         self,
@@ -315,7 +320,7 @@ class HelloSeller(DecisioningPlatform):
         Wire to your creative-spec registry in production; buyers use this
         to validate creatives before submission.
         """
-        return {"formats": []}
+        return {"status": "completed", "formats": []}
 
     def list_creatives(
         self,
@@ -334,6 +339,7 @@ class HelloSeller(DecisioningPlatform):
         once you have a real store.
         """
         return {
+            "status": "completed",
             "query_summary": {"total_matching": 0, "returned": 0},
             "pagination": {"has_more": False},
             "creatives": [],
@@ -350,7 +356,7 @@ class HelloSeller(DecisioningPlatform):
         production. Buyers send conversion events (clicks, installs,
         purchases) here so the seller can optimize pacing and targeting.
         """
-        return {"success": True}
+        return {"status": "completed", "success": True}
 
     # -------------------------------------------------------------------------
 
