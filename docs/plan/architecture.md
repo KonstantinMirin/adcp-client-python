@@ -629,6 +629,58 @@ right and stays.** It is what stops a coincidental overlap being collapsed into 
 is a rule about a group of DISTINCT nodes needing a name, and a bare annotated `$ref` is not that
 case: the name is not missing, it is on the document the `$ref` reaches.
 
+**THIS POPULATION WAS ALREADY MEASURED AND ALREADY DECIDED, AND NOT READING THAT FIRST IS EXACTLY
+THE MISTAKE `CLAUDE.md`'s OPENING RULE NAMES.** `codegen/lower/composition.py`'s
+`declares_nothing_its_base_does_not` IS this collapse. It already returns the target as the node's
+own type where the node adds nothing — *"a subclass that adds nothing is not a base, it is a
+second name for one type"* — and ROOT is already excluded from it for §1 and D5's reasons, not as
+a caution. Its docstring carries its own census of this exact shape: **235 nodes state an `allOf`
+of exactly one `$ref`, 108 at a document root; of the 127 non-root positions 7 state nothing
+besides a keyword that is `Effect.NOTHING`, and the next largest sibling set is a bare
+`description` at 50.** It decided to KEEP the class at those 50, and gave the reason:
+
+> §6's description-authority rule makes the node's own `description` authoritative at its own
+> pointer, and a type that IS the target carries no statement of this document's — so a node
+> stating one is restating something, even though what it restates admits nothing. […] Admitting
+> those 50 would drop a description the document states at a pointer, which is a different row
+> and the opposite of this one.
+
+So the layer did not miss these and the clause is not an oversight. The screen implementing the
+decision is `all(_carries_nothing(word, node.position) for word in node.annotations)`:
+`x-adcp-schema-uri` is `NOTHING` at PROP and `description` is `ANNOTATION`, which is the whole of
+why 7 collapse and 50 do not.
+
+**AND THE DECISION DOES NOT SURVIVE — REFUTED BY THE ARTIFACT, NOT BY AN ARGUMENT.** Its premise
+is that the choice is *mint a class* or *drop the description*. It is neither: a description's home
+at a referring position is the FIELD, and the emitter already writes it there.
+`src/adcp/types/_schemas/core/frequency_cap.py` carries the sentence **twice** —
+
+```python
+class Window(Duration):
+    """Time window for the max_impressions cap (e.g. {"interval": 7, "unit": "days"} …"""
+    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/frequency-cap.json',
+                                                     pointer='#/properties/window')
+...
+    window: Annotated[Window | None,
+                      Field(description='Time window for the max_impressions cap (e.g. …'),
+                      OmittedNotNull] = None
+```
+
+— once as the subclass docstring and once on the field, and the field's copy is present at
+`PostClick`, `Bidding` and `TimeBudget` too. So collapsing the class drops nothing a document
+states: `window: Annotated[Duration | None, Field(description=…)]` keeps the sentence at the
+referring pointer, which is where §6's authority rule wants it, and leaves `Duration` one type.
+**The description was never what the class was carrying.** That is what makes this a defect rather
+than a decision to re-open — and the way to tell the difference was to read the row first, which
+is the whole of `CLAUDE.md`'s opening rule and was skipped here.
+
+**AND THE TWO CENSUSES ARE TWO READINGS, NOT ONE NUMBER DISAGREEING WITH ITSELF.** The composition
+row counts every node stating an `allOf` of exactly one `$ref` and screens afterwards: 235, 127
+non-root. `survey/composites.py` requires that nothing but an annotation be stated at all, so it
+reports 73, of which 53 are non-root — which lines up with the row's own "7 that are `NOTHING`
+plus 50 with a bare `description`". Neither figure is wrong and they answer different questions;
+what matters is that both range over the same shape.
+
 **AND THE TWO CASES MUST NOT BE CONFLATED, because only one of them is ours to fix.** Where the
 position's own text states something an instance can see — a `required` the target does not carry,
 a property the target does not declare, a narrowing of one of its branches — the crossing is the

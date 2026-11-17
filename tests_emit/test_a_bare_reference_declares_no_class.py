@@ -32,6 +32,25 @@ annotated ``$ref`` is not that question: the subject is named already, on the do
 reference reaches. Nothing here needs a title, and nothing here collapses two nodes
 together -- it removes a second definition of one node.
 
+**THE LOWERING ROW ALSO ALREADY DECIDED THIS, AND THE DECISION IS REFUTED BY THE TREE AND
+NOT BY THIS GATE'S OPINION.** ``codegen/lower/composition.py``'s
+``declares_nothing_its_base_does_not`` is the collapse and already returns the target as
+the node's own type where the node adds nothing. Its own census of this shape -- 235
+single-``$ref`` ``allOf`` nodes, 108 at a root, 7 of the 127 non-root stating only a
+``NOTHING`` keyword and **50 stating a bare ``description``** -- decided to KEEP the class
+at those 50, because §6 makes a node's own ``description`` authoritative at its own pointer
+and dropping it would lose a fact the document states.
+
+**That premise does not hold: the description is ALREADY on the field.**
+``core/frequency_cap.py`` emits it twice, once as ``class Window(Duration)``'s docstring
+and once as ``window: Annotated[Window | None, Field(description='Time window for the
+max_impressions cap …')]``, and the field's copy is present at ``PostClick``, ``Bidding``
+and ``TimeBudget`` too. So the collapse drops nothing -- ``Annotated[Duration | None,
+Field(description=…)]`` keeps the sentence exactly where §6 wants it -- and the 27 below are
+defects rather than a decision to re-open. **Reading that row first is what tells a defect
+from a decision**, which is ``CLAUDE.md``'s opening rule and was skipped when this gate was
+first written.
+
 **A DOCUMENT ROOT IS EXEMPT, AND THAT IS NOT A LOOPHOLE.** §3a: *"A DOCUMENT ROOT IS
 ALREADY A HOME"*. A root is a public named type and the wrapper is what gives the
 operation its own word -- ``BuyProductsSubmitted`` on ``{allOf: [$ref
