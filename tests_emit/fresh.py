@@ -50,6 +50,15 @@ compile's result, so the steady-state cost of this module is hashing ``codegen/`
 
 An entry is published by RENAMING a complete staging directory into place, so the named
 path never exists half-written; a reader that finds it can import from it.
+
+**AND THE WRITE HAPPENS IN A CHILD PROCESS, because the compiler is a CONSUMER of the
+committed tree** (``codegen.constraints.narrowed_by_url_type`` reads the emitted
+``adcp.types.constraints``, and reaching for it through ``adcp.types.__getattr__`` pulls
+``adcp.types._schemas``).  A compile run here bound the committed half of the package in
+the very process that was about to grade a fresh one, and the assertion below caught it
+and took the whole run down with an ``INTERNALERROR`` -- on the first run under a cold
+key and on no other, which is the shape the operator saw as a flake.
+:func:`_materialised` carries the measurement; ``FINDINGS-flake.md`` carries the counts.
 """
 
 from __future__ import annotations
@@ -57,14 +66,16 @@ from __future__ import annotations
 import fcntl
 import functools
 import importlib
+import json
 import os
 import shutil
+import subprocess
 import sys
 import time
 import traceback
 from pathlib import Path
 
-from compiled import CACHE_ROOT, compiled, digest
+from compiled import CACHE_ROOT, digest
 
 from codegen import bundle, emit, patch
 
@@ -219,6 +230,63 @@ def _prune(keep: str) -> None:
 #: short enough to clear itself without anyone being told about a file.
 FAILED_SECONDS = 2 * 60 * 60
 
+#: **The whole of the build, as a program for a SECOND INTERPRETER.**  The compile reads
+#: the COMMITTED generated half as an input, so it may not run in the process that is
+#: about to grade a fresh one -- :func:`_materialised` carries the measurement.
+#:
+#: Three lines and no decisions: every value it needs is handed to it, so there is no
+#: second derivation of the key, the bundle or the population that could disagree with
+#: this module's.  ``compiled`` holds the result under the key :func:`digest` computes
+#: from the same two arguments, which is what makes the child's work survive it --
+#: ``./check`` and every later caller in the parent read the pickle it leaves behind.
+_BUILD = """\
+import json
+import sys
+from pathlib import Path
+
+from compiled import compiled
+
+from codegen import emit
+
+bundle, staging = sys.argv[1], Path(sys.argv[2])
+emit.write(
+    compiled(bundle, json.load(sys.stdin)),
+    staging / "types" / "_schemas",
+    staging / "types",
+)
+"""
+
+
+def _build(staging: Path) -> subprocess.CompletedProcess[str]:
+    """Run :data:`_BUILD` over :data:`BUNDLE` and :func:`population`, writing ``staging``.
+
+    **``PYTHONPATH`` is named and is not inherited alone**, for the reason ``./check``
+    states in its own preamble: the shared ``.venv`` carries an editable ``.pth`` naming
+    ONE worktree's ``src``, so a child that did not name this checkout's roots would
+    compile against a SIBLING checkout's committed ``adcp.types.constraints`` -- a
+    different input to the same key.  ``.`` for ``codegen``, ``src`` for ``adcp`` and
+    ``tests_emit`` for ``compiled``, which is the set ``pyproject.toml``'s ``pythonpath``
+    plus pytest's rootdir insertion give the parent.  An inherited ``PYTHONPATH`` is kept
+    behind them, so a caller's own entry still resolves and cannot outrank these.
+
+    ``cwd=REPO`` because the derivation reads repository-relative paths
+    (``codegen.patch``'s ``patches/8525``) and a child's working directory is whatever the
+    operator's was.
+    """
+    roots = (str(REPO), str(REPO / "src"), str(REPO / "tests_emit"))
+    inherited = os.environ.get("PYTHONPATH")
+    return subprocess.run(
+        [sys.executable, "-c", _BUILD, str(BUNDLE), str(staging)],
+        input=json.dumps(population()),
+        capture_output=True,
+        text=True,
+        cwd=REPO,
+        env={
+            **os.environ,
+            "PYTHONPATH": os.pathsep.join(roots + ((inherited,) if inherited else ())),
+        },
+    )
+
 
 @functools.cache
 def _materialised() -> Path:
@@ -232,6 +300,32 @@ def _materialised() -> Path:
 
     A compile that RAISES is recorded beside the tree and re-raised by the siblings
     waiting on the lock, for :data:`FAILED_SECONDS`' measured reason.
+
+    **THE COMPILE RUNS IN A CHILD PROCESS, AND THAT IS WHAT MAKES THIS MODULE'S
+    ASSERTION SURVIVABLE** (measured 2026-11-17, and it is the whole of
+    ``FINDINGS-flake.md``).  ``codegen.constraints.narrowed_by_url_type`` reads the
+    EMITTED constraints module as an input to the lowering -- ``from adcp.types import
+    constraints`` -- and ``adcp.types.__getattr__`` answers a name it has no submodule
+    bound for by importing ``adcp.types.compat``, which pulls the 23 domain aggregators
+    and through them ``adcp.types._schemas``.  Run here, that bound the COMMITTED tree
+    at ``fresh.py``'s own import, three lines before :func:`_bound` asserts that nothing
+    has -- so the assertion fired, pytest reported ``INTERNALERROR`` and ``make gate``
+    exited having run nothing.
+
+    **It fired exactly when the compile ran, which is why it looked intermittent.**  On a
+    cache HIT this function never calls the compiler, so nothing imports the committed
+    tree and the run is clean; the key is a digest over ``codegen/``, ``_base.py``,
+    ``_runtime.py`` and ``codegen/published.json``, so the first run after anyone touches
+    one of those -- in this worktree or any other sharing the store -- paid the compile
+    and refused, and the retry that found the entry it had just written passed.  Three
+    reproductions, each the first run under a cold key; the fix is graded the same way.
+
+    The import is LEGITIMATE -- the compiler is a consumer of that module and may read
+    it -- so what moves is the process it happens in, not the import.  A build that does
+    not run inside the grader cannot contaminate it, whatever it reads, which is the same
+    division ``docs/plan/architecture.md`` already draws between the run that EMITS a
+    tree and the run that GRADES one.  The cost is one interpreter start on the path that
+    was already paying a 30 s compile, and nothing at all on the path that is not.
     """
     key = digest(BUNDLE, population())
     held = STORE / key
@@ -249,18 +343,21 @@ def _materialised() -> Path:
             staging = STORE / f"staging.{key}.{os.getpid()}"
             shutil.rmtree(staging, ignore_errors=True)
             shutil.rmtree(held, ignore_errors=True)  # a previous write died before it
-            try:
-                emit.write(
-                    compiled(BUNDLE, population()),
-                    staging / "types" / "_schemas",
-                    staging / "types",
-                )
-            except BaseException:
+            done = _build(staging)
+            if done.returncode:
+                # The CHILD's output is the record, because the child is where the
+                # compiler ran: a traceback taken here would name this function and say
+                # nothing about which document raised.  Recorded only for a compiler
+                # that RAISED -- an interrupt or an OOM of the parent leaves no
+                # ``.failed``, so a run the operator stopped does not spend
+                # :data:`FAILED_SECONDS` answering for the compiler.
+                record = f"{done.stderr}{done.stdout}".strip()
                 try:
-                    failed.write_text(traceback.format_exc())
+                    failed.write_text(record + "\n")
                 except OSError:
                     pass
-                raise
+                shutil.rmtree(staging, ignore_errors=True)
+                raise RuntimeError(f"the compile raised in its own process:\n{record}")
             failed.unlink(missing_ok=True)
             os.rename(staging, held)
         for rel in GENERATED:
