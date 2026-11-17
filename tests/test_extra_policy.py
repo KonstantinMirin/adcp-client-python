@@ -16,24 +16,20 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
+from adcp.types.domains.governance.check_governance_request import CheckGovernanceRequest
 from pydantic import ConfigDict, ValidationError
 
 from adcp._version import _read_packaged_version
 from adcp.types.base import AdCPBaseModel
-from adcp.types.domains.core.media_buy_features import MediaBuyFeatures
-from adcp.types.domains.governance.check_governance_request import CheckGovernanceRequest
 from adcp.validation.version import resolve_bundle_key
-from scripts.post_generate_fixes import (
-    _ensure_configdict_import,
-    _first_generated_class_name,
-    _inline_typed_extra_annotations,
-    _open_payload_class_names,
-    _set_class_extra_allow,
-)
 
 _BUNDLE_KEY = resolve_bundle_key(_read_packaged_version())
 SCHEMAS_DIR = Path(__file__).parent.parent / "schemas" / "cache" / _BUNDLE_KEY
-GENERATED_DIR = Path(__file__).parent.parent / "src" / "adcp" / "types" / "domains"
+# `adcp.types.domains` is a compatibility mirror holding one `__init__.py`;
+# the compiler writes the tree at `adcp.types._schemas`, which is what a
+# sweep over the emitted files has to read.
+EMITTED_DIR = Path(__file__).parent.parent / "src" / "adcp" / "types" / "_schemas"
 
 
 def test_base_model_config_is_ignore() -> None:
@@ -95,9 +91,16 @@ class TestGeneratedTypeOverrides:
             "custom_targeting": {"segments": ["sports_fans"], "score": 0.92},
         }
 
+        # REQUIREDNESS IS A CONJUNCTION. `check-governance-request.json` states
+        # `if {required: [payload]} then {required: [plan_id, tool, target_agent]}`,
+        # so supplying `payload` makes the other three required -- and the
+        # fixture carried only `plan_id`. Read off the document rather than from
+        # one node: `_refuse_at` resolves the conjunction.
         obj = CheckGovernanceRequest(
             plan_id="plan_1",
             caller="https://buyer.example",
+            tool="get_products",
+            target_agent="https://seller.example",
             payload=payload,
         )
 
@@ -110,97 +113,6 @@ class TestGeneratedTypeOverrides:
         assert features.seller_extension is True
         with pytest.raises(ValidationError, match="bool_type"):
             MediaBuyFeatures(seller_extension=[])
-
-    def test_named_open_payload_schema_injects_extra_allow(self) -> None:
-        """Named x-adcp-open-payload schemas get explicit generated model_config."""
-        schema = {
-            "title": "Partner Payload",
-            "type": "object",
-            "x-adcp-open-payload": True,
-            "properties": {"name": {"type": "string"}},
-        }
-        class_names, anonymous_count = _open_payload_class_names(schema)
-        assert class_names == ["PartnerPayload"]
-        assert anonymous_count == 0
-
-        content = (
-            "from __future__ import annotations\n\n"
-            "from pydantic import Field\n\n\n"
-            "class PartnerPayload(AdCPBaseModel):\n"
-            "    name: str\n"
-        )
-        updated, status = _set_class_extra_allow(content, "PartnerPayload")
-        updated = _ensure_configdict_import(updated)
-
-        assert status == "updated"
-        assert "from pydantic import ConfigDict, Field" in updated
-        assert "model_config = ConfigDict(\n        extra='allow',\n    )" in updated
-
-    def test_compact_configdict_forbid_rewritten_in_place(self) -> None:
-        """Compact single-line ConfigDict(extra='forbid') is rewritten, not duplicated.
-
-        The compact form `model_config = ConfigDict(extra='forbid')` must be
-        flipped to extra='allow' in place. Prepending a second model_config
-        block instead produces two declarations and breaks Pydantic at import.
-        """
-        content = (
-            "from __future__ import annotations\n\n"
-            "from pydantic import ConfigDict, Field\n\n\n"
-            "class PartnerPayload(AdCPBaseModel):\n"
-            "    model_config = ConfigDict(extra='forbid')\n"
-            "    name: str\n"
-        )
-        updated, status = _set_class_extra_allow(content, "PartnerPayload")
-
-        assert status == "updated"
-        assert "model_config = ConfigDict(extra='allow')" in updated
-        assert "extra='forbid'" not in updated
-        # Exactly one model_config declaration — no duplicate prepended block.
-        assert updated.count("model_config") == 1
-
-    def test_configdict_import_added_when_no_pydantic_import_exists(self) -> None:
-        content = (
-            "from __future__ import annotations\n\n"
-            "class PartnerPayload(AdCPBaseModel):\n"
-            "    model_config = ConfigDict(extra='allow')\n"
-        )
-
-        updated = _ensure_configdict_import(content)
-
-        assert (
-            "from __future__ import annotations\n\nfrom pydantic import ConfigDict\n\n" in updated
-        )
-        compile(updated, "<generated>", "exec")
-
-    def test_typed_extra_annotation_is_moved_into_model_class(self) -> None:
-        content = (
-            "class FeatureFlags(AdCPBaseModel):\n"
-            "    model_config = ConfigDict(extra='allow')\n\n\n"
-            "FeatureFlags.__annotations__['__pydantic_extra__'] = Dict[str, bool]\n"
-            "FeatureFlags.model_rebuild(force=True)\n"
-        )
-
-        updated, fixed = _inline_typed_extra_annotations(content)
-
-        assert fixed == 1
-        assert "    __pydantic_extra__: Dict[str, bool]\n" in updated
-        assert "FeatureFlags.__annotations__" not in updated
-        assert "FeatureFlags.model_rebuild" not in updated
-
-    def test_titleless_root_fallback_skips_leading_enum(self) -> None:
-        schema = {"type": "object", "x-adcp-open-payload": True}
-        class_names, anonymous_count = _open_payload_class_names(schema)
-        content = (
-            "from enum import Enum\n\n"
-            "class Kind(Enum):\n"
-            "    one = 'one'\n\n"
-            "class PartnerPayload(AdCPBaseModel):\n"
-            "    name: str\n"
-        )
-
-        assert class_names == [None]
-        assert anonymous_count == 0
-        assert _first_generated_class_name(content) == "PartnerPayload"
 
 
 class TestConsumerSubclassing:
@@ -331,7 +243,7 @@ class TestGeneratedCodeMatchesSchemas:
         }
 
         spurious = []
-        for py_file in sorted(GENERATED_DIR.rglob("*.py")):
+        for py_file in sorted(EMITTED_DIR.rglob("*.py")):
             if py_file.name == "__init__.py":
                 continue
             content = py_file.read_text()
