@@ -21,25 +21,33 @@ import warnings
 from typing import Any
 
 import pytest
+from adcp.types.domains.core.product import Provider
+from adcp.types.domains.core.vendor_pricing_option import (
+    VendorPricingOption,
+    VendorPricingOptionCpm,
+)
+from adcp.types.domains.creative.sync_creatives_request import (
+    SyncCreativesRequest as GeneratedSyncCreativesRequest,
+)
+from adcp.types.domains.media_buy.create_media_buy_request import CreateMediaBuyRequest
 from pydantic import BaseModel, RootModel, ValidationError
 from pydantic.fields import FieldInfo
 
 import adcp.types as public_types
 from adcp.types import (
-    CpmVendorPricingOption,
     Product,
     ReportingWebhook,
     SyncCreativesRequest,
     TrustedMatch,
     UpdateMediaBuyRequest,
-    VendorPricingOptionUnion,
 )
+
+# `VendorPricingOptionCpm` and `VendorPricingOptionUnion` are both refused on the
+# flat surface -- the first DOCUMENT-NO-WORD-NO-IDENTITY, the second as an
+# Annotated expression with no document behind it. The subjects are both
+# emitted from `core/vendor-pricing-option.json`: `VendorPricingOption` is the
+# union base and `VendorPricingOptionCpm` is the `model: cpm` branch.
 from adcp.types.base import _REFUSE_JSON_NULL, AdCPBaseModel, NoExplicitNull, is_no_explicit_null
-from adcp.types.domains.core.product import Provider
-from adcp.types.domains.creative.sync_creatives_request import (
-    SyncCreativesRequest as GeneratedSyncCreativesRequest,
-)
-from adcp.types.domains.media_buy.create_media_buy_request import CreateMediaBuyRequest
 from tests.conformance import _schema_parity as parity
 
 # --- the reported case -----------------------------------------------------------
@@ -48,13 +56,13 @@ from tests.conformance import _schema_parity as parity
 class _Parent(BaseModel):
     """The issue's parent: an ordinary pydantic model holding AdCP models."""
 
-    pricing: CpmVendorPricingOption
+    pricing: VendorPricingOptionCpm
     trusted_match: TrustedMatch
 
 
 def _parent() -> _Parent:
     return _Parent(
-        pricing=CpmVendorPricingOption(
+        pricing=VendorPricingOptionCpm(
             pricing_option_id="cpm", model="cpm", cpm=1.0, currency="USD"
         ),
         trusted_match=TrustedMatch(context_match=True),
@@ -105,7 +113,7 @@ def test_provider_level_nesting_round_trips() -> None:
     assert _Parent.model_validate_json(body) == parent
 
 
-class _VendorPricing(RootModel[VendorPricingOptionUnion]):
+class _VendorPricing(RootModel[VendorPricingOption]):
     """A ``RootModel`` over an AdCP union."""
 
 
@@ -121,7 +129,7 @@ def test_root_model_over_an_adcp_union_round_trips() -> None:
 
 
 class _Containers(BaseModel):
-    items: list[CpmVendorPricingOption]
+    items: list[VendorPricingOptionCpm]
     by_key: dict[str, TrustedMatch]
 
 
@@ -213,7 +221,7 @@ def test_exclude_none_false_keeps_an_unmarked_none_inside_an_open_dict() -> None
 
     ``ext`` (like ``context``) keeps its nulls on every dump path (#1575/#1600).
     """
-    pricing = CpmVendorPricingOption(
+    pricing = VendorPricingOptionCpm(
         pricing_option_id="cpm", model="cpm", cpm=1.0, currency="USD", ext={"note": None}
     )
     assert pricing.model_dump(exclude_none=False)["ext"] == {"note": None}
@@ -322,7 +330,7 @@ def _without_exclusion(model: type[BaseModel]) -> type[BaseModel]:
 @pytest.mark.parametrize(
     "model",
     [
-        CpmVendorPricingOption,
+        VendorPricingOptionCpm,
         TrustedMatch,
         Provider,
         Product,
