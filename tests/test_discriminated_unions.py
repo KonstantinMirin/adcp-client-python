@@ -629,11 +629,18 @@ class TestPreviewRenderDiscriminatedUnion:
 
 
 class TestVastAssetDiscriminators:
-    """Test VastAsset discriminator field values match semantic aliases."""
+    """Test VastAsset discriminator field values match semantic aliases.
+
+    `asset_type` is required at `core/assets/vast-asset.json`'s own root, where
+    it is a `const` of `"vast"`, and the `oneOf` branches add
+    `delivery_type` + `url`/`content`. Requiredness is the conjunction, so a
+    branch payload carries all three.
+    """
 
     def test_url_vast_asset_has_url_discriminator(self):
         """UrlVastAsset has delivery_type='url'."""
         asset = UrlVastAsset(
+            asset_type="vast",
             delivery_type="url",
             url="https://vast.example.com/ad.xml",
         )
@@ -644,6 +651,7 @@ class TestVastAssetDiscriminators:
     def test_inline_vast_asset_has_inline_discriminator(self):
         """InlineVastAsset has delivery_type='inline'."""
         asset = InlineVastAsset(
+            asset_type="vast",
             delivery_type="inline",
             content="<VAST>...</VAST>",
         )
@@ -676,6 +684,7 @@ class TestDaastAssetDiscriminators:
     def test_url_daast_asset_has_url_discriminator(self):
         """UrlDaastAsset has delivery_type='url'."""
         asset = UrlDaastAsset(
+            asset_type="daast",
             delivery_type="url",
             url="https://daast.example.com/ad.xml",
         )
@@ -686,6 +695,7 @@ class TestDaastAssetDiscriminators:
     def test_inline_daast_asset_has_inline_discriminator(self):
         """InlineDaastAsset has delivery_type='inline'."""
         asset = InlineDaastAsset(
+            asset_type="daast",
             delivery_type="inline",
             content="<DAAST>...</DAAST>",
         )
@@ -731,6 +741,7 @@ class TestSemanticAliasDiscriminatorRoundtrips:
     def test_url_vast_asset_roundtrip(self):
         """UrlVastAsset roundtrips with delivery_type='url'."""
         original = UrlVastAsset(
+            asset_type="vast",
             delivery_type="url",
             url="https://vast.example.com/ad.xml",
         )
