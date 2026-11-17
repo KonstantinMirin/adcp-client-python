@@ -10,16 +10,6 @@ from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
 from .duration import Duration
 
 
-class Window(Duration):
-    """
-    Attribution window as a structured duration (e.g., {"interval": 30, "unit": "days"}).
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/outcome-measurement.json', pointer='#/properties/window')
-
-
 class OutcomeMeasurement(AdCPBaseModel):
     """
     **Deprecated as of this minor.** Predates the unified measurement-vocabulary pattern. Outcome metrics (incremental_sales_lift, brand_lift, foot_traffic, conversion_lift, brand_search_lift, attributed sales) are now expressible through the same primitives as the rest of the measurement surface:
@@ -40,7 +30,7 @@ class OutcomeMeasurement(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/outcome-measurement.json', pointer='#')
     type: Annotated[str, Field(description='Type of measurement')]
     attribution: Annotated[str, Field(description='Attribution methodology')]
-    window: Annotated[Window | None, Field(description='Attribution window as a structured duration (e.g., {"interval": 30, "unit": "days"}).'), OmittedNotNull] = None
+    window: Annotated[Duration | None, Field(description='Attribution window as a structured duration (e.g., {"interval": 30, "unit": "days"}).'), OmittedNotNull] = None
     reporting: Annotated[str, Field(description='Reporting frequency and format')]
 
 

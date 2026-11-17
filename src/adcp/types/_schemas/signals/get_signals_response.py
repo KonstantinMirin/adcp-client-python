@@ -67,16 +67,6 @@ class Scope(StrEnum):
     wholesale_feed = MemberAlias('WHOLESALE_FEED')
 
 
-class EstimatedWait(Duration):
-    """
-    How much additional time would resolve this scope. Allows the caller to decide whether to retry with a larger time_budget.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='signals/get-signals-response.json', pointer='#/properties/incomplete/items/properties/estimated_wait')
-
-
 class IncompleteItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -84,7 +74,7 @@ class IncompleteItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='signals/get-signals-response.json', pointer='#/properties/incomplete/items')
     scope: Annotated[Scope, Field(description="'signals': not all matching signals were returned. 'pricing': signals returned but pricing is absent or unconfirmed. 'wholesale_feed': in wholesale mode, full feed enumeration could not complete in the time budget.")]
     description: Annotated[str, Field(description='Human-readable explanation of what is missing and why.')]
-    estimated_wait: Annotated[EstimatedWait | None, Field(description='How much additional time would resolve this scope. Allows the caller to decide whether to retry with a larger time_budget.'), OmittedNotNull] = None
+    estimated_wait: Annotated[Duration | None, Field(description='How much additional time would resolve this scope. Allows the caller to decide whether to retry with a larger time_budget.'), OmittedNotNull] = None
 
 
 class GetSignalsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpResponse):

@@ -50,16 +50,6 @@ class CreateMediaBuyResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolE
     )
 
 
-class Bidding(BiddingPolicy):
-    """
-    Accepted media-buy-authored bidding policy with goal binding and monetary denomination preserved. Packages that inherit it omit package.bidding; explicit package policies, including `{automatic:true}`, remain at package scope.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-response.json', pointer='#/oneOf/0/properties/bidding')
-
-
 class CreateMediaBuySuccess(CreateMediaBuyResponse):
     """
     Success response - media buy created successfully
@@ -92,7 +82,7 @@ class CreateMediaBuySuccess(CreateMediaBuyResponse):
     budget_cap_timezone: Annotated[str | None, Field(description='Accepted IANA timezone shared by every aggregate and package daily cap. Sellers MUST echo it whenever any daily cap is set on the media buy.'), OmittedNotNull] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Accepted cross-package allocation configuration. Omitted means fixed allocation for legacy buys.'), OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Accepted aggregate media-buy pacing strategy.'), OmittedNotNull] = None
-    bidding: Annotated[Bidding | None, Field(description='Accepted media-buy-authored bidding policy with goal binding and monetary denomination preserved. Packages that inherit it omit package.bidding; explicit package policies, including `{automatic:true}`, remain at package scope.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description='Accepted media-buy-authored bidding policy with goal binding and monetary denomination preserved. Packages that inherit it omit package.bidding; explicit package policies, including `{automatic:true}`, remain at package scope.'), OmittedNotNull] = None
     valid_actions: Annotated[list[MediaBuyValidAction] | None, Field(deprecated=True, description='Flat-vocabulary actions the buyer can perform on this media buy after creation. Saves a round-trip to get_media_buys. Deprecated in favor of `available_actions[]`, which carries mode, optional SLA, and in 3.2 an optional change_term_id. Sellers SHOULD populate both during the 3.x deprecation window; consumers MUST prefer `available_actions[]` when both are present. Removed in 4.0.'), OmittedNotNull] = None
     available_actions: Annotated[list[MediaBuyAvailableAction] | None, Field(description='Structured per-buy resolution of actions available immediately after creation. Authoritative — see `get-media-buys-response.json` for full semantics.', json_schema_extra={'uniqueItems': True}), OmittedNotNull] = None
     packages: Annotated[list[Package], Field(description='Array of created packages with complete state information')]

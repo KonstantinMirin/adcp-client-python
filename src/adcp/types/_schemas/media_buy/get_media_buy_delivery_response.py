@@ -109,7 +109,7 @@ class AggregatedTotals(AdCPBaseModel):
     metric_aggregates: Annotated[list[DeliveryMetricAggregate] | None, Field(description="Cross-buy delivery aggregates partitioned by qualifier. Row-symmetric with `package.committed_metrics` and `by_package[].missing_metrics` — same atomic unit `(scope, metric_id, qualifier)` — so reconciliation collapses to a row-level join on the tuple. Granularity rule: one row per `(metric_id, full-qualifier-set)`, reported at the finest available granularity; buyers re-aggregate up if they want a coarser view. Used only for metrics with non-empty qualifier sets — unqualified metrics (`impressions`, `spend`, `media_buy_count`, etc.) remain at the top of `aggregated_totals`. **Mutual exclusion MUST**: for any `metric_id` appearing in `metric_aggregates`, the corresponding top-level scalar in `aggregated_totals` MUST be omitted (not zeroed) — avoids duplicate sources of truth. The qualifier vocabulary on this delivery surface is closed today (`additionalProperties: false`, same content as `committed_metrics.qualifier`) but is expected to **diverge from contract qualifier in future minors** as transparency disclosures buyers don't commit to ship delivery-only (e.g., `tracker_firing` pending #3832 resolution). Each row carries a `value` plus inlined per-metric component fields (e.g., `measurable_impressions` and `viewable_impressions` for `viewable_rate`; `spend` and `conversions` for `cost_per_acquisition`). Per-buy `totals` keeps its flat shape — each buy is single-qualifier by definition; only the aggregate spans qualifiers. **Qualifier-set drift across reports**: when a campaign gains a new qualifier mid-flight (e.g., adds `tracker_firing` partitioning in week 2), prior periods' rows remain valid at their original granularity; buyers SHOULD NOT retroactively repartition."), OmittedNotNull] = None
 
 
-class MediaBuyDeliveriesItemTotals(DeliveryMetrics):
+class Totals(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
     """
@@ -320,16 +320,6 @@ class MediaBuyDeliveriesItemByPackageItem(DeliveryMetrics):
     spend: Annotated[NonNegativeFloat, Field(description='Amount spent')]
 
 
-class WindowsItemTotals(DeliveryMetrics):
-    """
-    Aggregate metrics for this window slice across all packages. Shape-aligned with reporting_webhook fire payloads at the same granularity.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/windows/items/properties/totals')
-
-
 class WindowsItemByPackageItem(DeliveryMetrics):
     """
     Standard delivery metrics that can be reported at media buy, package, or creative level
@@ -346,7 +336,7 @@ class WindowsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/media_buy_deliveries/items/properties/windows/items')
     window_start: Annotated[WireDatetime, Field(description='ISO 8601 start of the window slice (inclusive). Daily, weekly, monthly, and quarterly slices start on reporting-timezone calendar boundaries (see reporting_period.timezone), which are UTC midnights only when that timezone is UTC. Weekly slices start Monday 00:00 in the reporting timezone (ISO 8601 weeks). Quarterly slices start on 1 January, 1 April, 1 July and 1 October.')]
     window_end: Annotated[WireDatetime, Field(description="ISO 8601 end of the window slice (exclusive). The next row's window_start equals this value when slices are contiguous.")]
-    totals: Annotated[WindowsItemTotals, Field(description='Aggregate metrics for this window slice across all packages. Shape-aligned with reporting_webhook fire payloads at the same granularity.')]
+    totals: Annotated[DeliveryMetrics, Field(description='Aggregate metrics for this window slice across all packages. Shape-aligned with reporting_webhook fire payloads at the same granularity.')]
     by_package: Annotated[list[WindowsItemByPackageItem] | None, Field(description='Per-package metrics for this window slice, using the same metric envelope and package identity as the parent media_buy_deliveries[].by_package row but scoped to the window. Requested reporting_dimensions do not apply to these webhook-aligned recovery rows; sellers may include dimensional fields only as webhook payload extensions, not as a guaranteed result of the GET request. Sellers MAY omit by_package when per-package window-level data is unavailable; when present, package_id values MUST match the parent by_package entries.'), OmittedNotNull] = None
     is_final: Annotated[StrictBool | None, Field(description='Whether the slice data is final for this window. Same semantics as the per-package is_final flag — when false, a later read may return revised numbers for the same window as measurement matures (broadcast C3 → C7, post-IVT filtering, etc.).'), OmittedNotNull] = None
     measurement_window: Annotated[StrMaxLen50 | None, Field(description="Which measurement-window stage this slice represents (e.g., 'live', 'c3', 'c7'), referencing a window_id from the product's reporting_capabilities.measurement_windows. Absent when the data is not phased."), OmittedNotNull] = None
@@ -384,7 +374,7 @@ class MediaBuyDeliveriesItem(AdCPBaseModel):
     finalized_at: Annotated[WireDatetime | None, Field(description="ISO 8601 timestamp at which this row became final. Present only when `is_final: true`. Anchors the buyer's reconciliation and (when later defined) dispute-window clocks against the buy's `measurement_terms.billing_measurement`. Computed as the latest `finalized_at` across the row's packages for the reconciliation window."), OmittedNotNull] = None
     pricing_model: Annotated[PricingModel | None, Field(description='Pricing model used for this media buy'), OmittedNotNull] = None
     pacing_index: Annotated[NonNegativeFloat | None, Field(description='Aggregate media-buy delivery pace relative to the media-buy pacing plan (1.0 = on track, <1.0 = behind, >1.0 = ahead). This is the authoritative pacing signal for seller-optimized buys; package pacing indexes are subordinate diagnostics.'), OmittedNotNull] = None
-    totals: MediaBuyDeliveriesItemTotals
+    totals: Totals
     by_package: Annotated[list[MediaBuyDeliveriesItemByPackageItem], Field(description='Metrics broken down by package')]
     windows: Annotated[list[WindowsItem] | None, Field(description="Per-window delivery slices over the reporting period at the requested time_granularity. Only present when the request set time_granularity and include_window_breakdown: true. Each slice mirrors what reporting_webhook would have delivered for the same window — buyers who missed webhook fires can reconstruct identical data by reading this array. Slice rows are ordered by window_start ascending; consecutive rows are contiguous (each row's window_end equals the next row's window_start) and partition the requested date range at the chosen granularity. For a legacy or external mixed-currency media buy, monetary and money-derived values MUST be omitted from each window totals object and reported only in currency-qualified windows[].by_package rows. Sellers MUST exclude this field when time_granularity is omitted; when set, sellers MUST honor pulls at any granularity in reporting_capabilities.windowed_pull_granularities (otherwise return UNSUPPORTED_GRANULARITY). See snapshot-and-log Rule 4 for the two-paths-parity contract this surface anchors."), OmittedNotNull] = None
     daily_breakdown: Annotated[list[MediaBuyDeliveriesItemDailyBreakdownItem] | None, Field(description="Day-by-day delivery for a media-buy row with one currency. Sellers MUST omit this aggregate breakdown for a legacy or externally created mixed-currency buy because these rows have no package currency field. Sellers MUST also omit this aggregate breakdown when the media buy's packages span more than one reporting timezone; package-level daily_breakdown remains, each in its own product's reporting timezone."), OmittedNotNull] = None
@@ -432,9 +422,6 @@ ByPackageItem1 = WindowsItemByPackageItem
 
 
 MediaBuyDelivery = MediaBuyDeliveriesItem
-
-
-Totals = MediaBuyDeliveriesItemTotals
 
 
 Window = WindowsItem

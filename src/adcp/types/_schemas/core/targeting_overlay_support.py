@@ -139,16 +139,6 @@ class TargetingOverlaySupportDemographicsAge(AdCPBaseModel):
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
-class FrequencyCapSupport(FrequencyCapConstraints):
-    """
-    Independently positive constrained package-cap support. Mutually exclusive with legacy frequency_cap: a product declares one form or the other.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-overlay-support.json', pointer='#/properties/frequency_cap_support')
-
-
 class TargetingOverlaySupportPlacementSelection(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -224,7 +214,7 @@ class TargetingOverlaySupport(AdCPBaseModel):
     signal_targeting_groups: Annotated[Supported | None, OmittedNotNull] = None
     demographics: Annotated[Supported | TargetingOverlaySupportDemographicsAge | None, OmittedNotNull] = None
     frequency_cap: Annotated[Supported | None, OmittedNotNull] = None
-    frequency_cap_support: Annotated[FrequencyCapSupport | None, Field(description='Independently positive constrained package-cap support. Mutually exclusive with legacy frequency_cap: a product declares one form or the other.'), OmittedNotNull] = None
+    frequency_cap_support: Annotated[FrequencyCapConstraints | None, Field(description='Independently positive constrained package-cap support. Mutually exclusive with legacy frequency_cap: a product declares one form or the other.'), OmittedNotNull] = None
     property_list: Annotated[Supported | None, OmittedNotNull] = None
     property_list_exclude: Annotated[Supported | None, OmittedNotNull] = None
     collection_list: Annotated[Supported | None, OmittedNotNull] = None

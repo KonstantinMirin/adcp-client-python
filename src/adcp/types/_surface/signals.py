@@ -27,7 +27,6 @@ from .._schemas.signals.get_signals_async_response_submitted import GetSignalsSu
 from .._schemas.signals.get_signals_async_response_working import GetSignalsWorking as GetSignalsWorking
 from .._schemas.signals.get_signals_request import FieldsItem as GetSignalsRequestFieldsItem
 from .._schemas.signals.get_signals_request import GetSignalsRequest as GetSignalsRequest
-from .._schemas.signals.get_signals_response import EstimatedWait as GetSignalsResponseIncompleteItemEstimatedWait
 from .._schemas.signals.get_signals_response import GetSignalsResponse as GetSignalsResponse
 from .._schemas.signals.get_signals_response import IncompleteItem as GetSignalsResponseIncompleteItem
 from .._schemas.signals.get_signals_response import Scope as GetSignalsResponseIncompleteItemScope
@@ -43,7 +42,6 @@ __all__ = [
     'GetSignalsRequestFieldsItem',
     'GetSignalsResponse',
     'GetSignalsResponseIncompleteItem',
-    'GetSignalsResponseIncompleteItemEstimatedWait',
     'GetSignalsResponseIncompleteItemScope',
     'GetSignalsResponseSignalsItem',
     'GetSignalsSubmitted',

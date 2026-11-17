@@ -1,13 +1,12 @@
 {
  "causes": {
-  "fail:accepts:model_refused_valid": 2,
-  "fail:accepts:witness_refused": 6,
+  "fail:accepts:witness_refused": 1,
   "fail:admits:model_refused_admitted": 8,
   "fail:undeclared:widened_undeclared": 6,
-  "fail:widening:unproved_widening": 5
+  "fail:widening:unproved_widening": 7
  },
- "graded": 2609,
- "not_pass": 27,
+ "graded": 2570,
+ "not_pass": 22,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -59,58 +58,6 @@
    "refuses": "refuses=pass",
    "undeclared": "undeclared=fail:widened_undeclared",
    "verdict": "verdict=fail:undeclared:widened_undeclared",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=pass",
-   "class": "ObjLocation",
-   "document": "core/assets/daast-asset.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const, not; refused {\"declaration_id\": \"A\", \"token\": \"a\", \"dialect\": \"adcp\", \"dialect_semantic\": \"MEDIA_BUY_ID\", \"mapping_status\": \"verified_universal\", \"operation\": \"preserve\", \"location\": {\"field\": \"content\", \"occurrence\": 0, \"context\": \"url_query_value\"}, \"encoding\": {\"kind\": \"none\", \"depth\": 0}, \"required\": false, \"unavailable_behavior\"",
-   "pointer": "#/oneOf/1/properties/macro_declarations/items",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=pass",
-   "class": "InlineMarkupMacroDeclarationsItem",
-   "document": "core/assets/display-tag-asset.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const, not; refused {\"declaration_id\": \"A\", \"token\": \"a\", \"dialect\": \"adcp\", \"dialect_semantic\": \"MEDIA_BUY_ID\", \"mapping_status\": \"verified_universal\", \"operation\": \"preserve\", \"location\": {\"field\": \"markup\", \"occurrence\": 0, \"context\": \"url_query_value\"}, \"encoding\": {\"kind\": \"none\", \"depth\": 0}, \"required\": false, \"unavailable_behavior\":",
-   "pointer": "#/oneOf/1/properties/macro_declarations/items",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=pass",
-   "class": "PairedRedirectMacroDeclarationsItem",
-   "document": "core/assets/display-tag-asset.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const, not; refused {\"declaration_id\": \"A\", \"token\": \"a\", \"dialect\": \"adcp\", \"dialect_semantic\": \"MEDIA_BUY_ID\", \"mapping_status\": \"verified_universal\", \"operation\": \"preserve\", \"location\": {\"field\": \"ad_request_url\", \"occurrence\": 0, \"context\": \"url_query_value\"}, \"encoding\": {\"kind\": \"none\", \"depth\": 0}, \"required\": false, \"unavailable_be",
-   "pointer": "#/oneOf/2/properties/macro_declarations/items",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=pass",
-   "class": "MacroDeclarationsItem",
-   "document": "core/assets/url-asset.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const, not; refused {\"declaration_id\": \"A\", \"token\": \"a\", \"dialect\": \"adcp\", \"dialect_semantic\": \"MEDIA_BUY_ID\", \"mapping_status\": \"verified_universal\", \"operation\": \"preserve\", \"location\": {\"field\": \"url\", \"occurrence\": 0, \"context\": \"url_query_value\"}, \"encoding\": {\"kind\": \"none\", \"depth\": 0}, \"required\": false, \"unavailable_behavior\": \"r",
-   "pointer": "#/properties/macro_declarations/items",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
    "widening": "widening=absent:no_declarations"
   },
   {
@@ -205,19 +152,6 @@
    "widening": "widening=absent:no_declarations"
   },
   {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=pass",
-   "class": "MacroDeclaration",
-   "document": "core/macro-declaration.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on const, not; refused {\"declaration_id\": \"A\", \"token\": \"a\", \"dialect\": \"adcp\", \"dialect_semantic\": \"MEDIA_BUY_ID\", \"mapping_status\": \"verified_universal\", \"operation\": \"preserve\", \"location\": {\"field\": \"url\", \"occurrence\": 0, \"context\": \"url_query_value\"}, \"encoding\": {\"kind\": \"none\", \"depth\": 0}, \"required\": false, \"unavailable_behavior\": \"r",
-   "pointer": "#",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
    "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
    "class": "Annotated",
@@ -231,17 +165,17 @@
    "widening": "widening=absent:no_declarations"
   },
   {
-   "accepts": "accepts=fail:model_refused_valid",
-   "admits": "admits=fail:model_refused_admitted",
-   "class": "BuyProductsRequestAccountAccountAccountId",
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "BuyProductsRequest",
    "document": "media-buy/buy-products-request.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "counterexample {\"brand\": {\"domain\": \"a\"}, \"operator\": \"a\"}; narrower than its document [missing at ('account_id',)] on the admitted value: the admitted value; the class refused it with 3 validation errors for BuyProductsRequestAccountAccountAccountId account_id   Field required [type=missing, input_value; the document admits {\"brand\": {\"domain\": \"a\"}, \"operator\": \"a\"}; missing at ('account_id',):",
-   "pointer": "#/anyOf/1/properties/account",
+   "dump": "dump=pass",
+   "note": "#/anyOf/1/properties/account/required: every required name present placed at ['account'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('purchases', 0, 'targeting_overlay', 'property_list', 'agent_url') via agreed] on format: at ('purchases',): at (0,): at ('targeting_overlay',): at ('property_list',): at ('agent_url',): uri ca",
+   "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_refused_valid",
-   "widening": "widening=absent:no_declarations"
+   "verdict": "verdict=fail:widening:unproved_widening",
+   "widening": "widening=fail:unproved_widening"
   },
   {
    "accepts": "accepts=pass",
@@ -283,17 +217,17 @@
    "widening": "widening=absent:no_declarations"
   },
   {
-   "accepts": "accepts=fail:model_refused_valid",
-   "admits": "admits=fail:model_refused_admitted",
-   "class": "RequestProposalsRequestAccountAccountAccountId",
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "RequestProposalsRequest",
    "document": "media-buy/request-proposals-request.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "counterexample {\"brand\": {\"domain\": \"a\"}, \"operator\": \"a\"}; narrower than its document [missing at ('account_id',)] on the admitted value: the admitted value; the class refused it with 3 validation errors for RequestProposalsRequestAccountAccountAccountId account_id   Field required [type=missing, input_; the document admits {\"brand\": {\"domain\": \"a\"}, \"operator\": \"a\"}; missing at ('account_id',):",
-   "pointer": "#/anyOf/1/properties/account",
+   "dump": "dump=pass",
+   "note": "#/anyOf/1/properties/account/required: every required name present placed at ['account'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('push_notification_config', 'url') via agreed] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for RequestProposalsRequest pus",
+   "pointer": "#",
    "refuses": "refuses=pass",
    "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:accepts:model_refused_valid",
-   "widening": "widening=absent:no_declarations"
+   "verdict": "verdict=fail:widening:unproved_widening",
+   "widening": "widening=fail:unproved_widening"
   },
   {
    "accepts": "accepts=pass",
@@ -361,44 +295,44 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2582,
+ "pass": 2548,
  "per_check": {
   "accepts": {
    "absent": 0,
-   "fail": 8,
-   "pass": 2601
+   "fail": 1,
+   "pass": 2569
   },
   "admits": {
    "absent": 17,
-   "fail": 10,
-   "pass": 2582
+   "fail": 8,
+   "pass": 2545
   },
   "dump": {
-   "absent": 8,
+   "absent": 1,
    "fail": 0,
-   "pass": 2601
+   "pass": 2569
   },
   "refuses": {
-   "absent": 12,
+   "absent": 7,
    "fail": 0,
-   "pass": 2597
+   "pass": 2563
   },
   "undeclared": {
-   "absent": 107,
+   "absent": 102,
    "fail": 6,
-   "pass": 2496
+   "pass": 2462
   },
   "widening": {
-   "absent": 2427,
-   "fail": 6,
-   "pass": 176
+   "absent": 2385,
+   "fail": 7,
+   "pass": 178
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/1210efb7e72db8fc07e939ae4bbab245381a0a45d96e527794718e3459abcabe",
-  "head": "467d32bbf+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/3e37d3c64ee5218abd2bded2ea047f5a41109b6bbcc98ad703b88f6103b1d9fa",
+  "head": "e00437663+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 1023.8,
- "seconds_per_pair": 0.3924
+ "seconds": 736.3,
+ "seconds_per_pair": 0.2865
 }

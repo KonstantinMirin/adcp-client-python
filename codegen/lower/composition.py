@@ -888,8 +888,9 @@ def declares_nothing_its_base_does_not(
     restating something, even though what it restates admits nothing.  So the admitted
     annotations are the ones :data:`keywords.Effect.NOTHING` names: read off the TABLE at
     this node's own position, which is §3's rule that a keyword's answer is the cell's.
-    ``x-adcp-schema-uri`` is NOTHING at PROP and ``description`` is ANNOTATION, which is
-    the whole of the difference between the 7 literal nodes below and the 50 beside them.
+    ``x-adcp-schema-uri`` is NOTHING at PROP and ``description`` is ANNOTATION, which was
+    the whole of the difference between the 7 literal nodes below and the 50 beside them
+    -- and the paragraph after them is why PROP no longer asks.
     ``extra`` and ``extras`` stay as the node's own: §5's ``additionalProperties`` row has
     a class DECLARE the ``extra`` the document gives it, so a node stating one states
     something, and a node silent about it resolves its base's.
@@ -899,8 +900,45 @@ def declares_nothing_its_base_does_not(
     **7 state nothing else that is not NOTHING** -- 3 ``push_notification_config`` and 4
     ``context``, in four ``media-buy`` requests, each carrying ``x-adcp-schema-uri`` and
     nothing more -- and the next largest sibling set is a bare ``description`` at 50
-    positions.  Admitting those 50 would drop a description the document states at a
-    pointer, which is a different row and the opposite of this one.
+    positions.
+
+    **AND AT PROP THE SCREEN IS VACUOUS, which is why those 50 are now admitted and the
+    sentence here that kept them is withdrawn** (``adcp-client-python-wrappers``).  It read
+    "admitting those 50 would drop a description the document states at a pointer", and the
+    choice it assumed -- mint a class or lose the sentence -- is not the choice at a
+    property.  Measured on :data:`keywords.TABLE`: at PROP ``Effect.ANNOTATION`` has
+    **exactly four members** -- ``description``, ``deprecated``, ``enumDescriptions``,
+    ``x-enum-descriptions`` -- against ``NOTHING``'s 67, and every one of the four survives
+    the collapse.  ``description`` and ``deprecated`` are written by
+    :func:`objects.fields` onto the ENCLOSING FIELD, off this very node
+    (``Field(description=...)``, ``Field(deprecated=True)``), and the field is not what a
+    collapse removes; ``enumDescriptions`` and ``x-enum-descriptions`` become the enum
+    MEMBER docstrings, which belong to the ``$ref`` target's own enum type and were never
+    on the wrapper to lose.  So the conjunct could not block anything at PROP that is
+    actually carried BY the class, and the node's position is the whole of the test there.
+
+    **The tree is what refutes the premise, and it carried the sentence TWICE.**
+    ``core/frequency_cap.py`` emitted ``class Window(Duration)`` with the description as
+    its docstring AND ``window: Annotated[Window | None, Field(description='Time window
+    for the max_impressions cap …')]`` on the field beside it; verified at all 27 of the
+    non-root positions ``tests_emit/test_a_bare_reference_declares_no_class`` enumerated,
+    every one at PROP, every one stating ``description`` and nothing else, and every one's
+    ``Field(description=...)`` byte-identical to the class docstring.  Collapsing to
+    ``Annotated[Duration | None, Field(description=…)]`` therefore keeps the sentence
+    exactly where §6 wants it -- and ``./check``'s approximation count is the measurement
+    that no fact went: **805 facts in 239 documents before and after**, where a dropped
+    description would have raised it.  What it removes is the naming collapse the gate
+    exists for: ``core/duration.json`` was one concept under EIGHT class names, and a
+    consumer holding a ``FrequencyCap.window`` could not pass it where an
+    ``AttributionWindow.post_click`` was wanted.
+
+    **ELEM IS WHY THE CONJUNCT STAYS rather than being deleted.**  An item of an array is
+    reached through ``list[X]`` and there is no per-element ``Field``, so an annotation's
+    only carrier there is the element class itself and the screen must still run -- which
+    the table states in its own terms: at ELEM ``default`` is an ``ANNOTATION`` where at
+    PROP it is a ``FIELD``.  Measured over the bare annotated ``$ref`` positions: 52 PROP,
+    20 ROOT, 1 DEF and **0 ELEM**, so PROP is the row with the population and ELEM is kept
+    for the first node to state one.
 
     **The 7 are not 7 classes, and the 4 that are not say what this predicate adds.**
     ``core/context.json``'s root is not a class, so :func:`intersect.the_conjuncts_own_type`
@@ -921,7 +959,19 @@ def declares_nothing_its_base_does_not(
         and base_if_none_composes is None
         and distributing is None
         and not decided
-        and all(_carries_nothing(word, node.position) for word in node.annotations)
+        # **AT PROP THE SCREEN IS UNCONDITIONAL, because every annotation a node can state
+        # there SURVIVES the collapse** -- see the docstring's "AND AT PROP THE SCREEN IS
+        # VACUOUS".  ``Effect.ANNOTATION`` has exactly four members at PROP against
+        # ``NOTHING``'s 67: ``description`` and ``deprecated`` are carried by ``Field(...)``
+        # on the ENCLOSING FIELD, which the collapse does not touch, and
+        # ``enumDescriptions``/``x-enum-descriptions`` are carried into the enum MEMBER
+        # docstrings, which belong to the ``$ref`` TARGET's own enum type and were never on
+        # the wrapper.  At ELEM there is no per-element ``Field`` for a sentence to live on,
+        # so the conjunct must still hold there; at ROOT the first clause already declines.
+        and (
+            node.position is Position.PROP
+            or all(_carries_nothing(word, node.position) for word in node.annotations)
+        )
         and not rules
         and not dropped
         and not distinct

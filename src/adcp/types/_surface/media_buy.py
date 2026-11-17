@@ -162,15 +162,6 @@ from .._schemas.media_buy.buy_products_async_response_submitted import BuyProduc
 from .._schemas.media_buy.buy_products_async_response_working import BuyProductsWorking as BuyProductsWorking
 from .._schemas.media_buy.buy_products_request import BuyProductsRequest as BuyProductsRequest
 from .._schemas.media_buy.buy_products_request import BuyProductsRequestAccount as BuyProductsRequestAccount
-from .._schemas.media_buy.buy_products_request import (
-    BuyProductsRequestAccountAccount as BuyProductsRequestAccountAccount,
-)
-from .._schemas.media_buy.buy_products_request import (
-    BuyProductsRequestAccountAccountAccountId as BuyProductsRequestAccountAccountAccountId,
-)
-from .._schemas.media_buy.buy_products_request import (
-    BuyProductsRequestAccountAccountBrandOperator as BuyProductsRequestAccountAccountBrandOperator,
-)
 from .._schemas.media_buy.buy_products_request import BuyProductsRequestBrand as BuyProductsRequestBrand
 from .._schemas.media_buy.buy_products_request import Opportunity as BuyProductsRequestOpportunity
 from .._schemas.media_buy.buy_products_response import BuyProductsResponse as BuyProductsResponse
@@ -215,7 +206,6 @@ from .._schemas.media_buy.create_media_buy_request import ArtifactWebhook as Cre
 from .._schemas.media_buy.create_media_buy_request import (
     BatchFrequency as CreateMediaBuyRequestArtifactWebhookBatchFrequency,
 )
-from .._schemas.media_buy.create_media_buy_request import Bidding as CreateMediaBuyRequestBidding
 from .._schemas.media_buy.create_media_buy_request import CommittedProposalExecution as CommittedProposalExecution
 from .._schemas.media_buy.create_media_buy_request import CreateMediaBuyRequest as CreateMediaBuyRequest
 from .._schemas.media_buy.create_media_buy_request import (
@@ -225,20 +215,13 @@ from .._schemas.media_buy.create_media_buy_request import (
     ExplicitPackagesWithFixedAllocation as ExplicitPackagesWithFixedAllocation,
 )
 from .._schemas.media_buy.create_media_buy_request import (
-    ExplicitPackagesWithFixedAllocationBudgetAllocation as ExplicitPackagesWithFixedAllocationBudgetAllocation,
-)
-from .._schemas.media_buy.create_media_buy_request import (
     ExplicitPackagesWithSellerOptimizedAllocation as ExplicitPackagesWithSellerOptimizedAllocation,
-)
-from .._schemas.media_buy.create_media_buy_request import (
-    ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation as ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation,
 )
 from .._schemas.media_buy.create_media_buy_request import IoAcceptance as CreateMediaBuyRequestIoAcceptance
 from .._schemas.media_buy.create_media_buy_request import Opportunity as CreateMediaBuyRequestOpportunity
 from .._schemas.media_buy.create_media_buy_request import (
     PackagesItem as ExplicitPackagesWithFixedAllocationPackagesItem,
 )
-from .._schemas.media_buy.create_media_buy_response import Bidding as CreateMediaBuySuccessBidding
 from .._schemas.media_buy.create_media_buy_response import CreateMediaBuyError as CreateMediaBuyError
 from .._schemas.media_buy.create_media_buy_response import CreateMediaBuyResponse as CreateMediaBuyResponse
 from .._schemas.media_buy.create_media_buy_response import (
@@ -328,19 +311,16 @@ from .._schemas.media_buy.get_media_buy_delivery_response import (
     MediaBuyDeliveriesItemDailyBreakdownItem as GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemDailyBreakdownItem,
 )
 from .._schemas.media_buy.get_media_buy_delivery_response import (
-    MediaBuyDeliveriesItemTotals as GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemTotals,
+    ReportingRevisionBinding as GetMediaBuyDeliveryResponseReportingRevisionBinding,
 )
 from .._schemas.media_buy.get_media_buy_delivery_response import (
-    ReportingRevisionBinding as GetMediaBuyDeliveryResponseReportingRevisionBinding,
+    Totals as GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemTotals,
 )
 from .._schemas.media_buy.get_media_buy_delivery_response import (
     WindowsItem as GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItem,
 )
 from .._schemas.media_buy.get_media_buy_delivery_response import (
     WindowsItemByPackageItem as GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemByPackageItem,
-)
-from .._schemas.media_buy.get_media_buy_delivery_response import (
-    WindowsItemTotals as GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemTotals,
 )
 from .._schemas.media_buy.get_media_buys_request import GetMediaBuysRequest as GetMediaBuysRequest
 from .._schemas.media_buy.get_media_buys_response import (
@@ -356,18 +336,12 @@ from .._schemas.media_buy.get_media_buys_response import GetMediaBuysResponse as
 from .._schemas.media_buy.get_media_buys_response import HistoryItem as GetMediaBuysResponseMediaBuysItemHistoryItem
 from .._schemas.media_buy.get_media_buys_response import MediaBuysItem as GetMediaBuysResponseMediaBuysItem
 from .._schemas.media_buy.get_media_buys_response import (
-    MediaBuysItemBidding as GetMediaBuysResponseMediaBuysItemBidding,
-)
-from .._schemas.media_buy.get_media_buys_response import (
     MediaBuysItemIndicatorsItem as GetMediaBuysResponseMediaBuysItemIndicatorsItem,
 )
 from .._schemas.media_buy.get_media_buys_response import (
     MediaBuysItemIndicatorsItemType as MediaBuysItemIndicatorsItemType,
 )
 from .._schemas.media_buy.get_media_buys_response import PackagesItem as GetMediaBuysResponseMediaBuysItemPackagesItem
-from .._schemas.media_buy.get_media_buys_response import (
-    PackagesItemBidding as GetMediaBuysResponseMediaBuysItemPackagesItemBidding,
-)
 from .._schemas.media_buy.get_media_buys_response import (
     PackagesItemIndicatorsItem as GetMediaBuysResponseMediaBuysItemPackagesItemIndicatorsItem,
 )
@@ -397,9 +371,7 @@ from .._schemas.media_buy.get_products_request import (
 from .._schemas.media_buy.get_products_request import (
     RefineItemProposalAction as GetProductsRequestRefineItemProposalAction,
 )
-from .._schemas.media_buy.get_products_request import TimeBudget as GetProductsRequestTimeBudget
 from .._schemas.media_buy.get_products_response import CacheScope as GetProductsResponseCacheScope
-from .._schemas.media_buy.get_products_response import EstimatedWait as GetProductsResponseIncompleteItemEstimatedWait
 from .._schemas.media_buy.get_products_response import (
     ExcludedByValue as GetProductsResponseFilterDiagnosticsExcludedByValue,
 )
@@ -449,9 +421,6 @@ from .._schemas.media_buy.list_creative_formats_response import (
 )
 from .._schemas.media_buy.list_creative_formats_response import Source as ListCreativeFormatsResponseSource
 from .._schemas.media_buy.list_products_request import ListProductsRequest as ListProductsRequest
-from .._schemas.media_buy.list_products_request import (
-    ListProductsRequestPushNotificationConfig as ListProductsRequestPushNotificationConfig,
-)
 from .._schemas.media_buy.list_products_response import IncompleteItem as ListProductsResponseIncompleteItem
 from .._schemas.media_buy.list_products_response import ListProductsResponse as ListProductsResponse
 from .._schemas.media_buy.list_products_response import ListProductsResponseListed as ListProductsResponseListed
@@ -498,14 +467,10 @@ from .._schemas.media_buy.outcome_target import GoalEvent as GoalEvent
 from .._schemas.media_buy.outcome_target import GoalMetric as GoalMetric
 from .._schemas.media_buy.outcome_target import OutcomeTarget as OutcomeTarget
 from .._schemas.media_buy.package_control import PackageControl as PackageControl
-from .._schemas.media_buy.package_request import Bidding as PackageRequestBidding
 from .._schemas.media_buy.package_request import CommittedMetricsItemVendor as CommittedMetricsItemVendor
 from .._schemas.media_buy.package_request import PackageRequest as PackageRequest
 from .._schemas.media_buy.package_update import PackageUpdate as PackageUpdate
 from .._schemas.media_buy.product_discovery_criteria import ProductDiscoveryCriteria as ProductDiscoveryCriteria
-from .._schemas.media_buy.product_discovery_criteria import (
-    ProductDiscoveryCriteriaOutcomeTarget as ProductDiscoveryCriteriaOutcomeTarget,
-)
 from .._schemas.media_buy.product_fields import ProductResponseFields as ProductResponseFields
 from .._schemas.media_buy.product_fields import ProductResponseFieldsItem as ProductResponseFieldsItem
 from .._schemas.media_buy.product_purchase import AgencyEstimateNumber as AgencyEstimateNumber
@@ -615,15 +580,6 @@ from .._schemas.media_buy.request_proposals_request import Opportunity as Reques
 from .._schemas.media_buy.request_proposals_request import RequestProposalsRequest as RequestProposalsRequest
 from .._schemas.media_buy.request_proposals_request import (
     RequestProposalsRequestAccount as RequestProposalsRequestAccount,
-)
-from .._schemas.media_buy.request_proposals_request import (
-    RequestProposalsRequestAccountAccount as RequestProposalsRequestAccountAccount,
-)
-from .._schemas.media_buy.request_proposals_request import (
-    RequestProposalsRequestAccountAccountAccountId as RequestProposalsRequestAccountAccountAccountId,
-)
-from .._schemas.media_buy.request_proposals_request import (
-    RequestProposalsRequestAccountAccountBrandOperator as RequestProposalsRequestAccountAccountBrandOperator,
 )
 from .._schemas.media_buy.request_proposals_request import RequestProposalsRequestBrand as RequestProposalsRequestBrand
 from .._schemas.media_buy.request_proposals_response import IncompleteItem as RequestProposalsResponseIncompleteItem
@@ -750,7 +706,6 @@ from .._schemas.media_buy.update_media_buy_async_response_submitted import (
 )
 from .._schemas.media_buy.update_media_buy_async_response_working import UpdateMediaBuyWorking as UpdateMediaBuyWorking
 from .._schemas.media_buy.update_media_buy_request import UpdateMediaBuyRequest as UpdateMediaBuyRequest
-from .._schemas.media_buy.update_media_buy_response import Bidding as UpdateMediaBuySuccessBidding
 from .._schemas.media_buy.update_media_buy_response import UpdateMediaBuyError as UpdateMediaBuyError
 from .._schemas.media_buy.update_media_buy_response import UpdateMediaBuyResponse as UpdateMediaBuyResponse
 from .._schemas.media_buy.update_media_buy_response import (
@@ -833,9 +788,6 @@ __all__ = [
     'BuyProductsInputRequired',
     'BuyProductsRequest',
     'BuyProductsRequestAccount',
-    'BuyProductsRequestAccountAccount',
-    'BuyProductsRequestAccountAccountAccountId',
-    'BuyProductsRequestAccountAccountBrandOperator',
     'BuyProductsRequestBrand',
     'BuyProductsRequestOpportunity',
     'BuyProductsResponse',
@@ -872,14 +824,12 @@ __all__ = [
     'CreateMediaBuyRequestArtifactWebhook',
     'CreateMediaBuyRequestArtifactWebhookBatchFrequency',
     'CreateMediaBuyRequestArtifactWebhookDeliveryMode',
-    'CreateMediaBuyRequestBidding',
     'CreateMediaBuyRequestIoAcceptance',
     'CreateMediaBuyRequestOpportunity',
     'CreateMediaBuyResponse',
     'CreateMediaBuyResponseSubmitted',
     'CreateMediaBuySubmitted',
     'CreateMediaBuySuccess',
-    'CreateMediaBuySuccessBidding',
     'CreateMediaBuyWorking',
     'CreativeApprovalsItemIndicatorTypesEvaluatedItem',
     'DailyBudgetCap',
@@ -896,10 +846,8 @@ __all__ = [
     'EffectiveTimingConstraints',
     'EndTime',
     'ExplicitPackagesWithFixedAllocation',
-    'ExplicitPackagesWithFixedAllocationBudgetAllocation',
     'ExplicitPackagesWithFixedAllocationPackagesItem',
     'ExplicitPackagesWithSellerOptimizedAllocation',
-    'ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation',
     'FailedLookup',
     'FailedReportingConsumerStatus',
     'FailedReportingReceipt',
@@ -930,17 +878,14 @@ __all__ = [
     'GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemTotals',
     'GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItem',
     'GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemByPackageItem',
-    'GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemTotals',
     'GetMediaBuyDeliveryResponseReportingRevisionBinding',
     'GetMediaBuysRequest',
     'GetMediaBuysResponse',
     'GetMediaBuysResponseMediaBuysItem',
     'GetMediaBuysResponseMediaBuysItemAcceptedProposal',
-    'GetMediaBuysResponseMediaBuysItemBidding',
     'GetMediaBuysResponseMediaBuysItemHistoryItem',
     'GetMediaBuysResponseMediaBuysItemIndicatorsItem',
     'GetMediaBuysResponseMediaBuysItemPackagesItem',
-    'GetMediaBuysResponseMediaBuysItemPackagesItemBidding',
     'GetMediaBuysResponseMediaBuysItemPackagesItemCreativeApprovalsItem',
     'GetMediaBuysResponseMediaBuysItemPackagesItemIndicatorsItem',
     'GetMediaBuysResponseMediaBuysItemPackagesItemSnapshot',
@@ -952,7 +897,6 @@ __all__ = [
     'GetProductsRequestFieldsItem',
     'GetProductsRequestRefineItemProductAction',
     'GetProductsRequestRefineItemProposalAction',
-    'GetProductsRequestTimeBudget',
     'GetProductsResponse',
     'GetProductsResponseCacheScope',
     'GetProductsResponseExtensionsValue',
@@ -960,7 +904,6 @@ __all__ = [
     'GetProductsResponseFilterDiagnosticsExcludedByValue',
     'GetProductsResponseFilterDiagnosticsSemantics',
     'GetProductsResponseIncompleteItem',
-    'GetProductsResponseIncompleteItemEstimatedWait',
     'GetProductsResponseIncompleteItemScope',
     'GetProductsSubmitted',
     'GetProductsWorking',
@@ -976,7 +919,6 @@ __all__ = [
     'ListCreativeFormatsResponse',
     'ListCreativeFormatsResponseSource',
     'ListProductsRequest',
-    'ListProductsRequestPushNotificationConfig',
     'ListProductsResponse',
     'ListProductsResponseIncompleteItem',
     'ListProductsResponseIncompleteItemScope',
@@ -1011,14 +953,12 @@ __all__ = [
     'PackageControl',
     'PackageCountConstraints',
     'PackageRequest',
-    'PackageRequestBidding',
     'PackageUpdate',
     'PackagesItemIndicatorsItemType',
     'PerformanceStandards',
     'PeriodsView',
     'PricingOptionId',
     'ProductDiscoveryCriteria',
-    'ProductDiscoveryCriteriaOutcomeTarget',
     'ProductDiscoveryTargetingResolution',
     'ProductId',
     'ProductPurchase',
@@ -1075,9 +1015,6 @@ __all__ = [
     'RequestProposalsInputRequired',
     'RequestProposalsRequest',
     'RequestProposalsRequestAccount',
-    'RequestProposalsRequestAccountAccount',
-    'RequestProposalsRequestAccountAccountAccountId',
-    'RequestProposalsRequestAccountAccountBrandOperator',
     'RequestProposalsRequestBrand',
     'RequestProposalsRequestOpportunity',
     'RequestProposalsResponse',
@@ -1162,6 +1099,5 @@ __all__ = [
     'UpdateMediaBuyResponseSubmitted',
     'UpdateMediaBuySubmitted',
     'UpdateMediaBuySuccess',
-    'UpdateMediaBuySuccessBidding',
     'UpdateMediaBuyWorking',
 ]

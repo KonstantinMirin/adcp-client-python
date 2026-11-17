@@ -31,16 +31,6 @@ from .performance_standard import PerformanceStandard
 from .targeting import TargetingOverlay
 
 
-class Bidding(BiddingPolicy):
-    """
-    Package-authored bidding policy, echoed only when the buyer authored a package override. `{automatic:true}` is an explicit automatic-bidding override. Omission means the package inherits media-buy bidding or, when both scopes are absent, uses provider automatic delivery. Monetary fields are denominated in the media-buy currency. Sellers MUST NOT materialize inherited media-buy policy here.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/package.json', pointer='#/properties/bidding')
-
-
 class Cancellation(AdCPBaseModel):
     """
     Cancellation metadata. Present only when canceled is true.
@@ -80,7 +70,7 @@ class Package(AdCPBaseModel):
     pacing: Annotated[Pacing | None, OmittedNotNull] = None
     pricing_option_id: Annotated[str | None, Field(description="ID of the selected pricing option from the product's pricing_options array"), OmittedNotNull] = None
     bid_price: Annotated[NonNegativeFloat | None, Field(deprecated=True, description='DEPRECATED legacy bidding representation. 3.2 sellers normalize accepted legacy input and SHOULD echo bidding instead. Removed in the next major.'), OmittedNotNull] = None
-    bidding: Annotated[Bidding | None, Field(description='Package-authored bidding policy, echoed only when the buyer authored a package override. `{automatic:true}` is an explicit automatic-bidding override. Omission means the package inherits media-buy bidding or, when both scopes are absent, uses provider automatic delivery. Monetary fields are denominated in the media-buy currency. Sellers MUST NOT materialize inherited media-buy policy here.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description='Package-authored bidding policy, echoed only when the buyer authored a package override. `{automatic:true}` is an explicit automatic-bidding override. Omission means the package inherits media-buy bidding or, when both scopes are absent, uses provider automatic delivery. Monetary fields are denominated in the media-buy currency. Sellers MUST NOT materialize inherited media-buy policy here.'), OmittedNotNull] = None
     price_breakdown: Annotated[PriceBreakdown | None, Field(description="Breakdown of the effective price for this package. On fixed-price packages, echoes the pricing option's breakdown. On auction packages, shows the clearing price breakdown including any commission or settlement terms."), OmittedNotNull] = None
     impressions: Annotated[NonNegativeFloat | None, Field(description='Impression goal for this package'), OmittedNotNull] = None
     catalogs: Annotated[list[Catalog] | None, Field(description='Catalogs this package promotes. Each catalog MUST have a distinct type (e.g., one product catalog, one store catalog). This constraint is enforced at the application level — sellers MUST reject requests containing multiple catalogs of the same type with a validation_error. Echoed from the create_media_buy request.'), OmittedNotNull] = None

@@ -101,26 +101,6 @@ class PurgeKind(StrEnum):
     hard = MemberAlias('HARD')
 
 
-class ParamsDoohMetrics(DoohMetrics):
-    """
-    DOOH delivery detail to inject. Used by simulate_delivery for single-package buys; the latest injected block replaces the previous simulated DOOH detail and MUST surface at totals.dooh_metrics and by_package[0].dooh_metrics. Multi-package simulations require a future package-scoped form and MUST reject this media-buy-scoped field.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/params/properties/dooh_metrics')
-
-
-class ParamsViewability(Viewability):
-    """
-    Viewability metrics to inject into simulated delivery. Uses the canonical delivery viewability shape, including viewed-seconds distributions. This media-buy-scoped form is valid only for a single-package buy, where the reference seller surfaces the same values at package and media-buy totals grain.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/params/properties/viewability')
-
-
 class NotYetMeasurableVendorMetricsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -194,7 +174,7 @@ class Params(AdCPBaseModel):
     impressions: Annotated[NonNegativeInt | None, Field(description='Impressions to simulate. Used by simulate_delivery.'), OmittedNotNull] = None
     clicks: Annotated[NonNegativeInt | None, Field(description='Clicks to simulate. Used by simulate_delivery.'), OmittedNotNull] = None
     plays: Annotated[NonNegativeInt | None, Field(description='Raw DOOH or broadcast plays to add to delivery. Used by simulate_delivery for single-package buys; sellers MUST surface the cumulative value at totals.plays and by_package[0].plays in the next get_media_buy_delivery response. Multi-package simulations require a future package-scoped form and MUST reject this media-buy-scoped field.'), OmittedNotNull] = None
-    dooh_metrics: Annotated[ParamsDoohMetrics | None, Field(description='DOOH delivery detail to inject. Used by simulate_delivery for single-package buys; the latest injected block replaces the previous simulated DOOH detail and MUST surface at totals.dooh_metrics and by_package[0].dooh_metrics. Multi-package simulations require a future package-scoped form and MUST reject this media-buy-scoped field.'), OmittedNotNull] = None
+    dooh_metrics: Annotated[DoohMetrics | None, Field(description='DOOH delivery detail to inject. Used by simulate_delivery for single-package buys; the latest injected block replaces the previous simulated DOOH detail and MUST surface at totals.dooh_metrics and by_package[0].dooh_metrics. Multi-package simulations require a future package-scoped form and MUST reject this media-buy-scoped field.'), OmittedNotNull] = None
     conversions: Annotated[NonNegativeInt | None, Field(description='Conversions to simulate. Used by simulate_delivery.'), OmittedNotNull] = None
     delivery_date: Annotated[date | None, Field(description="Calendar date, in the product's reporting_capabilities.timezone, attributable to this simulated delivery batch. Used by simulate_delivery to seed deterministic date-range tests. When get_media_buy_delivery supplies start_date or end_date, dated batches are included when delivery_date is greater than or equal to start_date and strictly less than end_date. Omit to preserve cumulative, unfiltered simulation behavior."), OmittedNotNull] = None
     conversion_value: Annotated[NonNegativeFloat | None, Field(description='Total attributed conversion value to simulate in the delivery reporting currency. Used by simulate_delivery.'), OmittedNotNull] = None
@@ -204,7 +184,7 @@ class Params(AdCPBaseModel):
     frequency: Annotated[NonNegativeFloat | None, Field(description='Average frequency per reach unit to inject. Used by simulate_delivery. When supplied, sellers MUST surface this value at `totals.frequency`, including frequency-only delivery. The measurement window for this frequency value is declared in `reach_window` when also present.'), OmittedNotNull] = None
     reach_unit: Annotated[ReachUnit | None, Field(description='Unit for an injected reach or frequency value. Used by simulate_delivery. When supplied with reach or frequency, sellers MUST surface it on the corresponding delivery row.'), OmittedNotNull] = None
     reach_window: Annotated[ObjKindPeriod | None, Field(description='Measurement window semantics to attach to the simulated reach and frequency values. Used by simulate_delivery. When present, sellers MUST populate `reach_window` on the delivery row so buyers can determine the window semantics (cumulative vs. period vs. rolling). Omitting this param produces a row with no `reach_window` — valid per schema but sum-unsafe. Mirrors the `reach_window` shape in delivery-metrics.json.'), OmittedNotNull] = None
-    viewability: Annotated[ParamsViewability | None, Field(description='Viewability metrics to inject into simulated delivery. Uses the canonical delivery viewability shape, including viewed-seconds distributions. This media-buy-scoped form is valid only for a single-package buy, where the reference seller surfaces the same values at package and media-buy totals grain.'), OmittedNotNull] = None
+    viewability: Annotated[Viewability | None, Field(description='Viewability metrics to inject into simulated delivery. Uses the canonical delivery viewability shape, including viewed-seconds distributions. This media-buy-scoped form is valid only for a single-package buy, where the reference seller surfaces the same values at package and media-buy totals grain.'), OmittedNotNull] = None
     vendor_metric_values: Annotated[list[VendorMetricValue] | None, Field(description="Vendor-defined metric values to inject into the next delivery report. Used by simulate_delivery. The reference seller reconciles these rows against each package's seller-stamped committed_metrics contract."), OmittedNotNull] = None
     vendor_metric_values_by_package: Annotated[dict[str, list[VendorMetricValue]] | None, Field(description='Package-scoped vendor-defined values to inject, keyed by package_id. Used by simulate_delivery for multi-package buys. Sellers MUST use this form whenever more than one package could carry the same vendor/metric_id key; the legacy media-buy-scoped vendor_metric_values form is unambiguous only for a single-package buy.'), OmittedNotNull] = None
     not_yet_measurable_vendor_metrics: Annotated[list[NotYetMeasurableVendorMetricsItem] | None, Field(description='Committed vendor metrics that are not yet measurable for the simulated measurement window. Used by simulate_delivery to prove that a future metric is omitted from missing_metrics until its measurement window matures.'), OmittedNotNull] = None

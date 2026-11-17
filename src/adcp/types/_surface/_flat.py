@@ -762,7 +762,6 @@ from .._schemas.media_buy.create_media_buy_response import CreateMediaBuyRespons
 from .._schemas.media_buy.decline_proposals_response import DeclineProposalsResponse1 as DeclineProposalsResponse1
 from .._schemas.media_buy.get_media_buy_delivery_response import ByPackageItem as ByPackageItem
 from .._schemas.media_buy.get_media_buy_delivery_response import ByPackageItem1 as ByPackageItem1
-from .._schemas.media_buy.get_media_buy_delivery_response import Totals as Totals
 from .._schemas.media_buy.get_media_buy_delivery_response import Window as Window
 from .._schemas.media_buy.get_media_buys_response import CreativeApproval as CreativeApproval
 from .._schemas.media_buy.get_products_request import Action9 as Action9
@@ -1328,11 +1327,9 @@ from .compliance import ComplyTestControllerRequestAccount as ComplyTestControll
 from .compliance import ComplyTestControllerRequestParams as ComplyTestControllerRequestParams
 from .compliance import ComplyTestControllerRequestParamsAdvanceTo as ComplyTestControllerRequestParamsAdvanceTo
 from .compliance import ComplyTestControllerRequestParamsArm as ComplyTestControllerRequestParamsArm
-from .compliance import ComplyTestControllerRequestParamsDoohMetrics as ComplyTestControllerRequestParamsDoohMetrics
 from .compliance import ComplyTestControllerRequestParamsMetricsItem as ComplyTestControllerRequestParamsMetricsItem
 from .compliance import ComplyTestControllerRequestParamsOperation as ComplyTestControllerRequestParamsOperation
 from .compliance import ComplyTestControllerRequestParamsPurgeKind as ComplyTestControllerRequestParamsPurgeKind
-from .compliance import ComplyTestControllerRequestParamsViewability as ComplyTestControllerRequestParamsViewability
 from .compliance import ComplyTestControllerResponse as ComplyTestControllerResponse
 from .compliance import ControllerError as ControllerError
 from .compliance import ControllerErrorError as ControllerErrorError
@@ -1618,8 +1615,6 @@ from .core import AttestationReferenceVerifyAgent as AttestationReferenceVerifyA
 from .core import AttestationResourceSubject as AttestationResourceSubject
 from .core import AttestationSubject as AttestationSubject
 from .core import AttributionWindow as AttributionWindow
-from .core import AttributionWindowPostClick as AttributionWindowPostClick
-from .core import AttributionWindowPostView as AttributionWindowPostView
 from .core import AudienceActivationMethod as AudienceActivationMethod
 from .core import AudienceActivationMethodFileTransfer as AudienceActivationMethodFileTransfer
 from .core import AudienceActivationMethodsItemCleanRoom as AudienceActivationMethodsItemCleanRoom
@@ -1769,7 +1764,6 @@ from .core import CanonicalProductPlacementSellerInline as CanonicalProductPlace
 from .core import CanonicalProjectionReference as CanonicalProjectionReference
 from .core import CanonicalProjectionSlotOverride as CanonicalProjectionSlotOverride
 from .core import CanonicalProposal as CanonicalProposal
-from .core import CanonicalProposalForecast as CanonicalProposalForecast
 from .core import CanonicalProposalProposalKind as CanonicalProposalProposalKind
 from .core import CanonicalProposalTotalBudgetGuidance as CanonicalProposalTotalBudgetGuidance
 from .core import CanonicalReportingCapabilities as CanonicalReportingCapabilities
@@ -1952,7 +1946,6 @@ from .core import DeliveryMetricsOohMetricsPostingsItemEventType as DeliveryMetr
 from .core import DeliveryMetricsQuartileData as DeliveryMetricsQuartileData
 from .core import DeliveryMetricsReachWindow as DeliveryMetricsReachWindow
 from .core import DeliveryMetricsReachWindowKind as DeliveryMetricsReachWindowKind
-from .core import DeliveryMetricsReachWindowPeriod as DeliveryMetricsReachWindowPeriod
 from .core import DeliveryMetricsTimeBasedViewsItem as DeliveryMetricsTimeBasedViewsItem
 from .core import DeliveryMetricsViewability as DeliveryMetricsViewability
 from .core import (
@@ -2076,8 +2069,6 @@ from .core import (
     FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval as FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval,
 )
 from .core import FrequencyCapRequirements as FrequencyCapRequirements
-from .core import FrequencyCapSuppress as FrequencyCapSuppress
-from .core import FrequencyCapWindow as FrequencyCapWindow
 from .core import GenerationCredential as GenerationCredential
 from .core import GeoCountries as GeoCountries
 from .core import GeoCountriesExclude as GeoCountriesExclude
@@ -2256,14 +2247,12 @@ from .core import MediaBuy as MediaBuy
 from .core import MediaBuyAvailableAction as MediaBuyAvailableAction
 from .core import MediaBuyAvailableActionID as MediaBuyAvailableActionID
 from .core import MediaBuyAvailableActionTask as MediaBuyAvailableActionTask
-from .core import MediaBuyBidding as MediaBuyBidding
 from .core import MediaBuyCancellation as MediaBuyCancellation
 from .core import MediaBuyChangeTermID as MediaBuyChangeTermID
 from .core import MediaBuyCommitmentResponseCompleted as MediaBuyCommitmentResponseCompleted
 from .core import MediaBuyCommitmentResponseFailed as MediaBuyCommitmentResponseFailed
 from .core import MediaBuyCommitmentResponseSubmitted as MediaBuyCommitmentResponseSubmitted
 from .core import MediaBuyFeatures as MediaBuyFeatures
-from .core import MediaBuyFeaturesBiddingPolicy as MediaBuyFeaturesBiddingPolicy
 from .core import MediaBuyFrequencyCap as MediaBuyFrequencyCap
 from .core import MediaBuyFrequencyCapCapability as MediaBuyFrequencyCapCapability
 from .core import MediaBuyFrequencyCapRequirement as MediaBuyFrequencyCapRequirement
@@ -2300,28 +2289,23 @@ from .core import OpportunityContextPhase as OpportunityContextPhase
 from .core import OpportunityContextStatus as OpportunityContextStatus
 from .core import OptimizationGoal as OptimizationGoal
 from .core import OptimizationGoalEvent as OptimizationGoalEvent
-from .core import OptimizationGoalEventAttributionWindow as OptimizationGoalEventAttributionWindow
 from .core import OptimizationGoalEventEventSourcesItem as OptimizationGoalEventEventSourcesItem
 from .core import OptimizationGoalEventTargetCostPer as OptimizationGoalEventTargetCostPer
 from .core import OptimizationGoalMetric as OptimizationGoalMetric
 from .core import OptimizationGoalMetricMetric as OptimizationGoalMetricMetric
 from .core import OptimizationGoalMetricTargetCostPer as OptimizationGoalMetricTargetCostPer
 from .core import OptimizationGoalMetricTargetFrequency as OptimizationGoalMetricTargetFrequency
-from .core import OptimizationGoalMetricTargetFrequencyWindow as OptimizationGoalMetricTargetFrequencyWindow
 from .core import OptimizationGoalMetricTargetThresholdRate as OptimizationGoalMetricTargetThresholdRate
-from .core import OptimizationGoalMetricVendor as OptimizationGoalMetricVendor
 from .core import OptimizationGoalVendorMetric as OptimizationGoalVendorMetric
 from .core import OptimizationGoalVendorMetricTargetCostPer as OptimizationGoalVendorMetricTargetCostPer
 from .core import OptimizationGoalVendorMetricTargetThresholdRate as OptimizationGoalVendorMetricTargetThresholdRate
 from .core import OutcomeMeasurement as OutcomeMeasurement
-from .core import OutcomeMeasurementWindow as OutcomeMeasurementWindow
 from .core import OutcomeTargetCostPer as OutcomeTargetCostPer
 from .core import Overlay as Overlay
 from .core import OverlayBounds as OverlayBounds
 from .core import OverlayBoundsUnit as OverlayBoundsUnit
 from .core import OverlayVisual as OverlayVisual
 from .core import Package as Package
-from .core import PackageBidding as PackageBidding
 from .core import PackageCancellation as PackageCancellation
 from .core import PackageDeliveryMetricValue as PackageDeliveryMetricValue
 from .core import PackageDeliveryMetricValueQualifier as PackageDeliveryMetricValueQualifier
@@ -2408,7 +2392,6 @@ from .core import PlacementPropertyDeliveryMetrics as PlacementPropertyDeliveryM
 from .core import PlacementReference as PlacementReference
 from .core import PlacementSelection as PlacementSelection
 from .core import PlannedDelivery as PlannedDelivery
-from .core import PlannedDeliveryBidding as PlannedDeliveryBidding
 from .core import PlannedDeliveryGeo as PlannedDeliveryGeo
 from .core import PlatformDistribution as PlatformDistribution
 from .core import PlatformExtensionReference as PlatformExtensionReference
@@ -2518,7 +2501,6 @@ from .core import ProductMetricOptimization as ProductMetricOptimization
 from .core import ProductMetricOptimizationSupportedTargetsItem as ProductMetricOptimizationSupportedTargetsItem
 from .core import ProductOfferFilters as ProductOfferFilters
 from .core import ProductOfferFiltersAvailabilityHorizon as ProductOfferFiltersAvailabilityHorizon
-from .core import ProductOfferFiltersRequiredFeatures as ProductOfferFiltersRequiredFeatures
 from .core import (
     ProductOfferFiltersRequiredPerformanceStandardsItem as ProductOfferFiltersRequiredPerformanceStandardsItem,
 )
@@ -2649,9 +2631,6 @@ from .core import RegistryEventPropertyStalePropertyPayload as RegistryEventProp
 from .core import RegistryEventPropertyUpdatedProperty as RegistryEventPropertyUpdatedProperty
 from .core import RegistryEventPropertyUpdatedPropertyPayload as RegistryEventPropertyUpdatedPropertyPayload
 from .core import RegistryEventPublisherAdagentsChangedPublisher as RegistryEventPublisherAdagentsChangedPublisher
-from .core import (
-    RegistryEventPublisherAdagentsChangedPublisherPayload as RegistryEventPublisherAdagentsChangedPublisherPayload,
-)
 from .core import RegistryEventPublisherAdagentsDiscoveredPublisher as RegistryEventPublisherAdagentsDiscoveredPublisher
 from .core import RegistryEventPublisherAdagentsPayload as RegistryEventPublisherAdagentsPayload
 from .core import RegistryEventStoryboardStatus as RegistryEventStoryboardStatus
@@ -2937,7 +2916,6 @@ from .core import TargetingOverlayRequirementsRequired as TargetingOverlayRequir
 from .core import TargetingOverlayStoreCatchmentsItem as TargetingOverlayStoreCatchmentsItem
 from .core import TargetingOverlaySupport as TargetingOverlaySupport
 from .core import TargetingOverlaySupportDemographicsAge as TargetingOverlaySupportDemographicsAge
-from .core import TargetingOverlaySupportFrequencyCapSupport as TargetingOverlaySupportFrequencyCapSupport
 from .core import TargetingOverlaySupportGeoProximity as TargetingOverlaySupportGeoProximity
 from .core import TargetingOverlaySupportPlaceCatalogSupport as TargetingOverlaySupportPlaceCatalogSupport
 from .core import TargetingOverlaySupportPlacementSelection as TargetingOverlaySupportPlacementSelection
@@ -3889,9 +3867,6 @@ from .media_buy import BuildCreativeWorking as BuildCreativeWorking
 from .media_buy import BuyProductsInputRequired as BuyProductsInputRequired
 from .media_buy import BuyProductsRequest as BuyProductsRequest
 from .media_buy import BuyProductsRequestAccount as BuyProductsRequestAccount
-from .media_buy import BuyProductsRequestAccountAccount as BuyProductsRequestAccountAccount
-from .media_buy import BuyProductsRequestAccountAccountAccountId as BuyProductsRequestAccountAccountAccountId
-from .media_buy import BuyProductsRequestAccountAccountBrandOperator as BuyProductsRequestAccountAccountBrandOperator
 from .media_buy import BuyProductsRequestBrand as BuyProductsRequestBrand
 from .media_buy import BuyProductsRequestOpportunity as BuyProductsRequestOpportunity
 from .media_buy import BuyProductsResponse as BuyProductsResponse
@@ -3932,14 +3907,12 @@ from .media_buy import (
 from .media_buy import (
     CreateMediaBuyRequestArtifactWebhookDeliveryMode as CreateMediaBuyRequestArtifactWebhookDeliveryMode,
 )
-from .media_buy import CreateMediaBuyRequestBidding as CreateMediaBuyRequestBidding
 from .media_buy import CreateMediaBuyRequestIoAcceptance as CreateMediaBuyRequestIoAcceptance
 from .media_buy import CreateMediaBuyRequestOpportunity as CreateMediaBuyRequestOpportunity
 from .media_buy import CreateMediaBuyResponse as CreateMediaBuyResponse
 from .media_buy import CreateMediaBuyResponseSubmitted as CreateMediaBuyResponseSubmitted
 from .media_buy import CreateMediaBuySubmitted as CreateMediaBuySubmitted
 from .media_buy import CreateMediaBuySuccess as CreateMediaBuySuccess
-from .media_buy import CreateMediaBuySuccessBidding as CreateMediaBuySuccessBidding
 from .media_buy import CreateMediaBuyWorking as CreateMediaBuyWorking
 from .media_buy import (
     CreativeApprovalsItemIndicatorTypesEvaluatedItem as CreativeApprovalsItemIndicatorTypesEvaluatedItem,
@@ -3959,15 +3932,9 @@ from .media_buy import EffectiveTimingConstraints as EffectiveTimingConstraints
 from .media_buy import EndTime as EndTime
 from .media_buy import ExplicitPackagesWithFixedAllocation as ExplicitPackagesWithFixedAllocation
 from .media_buy import (
-    ExplicitPackagesWithFixedAllocationBudgetAllocation as ExplicitPackagesWithFixedAllocationBudgetAllocation,
-)
-from .media_buy import (
     ExplicitPackagesWithFixedAllocationPackagesItem as ExplicitPackagesWithFixedAllocationPackagesItem,
 )
 from .media_buy import ExplicitPackagesWithSellerOptimizedAllocation as ExplicitPackagesWithSellerOptimizedAllocation
-from .media_buy import (
-    ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation as ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation,
-)
 from .media_buy import FailedLookup as FailedLookup
 from .media_buy import FailedReportingConsumerStatus as FailedReportingConsumerStatus
 from .media_buy import FailedReportingReceipt as FailedReportingReceipt
@@ -4039,9 +4006,6 @@ from .media_buy import (
     GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemByPackageItem as GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemByPackageItem,
 )
 from .media_buy import (
-    GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemTotals as GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemTotals,
-)
-from .media_buy import (
     GetMediaBuyDeliveryResponseReportingRevisionBinding as GetMediaBuyDeliveryResponseReportingRevisionBinding,
 )
 from .media_buy import GetMediaBuysRequest as GetMediaBuysRequest
@@ -4050,15 +4014,11 @@ from .media_buy import GetMediaBuysResponseMediaBuysItem as GetMediaBuysResponse
 from .media_buy import (
     GetMediaBuysResponseMediaBuysItemAcceptedProposal as GetMediaBuysResponseMediaBuysItemAcceptedProposal,
 )
-from .media_buy import GetMediaBuysResponseMediaBuysItemBidding as GetMediaBuysResponseMediaBuysItemBidding
 from .media_buy import GetMediaBuysResponseMediaBuysItemHistoryItem as GetMediaBuysResponseMediaBuysItemHistoryItem
 from .media_buy import (
     GetMediaBuysResponseMediaBuysItemIndicatorsItem as GetMediaBuysResponseMediaBuysItemIndicatorsItem,
 )
 from .media_buy import GetMediaBuysResponseMediaBuysItemPackagesItem as GetMediaBuysResponseMediaBuysItemPackagesItem
-from .media_buy import (
-    GetMediaBuysResponseMediaBuysItemPackagesItemBidding as GetMediaBuysResponseMediaBuysItemPackagesItemBidding,
-)
 from .media_buy import (
     GetMediaBuysResponseMediaBuysItemPackagesItemCreativeApprovalsItem as GetMediaBuysResponseMediaBuysItemPackagesItemCreativeApprovalsItem,
 )
@@ -4076,7 +4036,6 @@ from .media_buy import GetProductsRequestBuyingMode as GetProductsRequestBuyingM
 from .media_buy import GetProductsRequestFieldsItem as GetProductsRequestFieldsItem
 from .media_buy import GetProductsRequestRefineItemProductAction as GetProductsRequestRefineItemProductAction
 from .media_buy import GetProductsRequestRefineItemProposalAction as GetProductsRequestRefineItemProposalAction
-from .media_buy import GetProductsRequestTimeBudget as GetProductsRequestTimeBudget
 from .media_buy import GetProductsResponse as GetProductsResponse
 from .media_buy import GetProductsResponseCacheScope as GetProductsResponseCacheScope
 from .media_buy import GetProductsResponseExtensionsValue as GetProductsResponseExtensionsValue
@@ -4086,7 +4045,6 @@ from .media_buy import (
 )
 from .media_buy import GetProductsResponseFilterDiagnosticsSemantics as GetProductsResponseFilterDiagnosticsSemantics
 from .media_buy import GetProductsResponseIncompleteItem as GetProductsResponseIncompleteItem
-from .media_buy import GetProductsResponseIncompleteItemEstimatedWait as GetProductsResponseIncompleteItemEstimatedWait
 from .media_buy import GetProductsResponseIncompleteItemScope as GetProductsResponseIncompleteItemScope
 from .media_buy import GetProductsSubmitted as GetProductsSubmitted
 from .media_buy import GetProductsWorking as GetProductsWorking
@@ -4104,7 +4062,6 @@ from .media_buy import ListCreativeFormatsRequest as ListCreativeFormatsRequest
 from .media_buy import ListCreativeFormatsResponse as ListCreativeFormatsResponse
 from .media_buy import ListCreativeFormatsResponseSource as ListCreativeFormatsResponseSource
 from .media_buy import ListProductsRequest as ListProductsRequest
-from .media_buy import ListProductsRequestPushNotificationConfig as ListProductsRequestPushNotificationConfig
 from .media_buy import ListProductsResponse as ListProductsResponse
 from .media_buy import ListProductsResponseIncompleteItem as ListProductsResponseIncompleteItem
 from .media_buy import ListProductsResponseIncompleteItemScope as ListProductsResponseIncompleteItemScope
@@ -4147,14 +4104,12 @@ from .media_buy import OutcomeTarget as OutcomeTarget
 from .media_buy import PackageControl as PackageControl
 from .media_buy import PackageCountConstraints as PackageCountConstraints
 from .media_buy import PackageRequest as PackageRequest
-from .media_buy import PackageRequestBidding as PackageRequestBidding
 from .media_buy import PackagesItemIndicatorsItemType as PackagesItemIndicatorsItemType
 from .media_buy import PackageUpdate as PackageUpdate
 from .media_buy import PerformanceStandards as PerformanceStandards
 from .media_buy import PeriodsView as PeriodsView
 from .media_buy import PricingOptionId as PricingOptionId
 from .media_buy import ProductDiscoveryCriteria as ProductDiscoveryCriteria
-from .media_buy import ProductDiscoveryCriteriaOutcomeTarget as ProductDiscoveryCriteriaOutcomeTarget
 from .media_buy import ProductDiscoveryTargetingResolution as ProductDiscoveryTargetingResolution
 from .media_buy import ProductId as ProductId
 from .media_buy import ProductPurchase as ProductPurchase
@@ -4217,11 +4172,6 @@ from .media_buy import RegistryAcceptancePolicyProfileReference as RegistryAccep
 from .media_buy import RequestProposalsInputRequired as RequestProposalsInputRequired
 from .media_buy import RequestProposalsRequest as RequestProposalsRequest
 from .media_buy import RequestProposalsRequestAccount as RequestProposalsRequestAccount
-from .media_buy import RequestProposalsRequestAccountAccount as RequestProposalsRequestAccountAccount
-from .media_buy import RequestProposalsRequestAccountAccountAccountId as RequestProposalsRequestAccountAccountAccountId
-from .media_buy import (
-    RequestProposalsRequestAccountAccountBrandOperator as RequestProposalsRequestAccountAccountBrandOperator,
-)
 from .media_buy import RequestProposalsRequestBrand as RequestProposalsRequestBrand
 from .media_buy import RequestProposalsRequestOpportunity as RequestProposalsRequestOpportunity
 from .media_buy import RequestProposalsResponse as RequestProposalsResponse
@@ -4322,7 +4272,6 @@ from .media_buy import UpdateMediaBuyResponse as UpdateMediaBuyResponse
 from .media_buy import UpdateMediaBuyResponseSubmitted as UpdateMediaBuyResponseSubmitted
 from .media_buy import UpdateMediaBuySubmitted as UpdateMediaBuySubmitted
 from .media_buy import UpdateMediaBuySuccess as UpdateMediaBuySuccess
-from .media_buy import UpdateMediaBuySuccessBidding as UpdateMediaBuySuccessBidding
 from .media_buy import UpdateMediaBuyWorking as UpdateMediaBuyWorking
 from .pricing_options import CPAPricingOption as CPAPricingOption
 from .pricing_options import CPCPricingOption as CPCPricingOption
@@ -4690,7 +4639,6 @@ from .signals import GetSignalsRequest as GetSignalsRequest
 from .signals import GetSignalsRequestFieldsItem as GetSignalsRequestFieldsItem
 from .signals import GetSignalsResponse as GetSignalsResponse
 from .signals import GetSignalsResponseIncompleteItem as GetSignalsResponseIncompleteItem
-from .signals import GetSignalsResponseIncompleteItemEstimatedWait as GetSignalsResponseIncompleteItemEstimatedWait
 from .signals import GetSignalsResponseIncompleteItemScope as GetSignalsResponseIncompleteItemScope
 from .signals import GetSignalsResponseSignalsItem as GetSignalsResponseSignalsItem
 from .signals import GetSignalsSubmitted as GetSignalsSubmitted
@@ -5280,8 +5228,6 @@ __all__ = [
     'AttributionMethodology',
     'AttributionModel',
     'AttributionWindow',
-    'AttributionWindowPostClick',
-    'AttributionWindowPostView',
     'Audience',
     'AudienceActivationMethod',
     'AudienceActivationMethod1',
@@ -5584,9 +5530,6 @@ __all__ = [
     'BuyProductsInputRequired',
     'BuyProductsRequest',
     'BuyProductsRequestAccount',
-    'BuyProductsRequestAccountAccount',
-    'BuyProductsRequestAccountAccountAccountId',
-    'BuyProductsRequestAccountAccountBrandOperator',
     'BuyProductsRequestBrand',
     'BuyProductsRequestOpportunity',
     'BuyProductsResponse',
@@ -5762,7 +5705,6 @@ __all__ = [
     'CanonicalProjectionReference',
     'CanonicalProjectionSlotOverride',
     'CanonicalProposal',
-    'CanonicalProposalForecast',
     'CanonicalProposalProposalKind',
     'CanonicalProposalTotalBudgetGuidance',
     'CanonicalReportingCapabilities',
@@ -5901,11 +5843,9 @@ __all__ = [
     'ComplyTestControllerRequestParams',
     'ComplyTestControllerRequestParamsAdvanceTo',
     'ComplyTestControllerRequestParamsArm',
-    'ComplyTestControllerRequestParamsDoohMetrics',
     'ComplyTestControllerRequestParamsMetricsItem',
     'ComplyTestControllerRequestParamsOperation',
     'ComplyTestControllerRequestParamsPurgeKind',
-    'ComplyTestControllerRequestParamsViewability',
     'ComplyTestControllerResponse',
     'ComplyTestControllerResponse1',
     'ComplyTestControllerResponse2',
@@ -6027,7 +5967,6 @@ __all__ = [
     'CreateMediaBuyRequestArtifactWebhook',
     'CreateMediaBuyRequestArtifactWebhookBatchFrequency',
     'CreateMediaBuyRequestArtifactWebhookDeliveryMode',
-    'CreateMediaBuyRequestBidding',
     'CreateMediaBuyRequestIoAcceptance',
     'CreateMediaBuyRequestOpportunity',
     'CreateMediaBuyResponse',
@@ -6037,7 +5976,6 @@ __all__ = [
     'CreateMediaBuyResponseSubmitted',
     'CreateMediaBuySubmitted',
     'CreateMediaBuySuccess',
-    'CreateMediaBuySuccessBidding',
     'CreateMediaBuyWorking',
     'CreatePropertyListRequest',
     'CreatePropertyListResponse',
@@ -6233,7 +6171,6 @@ __all__ = [
     'DeliveryMetricsQuartileData',
     'DeliveryMetricsReachWindow',
     'DeliveryMetricsReachWindowKind',
-    'DeliveryMetricsReachWindowPeriod',
     'DeliveryMetricsTimeBasedViewsItem',
     'DeliveryMetricsViewability',
     'DeliveryMetricsViewabilityViewedSecondsHistogramItem',
@@ -6367,10 +6304,8 @@ __all__ = [
     'ExperimentalFeatureID',
     'ExperimentalFeatureId',
     'ExplicitPackagesWithFixedAllocation',
-    'ExplicitPackagesWithFixedAllocationBudgetAllocation',
     'ExplicitPackagesWithFixedAllocationPackagesItem',
     'ExplicitPackagesWithSellerOptimizedAllocation',
-    'ExplicitPackagesWithSellerOptimizedAllocationBudgetAllocation',
     'ExtensionObject',
     'Extensions',
     'ExtensionsSupportedItem',
@@ -6461,8 +6396,6 @@ __all__ = [
     'FrequencyCapMutableField',
     'FrequencyCapRequirements',
     'FrequencyCapScope',
-    'FrequencyCapSuppress',
-    'FrequencyCapWindow',
     'GOPType',
     'GenerationCredential',
     'GenreTaxonomy',
@@ -6680,17 +6613,14 @@ __all__ = [
     'GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemTotals',
     'GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItem',
     'GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemByPackageItem',
-    'GetMediaBuyDeliveryResponseMediaBuyDeliveriesItemWindowsItemTotals',
     'GetMediaBuyDeliveryResponseReportingRevisionBinding',
     'GetMediaBuysRequest',
     'GetMediaBuysResponse',
     'GetMediaBuysResponseMediaBuysItem',
     'GetMediaBuysResponseMediaBuysItemAcceptedProposal',
-    'GetMediaBuysResponseMediaBuysItemBidding',
     'GetMediaBuysResponseMediaBuysItemHistoryItem',
     'GetMediaBuysResponseMediaBuysItemIndicatorsItem',
     'GetMediaBuysResponseMediaBuysItemPackagesItem',
-    'GetMediaBuysResponseMediaBuysItemPackagesItemBidding',
     'GetMediaBuysResponseMediaBuysItemPackagesItemCreativeApprovalsItem',
     'GetMediaBuysResponseMediaBuysItemPackagesItemIndicatorsItem',
     'GetMediaBuysResponseMediaBuysItemPackagesItemSnapshot',
@@ -6735,7 +6665,6 @@ __all__ = [
     'GetProductsRequestFieldsItem',
     'GetProductsRequestRefineItemProductAction',
     'GetProductsRequestRefineItemProposalAction',
-    'GetProductsRequestTimeBudget',
     'GetProductsResponse',
     'GetProductsResponseCacheScope',
     'GetProductsResponseExtensionsValue',
@@ -6743,7 +6672,6 @@ __all__ = [
     'GetProductsResponseFilterDiagnosticsExcludedByValue',
     'GetProductsResponseFilterDiagnosticsSemantics',
     'GetProductsResponseIncompleteItem',
-    'GetProductsResponseIncompleteItemEstimatedWait',
     'GetProductsResponseIncompleteItemScope',
     'GetProductsSubmitted',
     'GetProductsWorking',
@@ -6772,7 +6700,6 @@ __all__ = [
     'GetSignalsRequestFieldsItem',
     'GetSignalsResponse',
     'GetSignalsResponseIncompleteItem',
-    'GetSignalsResponseIncompleteItemEstimatedWait',
     'GetSignalsResponseIncompleteItemScope',
     'GetSignalsResponseSignalsItem',
     'GetSignalsSubmitted',
@@ -7004,7 +6931,6 @@ __all__ = [
     'ListCreativesResponseQuerySummarySortApplied',
     'ListCreativesResponseStatusSummary',
     'ListProductsRequest',
-    'ListProductsRequestPushNotificationConfig',
     'ListProductsResponse',
     'ListProductsResponseIncompleteItem',
     'ListProductsResponseIncompleteItemScope',
@@ -7089,7 +7015,6 @@ __all__ = [
     'MediaBuyAvailableActionID',
     'MediaBuyAvailableActionId',
     'MediaBuyAvailableActionTask',
-    'MediaBuyBidding',
     'MediaBuyCancellation',
     'MediaBuyChangeTerm',
     'MediaBuyChangeTermAllowedStatusesItem',
@@ -7116,7 +7041,6 @@ __all__ = [
     'MediaBuyDeliveryWebhookResultNotificationType',
     'MediaBuyDeliveryWebhookResultReportingPeriod',
     'MediaBuyFeatures',
-    'MediaBuyFeaturesBiddingPolicy',
     'MediaBuyFrequencyCap',
     'MediaBuyFrequencyCapCapability',
     'MediaBuyFrequencyCapControlMode',
@@ -7187,23 +7111,19 @@ __all__ = [
     'OptimizationGoal9',
     'OptimizationGoal10',
     'OptimizationGoalEvent',
-    'OptimizationGoalEventAttributionWindow',
     'OptimizationGoalEventEventSourcesItem',
     'OptimizationGoalEventTargetCostPer',
     'OptimizationGoalMetric',
     'OptimizationGoalMetricMetric',
     'OptimizationGoalMetricTargetCostPer',
     'OptimizationGoalMetricTargetFrequency',
-    'OptimizationGoalMetricTargetFrequencyWindow',
     'OptimizationGoalMetricTargetThresholdRate',
-    'OptimizationGoalMetricVendor',
     'OptimizationGoalVendorMetric',
     'OptimizationGoalVendorMetricTargetCostPer',
     'OptimizationGoalVendorMetricTargetThresholdRate',
     'OptimizationGoals',
     'Option',
     'OutcomeMeasurement',
-    'OutcomeMeasurementWindow',
     'OutcomeTarget',
     'OutcomeTargetCostPer',
     'OutcomeTargetCostStrength',
@@ -7214,7 +7134,6 @@ __all__ = [
     'OverlayVisual',
     'Pacing',
     'Package',
-    'PackageBidding',
     'PackageCancellation',
     'PackageControl',
     'PackageCountConstraints',
@@ -7239,7 +7158,6 @@ __all__ = [
     'PackageFormatSnapshotVideoHosted',
     'PackageFormatSnapshotVideoVast',
     'PackageRequest',
-    'PackageRequestBidding',
     'PackageSignalTargeting',
     'PackageSignalTargetingBinary',
     'PackageSignalTargetingCategorical',
@@ -7334,7 +7252,6 @@ __all__ = [
     'PlacementSelection1',
     'PlacementSelection2',
     'PlannedDelivery',
-    'PlannedDeliveryBidding',
     'PlannedDeliveryGeo',
     'PlatformDistribution',
     'PlatformExtensionReference',
@@ -7497,7 +7414,6 @@ __all__ = [
     'ProductDefaultPlacements',
     'ProductDeliveryMeasurement',
     'ProductDiscoveryCriteria',
-    'ProductDiscoveryCriteriaOutcomeTarget',
     'ProductDiscoveryTargetingResolution',
     'ProductExecutionRequirement',
     'ProductExecutionRequirement1',
@@ -7544,7 +7460,6 @@ __all__ = [
     'ProductMetricOptimizationSupportedTargetsItem',
     'ProductOfferFilters',
     'ProductOfferFiltersAvailabilityHorizon',
-    'ProductOfferFiltersRequiredFeatures',
     'ProductOfferFiltersRequiredPerformanceStandardsItem',
     'ProductOfferFiltersRequiredVendorMetricsItem',
     'ProductProductCard',
@@ -7771,7 +7686,6 @@ __all__ = [
     'RegistryEventPropertyUpdatedProperty',
     'RegistryEventPropertyUpdatedPropertyPayload',
     'RegistryEventPublisherAdagentsChangedPublisher',
-    'RegistryEventPublisherAdagentsChangedPublisherPayload',
     'RegistryEventPublisherAdagentsDiscoveredPublisher',
     'RegistryEventPublisherAdagentsPayload',
     'RegistryEventStoryboardStatus',
@@ -7949,9 +7863,6 @@ __all__ = [
     'RequestProposalsInputRequired',
     'RequestProposalsRequest',
     'RequestProposalsRequestAccount',
-    'RequestProposalsRequestAccountAccount',
-    'RequestProposalsRequestAccountAccountAccountId',
-    'RequestProposalsRequestAccountAccountBrandOperator',
     'RequestProposalsRequestBrand',
     'RequestProposalsRequestOpportunity',
     'RequestProposalsResponse',
@@ -8424,7 +8335,6 @@ __all__ = [
     'TargetingOverlayStoreCatchmentsItem',
     'TargetingOverlaySupport',
     'TargetingOverlaySupportDemographicsAge',
-    'TargetingOverlaySupportFrequencyCapSupport',
     'TargetingOverlaySupportGeoProximity',
     'TargetingOverlaySupportPlaceCatalogSupport',
     'TargetingOverlaySupportPlaceSupport',
@@ -8490,7 +8400,6 @@ __all__ = [
     'TmpxMacroMappingValue',
     'TmpxProviders',
     'Tone',
-    'Totals',
     'TrackerExecutionActor',
     'TrackerExecutionContract',
     'TrackerExecutionSelector',
@@ -8577,7 +8486,6 @@ __all__ = [
     'UpdateMediaBuyResponseSubmitted',
     'UpdateMediaBuySubmitted',
     'UpdateMediaBuySuccess',
-    'UpdateMediaBuySuccessBidding',
     'UpdateMediaBuyWorking',
     'UpdatePropertyListRequest',
     'UpdatePropertyListResponse',

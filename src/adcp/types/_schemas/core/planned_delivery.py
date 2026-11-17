@@ -32,16 +32,6 @@ class Geo(AdCPBaseModel):
     regions: Annotated[list[str] | None, Field(description='ISO 3166-2 subdivision codes where ads will deliver.'), OmittedNotNull] = None
 
 
-class Bidding(BiddingPolicy):
-    """
-    Seller-interpreted media-buy bidding policy used for governance and delivery transparency. Goal-bound controls follow budget-allocation scope semantics and monetary fields use the planned delivery currency. Package-authored overrides, including explicit automatic overrides, remain on packages rather than being copied into this aggregate field.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/planned-delivery.json', pointer='#/properties/bidding')
-
-
 class PlannedDelivery(AdCPBaseModel):
     """
     The seller's interpreted delivery parameters for a media buy. Represents what the seller will actually run, which may differ from what the buyer requested (e.g., the seller may apply additional targeting, frequency caps, or adjust geo to match their inventory). Used for authorization verification and audit.
@@ -70,7 +60,7 @@ class PlannedDelivery(AdCPBaseModel):
     currency: Annotated[CurrencyCode | None, Field(description='ISO 4217 currency code for the budget. Governance execution checks require it whenever total_budget is present and require it to match the intent-authorized currency.'), OmittedNotNull] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Seller-accepted cross-package allocation authority and goals. Presence with seller_optimized mode means automatic within-buy reallocations are part of the committed delivery, not separate modification actions.'), OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Aggregate pacing strategy the seller will apply to total_budget.'), OmittedNotNull] = None
-    bidding: Annotated[Bidding | None, Field(description='Seller-interpreted media-buy bidding policy used for governance and delivery transparency. Goal-bound controls follow budget-allocation scope semantics and monetary fields use the planned delivery currency. Package-authored overrides, including explicit automatic overrides, remain on packages rather than being copied into this aggregate field.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description='Seller-interpreted media-buy bidding policy used for governance and delivery transparency. Goal-bound controls follow budget-allocation scope semantics and monetary fields use the planned delivery currency. Package-authored overrides, including explicit automatic overrides, remain on packages rather than being copied into this aggregate field.'), OmittedNotNull] = None
     enforced_policies: Annotated[list[str] | None, Field(description='Registry policy IDs the seller will enforce for this delivery.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

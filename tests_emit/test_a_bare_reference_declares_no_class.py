@@ -46,10 +46,18 @@ and dropping it would lose a fact the document states.
 and once as ``window: Annotated[Window | None, Field(description='Time window for the
 max_impressions cap …')]``, and the field's copy is present at ``PostClick``, ``Bidding``
 and ``TimeBudget`` too. So the collapse drops nothing -- ``Annotated[Duration | None,
-Field(description=…)]`` keeps the sentence exactly where §6 wants it -- and the 27 below are
+Field(description=…)]`` keeps the sentence exactly where §6 wants it -- and the 27 were
 defects rather than a decision to re-open. **Reading that row first is what tells a defect
 from a decision**, which is ``CLAUDE.md``'s opening rule and was skipped when this gate was
 first written.
+
+**AND THE ROW'S SCREEN IS VACUOUS AT PROP, which is why the fix is the position and not a
+list of admitted words.** ``Effect.ANNOTATION`` has exactly four members at PROP --
+``description``, ``deprecated``, ``enumDescriptions``, ``x-enum-descriptions`` -- against
+``NOTHING``'s 67, and the collapse destroys the carrier of none of them: the first two ride
+the enclosing ``Field(...)``, which survives, and the last two are the enum MEMBER
+docstrings of the ``$ref`` target's own type, which the wrapper never held. At ELEM there is
+no per-element ``Field``, so the screen still runs there; at ROOT the row declines already.
 
 **A DOCUMENT ROOT IS EXEMPT, AND THAT IS NOT A LOOPHOLE.** §3a: *"A DOCUMENT ROOT IS
 ALREADY A HOME"*. A root is a public named type and the wrapper is what gives the
@@ -57,11 +65,14 @@ operation its own word -- ``BuyProductsSubmitted`` on ``{allOf: [$ref
 core/compact-task-submitted.json]}`` is a service to a consumer, not a duplicate. Measured,
 18 of the 45 declaring positions are roots.
 
-**THE DEFECTS ARE ENUMERATED AND NOT COUNTED**, which is ``test_catalogue.py``'s standing
+**THE DEFECTS WERE ENUMERATED AND NOT COUNTED**, which is ``test_catalogue.py``'s standing
 rule for this file: *"there are N of these" freezes the tree and "this cannot happen"
-survives a refactor*. So :data:`MINTS_A_WRAPPER` is the exact set, asserted exactly: a NEW
-wrapper reddens this gate, and a wrapper that stops being minted reddens it too, naming
-the line to delete. Neither direction can pass silently.
+survives a refactor*. ``MINTS_A_WRAPPER`` was that exact set, asserted exactly in both
+directions -- a NEW wrapper reddened this gate and a wrapper that stopped being minted
+reddened it too, naming the line to delete. All 27 are now gone, so the enumeration is
+gone with them and what is left is the rule with no exceptions: **a non-root position
+asserting one bare ``$ref`` declares no class**, and the first class to appear at one
+reddens this gate.
 """
 
 from __future__ import annotations
@@ -76,72 +87,28 @@ from codegen import bundle
 
 BUNDLE = fresh.BUNDLE
 
-#: ``(document, pointer)`` -> the class a fresh run declares at a position whose only
-#: assertion is a single bare ``$ref``, and the document that ``$ref`` names.
+#: **THE ENUMERATION IS GONE BECAUSE ITS 27 ENTRIES ARE**, and the invariant it guarded is
+#: the assertion below, now unconditional.
 #:
-#: **EVERY LINE IS A DEFECT AND THE NAMING COLLAPSE IS WHY IT IS LEGIBLE.** ``Bidding`` is
-#: minted SEVEN times over, every one of them referencing ``core/bidding-policy.json``;
-#: ``Window`` three times and ``EstimatedWait`` twice, both over ``core/duration.json``.
-#: Counting ``PostClick``, ``PostView``, ``Suppress``, ``TimeBudget`` and ``Period``,
-#: **``core/duration.json`` is one concept emitted as eight differently-named classes** --
-#: so a consumer holding a ``FrequencyCap.window`` cannot pass it where an
-#: ``AttributionWindow.post_click`` is wanted, though the document says they are the same
-#: duration. That is the defect §3a's catalogue exists to remove, arriving at the layer
-#: whose key was missing.
-MINTS_A_WRAPPER: dict[tuple[str, str], tuple[str, str]] = {
-    ("compliance/comply-test-controller-request.json",
-     "/properties/params/properties/dooh_metrics"): (
-        "core/delivery-metrics.json#/properties/dooh_metrics", "ParamsDoohMetrics"),
-    ("compliance/comply-test-controller-request.json",
-     "/properties/params/properties/viewability"): (
-        "core/delivery-metrics.json#/properties/viewability", "ParamsViewability"),
-    ("core/attribution-window.json", "/properties/post_click"): ("core/duration.json", "PostClick"),
-    ("core/attribution-window.json", "/properties/post_view"): ("core/duration.json", "PostView"),
-    ("core/canonical-proposal.json", "/properties/forecast"): (
-        "core/canonical-delivery-forecast.json", "Forecast"),
-    ("core/delivery-metrics.json", "/properties/reach_window/properties/period"): (
-        "core/duration.json", "Period"),
-    ("core/frequency-cap.json", "/properties/suppress"): ("core/duration.json", "Suppress"),
-    ("core/frequency-cap.json", "/properties/window"): ("core/duration.json", "Window"),
-    ("core/media-buy-features.json", "/properties/bidding_policy"): (
-        "core/bidding-policy-capability.json", "MediaBuyFeaturesBiddingPolicy"),
-    ("core/media-buy.json", "/properties/bidding"): ("core/bidding-policy.json", "Bidding"),
-    ("core/optimization-goal.json", "/oneOf/0/properties/target_frequency/properties/window"): (
-        "core/duration.json", "Window"),
-    ("core/optimization-goal.json", "/oneOf/0/properties/vendor"): (
-        "core/brand-ref.json", "Vendor"),
-    ("core/optimization-goal.json", "/oneOf/1/properties/attribution_window"): (
-        "core/attribution-window.json", "OptimizationGoalEventAttributionWindow"),
-    ("core/outcome-measurement.json", "/properties/window"): ("core/duration.json", "Window"),
-    ("core/package.json", "/properties/bidding"): ("core/bidding-policy.json", "Bidding"),
-    ("core/planned-delivery.json", "/properties/bidding"): ("core/bidding-policy.json", "Bidding"),
-    ("core/targeting-overlay-support.json", "/properties/frequency_cap_support"): (
-        "core/frequency-cap-constraints.json", "FrequencyCapSupport"),
-    ("media-buy/create-media-buy-request.json", "/properties/bidding"): (
-        "core/bidding-policy.json", "Bidding"),
-    ("media-buy/create-media-buy-response.json", "/oneOf/0/properties/bidding"): (
-        "core/bidding-policy.json", "Bidding"),
-    ("media-buy/get-media-buy-delivery-response.json",
-     "/properties/media_buy_deliveries/items/properties/windows/items/properties/totals"): (
-        "core/delivery-metrics.json", "WindowsItemTotals"),
-    ("media-buy/get-media-buys-response.json", "/properties/media_buys/items/properties/bidding"): (
-        "core/bidding-policy.json", "MediaBuysItemBidding"),
-    ("media-buy/get-media-buys-response.json",
-     "/properties/media_buys/items/properties/packages/items/properties/bidding"): (
-        "core/bidding-policy.json", "PackagesItemBidding"),
-    ("media-buy/get-products-request.json", "/properties/time_budget"): (
-        "core/duration.json", "TimeBudget"),
-    ("media-buy/get-products-response.json",
-     "/properties/incomplete/items/properties/estimated_wait"): (
-        "core/duration.json", "EstimatedWait"),
-    ("media-buy/package-request.json", "/properties/bidding"): (
-        "core/bidding-policy.json", "Bidding"),
-    ("media-buy/update-media-buy-response.json", "/oneOf/0/properties/bidding"): (
-        "core/bidding-policy.json", "Bidding"),
-    ("signals/get-signals-response.json",
-     "/properties/incomplete/items/properties/estimated_wait"): (
-        "core/duration.json", "EstimatedWait"),
-}
+#: Every line named a position whose only assertion was a single bare ``$ref`` and which
+#: declared a class anyway, and the naming collapse is what made the set legible:
+#: ``Bidding`` was minted SEVEN times over, every one of them referencing
+#: ``core/bidding-policy.json``; ``Window`` three times and ``EstimatedWait`` twice, both
+#: over ``core/duration.json``.  Counting ``PostClick``, ``PostView``, ``Suppress``,
+#: ``TimeBudget`` and ``Period``, **``core/duration.json`` was one concept emitted as eight
+#: differently-named classes** -- so a consumer holding a ``FrequencyCap.window`` could not
+#: pass it where an ``AttributionWindow.post_click`` was wanted, though the document says
+#: they are the same duration.
+#:
+#: What took all 27 is ``codegen/lower/composition.py``'s
+#: ``declares_nothing_its_base_does_not``, whose annotation screen now reads the node's
+#: POSITION: at PROP -- which is where every one of the 27 was -- ``Effect.ANNOTATION`` has
+#: four members and the collapse destroys the carrier of none of them, because
+#: ``description`` and ``deprecated`` ride the ENCLOSING FIELD and the two enum-description
+#: keywords belong to the target's own enum type.  So the sentence each wrapper carried as
+#: a docstring stays on the field it was already on, and the type is the target's:
+#: ``window: Annotated[Duration | None, Field(description='Time window for the
+#: max_impressions cap …')]``.
 
 
 def test_a_bare_annotated_reference_declares_no_class() -> None:
@@ -196,21 +163,14 @@ def test_a_bare_annotated_reference_declares_no_class() -> None:
 
     minting = {at: declaring[at] for at in sorted(bare) if at in declaring}
 
-    #: **ASSERTED EXACTLY, so neither direction passes silently.**  A position that starts
-    #: minting is a regression; a position that stops is the fix, and the line owed to
-    #: :data:`MINTS_A_WRAPPER` is named here rather than left for a later reader to find.
-    appeared = {f"{d}{p}": names for (d, p), names in minting.items()
-                if (d, p) not in MINTS_A_WRAPPER}
+    #: **NOTHING IS ENUMERATED, SO THE INVARIANT IS THE WHOLE ASSERTION.**  There were 27
+    #: exceptions and :data:`MINTS_A_WRAPPER` held them so that neither direction could
+    #: pass silently -- a new wrapper reddened this, and a wrapper that stopped being
+    #: minted reddened it too, naming the line to delete.  All 27 are gone, so the
+    #: subtraction has nothing left to subtract and the second assertion has nothing left
+    #: to assert: what remains is §3a's rule itself, unqualified.
+    appeared = {f"{d}{p}": names for (d, p), names in minting.items()}
     assert not appeared, (
         "a bare annotated $ref declares a class at a position §3a says is a $ref row:\n"
         + json.dumps(appeared, indent=2)
-    )
-    fixed = {
-        f"{d}{p}": f"was {cls} -> {target}; delete this line from MINTS_A_WRAPPER"
-        for (d, p), (target, cls) in sorted(MINTS_A_WRAPPER.items())
-        if (d, p) not in minting
-    }
-    assert not fixed, (
-        "these positions no longer mint a wrapper, so the enumeration is stale:\n"
-        + json.dumps(fixed, indent=2)
     )

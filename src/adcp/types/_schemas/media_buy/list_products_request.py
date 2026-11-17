@@ -20,13 +20,6 @@ from .product_discovery_criteria import ProductDiscoveryCriteria
 from .product_fields import ProductResponseFields
 
 
-class ListProductsRequestPushNotificationConfig(PushNotificationConfig):
-    """
-    Uniform per-call envelope field accepted for SDK compatibility. This does not register a wholesale feed subscription; durable product.* and wholesale_feed.bulk_change subscribers are registered through sync_accounts notification_configs.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-products-request.json', pointer='#/properties/push_notification_config')
-
-
 class ListProductsRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     Read seller offers with structured discovery criteria. When criteria includes catalog, provide exactly one brand source: top-level brand or a natural-key account containing brand and operator. Each invocation completes synchronously, while durable wholesale product-feed webhooks registered through sync_accounts keep buyer mirrors current without polling. list_products is the authoritative bootstrap and repair read for those subscriptions; proposal creation is handled by request_proposals.
@@ -47,7 +40,7 @@ class ListProductsRequest(AdCPVersionEnvelope, AdcpRequest):
     context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     governance_context: Annotated[StrMinLen1MaxLen4096 | None, OmittedNotNull] = None
-    push_notification_config: Annotated[ListProductsRequestPushNotificationConfig | None, Field(description='Uniform per-call envelope field accepted for SDK compatibility. This does not register a wholesale feed subscription; durable product.* and wholesale_feed.bulk_change subscribers are registered through sync_accounts notification_configs.'), OmittedNotNull] = None
+    push_notification_config: Annotated[PushNotificationConfig | None, Field(description='Uniform per-call envelope field accepted for SDK compatibility. This does not register a wholesale feed subscription; durable product.* and wholesale_feed.bulk_change subscribers are registered through sync_accounts notification_configs.'), OmittedNotNull] = None
     account: Annotated[CanonicalAccountReference | None, Field(description='Account scope for pricing and availability. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.'), OmittedNotNull] = None
     brand: Annotated[BrandKey | None, OmittedNotNull] = None
     criteria: Annotated[ProductDiscoveryCriteria | None, OmittedNotNull] = None

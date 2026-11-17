@@ -71,16 +71,6 @@ class AcceptedProposal(CanonicalProposal):
     accepted_at: WireDatetime
 
 
-class MediaBuysItemBidding(BiddingPolicy):
-    """
-    Current media-buy-authored bidding policy with scope-specific goal binding and media-buy-currency denomination. Package entries omit bidding when they inherit this block; explicit package automatic overrides remain visible as `{automatic:true}`.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/bidding')
-
-
 class HistoryItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -93,16 +83,6 @@ class HistoryItem(AdCPBaseModel):
     summary: Annotated[StrMaxLen500 | None, Field(description="Human-readable summary of the change (e.g., 'Budget increased from $5,000 to $7,500 on pkg_abc')."), OmittedNotNull] = None
     package_id: Annotated[str | None, Field(description='Package affected, when the change targeted a specific package.'), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
-
-
-class PackagesItemBidding(BiddingPolicy):
-    """
-    Package-authored bidding override. `{automatic:true}` explicitly overrides media_buy.bidding with provider automatic delivery. Omitted when this package inherits; sellers MUST NOT copy an inherited block here. Monetary fields use media_buy.currency.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/packages/items/properties/bidding')
 
 
 CreativeApprovalsItemIndicatorTypesEvaluatedItem = Annotated[AssignmentIndicatorType, Field(description="A seller-asserted material risk or optimization opportunity that currently warrants buyer attention on an AdCP resource relationship. AdCP standardizes the broad meaning of each value for the protocol release; it does not standardize or version the seller's detection methodology or prescribe a universal remedy.")]
@@ -217,7 +197,7 @@ class PackagesItem(IndicatorBearingResourceState):
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description='Current hard package spend ceiling per shared media-buy cap day, denominated in media_buy.currency. It is a subordinate ceiling, not a reserved allocation; media_buy.budget_cap_timezone defines the day boundary.'), OmittedNotNull] = None
     currency: Annotated[CurrencyCode | None, Field(description='Legacy/readback package denomination for buys created outside the canonical 3.2 path. For AdCP-authored media buys this MUST equal media_buy.currency; canonical package budget and BiddingPolicy values always use media_buy.currency. Snapshot currency may still identify externally reported spend denomination.'), OmittedNotNull] = None
     bid_price: Annotated[NonNegativeFloat | None, Field(deprecated=True, description='DEPRECATED legacy bid representation. 3.2 sellers SHOULD normalize and echo package.bidding instead.'), OmittedNotNull] = None
-    bidding: Annotated[PackagesItemBidding | None, Field(description='Package-authored bidding override. `{automatic:true}` explicitly overrides media_buy.bidding with provider automatic delivery. Omitted when this package inherits; sellers MUST NOT copy an inherited block here. Monetary fields use media_buy.currency.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description='Package-authored bidding override. `{automatic:true}` explicitly overrides media_buy.bidding with provider automatic delivery. Omitted when this package inherits; sellers MUST NOT copy an inherited block here. Monetary fields use media_buy.currency.'), OmittedNotNull] = None
     optimization_goals: Annotated[list[OptimizationGoal] | None, Field(description='Current package objective functions. Currency-bearing execution controls are returned separately in package.bidding or inherited from media_buy.bidding.', min_length=1), OmittedNotNull] = None
     format_ids: Annotated[list[FormatReferenceStructuredObject] | None, Field(deprecated=True, description='Deprecated in AdCP 3.2; removed in AdCP 4.0. Legacy named-format IDs supplied for this package on create_media_buy. Sellers SHOULD echo this field whenever the request included it, including dual-emission cases where another selector won precedence.', min_length=1), OmittedNotNull] = None
     format_option_refs: Annotated[list[FormatOptionReference] | None, Field(description='Structured 3.1+ format option references supplied for this package on create_media_buy. Sellers SHOULD echo this field whenever the request included it.', min_length=1), OmittedNotNull] = None
@@ -311,7 +291,7 @@ class MediaBuysItem(IndicatorBearingResourceState):
     budget_cap_timezone: Annotated[str | None, Field(description='IANA timezone defining the shared calendar-day boundary for every aggregate and package daily cap. Present whenever any daily cap is set on the media buy.'), OmittedNotNull] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Current cross-package allocation configuration. Omitted means fixed allocation for legacy buys.'), OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Aggregate pacing strategy for the media-buy budget.'), OmittedNotNull] = None
-    bidding: Annotated[MediaBuysItemBidding | None, Field(description='Current media-buy-authored bidding policy with scope-specific goal binding and media-buy-currency denomination. Package entries omit bidding when they inherit this block; explicit package automatic overrides remain visible as `{automatic:true}`.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description='Current media-buy-authored bidding policy with scope-specific goal binding and media-buy-currency denomination. Package entries omit bidding when they inherit this block; explicit package automatic overrides remain visible as `{automatic:true}`.'), OmittedNotNull] = None
     start_time: Annotated[WireDatetime | None, Field(description='ISO 8601 flight start time for this media buy (earliest package start_time). Avoids requiring buyers to compute min(packages[].start_time).'), OmittedNotNull] = None
     end_time: Annotated[WireDatetime | None, Field(description='ISO 8601 flight end time for this media buy (latest package end_time). Avoids requiring buyers to compute max(packages[].end_time).'), OmittedNotNull] = None
     creative_deadline: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp for creative upload deadline'), OmittedNotNull] = None

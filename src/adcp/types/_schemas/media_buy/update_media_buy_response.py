@@ -45,16 +45,6 @@ class UpdateMediaBuyResponse(BranchDispatchMixin, AdCPVersionEnvelope, ProtocolE
         return "oneOf"
 
 
-class Bidding(BiddingPolicy):
-    """
-    Post-update media-buy-authored bidding policy when affected by the update, preserving explicit automatic mode, scope-specific goal binding, and media-buy-currency denomination. Omitted when the authored media-buy block was cleared.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/update-media-buy-response.json', pointer='#/oneOf/0/properties/bidding')
-
-
 class UpdateMediaBuySuccess(UpdateMediaBuyResponse):
     """
     Success response - media buy updated successfully
@@ -79,7 +69,7 @@ class UpdateMediaBuySuccess(UpdateMediaBuyResponse):
     budget_cap_timezone: Annotated[str | None, Field(description='Post-update IANA timezone shared by every aggregate and package daily cap. Echoed whenever the update affects daily caps or their timezone.'), OmittedNotNull] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Post-update cross-package allocation configuration when affected by the update.'), OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Post-update aggregate pacing when affected by the update.'), OmittedNotNull] = None
-    bidding: Annotated[Bidding | None, Field(description='Post-update media-buy-authored bidding policy when affected by the update, preserving explicit automatic mode, scope-specific goal binding, and media-buy-currency denomination. Omitted when the authored media-buy block was cleared.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description='Post-update media-buy-authored bidding policy when affected by the update, preserving explicit automatic mode, scope-specific goal binding, and media-buy-currency denomination. Omitted when the authored media-buy block was cleared.'), OmittedNotNull] = None
     implementation_date: Annotated[WireDatetime | None, Field(description='ISO 8601 timestamp when changes take effect (null if pending approval)'), OmittedWhenNone] = None
     invoice_recipient: Annotated[BusinessEntity | None, Field(description='Updated invoice recipient, echoed from the request when provided. Confirms the seller accepted the billing override. Bank details are omitted (write-only).'), OmittedNotNull] = None
     affected_packages: Annotated[list[Package] | None, Field(description='Array of full Package objects showing complete post-update state for each modified package. This includes every active package whose budget was proportionally changed by a fixed-mode total_budget update. This is a state snapshot, not a sparse delta: sellers MUST NOT return package_id-only stubs. Campaign-level updates that do not modify packages may return an empty array.'), OmittedNotNull] = None

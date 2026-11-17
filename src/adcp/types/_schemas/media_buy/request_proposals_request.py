@@ -5,16 +5,12 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen4096
 from adcp.types.envelopes import AdcpRequest
 
 from ..core.brand_key import BrandKey
-from ..core.canonical_account_ref import (
-    CanonicalAccountReference,
-    CanonicalAccountReferenceAccountId,
-    CanonicalAccountReferenceBrandOperator,
-)
+from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.context import ContextObject
 from ..core.idempotency_key import IdempotencyKey
 from ..core.opportunity_context import OpportunityContext
@@ -48,6 +44,9 @@ class RequestProposalsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequ
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account', keyword='required', kind='WIDENED', rung='KEYWORD', fact=['brand', 'operator'], attribution='docs/plan/rebuild-plan.md §5 structure/required'),
+    )
     adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
     adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
     context_id: Annotated[StrMinLen1 | None, Field(description='MCP compatibility field: servers ignore this value; A2A uses transport-native Message/Task contextId.'), OmittedNotNull] = None
@@ -70,43 +69,15 @@ class RequestProposalsRequestBrand(RequestProposalsRequest):
     brand: Annotated[BrandKey, Field(description='Alternative brand source for proposal terms. Provide either top-level brand or a natural-key account containing brand and operator, not both.')]
 
 
-class RequestProposalsRequestAccountAccount(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('brand', 'operator')
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "anyOf"
-
-
-class RequestProposalsRequestAccountAccountAccountId(RequestProposalsRequestAccountAccount, CanonicalAccountReferenceAccountId):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account')
-
-
-class RequestProposalsRequestAccountAccountBrandOperator(RequestProposalsRequestAccountAccount, CanonicalAccountReferenceBrandOperator):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account')
-
-
-RequestProposalsRequestAccountAccount._branch_models = (RequestProposalsRequestAccountAccountAccountId, RequestProposalsRequestAccountAccountBrandOperator,)
-RequestProposalsRequestAccountAccount.model_rebuild(force=True)
-
-
 class RequestProposalsRequestAccount(RequestProposalsRequest):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1')
-    account: Annotated[RequestProposalsRequestAccountAccount, Field(description='Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.')]
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/request-proposals-request.json', pointer='#/anyOf/1/properties/account', keyword='required', kind='WIDENED', rung='KEYWORD', fact=['brand', 'operator'], attribution='docs/plan/rebuild-plan.md §5 structure/required'),
+    )
+    account: Annotated[CanonicalAccountReference, Field(description='Alternative brand source for proposal terms. Provide either this natural-key account containing brand and operator or top-level brand, not both.')]
 
 
 RequestProposalsRequest._branch_models = (RequestProposalsRequestBrand, RequestProposalsRequestAccount,)
