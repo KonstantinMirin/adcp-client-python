@@ -13,8 +13,8 @@ from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
     AdCPAgentsAuthorizationFormatsItemFormatRevision,
+    EmailAddress,
     HostedUrl,
-    StrFormatEmailMinLen1MaxLen255,
     StrMinLen1MaxLen100,
     StrMinLen1MaxLen255,
 )
@@ -99,7 +99,7 @@ class Contact(AdCPBaseModel):
         Approximation(document='adagents.json', pointer='#/oneOf/1/properties/contact/properties/privacy_policy_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     name: Annotated[StrMinLen1MaxLen255, Field(description="Name of the entity managing this file (e.g., 'Meta Advertising Operations', 'Clear Channel Digital')")]
-    email: Annotated[StrFormatEmailMinLen1MaxLen255 | None, Field(description='Contact email for questions or issues with this authorization file'), OmittedNotNull] = None
+    email: Annotated[EmailAddress | None, Field(description='Contact email for questions or issues with this authorization file', max_length=255, min_length=1), OmittedNotNull] = None
     domain: Annotated[DomainName | None, Field(description='Primary domain of the entity managing this file'), OmittedNotNull] = None
     seller_id: Annotated[StrMinLen1MaxLen255 | None, Field(description='Seller ID from IAB Tech Lab sellers.json (if applicable)'), OmittedNotNull] = None
     tag_id: Annotated[StrMinLen1MaxLen100 | None, Field(description='TAG Certified Against Fraud ID for verification (if applicable)'), OmittedNotNull] = None

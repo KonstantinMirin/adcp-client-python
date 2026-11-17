@@ -11,7 +11,7 @@ from adcp.types.constraints import (
     AddressPostalCode,
     BankBic,
     BankIban,
-    StrFormatEmailMaxLen254,
+    EmailAddress,
     StrMaxLen30,
     StrMaxLen50,
     StrMaxLen100,
@@ -71,7 +71,7 @@ class ContactsItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/business-entity.json', pointer='#/properties/contacts/items')
     role: Annotated[Role, Field(description="Contact's functional role in the business relationship")]
     name: Annotated[StrMaxLen200 | None, Field(description='Full name of the contact'), OmittedNotNull] = None
-    email: Annotated[StrFormatEmailMaxLen254 | None, OmittedNotNull] = None
+    email: Annotated[EmailAddress | None, Field(max_length=254), OmittedNotNull] = None
     phone: Annotated[StrMaxLen30 | None, OmittedNotNull] = None
 
 

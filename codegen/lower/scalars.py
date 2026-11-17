@@ -155,14 +155,35 @@ FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
     "email": lambda node: f"{constraints_module.MODULE}.{constraints_module.EMAIL}",
 }
 
+#: The two carriers that ARE URL types, which is what :data:`URL_FORMATS` means.
+#: ``constraints.url_type`` answers one of these for every node -- ``AdCPUrl`` where the
+#: document pins the scheme to https, ``HostedUrl`` everywhere else -- so naming them is
+#: naming the answer and not a second list of formats.
+_URL_CARRIERS = frozenset(
+    f"{constraints_module.MODULE}.{name}"
+    for name in (constraints_module.URL, constraints_module.HIERARCHICAL)
+)
+
 #: The formats whose selected type is a URL type, which is what the one refusal
-#: below is gated on.  DERIVED by asking each chooser rather than listed: a format
-#: whose chooser answers inside the alias module's namespace is a URL format, and a
-#: second list to keep in step would be a second place for this to drift.
+#: below is gated on.  DERIVED by asking each chooser rather than listed, so a second
+#: list to keep in step would be a second place for this to drift.
+#:
+#: **THE PROXY USED TO BE "answers inside the alias module's namespace" AND IT BROKE THE
+#: DAY A SECOND FORMAT ANSWERED THERE** (2026-11-17).  ``uri`` was the only chooser
+#: naming ``adcp.types.constraints.*``, so the prefix test and "is a URL type" were the
+#: same set by accident.  Adding ``email`` -> ``constraints.EmailAddress`` silently put
+#: ``email`` in this set, which handed it to :func:`selects_a_url_type` -- the URL rule,
+#: "a format selects a type only where the type states every assertion the node makes".
+#: ``EmailAddress`` states no bound, so at every email node carrying a ``maxLength`` the
+#: selection was REFUSED and the node fell back to a constrained ``str`` with the format
+#: riding as ``json_schema_extra``, which enforces nothing. Measured: 53 of the bundle's
+#: 275 email nodes carry a bound, and three shipped fields took it --
+#: ``adagents.Contact.email``, ``brand``'s and ``core/business-entity``'s -- each
+#: accepting ``'!!NOT-VALID!!'`` while the bare-shape fields refused it.
+#:
+#: So the membership test is now the CARRIER's identity, which is what the name says.
 URL_FORMATS = frozenset(
-    fmt
-    for fmt, choose in FORMAT_TYPES.items()
-    if choose({}).startswith(f"{constraints_module.MODULE}.")
+    fmt for fmt, choose in FORMAT_TYPES.items() if choose({}) in _URL_CARRIERS
 )
 
 

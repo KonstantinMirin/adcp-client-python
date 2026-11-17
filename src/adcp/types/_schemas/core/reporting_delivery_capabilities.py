@@ -7,7 +7,7 @@ from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
 from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
-from adcp.types.constraints import IntMin1, OperationsContactUrl, StrFormatEmailMaxLen254
+from adcp.types.constraints import EmailAddress, IntMin1, OperationsContactUrl
 
 from .reporting_delivery_offering import ReportingDeliveryOffering
 from .reporting_reliability_statistics import ReportingReliabilityStatistics
@@ -25,7 +25,7 @@ class OperationsContact(AdCPBaseModel):
         PropertyCount(minimum=1, maximum=None),
     )
     url: Annotated[OperationsContactUrl | None, Field(description='HTTPS page a human uses to open or track a reporting issue, such as a support portal or status page. Same hardened origin shape as the offering document URIs: never an IP literal, userinfo URL, loopback host, AdCP task endpoint, webhook target, or credentialed link.'), OmittedNotNull] = None
-    email: Annotated[StrFormatEmailMaxLen254 | None, Field(description='Monitored operations mailbox for reporting escalations. A role address, not an individual.'), OmittedNotNull] = None
+    email: Annotated[EmailAddress | None, Field(description='Monitored operations mailbox for reporting escalations. A role address, not an individual.', max_length=254), OmittedNotNull] = None
 
 
 class ReportingDeliveryCapabilities(AdCPBaseModel):
