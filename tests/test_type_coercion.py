@@ -257,10 +257,21 @@ class TestBackwardCompatibility:
 
 
 class TestListVariance:
-    """Test that subclass instances work without cast() due to coercion."""
+    """Test that subclass instances work without cast() due to coercion.
+
+    `core/creative-asset.json#` states the v1/v2 addressing choice, so section 4
+    emits `CreativeAsset` as a BASE plus one class per branch --
+    `V1CreativeNamedFormatReference` and `V2CreativeCanonicalFormatKind` -- and
+    the base is the dispatch point rather than a payload shape of its own. An
+    extension therefore derives from the BRANCH it means, and `isinstance`
+    against `CreativeAsset` still holds; a subclass of the base alone satisfies
+    neither branch and no field accepts it. The same reading applies to
+    `create-media-buy-request.json#/anyOf/0/properties/packages/items`, whose
+    own class is `PackagesItem` and which composes `media-buy/package-request.json`.
+    """
 
     def test_subclass_creatives_work_without_cast(self):
-        """PackageRequest accepts CreativeAsset subclass instances without cast().
+        """PackageRequest accepts CreativeAsset branch subclass instances without cast().
 
         Due to the coerce_subclass_list validator, users no longer need to use
         cast() when passing lists of extended types. The validator accepts Any
@@ -268,10 +279,10 @@ class TestListVariance:
         """
         from pydantic import Field
 
-        from adcp.types import CreativeAsset, PackageRequest
+        from adcp.types import CreativeAsset, PackageRequest, V2CreativeCanonicalFormatKind
 
-        # Create an extended creative type
-        class ExtendedCreative(CreativeAsset):
+        # Create an extended creative type, on the canonical `format_kind` branch
+        class ExtendedCreative(V2CreativeCanonicalFormatKind):
             """Extended with internal tracking fields."""
 
             internal_id: str | None = Field(None, exclude=True)
@@ -294,6 +305,7 @@ class TestListVariance:
             creatives=[creative],  # type: ignore[list-item]
         )
 
+        assert isinstance(creative, CreativeAsset)
         assert len(package.creatives) == 1
         assert package.creatives[0].creative_id == "c1"
         # Internal field is preserved at runtime
@@ -321,15 +333,16 @@ class TestListVariance:
         assert data["creative_id"] == "c1"
 
     def test_create_media_buy_accepts_extended_packages(self):
-        """CreateMediaBuyRequest.packages accepts PackageRequest subclass instances."""
-        from datetime import datetime, timezone
-
+        """CreateMediaBuyRequest.packages accepts PackagesItem subclass instances."""
+        from adcp.types.domains.media_buy.create_media_buy_request import PackagesItem
         from pydantic import Field
 
         from adcp.types import CreateMediaBuyRequest, PackageRequest
 
-        # Create an extended package type
-        class ExtendedPackage(PackageRequest):
+        # Create an extended package type, on the position's own class --
+        # `PackagesItem` composes `media-buy/package-request.json` and is a
+        # subclass of `PackageRequest`.
+        class ExtendedPackage(PackagesItem):
             """Extended with internal tracking fields."""
 
             campaign_id: str | None = Field(None, exclude=True)
@@ -341,15 +354,18 @@ class TestListVariance:
             product_id="prod1",
             campaign_id="internal-campaign-456",
         )
+        assert isinstance(package, PackageRequest)
 
-        # No cast() needed!
+        # No cast() needed! The times are the document's own `format: date-time`
+        # strings: the base selects its branch by applying the document, which
+        # states `type: string` there and so refuses a `datetime` object.
         request = CreateMediaBuyRequest(
             idempotency_key="test-idempotency-key",
             account={"account_id": "acct-1"},
             brand={"domain": "example.com"},
             buyer_ref="buyer-ref",
-            start_time=datetime.now(timezone.utc),
-            end_time=datetime(2025, 12, 31, tzinfo=timezone.utc),
+            start_time="2026-05-01T00:00:00Z",
+            end_time="2026-12-31T00:00:00Z",
             packages=[package],  # type: ignore[list-item]
         )
 
@@ -362,9 +378,9 @@ class TestListVariance:
         """UpdateMediaBuyRequest PackageUpdate types accept extended CreativeAsset."""
         from pydantic import Field
 
-        from adcp.types import CreativeAsset, PackageUpdate
+        from adcp.types import PackageUpdate, V2CreativeCanonicalFormatKind
 
-        class ExtendedCreative(CreativeAsset):
+        class ExtendedCreative(V2CreativeCanonicalFormatKind):
             internal_id: str | None = Field(None, exclude=True)
 
         creative = ExtendedCreative(
