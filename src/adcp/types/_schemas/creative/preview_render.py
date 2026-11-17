@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ..core.preview_renderer_metadata import PreviewRendererMetadata
@@ -63,7 +63,7 @@ class PreviewRenderUrl(PreviewRender):
         Approximation(document='creative/preview-render.json', pointer='#/oneOf/0/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     render_id: Annotated[str, Field(description='Unique identifier for this rendered piece within the variant')]
-    output_format: Annotated[Literal['url'], Field(description='Discriminator indicating preview_url is provided')]
+    output_format: Annotated[Literal['url'], Field(description='Discriminator indicating preview_url is provided'), PinnedDefault]
     preview_url: Annotated[HostedUrl, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     role: Annotated[str, Field(description="Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.")]
     dimensions: Annotated[PreviewRenderUrlDimensions | None, Field(description='Dimensions for this rendered piece'), OmittedNotNull] = None
@@ -94,7 +94,7 @@ class PreviewRenderHtml(PreviewRender):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-render.json', pointer='#/oneOf/1')
     render_id: Annotated[str, Field(description='Unique identifier for this rendered piece within the variant')]
-    output_format: Annotated[Literal['html'], Field(description='Discriminator indicating preview_html is provided')]
+    output_format: Annotated[Literal['html'], Field(description='Discriminator indicating preview_html is provided'), PinnedDefault]
     preview_html: Annotated[str, Field(description='Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     role: Annotated[str, Field(description="Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.")]
     dimensions: Annotated[PreviewRenderHtmlDimensions | None, Field(description='Dimensions for this rendered piece'), OmittedNotNull] = None
@@ -121,7 +121,7 @@ class PreviewRenderBoth(PreviewRender):
         Approximation(document='creative/preview-render.json', pointer='#/oneOf/2/properties/preview_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     render_id: Annotated[str, Field(description='Unique identifier for this rendered piece within the variant')]
-    output_format: Annotated[Literal['both'], Field(description='Discriminator indicating both preview_url and preview_html are provided')]
+    output_format: Annotated[Literal['both'], Field(description='Discriminator indicating both preview_url and preview_html are provided'), PinnedDefault]
     preview_url: Annotated[HostedUrl, Field(description='Untrusted URL to an HTML page that renders this piece. Consumers MUST load it only in a cross-origin iframe with an empty sandbox token set and a caller-enforced restrictive CSP. Provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     preview_html: Annotated[str, Field(description='Untrusted HTML. Consumers MUST NOT inject it into the host DOM. Render only as iframe srcdoc with an empty sandbox token set and a caller-enforced restrictive CSP; provider embedding metadata is advisory and MUST NOT loosen that policy.')]
     role: Annotated[str, Field(description="Semantic role of this rendered piece. Use 'primary' for main content, 'companion' for associated banners, descriptive strings for device variants or custom roles.")]

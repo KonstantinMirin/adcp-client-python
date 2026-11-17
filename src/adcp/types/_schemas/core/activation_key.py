@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, PinnedDefault, SchemaRef
 
 
 class ActivationKey(BranchDispatchMixin, AdCPBaseModel):
@@ -26,7 +26,7 @@ class ActivationKeySegmentId(ActivationKey):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/activation-key.json', pointer='#/oneOf/0')
-    type: Annotated[Literal['segment_id'], Field(description='Segment ID based targeting')]
+    type: Annotated[Literal['segment_id'], Field(description='Segment ID based targeting'), PinnedDefault]
     segment_id: Annotated[str, Field(description='The platform-specific segment identifier to use in campaign targeting')]
 
 
@@ -35,7 +35,7 @@ class ActivationKeyKeyValue(ActivationKey):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/activation-key.json', pointer='#/oneOf/1')
-    type: Annotated[Literal['key_value'], Field(description='Key-value pair based targeting')]
+    type: Annotated[Literal['key_value'], Field(description='Key-value pair based targeting'), PinnedDefault]
     key: Annotated[str, Field(description='The targeting parameter key')]
     value: Annotated[str, Field(description='The targeting parameter value')]
 

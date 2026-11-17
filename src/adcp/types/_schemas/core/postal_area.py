@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, PinnedDefault, SchemaRef
 from adcp.types._runtime import NotValue
 
 from ..enums.legacy_postal_system import CountryFusedPostalCodeSystem
@@ -68,7 +68,7 @@ class PostalAreaUS(PostalAreaCountrySystemValues, PostalCountrySystemUS):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
-    country: Annotated[Literal['US'], Field(description='ISO 3166-1 alpha-2 country code.')]
+    country: Annotated[Literal['US'], Field(description='ISO 3166-1 alpha-2 country code.'), PinnedDefault]
     system: Annotated[USPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
@@ -77,7 +77,7 @@ class PostalAreaGB(PostalAreaCountrySystemValues, PostalCountrySystemGB):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
-    country: Annotated[Literal['GB'], Field(description='ISO 3166-1 alpha-2 country code.')]
+    country: Annotated[Literal['GB'], Field(description='ISO 3166-1 alpha-2 country code.'), PinnedDefault]
     system: Annotated[GBPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
@@ -86,7 +86,7 @@ class PostalAreaCA(PostalAreaCountrySystemValues, PostalCountrySystemCA):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
-    country: Annotated[Literal['CA'], Field(description='ISO 3166-1 alpha-2 country code.')]
+    country: Annotated[Literal['CA'], Field(description='ISO 3166-1 alpha-2 country code.'), PinnedDefault]
     system: Annotated[CaPostalCodeSystem, Field(description='Country-local postal code system.')]
 
 
@@ -96,7 +96,7 @@ class PostalAreaPlz(PostalAreaCountrySystemValues, PostalCountrySystemPlz):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
     country: Annotated[Country, Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['plz'], Field(description='Country-local postal code system.')]
+    system: Annotated[Literal['plz'], Field(description='Country-local postal code system.'), PinnedDefault]
 
 
 class PostalAreaFRCodePostal(PostalAreaCountrySystemValues, PostalCountrySystemFRCodePostal):
@@ -104,8 +104,8 @@ class PostalAreaFRCodePostal(PostalAreaCountrySystemValues, PostalCountrySystemF
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
-    country: Annotated[Literal['FR'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['code_postal'], Field(description='Country-local postal code system.')]
+    country: Annotated[Literal['FR'], Field(description='ISO 3166-1 alpha-2 country code.'), PinnedDefault]
+    system: Annotated[Literal['code_postal'], Field(description='Country-local postal code system.'), PinnedDefault]
 
 
 class PostalAreaAUPostcode(PostalAreaCountrySystemValues, PostalCountrySystemAUPostcode):
@@ -113,8 +113,8 @@ class PostalAreaAUPostcode(PostalAreaCountrySystemValues, PostalCountrySystemAUP
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
-    country: Annotated[Literal['AU'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['postcode'], Field(description='Country-local postal code system.')]
+    country: Annotated[Literal['AU'], Field(description='ISO 3166-1 alpha-2 country code.'), PinnedDefault]
+    system: Annotated[Literal['postcode'], Field(description='Country-local postal code system.'), PinnedDefault]
 
 
 class PostalAreaBRCep(PostalAreaCountrySystemValues, PostalCountrySystemBRCep):
@@ -122,8 +122,8 @@ class PostalAreaBRCep(PostalAreaCountrySystemValues, PostalCountrySystemBRCep):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
-    country: Annotated[Literal['BR'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['cep'], Field(description='Country-local postal code system.')]
+    country: Annotated[Literal['BR'], Field(description='ISO 3166-1 alpha-2 country code.'), PinnedDefault]
+    system: Annotated[Literal['cep'], Field(description='Country-local postal code system.'), PinnedDefault]
 
 
 class PostalAreaINPin(PostalAreaCountrySystemValues, PostalCountrySystemINPin):
@@ -131,8 +131,8 @@ class PostalAreaINPin(PostalAreaCountrySystemValues, PostalCountrySystemINPin):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
-    country: Annotated[Literal['IN'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['pin'], Field(description='Country-local postal code system.')]
+    country: Annotated[Literal['IN'], Field(description='ISO 3166-1 alpha-2 country code.'), PinnedDefault]
+    system: Annotated[Literal['pin'], Field(description='Country-local postal code system.'), PinnedDefault]
 
 
 class PostalAreaZAPostalCode(PostalAreaCountrySystemValues, PostalCountrySystemZAPostalCode):
@@ -140,8 +140,8 @@ class PostalAreaZAPostalCode(PostalAreaCountrySystemValues, PostalCountrySystemZ
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/0/allOf/0')
-    country: Annotated[Literal['ZA'], Field(description='ISO 3166-1 alpha-2 country code.')]
-    system: Annotated[Literal['postal_code'], Field(description='Country-local postal code system.')]
+    country: Annotated[Literal['ZA'], Field(description='ISO 3166-1 alpha-2 country code.'), PinnedDefault]
+    system: Annotated[Literal['postal_code'], Field(description='Country-local postal code system.'), PinnedDefault]
 
 
 class System(StrEnum):

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -39,7 +39,7 @@ class EventSourceExecutionRequirement(ProductExecutionRequirement):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('event_types'),
     )
-    kind: Literal['event_source']
+    kind: Annotated[Literal['event_source'], PinnedDefault]
     event_types: Annotated[list[EventType] | None, Field(description='Event types that satisfy the requirement (any-of): the satisfying `event_sources[]` entry MUST use one of these `event_type` values. Omit when any event type satisfies it.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -55,7 +55,7 @@ class CatalogExecutionRequirement(ProductExecutionRequirement):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('catalog_types'),
     )
-    kind: Literal['catalog']
+    kind: Annotated[Literal['catalog'], PinnedDefault]
     catalog_types: Annotated[list[CatalogType], Field(description='Catalog types that satisfy the requirement (any-of). One catalog of any listed type satisfies it.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -83,7 +83,7 @@ class DownstreamConnectionExecutionRequirement(ProductExecutionRequirement):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-execution-requirement.json', pointer='#/oneOf/2')
-    kind: Literal['downstream_connection']
+    kind: Annotated[Literal['downstream_connection'], PinnedDefault]
     connection: Annotated[Connection, Field(description='The required connection. Account-independent: `status` is omitted or `unknown`; `resource_ref`, `connection_id`, and `expires_at` MUST be omitted; `required_for`, when present, includes `create_media_buy`.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

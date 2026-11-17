@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -39,7 +39,7 @@ class SHA256PhysicalChecksum(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-verification.json', pointer='#/properties/physical_checksums/items/oneOf/0')
     object_ref: ReportingFileObjectReference
-    algorithm: Literal['sha256']
+    algorithm: Annotated[Literal['sha256'], PinnedDefault]
     value: ReportingAdjustmentReceiptObservedAdjustmentSha256
 
 
@@ -49,7 +49,7 @@ class SHA512PhysicalChecksum(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-verification.json', pointer='#/properties/physical_checksums/items/oneOf/1')
     object_ref: ReportingFileObjectReference
-    algorithm: Literal['sha512']
+    algorithm: Annotated[Literal['sha512'], PinnedDefault]
     value: PhysicalChecksumsItemSHA512PhysicalChecksumValue
 
 

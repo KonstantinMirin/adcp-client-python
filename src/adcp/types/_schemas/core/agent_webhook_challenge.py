@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -65,8 +65,8 @@ class AgentWebhookChallenge(AdCPBaseModel):
         Approximation(document='core/agent-webhook-challenge.json', pointer='#/properties/seller_agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/agent-webhook-challenge.json', pointer='#/properties/seller_agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    type: Annotated[Literal['webhook.challenge'], Field(description='Discriminator for endpoint proof-of-control challenges.')]
-    scope: Annotated[Literal['agent'], Field(description='Discriminator for agent-level endpoint proof challenges.')]
+    type: Annotated[Literal['webhook.challenge'], Field(description='Discriminator for endpoint proof-of-control challenges.'), PinnedDefault]
+    scope: Annotated[Literal['agent'], Field(description='Discriminator for agent-level endpoint proof challenges.'), PinnedDefault]
     challenge: Annotated[AgentWebhookChallengeChallenge, Field(description='Opaque, cryptographically random value that the receiver must echo in the response body. Recommended encoding: base64url without padding.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Buyer-supplied subscriber identifier from the caller-scoped notification_configs[] entry being challenged.')]
     seller_agent_url: Annotated[HostedUrl, Field(description='Exact seller agent URL whose RFC 9421 webhook profile key signs this challenge and that will send subsequent webhooks.')]

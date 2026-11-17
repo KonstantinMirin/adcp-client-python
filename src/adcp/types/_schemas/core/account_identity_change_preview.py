@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import AtLeastOne
 from adcp.types.constraints import StrMinLen1MaxLen1000
 
@@ -89,7 +89,7 @@ class AccountIdentityChangeWouldApply(AccountIdentityChangePreview):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/oneOf/0')
-    outcome: Literal['would_apply']
+    outcome: Annotated[Literal['would_apply'], PinnedDefault]
     requested_operator_identity: OperatorIdentity
     impacts: NonblockingImpacts
 
@@ -99,7 +99,7 @@ class AccountIdentityChangeWouldRequireApproval(AccountIdentityChangePreview):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/oneOf/1')
-    outcome: Literal['would_require_approval']
+    outcome: Annotated[Literal['would_require_approval'], PinnedDefault]
     requested_operator_identity: OperatorIdentity
     impacts: NonblockingImpacts
 
@@ -112,7 +112,7 @@ class AccountIdentityChangeBlocked(AccountIdentityChangePreview):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change-preview.json', pointer='#/oneOf/2')
-    outcome: Literal['blocked']
+    outcome: Annotated[Literal['blocked'], PinnedDefault]
     requested_operator_identity: OperatorIdentity
     impacts: BlockedImpacts
     blockers: Annotated[list[StrMinLen1MaxLen1000], Field(min_length=1)]

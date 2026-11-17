@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     ContextMatchResponseRouterPublisherSignalsByProvider,
@@ -72,7 +80,7 @@ class TMPProviderRegistrationContextMatch(TMPProviderRegistration):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/provider-registration.json', pointer='#/anyOf/0')
-    context_match: Annotated[Literal[True], Field(description='Provider handles Context Match requests (POST /context).')]
+    context_match: Annotated[Literal[True], Field(description='Provider handles Context Match requests (POST /context).'), PinnedDefault]
 
 
 class TMPProviderRegistrationIdentityMatch(TMPProviderRegistration):
@@ -80,7 +88,7 @@ class TMPProviderRegistrationIdentityMatch(TMPProviderRegistration):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/provider-registration.json', pointer='#/anyOf/1')
-    identity_match: Annotated[Literal[True], Field(description='Provider handles Identity Match requests (POST /identity).')]
+    identity_match: Annotated[Literal[True], Field(description='Provider handles Identity Match requests (POST /identity).'), PinnedDefault]
 
 
 TMPProviderRegistration._branch_models = (TMPProviderRegistrationContextMatch, TMPProviderRegistrationIdentityMatch,)

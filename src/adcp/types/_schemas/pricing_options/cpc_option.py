@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from ..core.currency_code import CurrencyCode
@@ -26,7 +26,7 @@ class CPCPricingOption(AdCPBaseModel):
         UniqueItems('eligible_adjustments'),
     )
     pricing_option_id: Annotated[str, Field(description='Unique identifier for this pricing option within the product')]
-    pricing_model: Annotated[Literal['cpc'], Field(description='Cost per click')]
+    pricing_model: Annotated[Literal['cpc'], Field(description='Cost per click'), PinnedDefault]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     fixed_price: Annotated[NonNegativeFloat | None, Field(description='Fixed price per click. If present, this is fixed pricing. If absent, auction-based.'), OmittedNotNull] = None
     floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.'), OmittedNotNull] = None

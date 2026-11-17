@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, StrMinLen1
 
@@ -94,7 +94,7 @@ class CanonicalProductPlacementPublisherRef(CanonicalProductPlacement):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('seller_agent',),)),
     )
-    kind: Literal['publisher_ref']
+    kind: Annotated[Literal['publisher_ref'], PinnedDefault]
     publisher_domain: Annotated[DomainName, Field(description='For publisher_ref, the adagents.json publisher namespace. For seller_inline, optional inventory-publisher attribution only.')]
 
 
@@ -103,7 +103,7 @@ class CanonicalProductPlacementSellerInline(CanonicalProductPlacement):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-placement.json', pointer='#/oneOf/1')
-    kind: Literal['seller_inline']
+    kind: Annotated[Literal['seller_inline'], PinnedDefault]
     name: StrMinLen1
 
 

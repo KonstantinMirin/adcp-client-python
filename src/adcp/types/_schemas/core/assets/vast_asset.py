@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ...enums.vast_tracking_event import VASTTrackingEvent
@@ -37,7 +37,7 @@ class VASTAsset(BranchDispatchMixin, AdCPBaseModel):
         Approximation(document='core/assets/vast-asset.json', pointer='#/properties/audio_description_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/assets/vast-asset.json', pointer='#/properties/audio_description_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    asset_type: Annotated[Literal['vast'], Field(description='Discriminator identifying this as a VAST asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['vast'], Field(description='Discriminator identifying this as a VAST asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     vast_version: Annotated[VASTVersion | None, Field(description='Exact VAST version declared by the supplied URL response or inline document. Required by the 3.2 canonical `video_vast` and `audio_vast` manifest paths; optional only on the deprecated named-format compatibility path. Receivers MUST NOT relabel or synthesize a newer version merely because the destination accepts it.'), OmittedNotNull] = None
     macro_declarations: Annotated[list[MacroDeclaration] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1), OmittedNotNull] = None
     vpaid_enabled: Annotated[StrictBool | None, Field(description='Whether VPAID (Video Player-Ad Interface Definition) is supported'), OmittedNotNull] = None
@@ -53,7 +53,7 @@ class VASTAssetUrl(VASTAsset):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/0')
-    delivery_type: Annotated[Literal['url'], Field(description='Discriminator indicating VAST is delivered via URL endpoint')]
+    delivery_type: Annotated[Literal['url'], Field(description='Discriminator indicating VAST is delivered via URL endpoint'), PinnedDefault]
     url: Annotated[MacroBearingURL, Field(description='URL endpoint returning VAST XML. Macro delimiters remain byte-preserved; declarations distinguish occurrences in this locator URL from occurrences in inline or fetched VAST content.')]
     macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1), OmittedNotNull] = None
 
@@ -63,7 +63,7 @@ class VASTAssetInline(VASTAsset):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/vast-asset.json', pointer='#/oneOf/1')
-    delivery_type: Annotated[Literal['inline'], Field(description='Discriminator indicating VAST is delivered as inline XML content')]
+    delivery_type: Annotated[Literal['inline'], Field(description='Discriminator indicating VAST is delivered as inline XML content'), PinnedDefault]
     content: Annotated[str, Field(description='Inline VAST XML content')]
     macro_declarations: Annotated[list[ObjLocation] | None, Field(description='One declaration per exact occurrence in a field carried by this asset. A URL-delivered asset can declare only occurrences in its locator `url`; tokens discovered later in a fetched VAST response require document validation evidence or an inline/snapshotted asset and MUST NOT be guessed from the locator. IAB tokens cite a registry namespace and revision rather than copying the live registry into AdCP.', min_length=1), OmittedNotNull] = None
 

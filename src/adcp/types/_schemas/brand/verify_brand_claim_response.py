@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen500
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -74,7 +74,7 @@ class Payload(ResponsePayload):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-response.json', pointer='#/definitions/signed_response/allOf/1/properties/payload')
-    task: Annotated[Literal['verify_brand_claim'], Field(description='Designated task whose response payload is signed.')]
+    task: Annotated[Literal['verify_brand_claim'], Field(description='Designated task whose response payload is signed.'), PinnedDefault]
     response: Annotated[SignedSuccessPayload, Field(description='Canonical task-body success response payload being attested. Any unsigned task-body fields on the outer response, excluding signed_response and protocol/version envelope fields, MUST match this object.')]
 
 

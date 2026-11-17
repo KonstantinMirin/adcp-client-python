@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import IntMin0Max86400
 
@@ -40,7 +40,7 @@ class ContextMatchResponseProviderRouter(AdCPVersionEnvelope, ProtocolEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('signals_by_provider',), ('context',), ('ext',))),
     )
-    type: Annotated[Literal['context_match_response'], Field(description='Message type discriminator for deserialization. Same const as the router→publisher variant so decoders can key off type before dispatching on hop shape.')]
+    type: Annotated[Literal['context_match_response'], Field(description='Message type discriminator for deserialization. Same const as the router→publisher variant so decoders can key off type before dispatching on hop shape.'), PinnedDefault]
     request_id: Annotated[str, Field(description='Echoed request identifier from the context match request.')]
     offers: Annotated[list[Offer], Field(description='Offers from this provider, one per activated package. An empty array means no packages matched. For simple activation, each offer has just package_id. For richer responses, offers include brand, price, summary, and creative manifest.')]
     cache_ttl: Annotated[IntMin0Max86400 | None, Field(description="Optional override for the router's default 5-minute response cache TTL, in seconds. When present, the router MUST use this value instead of its default. Set to 0 to disable caching."), OmittedNotNull] = None

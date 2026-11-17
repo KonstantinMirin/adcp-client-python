@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -40,7 +40,7 @@ class FileTransferDestination(AgentReportingDestination):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('accepted_formats'),
     )
-    pattern: Annotated[Literal['file_transfer'], Field(description='Discriminator. Producer publishes immutable files plus a manifest to caller-controlled object storage.')]
+    pattern: Annotated[Literal['file_transfer'], Field(description='Discriminator. Producer publishes immutable files plus a manifest to caller-controlled object storage.'), PinnedDefault]
     destination_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.')]
     operator_id: Annotated[AccountChangeRecordedWebhookSubscriberId | None, Field(description="Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains."), OmittedNotNull] = None
     active: Annotated[StrictBool, Field(description='True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.')]
@@ -56,7 +56,7 @@ class WarehouseMaterializationDestination(AgentReportingDestination):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-reporting-destination.json', pointer='#/oneOf/1')
-    pattern: Annotated[Literal['warehouse_materialization'], Field(description='Discriminator. Producer or its connector commits reporting revisions into a caller-owned warehouse relation.')]
+    pattern: Annotated[Literal['warehouse_materialization'], Field(description='Discriminator. Producer or its connector commits reporting revisions into a caller-owned warehouse relation.'), PinnedDefault]
     destination_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.')]
     operator_id: Annotated[AccountChangeRecordedWebhookSubscriberId | None, Field(description="Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains."), OmittedNotNull] = None
     active: Annotated[StrictBool, Field(description='True permits use. False suspends the destination: the seller MUST stop initiating new deliveries to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered.')]
@@ -71,7 +71,7 @@ class DatasetShareRecipient(AgentReportingDestination):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-reporting-destination.json', pointer='#/oneOf/2')
-    pattern: Annotated[Literal['dataset_share'], Field(description='Discriminator. Producer retains and versions the dataset; the named recipient reads provider-hosted share objects.')]
+    pattern: Annotated[Literal['dataset_share'], Field(description='Discriminator. Producer retains and versions the dataset; the named recipient reads provider-hosted share objects.'), PinnedDefault]
     destination_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Caller-selected stable logical key, unique within this seller relationship. Reusing it replaces desired configuration; when proof-bound coordinates or the accepted delivery contract change, the seller issues a new immutable destination_ref generation while retaining the old reference for existing account bindings and reporting history.')]
     operator_id: Annotated[AccountChangeRecordedWebhookSubscriberId | None, Field(description="Optional agent-scoped label naming the operator this destination serves, for per-operator isolation, audit, and offboarding under an agent principal. It is the principal's own bookkeeping and confers no identity or authority: sellers MUST NOT link, dedupe, or authorize across principals based on matching operator labels or domains."), OmittedNotNull] = None
     active: Annotated[StrictBool, Field(description='True permits use. False suspends the destination: the seller MUST stop publishing new revisions to every generation of this destination_id within the advertised suspension interval, and new account-level delivery configurations MUST NOT select it. Suspension does not delete caller-owned data already delivered or revoke provider-side grants by itself.')]

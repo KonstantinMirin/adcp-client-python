@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin1, StrMinLen1
 
@@ -76,7 +84,7 @@ class CanonicalOptimizationGoalMetricTarget(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-optimization-goal.json', pointer='#/oneOf/0/properties/target')
-    kind: Literal['threshold_rate']
+    kind: Annotated[Literal['threshold_rate'], PinnedDefault]
     value: FloatGt0
 
 
@@ -92,7 +100,7 @@ class CanonicalOptimizationGoalMetric(CanonicalOptimizationGoal):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/canonical-optimization-goal.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric': {'const': 'viewable_rate'}}, 'required': ['metric']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    kind: Literal['metric']
+    kind: Annotated[Literal['metric'], PinnedDefault]
     metric: Metric
     standard: Annotated[ViewabilityStandard | None, OmittedNotNull] = None
     vendor: Annotated[BrandKey | None, OmittedNotNull] = None
@@ -120,7 +128,7 @@ class CanonicalOptimizationGoalEventTarget(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-optimization-goal.json', pointer='#/oneOf/1/properties/target')
-    kind: Literal['maximize_value']
+    kind: Annotated[Literal['maximize_value'], PinnedDefault]
 
 
 class CanonicalOptimizationGoalEvent(CanonicalOptimizationGoal):
@@ -128,7 +136,7 @@ class CanonicalOptimizationGoalEvent(CanonicalOptimizationGoal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-optimization-goal.json', pointer='#/oneOf/1')
-    kind: Literal['event']
+    kind: Annotated[Literal['event'], PinnedDefault]
     event_sources: Annotated[list[EventSourcesItem], Field(min_length=1)]
     target: Annotated[CanonicalOptimizationGoalEventTarget | None, OmittedNotNull] = None
     attribution_window: Annotated[AttributionWindow | None, OmittedNotNull] = None
@@ -143,7 +151,7 @@ class CanonicalOptimizationGoalVendorMetric(CanonicalOptimizationGoal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-optimization-goal.json', pointer='#/oneOf/2')
-    kind: Literal['vendor_metric']
+    kind: Annotated[Literal['vendor_metric'], PinnedDefault]
     vendor: BrandKey
     metric_id: VendorMetricID
     target: Annotated[CanonicalOptimizationGoalVendorMetricTarget | None, OmittedNotNull] = None

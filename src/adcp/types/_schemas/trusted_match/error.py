@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 
 
 class Code(StrEnum):
@@ -37,7 +37,7 @@ class TMPError(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='trusted-match/error.json', pointer='#')
-    type: Annotated[Literal['error'], Field(description='Message type discriminator for deserialization.')]
+    type: Annotated[Literal['error'], Field(description='Message type discriminator for deserialization.'), PinnedDefault]
     request_id: Annotated[str, Field(description='Echoed request identifier from the original request')]
     code: Annotated[Code, Field(description="Machine-readable error code. `seller_not_authorized` is returned by providers at sync time when an AvailablePackage declares a `seller_agent.agent_url` that is not present in the `authorized_agents` list of the publisher's adagents.json for a property the package claims to serve.")]
     message: Annotated[str | None, Field(description='Human-readable error description for debugging'), OmittedNotNull] = None

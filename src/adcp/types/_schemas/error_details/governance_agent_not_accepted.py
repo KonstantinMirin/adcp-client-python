@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import AttemptedAgentOrigin, RejectionRef
 
 from ..governance.accepted_governance_agents import AcceptedGovernanceAgents
@@ -29,7 +29,7 @@ class GovernanceAgentNotAcceptedDetailsDisclosed(GovernanceAgentNotAcceptedDetai
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/governance-agent-not-accepted.json', pointer='#/oneOf/0')
-    disclosure: Literal['disclosed']
+    disclosure: Annotated[Literal['disclosed'], PinnedDefault]
     attempted_agent_origin: Annotated[AttemptedAgentOrigin, Field(description='Parsed HTTPS origin only. The seller MUST strip userinfo, path, query, and fragment and MUST NOT echo the raw candidate URL.')]
     accepted_governance_agents: AcceptedGovernanceAgents
 
@@ -39,7 +39,7 @@ class GovernanceAgentNotAcceptedDetailsOpaque(GovernanceAgentNotAcceptedDetails)
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='error-details/governance-agent-not-accepted.json', pointer='#/oneOf/1')
-    disclosure: Literal['opaque']
+    disclosure: Annotated[Literal['opaque'], PinnedDefault]
     rejection_ref: Annotated[RejectionRef | None, Field(description='Optional seller-local correlation reference. It does not identify or reveal an acceptance rule.'), OmittedNotNull] = None
 
 

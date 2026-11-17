@@ -13,6 +13,7 @@ from adcp.types._base import (
     MemberAlias,
     OmittedNotNull,
     OmittedWhenNone,
+    PinnedDefault,
     SchemaRef,
 )
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
@@ -68,7 +69,7 @@ class ListScenariosSuccess(ComplyTestControllerResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('error',), ('previous_state',), ('simulated',), ('forced',), ('recorded_calls',), ('audit_observations',))),
     )
-    success: Literal[True]
+    success: Annotated[Literal[True], PinnedDefault]
     scenarios: Annotated[list[str], Field(description='Scenarios this seller has implemented. Runners and sellers MUST accept unknown scenario strings (open-for-extension) — new scenarios may be added in additive releases. Adopters who advertise `catalog_item_availability_probe` support deterministic cross-principal reference, eligibility-gate, expiry-clock, and catalog-generation tests for the catalog availability storyboard. Adopters who advertise `compact_product_lifecycle_probe` support deterministic synchronous list/request/finalize/decline/accept/control/readback behavior for a prepared product and strict post-deadline expiry of a committed proposal. Adopters who advertise `compact_direct_buy_lifecycle_probe` support deterministic synchronous list/buy/control/readback behavior for a prepared product. Adopters who advertise `reporting_core_lifecycle_probe` support deterministic obligation-before-report, clock-health, zero-row reporting, provisional-restatement, and post-received restatement-grace tests without wall-clock waits. `reliable_reporting_core_integrity_probe`, `reliable_reporting_managed_delivery_probe`, and `reliable_reporting_reconciled_billing_probe` seed the source-calendar/checkpoint, managed-resource, and receipt/adjustment workflows used by the Reliable Reporting tier storyboards. Adopters who advertise `force_creative_purge` opt in to deterministic creative purge coverage for account-level lifecycle webhooks. Adopters who advertise `force_media_buy_purge` opt in to deterministic deletion-independent idempotency replay coverage. Adopters who advertise `seed_measurement_catalog` opt in to deterministic measurement-catalog fixtures used by vendor_metric precondition storyboards. Adopters who advertise `query_upstream_traffic` opt in to the upstream-traffic conformance contract; storyboards that declare `check: upstream_traffic` grade not_applicable against adopters who do not advertise it. Adopters who advertise `query_provenance_audit_observations` opt in to sandbox-only audit-observation assertions for accepted creatives. Adopters who advertise `force_upstream_unavailable` opt in to stale-cache conformance testing via the `stale_response_advisory` storyboard.')]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -85,7 +86,7 @@ class StateTransitionSuccess(ComplyTestControllerResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('error',), ('scenarios',), ('simulated',), ('forced',), ('recorded_calls',), ('audit_observations',))),
     )
-    success: Literal[True]
+    success: Annotated[Literal[True], PinnedDefault]
     previous_state: Annotated[str, Field(description='State before this transition')]
     current_state: Annotated[str, Field(description='State after this transition')]
     message: Annotated[str | None, Field(description='Human-readable description of the transition'), OmittedNotNull] = None
@@ -104,7 +105,7 @@ class SimulationSuccess(ComplyTestControllerResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('error',), ('scenarios',), ('previous_state',), ('forced',), ('recorded_calls',), ('audit_observations',))),
     )
-    success: Literal[True]
+    success: Annotated[Literal[True], PinnedDefault]
     simulated: Annotated[dict[str, Any], Field(description='Values injected or applied by this call. Shape depends on scenario.')]
     cumulative: Annotated[dict[str, Any] | None, Field(description='Running totals across all simulation calls (simulate_delivery only)'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
@@ -141,7 +142,7 @@ class ForcedDirectiveSuccess(ComplyTestControllerResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('error',), ('scenarios',), ('previous_state',), ('simulated',), ('recorded_calls',), ('audit_observations',))),
     )
-    success: Literal[True]
+    success: Annotated[Literal[True], PinnedDefault]
     forced: Annotated[Forced, Field(description='Echo of the registered directive. The next matching operation call from this sandbox account will return the named arm.')]
     message: Annotated[str | None, Field(description='Human-readable acknowledgement.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
@@ -159,7 +160,7 @@ class SeedSuccess(ComplyTestControllerResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('error',), ('scenarios',), ('previous_state',), ('simulated',), ('forced',), ('recorded_calls',), ('audit_observations',))),
     )
-    success: Literal[True]
+    success: Annotated[Literal[True], PinnedDefault]
     message: Annotated[str | None, Field(description='Human-readable acknowledgement.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -176,7 +177,7 @@ class ProvenanceAuditObservationsSuccess(ComplyTestControllerResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('error',), ('scenarios',), ('previous_state',), ('simulated',), ('forced',), ('recorded_calls',))),
     )
-    success: Literal[True]
+    success: Annotated[Literal[True], PinnedDefault]
     creative_id: Annotated[str, Field(description='Creative ID whose audit observations were queried.')]
     audit_observations: Annotated[list[CreativeAuditObservation], Field(description='Audit observations recorded for the creative in the sandbox session.')]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
@@ -276,7 +277,7 @@ class RawAttestation(RecordedCallsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('payload_digest_sha256',), ('identifier_match_proofs',))),
     )
-    attestation_mode: Annotated[Literal[AttestationMode.RAW], Field(description="Per-call attestation mode echoing the request's `params.attestation_mode`. Required on every recorded_call so the `oneOf` discriminator always has an explicit value to dispatch on — no implicit defaults inside oneOf branches. Adopters MAY unilaterally downgrade a `raw` request to `digest` for a specific call when their policy requires it (e.g., the call carried regulated PII the adopter can't return raw). The runner reads this field to know which assertions to apply.")]
+    attestation_mode: Annotated[Literal[AttestationMode.RAW], Field(description="Per-call attestation mode echoing the request's `params.attestation_mode`. Required on every recorded_call so the `oneOf` discriminator always has an explicit value to dispatch on — no implicit defaults inside oneOf branches. Adopters MAY unilaterally downgrade a `raw` request to `digest` for a specific call when their policy requires it (e.g., the call carried regulated PII the adopter can't return raw). The runner reads this field to know which assertions to apply."), PinnedDefault]
     payload: Annotated[Any, Field(description="Request body the agent sent. Required when `attestation_mode` is `raw` (or omitted); MUST be absent when `attestation_mode` is `digest`. Object when content_type is JSON-shaped and the controller decoded it; string otherwise. The `x-adcp-open-payload: true` annotation applies to the decoded JSON/object arm of this mixed field; non-JSON string payloads remain scalar values governed by the surrounding schema. Adopters MUST apply the recursive secret-key redaction described in this branch's top-level description before emission — secrets at any depth (Authorization values inlined into JSON bodies, embedded JWTs, presigned-URL tokens, OAuth refresh tokens) MUST be replaced with the literal string `[redacted]`. Storyboards that assert `payload_must_contain` or `identifier_paths` are matching against THIS field — secrets MUST be redacted but storyboard-supplied identifiers (hashed PII, request correlation values) MUST NOT be redacted. Adopters SHOULD cap individual payload size at 64 KiB; payloads exceeding that SHOULD be truncated with a trailing `[…truncated]` marker — large payloads bloat compliance reports and the LLM-rendered context windows that consume them.")]
 
 
@@ -291,7 +292,7 @@ class DigestAttestation(RecordedCallsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('payload',),)),
     )
-    attestation_mode: Annotated[Literal[AttestationMode.DIGEST], Field(description="Per-call attestation mode echoing the request's `params.attestation_mode`. Required on every recorded_call so the `oneOf` discriminator always has an explicit value to dispatch on — no implicit defaults inside oneOf branches. Adopters MAY unilaterally downgrade a `raw` request to `digest` for a specific call when their policy requires it (e.g., the call carried regulated PII the adopter can't return raw). The runner reads this field to know which assertions to apply.")]
+    attestation_mode: Annotated[Literal[AttestationMode.DIGEST], Field(description="Per-call attestation mode echoing the request's `params.attestation_mode`. Required on every recorded_call so the `oneOf` discriminator always has an explicit value to dispatch on — no implicit defaults inside oneOf branches. Adopters MAY unilaterally downgrade a `raw` request to `digest` for a specific call when their policy requires it (e.g., the call carried regulated PII the adopter can't return raw). The runner reads this field to know which assertions to apply."), PinnedDefault]
     payload_digest_sha256: Annotated[ComplyTestControllerRequestParamsIdentifierValueDigestsItem, Field(description='SHA-256 digest of the canonicalized outbound request body, lowercase hex (64 chars). Required when `attestation_mode` is `digest`; MUST be absent when `attestation_mode` is `raw`. Canonicalization order is normative: (1) controllers MUST apply the recursive secret-key redaction (same pattern as the raw-mode payload field) BEFORE computing the digest; (2) for `application/json` and `*+json` content types, controllers MUST then serialize the redacted body to RFC 8785 (JCS) canonical form — sorted keys, no extraneous whitespace — and digest the resulting bytes. Storyboard-supplied identifiers (hashed PII, request correlation values) MUST NOT be redacted before digest computation; they are the load-bearing match target for `identifier_match_proofs` and digesting them away makes echo verification impossible. Both `payload_digest_sha256` AND `identifier_match_proofs` MUST be computed against the same post-redaction canonical bytes — diverging the two surfaces breaks coherence between digest replay and identifier echo. JCS edge cases: when a digest-mode `query_upstream_traffic` response cannot be produced because the parsed JSON-like value tree contains a non-finite numeric value (`NaN`, `+Infinity`, or `-Infinity`), controllers MUST NOT coerce that value to `null`, a string, or any other placeholder for digest computation; they MUST return the typed ControllerError code `JCS_NON_FINITE_NUMBER`. Runners MUST grade the affected upstream_traffic digest validation `not_applicable` because RFC 8785 forbids non-finite numbers. Payloads carrying numeric identifiers MUST serialize them as JSON strings before digest computation (adtech bid payloads regularly carry IDs outside ±2^53 where I-JSON / RFC 7493 number round-tripping diverges across implementations). For non-JSON content types the digest is computed over the post-redaction raw body bytes.')]
 
 
@@ -315,7 +316,7 @@ class UpstreamTrafficSuccess(ComplyTestControllerResponse):
         Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
         Approximation(document='compliance/comply-test-controller-response.json', pointer='#/oneOf/6/properties/recorded_calls/items/properties/payload', keyword='maxLength', kind='WIDENED', rung='KEYWORD', fact=65536, attribution='docs/plan/rebuild-plan.md §5 strings/maxLength'),
     )
-    success: Literal[True]
+    success: Annotated[Literal[True], PinnedDefault]
     recorded_calls: Annotated[list[RecordedCallsItem], Field(description="Outbound HTTP calls caused by the requesting principal in the requested window, ordered by `timestamp` ascending. Cross-caller calls MUST NOT appear here. Each item declares its `attestation_mode`: `raw` items carry the full `payload`; `digest` items carry `payload_digest_sha256` + `payload_length` + optional `identifier_match_proofs[]` instead, for adopters who can't return raw payloads under their privacy/data-residency policy.")]
     total_count: Annotated[NonNegativeInt, Field(description='Total calls in the requested window before any pagination — `recorded_calls.length` may be smaller when `params.limit` truncated the response.')]
     truncated: Annotated[StrictBool | None, Field(description='True when `total_count > recorded_calls.length`. Runners MAY raise the `limit` and re-query, but storyboards SHOULD declare assertions that fit within the default 100-call window — a truncated response is a signal that the storyboard step is causing more upstream activity than expected.'), OmittedNotNull] = None
@@ -349,7 +350,7 @@ class ControllerError(ComplyTestControllerResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('scenarios',), ('simulated',), ('previous_state',), ('forced',), ('recorded_calls',), ('audit_observations',))),
     )
-    success: Literal[False]
+    success: Annotated[Literal[False], PinnedDefault]
     error: Annotated[ControllerErrorError, Field(description='Structured error code. `JCS_NON_FINITE_NUMBER` is reserved for digest-mode upstream_traffic responses that cannot be RFC 8785/JCS-canonicalized because the parsed JSON-like value tree contains a non-finite numeric value (`NaN`, `+Infinity`, or `-Infinity`); controllers MUST NOT coerce those values during digest computation, and runners grade that validation `not_applicable`, not failed.')]
     error_detail: Annotated[str | None, Field(description='Human-readable explanation of the failure'), OmittedNotNull] = None
     current_state: Annotated[str | None, Field(description='Current state of the entity, or null if not found'), OmittedWhenNone] = None

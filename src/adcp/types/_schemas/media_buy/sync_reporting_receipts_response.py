@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrIdempotencyKey
 from adcp.types.envelopes import AdcpResponse
@@ -35,7 +35,7 @@ class RecordedReportingReceipt(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/0')
-    result: Literal['recorded']
+    result: Annotated[Literal['recorded'], PinnedDefault]
     receipt: RecordedReportingReceiptReceipt
 
 
@@ -47,7 +47,7 @@ class UnchangedReportingReceipt(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/1')
-    result: Literal['unchanged']
+    result: Annotated[Literal['unchanged'], PinnedDefault]
     receipt: UnchangedReportingReceiptReceipt
 
 
@@ -67,7 +67,7 @@ class RecordedReportingAdjustmentReceipt(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/2')
-    result: Literal['recorded']
+    result: Annotated[Literal['recorded'], PinnedDefault]
     adjustment_receipt: RecordedReportingAdjustmentReceiptAdjustmentReceipt
 
 
@@ -79,7 +79,7 @@ class UnchangedReportingAdjustmentReceipt(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/3')
-    result: Literal['unchanged']
+    result: Annotated[Literal['unchanged'], PinnedDefault]
     adjustment_receipt: UnchangedReportingAdjustmentReceiptAdjustmentReceipt
 
 
@@ -88,7 +88,7 @@ class FailedReportingReceipt(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#/properties/results/items/anyOf/4')
-    result: Literal['failed']
+    result: Annotated[Literal['failed'], PinnedDefault]
     reporting_receipt_id: StrIdempotencyKey
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
@@ -101,7 +101,7 @@ class SyncReportingReceiptsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpR
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-receipts-response.json', pointer='#')
-    status: Annotated[Literal['completed'], Field(description='Receipt batches complete synchronously with one result per submitted receipt.')]
+    status: Annotated[Literal['completed'], Field(description='Receipt batches complete synchronously with one result per submitted receipt.'), PinnedDefault]
     results: Annotated[list[RecordedReportingReceipt | UnchangedReportingReceipt | RecordedReportingAdjustmentReceipt | UnchangedReportingAdjustmentReceipt | FailedReportingReceipt], Field(max_length=100, min_length=1)]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

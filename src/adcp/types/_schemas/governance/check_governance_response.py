@@ -6,7 +6,15 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    MemberAlias,
+    OmittedNotNull,
+    OmittedWhenNone,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -108,7 +116,7 @@ class ActionBinding(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('action_id',), ('action_digest',)), 'anyOf'),
     )
-    action_type: Annotated[Literal['https://adcontextprotocol.org/actions/governance-check'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
+    action_type: Annotated[Literal['https://adcontextprotocol.org/actions/governance-check'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.'), PinnedDefault]
     action_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable identifier of the consuming action within the domain consumer's namespace.")]
     action_digest: Annotated[ZipAssetDigest | None, Field(description='SHA-256 digest of the domain-defined canonical action preimage.'), OmittedNotNull] = None
 

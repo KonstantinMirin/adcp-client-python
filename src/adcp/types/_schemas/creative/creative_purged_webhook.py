@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -40,7 +40,7 @@ class CreativePurgedWebhook(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/creative-purged-webhook.json', pointer='#')
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identifier for this purge event. Receivers correlate fires by this id; a single creative can only be purged once, so a new id implies a different creative or (rare) a re-emission of the same purge after retention-driven snapshot loss.')]
-    notification_type: Annotated[Literal['creative.purged'], Field(description='Fixed notification type discriminator.')]
+    notification_type: Annotated[Literal['creative.purged'], Field(description='Fixed notification type discriminator.'), PinnedDefault]
     fired_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Sellers MUST fire `creative.purged` immediately after purge — coalescence is not permitted on this notification type.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Identifies which `notification_configs[]` entry on the recipient account is receiving this fire.')]
     account_id: Annotated[str, Field(description="Seller's identifier for the account that owned the purged creative.")]

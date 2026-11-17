@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import AtLeastOne, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 
@@ -125,7 +125,7 @@ class SignalCoverageForecast(AdCPBaseModel):
         Approximation(document='core/signal-coverage-forecast.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'scope': {'type': 'object', 'properties': {'kind': {'const': 'product'}}, 'required': ['kind']}}, 'required': ['scope']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     points: Annotated[list[PointsItem], Field(description='Coverage or availability points. Each point reuses the standard ForecastPoint shape, MUST include a signal dimension, and MUST include metrics.coverage_rate. Use metrics.impressions for count denominators and metrics.coverage_rate for the fraction of the declared scope represented by the point.', min_length=1)]
-    forecast_range_unit: Annotated[Literal['availability'], Field(description="How to interpret the points array. Signal coverage forecasts always use 'availability' because the points describe available inventory or population coverage, not spend curves or temporal pacing.")]
+    forecast_range_unit: Annotated[Literal['availability'], Field(description="How to interpret the points array. Signal coverage forecasts always use 'availability' because the points describe available inventory or population coverage, not spend curves or temporal pacing."), PinnedDefault]
     method: Annotated[ForecastMethod, Field(description='Method used to produce this coverage forecast.')]
     scope: Annotated[Scope, Field(description='Explicit denominator for the coverage forecast. This identifies the inventory, product, account, or custom universe that coverage_rate values are relative to. Additional seller-specific qualifiers are allowed for scopes such as line item type, ad server, inventory class, country, or flight window.')]
     bucket_semantics: Annotated[BucketSemantics, Field(description="'exclusive' means the returned signal-value buckets do not overlap with each other. 'overlapping' means one impression or user can appear in multiple returned buckets, so coverage_rate values may sum above 1.0. This field describes overlap among returned buckets; bucket_completeness declares whether the returned buckets cover the full denominator.")]

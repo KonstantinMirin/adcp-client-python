@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 
 from .signal_ref import SignalRef
@@ -33,8 +33,8 @@ class SignalTargetingExpressionBinary(SignalTargetingExpression):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-targeting-expression.json', pointer='#/oneOf/0')
     signal_ref: Annotated[SignalRef, Field(description='Named signal being targeted.')]
-    value_type: Annotated[Literal['binary'], Field(description='Discriminator for binary signals.')]
-    value: Annotated[Literal[True], Field(description='Binary package signal entries match users for whom the signal is true. Use the parent group operator for include/exclude.')]
+    value_type: Annotated[Literal['binary'], Field(description='Discriminator for binary signals.'), PinnedDefault]
+    value: Annotated[Literal[True], Field(description='Binary package signal entries match users for whom the signal is true. Use the parent group operator for include/exclude.'), PinnedDefault]
 
 
 class SignalTargetingExpressionCategorical(SignalTargetingExpression):
@@ -46,7 +46,7 @@ class SignalTargetingExpressionCategorical(SignalTargetingExpression):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-targeting-expression.json', pointer='#/oneOf/1')
     signal_ref: Annotated[SignalRef, Field(description='Named signal being targeted.')]
-    value_type: Annotated[Literal['categorical'], Field(description='Discriminator for categorical signals.')]
+    value_type: Annotated[Literal['categorical'], Field(description='Discriminator for categorical signals.'), PinnedDefault]
     values: Annotated[list[str], Field(description='Values to target. Users with any of these values match the expression.', min_length=1)]
 
 
@@ -62,7 +62,7 @@ class SignalTargetingExpressionNumeric(SignalTargetingExpression):
         RequiredGroups((('min_value',), ('max_value',)), 'anyOf'),
     )
     signal_ref: Annotated[SignalRef, Field(description='Named signal being targeted.')]
-    value_type: Annotated[Literal['numeric'], Field(description='Discriminator for numeric signals.')]
+    value_type: Annotated[Literal['numeric'], Field(description='Discriminator for numeric signals.'), PinnedDefault]
     min_value: Annotated[StrictFloat | None, Field(description="Minimum value, inclusive. Omit for no minimum. Should be within the signal definition's range when declared."), OmittedNotNull] = None
     max_value: Annotated[StrictFloat | None, Field(description="Maximum value, inclusive. Omit for no maximum. Should be within the signal definition's range when declared."), OmittedNotNull] = None
 

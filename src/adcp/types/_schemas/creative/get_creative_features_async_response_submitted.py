@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1
 
@@ -24,7 +24,7 @@ class GetCreativeFeaturesSubmitted(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('results',), ('errors',), ('detail_url',), ('pricing_option_id',), ('vendor_cost',), ('currency',), ('consumption',))),
     )
-    status: Annotated[Literal['submitted'], Field(description='Task-level status literal that discriminates this acknowledgement from terminal success and error responses.')]
+    status: Annotated[Literal['submitted'], Field(description='Task-level status literal that discriminates this acknowledgement from terminal success and error responses.'), PinnedDefault]
     task_id: Annotated[StrMinLen1, Field(description='AdCP task handle used to poll get_task_status or correlate terminal webhook delivery. Distinct from evaluation_id.')]
     evaluation_id: Annotated[StrMinLen1 | None, Field(description='Provider-generated identity allocated when the evaluation is accepted. Optional in AdCP 3.x and required in AdCP 4.0. Providers SHOULD emit it in 3.x; when present, exact replays and the terminal result MUST carry this same value. Distinct from task_id and idempotency_key.'), OmittedNotNull] = None
     message: Annotated[StrMaxLen2000 | None, Field(description='Optional human-readable explanation of why the evaluation is submitted. Plain text only; callers treat it as untrusted provider input.'), OmittedNotNull] = None

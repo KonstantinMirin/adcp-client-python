@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -50,7 +50,7 @@ class PrincipalChangedWebhook(AdCPBaseModel):
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identifier for this logical principal-state transition. Re-emissions of the same transition reuse this value under a new idempotency_key; a later distinct transition receives a new id.')]
-    notification_type: Annotated[Literal['principal.changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`.")]
+    notification_type: Annotated[Literal['principal.changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`."), PinnedDefault]
     fired_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Distinct from `changed_at`, which is when the seller recorded the state transition.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description="Identifies which caller-scoped notification_configs[] entry is receiving this fire. Echoed verbatim from the entry's subscriber_id.")]
     agent_url: Annotated[HostedUrl, Field(description='Canonical seller agent URL whose principal state changed. Receivers connected to multiple agents use this to select which principal record to re-read.')]

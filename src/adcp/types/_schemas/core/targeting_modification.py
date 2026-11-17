@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import ReplaceTargetingValuePath, StrMinLen1
 
@@ -32,7 +32,7 @@ class ReplaceTargetingValue(TargetingModification):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/targeting-modification.json', pointer='#/oneOf/0')
-    operation: Literal['replace']
+    operation: Annotated[Literal['replace'], PinnedDefault]
     path: Annotated[ReplaceTargetingValuePath, Field(description='RFC 6901 JSON Pointer to one complete targeting value relative to targeting_overlay, for example /demographics/age. Array indexes are forbidden by protocol semantics even if syntactically valid JSON Pointer; target a stable whole dimension instead.')]
     applied: Annotated[Any, Field(description='Complete replacement value. It MUST validate against targeting.json at path; the seller then validates the complete effective overlay. This operation may narrow or broaden only as an explicit buyer-visible proposal.')]
     reason: StrMinLen1
@@ -97,7 +97,7 @@ class RemoveTargetingSetValues(TargetingModification):
         ConditionalRequired((Match('path', True, ('/geo_postal_areas', '/geo_postal_areas_exclude')),), require=('selector',), forbid=()),
         NegatedConditional((Match('path', True, ('/geo_postal_areas', '/geo_postal_areas_exclude')),), require=(), forbid=('selector',)),
     )
-    operation: Literal['remove_values']
+    operation: Annotated[Literal['remove_values'], PinnedDefault]
     path: Annotated[RemoveTargetingSetValuesPath, Field(description='Supported targeting field with string-set semantics. Postal-area paths identify their group with selector; direct top-level sets omit selector.')]
     selector: Annotated[Selector | None, Field(description='Stable identity of exactly one postal-area group in the requested array. Required only for postal-area paths. Zero or multiple matches make the modification invalid.'), OmittedNotNull] = None
     values: Annotated[list[str], Field(description='Values removed from the requested set. Values absent from that set are invalid rather than no-ops.', json_schema_extra={'uniqueItems': True}, min_length=1)]

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     BrandDiscoveryAgentId,
@@ -52,7 +52,7 @@ class VerifySubsidiaryClaim(VerifyBrandClaimRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/0')
-    claim_type: Literal['subsidiary']
+    claim_type: Annotated[Literal['subsidiary'], PinnedDefault]
     claim: VerifySubsidiaryClaimClaim
 
 
@@ -74,7 +74,7 @@ class VerifyParentClaim(VerifyBrandClaimRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/1')
-    claim_type: Literal['parent']
+    claim_type: Annotated[Literal['parent'], PinnedDefault]
     claim: VerifyParentClaimClaim
 
 
@@ -130,7 +130,7 @@ class VerifyPropertyClaim(VerifyBrandClaimRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/2')
-    claim_type: Literal['property']
+    claim_type: Annotated[Literal['property'], PinnedDefault]
     claim: ObjPropertyUseCase
 
 
@@ -154,7 +154,7 @@ class VerifyTrademarkClaim(VerifyBrandClaimRequest):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand/verify-brand-claim-request.json', pointer='#/oneOf/3')
-    claim_type: Literal['trademark']
+    claim_type: Annotated[Literal['trademark'], PinnedDefault]
     claim: VerifyTrademarkClaimClaim
 
 

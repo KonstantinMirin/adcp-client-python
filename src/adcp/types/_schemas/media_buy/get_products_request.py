@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 from adcp.types.envelopes import AdcpRequest
@@ -49,7 +49,7 @@ class ObjScopeAsk(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-request.json', pointer='#/properties/refine/items/oneOf/0')
-    scope: Annotated[Literal['request'], Field(description='Change scoped to the overall request — direction for the selection as a whole.')]
+    scope: Annotated[Literal['request'], Field(description='Change scoped to the overall request — direction for the selection as a whole.'), PinnedDefault]
     ask: Annotated[StrMinLen1, Field(description="What the buyer is asking for at the request level (e.g., 'more video options and less display', 'suggest how to combine these products').")]
 
 
@@ -70,7 +70,7 @@ class ObjScopeProductIdActionAsk(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-request.json', pointer='#/properties/refine/items/oneOf/1')
-    scope: Annotated[Literal['product'], Field(description='Change scoped to a specific product.')]
+    scope: Annotated[Literal['product'], Field(description='Change scoped to a specific product.'), PinnedDefault]
     product_id: Annotated[StrMinLen1, Field(description='Product ID from a previous get_products response.')]
     action: Annotated[RefineItemProductAction | None, Field(description="'include' (default): return this product with updated pricing and data. 'omit': exclude this product from the response. 'more_like_this': find additional products similar to this one (the original is also returned). Optional — when omitted, the seller treats the entry as action: 'include'.", json_schema_extra={'default': 'include'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(RefineItemProductAction).validate_python('include'))
     ask: Annotated[StrMinLen1 | None, Field(description="What the buyer is asking for on this product. For 'include': specific changes to request (e.g., 'add 16:9 format'). For 'more_like_this': what 'similar' means (e.g., 'same audience but video format'). Ignored when action is 'omit'."), OmittedNotNull] = None
@@ -95,7 +95,7 @@ class ObjScopeProposalIdActionAsk(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-request.json', pointer='#/properties/refine/items/oneOf/2')
-    scope: Annotated[Literal['proposal'], Field(description='Change scoped to a specific proposal.')]
+    scope: Annotated[Literal['proposal'], Field(description='Change scoped to a specific proposal.'), PinnedDefault]
     proposal_id: Annotated[StrMinLen1, Field(description='Proposal ID from a previous get_products response.')]
     action: Annotated[RefineItemProposalAction | None, Field(description="'include' (default): return this proposal with updated allocations and pricing. 'omit': exclude this proposal from the response. 'finalize': request firm pricing and inventory hold. New callers use refine_proposals with action revise for a draft successor or action finalize for a committed held successor; terminal feedback is available through decline_proposals.\n\nLegacy finalize is exclusive within the parent `refine[]` array: see the array-level description for the finalize-exclusivity rule (mixing finalize with non-finalize entries is rejected) and multi-finalize atomicity contract.", json_schema_extra={'default': 'include'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(RefineItemProposalAction).validate_python('include'))
     ask: Annotated[StrMinLen1 | None, Field(description="What the buyer is asking for on this proposal (e.g., 'shift more budget toward video', 'reduce total by 10%'). Ignored when action is omit."), OmittedNotNull] = None

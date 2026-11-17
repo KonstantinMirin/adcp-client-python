@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HostedUrl
 
@@ -40,7 +40,7 @@ class SignalRefProduct(SignalRef):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('data_provider_domain',), ('signal_source_url',), ('agent_url',), ('source',), ('id',))),
     )
-    scope: Annotated[Literal['product'], Field(description="Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options.")]
+    scope: Annotated[Literal['product'], Field(description="Discriminator indicating the signal resolves through the selected product's included_signals or signal_targeting_options."), PinnedDefault]
     signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description='Product-local signal identifier. For local signals exposed on both get_signals and get_products, this MUST match get_signals.signals[].signal_ref.signal_id for the same signal.')]
 
 
@@ -55,7 +55,7 @@ class SignalRefDataProvider(SignalRef):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('agent_url',), ('signal_source_url',), ('source',), ('id',))),
     )
-    scope: Annotated[Literal['data_provider'], Field(description="Discriminator indicating the signal resolves through a data provider's published adagents.json signals[].")]
+    scope: Annotated[Literal['data_provider'], Field(description="Discriminator indicating the signal resolves through a data provider's published adagents.json signals[]."), PinnedDefault]
     data_provider_domain: Annotated[DomainName, Field(description='Domain that publishes the signal definition in its adagents.json signals[].')]
     signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the data provider's published adagents.json signals[].")]
 
@@ -75,7 +75,7 @@ class SignalRefSignalSource(SignalRef):
         Approximation(document='core/signal-ref.json', pointer='#/oneOf/2/properties/signal_source_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/signal-ref.json', pointer='#/oneOf/2/properties/signal_source_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    scope: Annotated[Literal['signal_source'], Field(description='Discriminator indicating the signal resolves through the issuing signal source.')]
+    scope: Annotated[Literal['signal_source'], Field(description='Discriminator indicating the signal resolves through the issuing signal source.'), PinnedDefault]
     signal_source_url: Annotated[HostedUrl, Field(description='URL of the signal source that issues this source-native signal.')]
     signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the issuing signal source's signal set.")]
 

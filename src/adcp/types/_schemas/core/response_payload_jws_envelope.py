@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, PinnedDefault, SchemaRef
 from adcp.types.constraints import CanonicalProposalTermsDigest, HostedUrl, ResponsePayloadJWSEnvelopeProtected
 
 from .domain_name import DomainName
@@ -31,7 +31,7 @@ class ResponsePayload(AdCPBaseModel):
         Approximation(document='core/response-payload-jws-envelope.json', pointer='#/definitions/response_payload/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/response-payload-jws-envelope.json', pointer='#/definitions/response_payload/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    typ: Annotated[Literal['adcp-response-payload+jws'], Field(description='Type discriminator preventing cross-profile replay.')]
+    typ: Annotated[Literal['adcp-response-payload+jws'], Field(description='Type discriminator preventing cross-profile replay.'), PinnedDefault]
     task: Annotated[Task, Field(description='Designated task whose response payload is signed.')]
     brand_domain: Annotated[DomainName, Field(description='Brand tenant whose policy store produced the answer. The signer MUST derive this from server-side tenant resolution, not caller-supplied request fields.')]
     agent_url: Annotated[HostedUrl, Field(description='Canonical URL of the responding brand agent entry whose response-signing key verifies this envelope.')]

@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, PresenceGroups, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -104,7 +104,7 @@ class Subject(AttestationResourceSubject):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/check-governance-request.json', pointer='#/properties/runtime_attestations/items/allOf/1/properties/subject')
-    resource_type: Annotated[Literal['https://adcontextprotocol.org/claims/subjects/signal'], Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
+    resource_type: Annotated[Literal['https://adcontextprotocol.org/claims/subjects/signal'], Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.'), PinnedDefault]
 
 
 class RuntimeAttestationsItem(AttestationReference):

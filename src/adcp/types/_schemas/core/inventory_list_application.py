@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMinLen1
 
@@ -63,7 +63,7 @@ class PropertyListApplication(InventoryListApplication):
         Approximation(document='core/inventory-list-application.json', pointer='#/oneOf/0/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/inventory-list-application.json', pointer='#/oneOf/0/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    list_type: Annotated[Literal['property'], Field(description='The receipt describes a property list.')]
+    list_type: Annotated[Literal['property'], Field(description='The receipt describes a property list.'), PinnedDefault]
     effect: Annotated[PropertyListApplicationEffect, Field(description='Whether matching properties were retained as an allowlist or removed as a blocklist.')]
     agent_url: Annotated[HostedUrl, Field(description='Agent URL from the effective property-list targeting reference.')]
     list_id: Annotated[StrMinLen1, Field(description='Identifier from the effective property-list targeting reference.')]
@@ -103,7 +103,7 @@ class CollectionListApplication(InventoryListApplication):
         Approximation(document='core/inventory-list-application.json', pointer='#/oneOf/1/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/inventory-list-application.json', pointer='#/oneOf/1/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    list_type: Annotated[Literal['collection'], Field(description='The receipt describes a collection list.')]
+    list_type: Annotated[Literal['collection'], Field(description='The receipt describes a collection list.'), PinnedDefault]
     effect: Annotated[CollectionListApplicationEffect, Field(description='Whether matching collections were retained as an allowlist or removed as a blocklist.')]
     agent_url: Annotated[HostedUrl, Field(description='Agent URL from the effective collection-list targeting reference.')]
     list_id: Annotated[StrMinLen1, Field(description='Identifier from the effective collection-list targeting reference.')]

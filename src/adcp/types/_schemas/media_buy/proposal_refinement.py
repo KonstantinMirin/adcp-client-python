@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import FloatGt0, IntMin2Max10, StrMinLen1
@@ -136,7 +136,7 @@ class ProposalRefinementFinalize(ProposalRefinement):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('change_kind',), ('constraints',), ('product_changes',), ('alternatives',), ('ask',), ('criteria',), ('remove_media_buy_frequency_cap',))),
     )
-    action: Annotated[Literal[Action.FINALIZE], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.')]
+    action: Annotated[Literal[Action.FINALIZE], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.'), PinnedDefault]
 
 
 class ProposalRefinementRevise(ProposalRefinement):
@@ -150,7 +150,7 @@ class ProposalRefinementRevise(ProposalRefinement):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "anyOf"
-    action: Annotated[Literal[Action.REVISE], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.')]
+    action: Annotated[Literal[Action.REVISE], Field(description='revise creates a new draft snapshot with changed commercial terms. finalize MUST target a draft; it creates a new committed snapshot without changing terms and reserves inventory until its expires_at.'), PinnedDefault]
 
 
 class ProposalRefinementReviseConstraints(ProposalRefinementRevise):
@@ -198,7 +198,7 @@ class ProposalRefinementReviseRemoveMediaBuyFrequencyCap(ProposalRefinementRevis
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/proposal-refinement.json', pointer='#/oneOf/1/anyOf/5')
-    remove_media_buy_frequency_cap: Annotated[Literal[True], Field(description='Request a revised draft whose commercial terms omit the existing MediaBuy frequency cap. Omission inherits it. To replace it, provide criteria.media_buy_frequency_cap instead.')]
+    remove_media_buy_frequency_cap: Annotated[Literal[True], Field(description='Request a revised draft whose commercial terms omit the existing MediaBuy frequency cap. Omission inherits it. To replace it, provide criteria.media_buy_frequency_cap instead.'), PinnedDefault]
 
 
 class ProposalRefinementReviseCancellation(ProposalRefinementRevise):
@@ -206,7 +206,7 @@ class ProposalRefinementReviseCancellation(ProposalRefinementRevise):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/proposal-refinement.json', pointer='#/oneOf/1/anyOf/6')
-    change_kind: Annotated[Literal[ChangeKind.CANCELLATION], Field(description='Desired successor proposal. cancellation is valid only when the source proposal is accepted and attached to a non-terminal MediaBuy.')]
+    change_kind: Annotated[Literal[ChangeKind.CANCELLATION], Field(description='Desired successor proposal. cancellation is valid only when the source proposal is accepted and attached to a non-terminal MediaBuy.'), PinnedDefault]
 
 
 ProposalRefinementRevise._branch_models = (ProposalRefinementReviseConstraints, ProposalRefinementReviseProductChanges, ProposalRefinementReviseAlternatives, ProposalRefinementReviseAsk, ProposalRefinementReviseCriteria, ProposalRefinementReviseRemoveMediaBuyFrequencyCap, ProposalRefinementReviseCancellation,)

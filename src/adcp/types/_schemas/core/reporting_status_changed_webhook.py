@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -38,7 +38,7 @@ class ReportingStatusChangedWebhook(AdCPBaseModel):
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable per logical health transition; re-emissions reuse it, and a later distinct transition receives a new id.')]
-    notification_type: Literal['reporting.status_changed']
+    notification_type: Annotated[Literal['reporting.status_changed'], PinnedDefault]
     fired_at: WireDatetime
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description='Identifies which account-level notification_configs[] entry is receiving this fire.')]
     account_id: StrMinLen1

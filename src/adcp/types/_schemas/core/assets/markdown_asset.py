@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 
 from ...enums.markdown_flavor import MarkdownFlavor
 
@@ -18,7 +18,7 @@ class MarkdownAsset(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/markdown-asset.json', pointer='#')
-    asset_type: Annotated[Literal['markdown'], Field(description='Discriminator identifying this as a markdown asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['markdown'], Field(description='Discriminator identifying this as a markdown asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     content: Annotated[str, Field(description='Markdown content following CommonMark spec with optional GitHub Flavored Markdown extensions')]
     language: Annotated[str | None, Field(description='Optional language claim for this markdown. In a materialized creative localization variant, localized-creative-asset.json requires this value to use /schemas/core/locale-tag.json and conformance requires exact equality with the enclosing variant locale. General non-localized assets retain the legacy unconstrained string for compatibility.'), OmittedNotNull] = None
     markdown_flavor: Annotated[MarkdownFlavor | None, Field(description='Markdown flavor used. CommonMark for strict compatibility, GFM for tables/task lists/strikethrough.', json_schema_extra={'default': 'commonmark'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(MarkdownFlavor).validate_python('commonmark'))

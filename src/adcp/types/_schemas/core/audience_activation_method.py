@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import Dependencies, Rule, UniqueItems
 from adcp.types.constraints import HostedUrl, IntMin1, StrMinLen1, StrMinLen1MaxLen256
 
@@ -40,7 +48,7 @@ class AdCPAudienceSync(AudienceActivationMethod):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/0')
-    pattern: Literal['sync_audiences']
+    pattern: Annotated[Literal['sync_audiences'], PinnedDefault]
 
 
 class ObjAgentUrl(AdCPBaseModel):
@@ -67,7 +75,7 @@ class TMPIdentityMatch(AudienceActivationMethod):
         Approximation(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/audience-activation-method.json', pointer='#/oneOf/1/properties/buyer_agent/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    pattern: Literal['tmp_identity_match']
+    pattern: Annotated[Literal['tmp_identity_match'], PinnedDefault]
     buyer_agent: ObjAgentUrl
 
 
@@ -89,7 +97,7 @@ class AudienceActivationMethodFileTransfer(AudienceActivationMethod):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('directions'),
     )
-    pattern: Literal['file_transfer']
+    pattern: Annotated[Literal['file_transfer'], PinnedDefault]
     transport: Annotated[CloudStorageProtocol, Field(description='Storage protocol for the exchange.')]
     directions: Annotated[list[DirectionsItem] | None, Field(description='Supported transfer directions. buyer_to_seller: buyer writes to a seller-hosted bucket. seller_to_buyer: seller reads from a buyer-hosted bucket. Absent means unspecified (resolve during account setup), not neither.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     vendor: Annotated[BrandReference, Field(description="Platform providing the storage primitive (e.g., the cloud provider's domain).")]
@@ -117,7 +125,7 @@ class DatasetQuery(AudienceActivationMethod):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/3')
-    pattern: Literal['dataset_query']
+    pattern: Annotated[Literal['dataset_query'], PinnedDefault]
     vendor: Annotated[BrandReference, Field(description='Data-sharing platform the seller can consume from.')]
     consumer_identities: Annotated[list[ConsumerIdentitiesItem] | None, Field(description="Principals the buyer grants access to in the vendor's system. identity is always required. cloud and region are optional, paired deployment metadata: omit both for global principals (for example, an IAM principal or federated identity). Their operational meaning is vendor-specific — they may constrain direct-share reachability or select a fulfillment route, or may be routing and cost hints only. They are not compliance boundaries; data-transfer assessments key on the recipient entity's jurisdiction, not the grantee account's region. Optional: sellers MAY instead communicate identities during account setup.", min_length=1), OmittedNotNull] = None
 
@@ -130,7 +138,7 @@ class CleanRoom(AudienceActivationMethod):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/4')
-    pattern: Literal['clean_room']
+    pattern: Annotated[Literal['clean_room'], PinnedDefault]
     vendor: Annotated[BrandReference, Field(description="Clean-room product's operating domain.")]
 
 
@@ -142,7 +150,7 @@ class PlatformDistribution(AudienceActivationMethod):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-activation-method.json', pointer='#/oneOf/5')
-    pattern: Literal['platform_distribution']
+    pattern: Annotated[Literal['platform_distribution'], PinnedDefault]
     vendor: Annotated[BrandReference, Field(description="Distribution platform's operating domain.")]
     destination_ref: Annotated[StrMinLen1MaxLen256 | None, Field(description="Opaque, account-scoped destination or seat reference in the vendor's system, as the buyer needs it to initiate distribution. A seller-declared configuration reference, not a buyer-invoked key or secret. Sellers MUST NOT publish one global reference when the vendor configuration is buyer- or account-specific. Omit until account setup has established the destination."), OmittedNotNull] = None
     bind_expiry_days: Annotated[IntMin1 | None, Field(description="Window after which the seller MAY expire an unfulfilled platform_segment bind (per-audience action: failed on sync_audiences). Initial vendor distribution is days-scale; windows shorter than the vendor's documented distribution latency are non-conformant."), OmittedNotNull] = None

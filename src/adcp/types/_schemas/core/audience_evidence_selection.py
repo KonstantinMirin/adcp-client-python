@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
@@ -39,7 +39,7 @@ class ActionBinding(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('action_id',), ('action_digest',)), 'anyOf'),
     )
-    action_type: Annotated[Literal['https://adcontextprotocol.org/actions/audience-evidence-evaluation'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
+    action_type: Annotated[Literal['https://adcontextprotocol.org/actions/audience-evidence-evaluation'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.'), PinnedDefault]
     action_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable identifier of the consuming action within the domain consumer's namespace.")]
     action_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')]
 

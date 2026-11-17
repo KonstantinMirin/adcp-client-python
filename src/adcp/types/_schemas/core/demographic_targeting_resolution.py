@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import StrMinLen1
 
@@ -22,7 +22,7 @@ class ExecutionContinuousBounds(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/demographic-targeting-resolution.json', pointer='#/properties/execution/oneOf/0')
-    type: Literal['continuous_bounds']
+    type: Annotated[Literal['continuous_bounds'], PinnedDefault]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 
@@ -34,7 +34,7 @@ class ExecutionEnumeratedIntervals(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('interval_ids'),
     )
-    type: Literal['enumerated_intervals']
+    type: Annotated[Literal['enumerated_intervals'], PinnedDefault]
     interval_ids: Annotated[list[StrMinLen1], Field(description='Seller-scoped interval identifiers whose union produced applied.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -47,7 +47,7 @@ class ExecutionSignals(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('signal_refs'),
     )
-    type: Literal['signals']
+    type: Annotated[Literal['signals'], PinnedDefault]
     signal_refs: Annotated[list[SignalRef], Field(description='Authoritative signal references whose demographic predicates were unioned to produce applied. Signal names alone never establish equivalence.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -73,7 +73,7 @@ class DemographicTargetingResolution(AdCPBaseModel):
     )
     requested: Annotated[DemographicTargetingIntent, Field(description='Canonical demographic predicate and determination constraints requested by the buyer.')]
     applied: Annotated[DemographicPredicate, Field(description='Canonical demographic predicate actually applied by the seller.')]
-    equivalent: Annotated[Literal[True], Field(description='Always true for a stored package. requested and applied MUST denote exactly the same set, including unknown-age membership; sellers reject non-equivalent requests instead of storing an alternative.')]
+    equivalent: Annotated[Literal[True], Field(description='Always true for a stored package. requested and applied MUST denote exactly the same set, including unknown-age membership; sellers reject non-equivalent requests instead of storing an alternative.'), PinnedDefault]
     execution: ExecutionContinuousBounds | ExecutionEnumeratedIntervals | ExecutionSignals
     applied_bases: Annotated[list[AgeDeterminationBasis] | None, Field(description='Effective user-level determination bases configured for this package after intersecting buyer accepted_bases, product supported_bases, and age_restriction. This is an auditable configuration readback, not proof that every impression used every listed basis.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     applied_verification_methods: Annotated[list[AgeVerificationMethod] | None, Field(description='Effective verification methods when applied_bases contains verified. A method name does not establish that a particular proof or claim was valid; runtime verification and claim entailment remain required.', json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None

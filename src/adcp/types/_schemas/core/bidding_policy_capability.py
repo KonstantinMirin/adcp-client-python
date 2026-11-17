@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import PropertyCount, RequiredGroups, Rule, UniqueItems
 
 from ..enums.outcome_target_cost_strength import OutcomeTargetCostStrength
@@ -34,7 +34,7 @@ class MaxBidWithCostPer(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('cost_per_strengths'),
     )
-    kind: Literal['max_bid_with_cost_per']
+    kind: Annotated[Literal['max_bid_with_cost_per'], PinnedDefault]
     cost_per_strengths: Annotated[list[OutcomeTargetCostStrength], Field(description='cost_per strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -46,7 +46,7 @@ class MaxBidWithRoas(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('roas_strengths'),
     )
-    kind: Literal['max_bid_with_roas']
+    kind: Annotated[Literal['max_bid_with_roas'], PinnedDefault]
     roas_strengths: Annotated[list[RoasStrength], Field(description='roas strengths supported when combined with max_bid.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 

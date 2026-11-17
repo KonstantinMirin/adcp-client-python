@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import ClassVar, Literal
+from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, PinnedDefault, SchemaRef
 
 from .canonical_media_buy_action_fields import CanonicalMediaBuyActionFields
 
@@ -75,7 +75,7 @@ class CanonicalMediaBuyActionControlMediaBuy(CanonicalMediaBuyAction, CanonicalM
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/0')
-    task: Literal['control_media_buy']
+    task: Annotated[Literal['control_media_buy'], PinnedDefault]
     action: CanonicalMediaBuyActionControlMediaBuyAction
 
 
@@ -120,7 +120,7 @@ class CanonicalMediaBuyActionRefineProposals(CanonicalMediaBuyAction, CanonicalM
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/1')
-    task: Literal['refine_proposals']
+    task: Annotated[Literal['refine_proposals'], PinnedDefault]
     action: CanonicalMediaBuyActionRefineProposalsAction
 
 
@@ -141,7 +141,7 @@ class CanonicalMediaBuyActionSyncCreatives(CanonicalMediaBuyAction, CanonicalMed
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-media-buy-action.json', pointer='#/oneOf/2')
-    task: Literal['sync_creatives']
+    task: Annotated[Literal['sync_creatives'], PinnedDefault]
     action: CanonicalMediaBuyActionSyncCreativesAction
 
 

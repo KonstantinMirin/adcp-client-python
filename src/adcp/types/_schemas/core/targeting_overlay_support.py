@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Distinct, ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import IntMin1, NonEmptyList, StrCountryCode, StrMinLen1
 
@@ -22,7 +22,7 @@ from .geo_region_support import GeographicRegionSupport
 from .iana_timezone import IANATimezoneIdentifier
 from .positive_postal_area_support import PositivePostalAreaSupport
 
-Supported = Literal[True]
+Supported = Annotated[Literal[True], PinnedDefault]
 
 
 class CountrySupportMaxValuesPerPackage(AdCPBaseModel):

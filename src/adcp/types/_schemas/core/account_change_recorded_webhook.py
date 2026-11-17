@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -47,7 +47,7 @@ class AccountChangeRecordedWebhook(AdCPBaseModel):
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated delivery key stable across retries of one fire. Deliberate re-emission uses a new key.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Logical notification identifier. Always equals change_id; retries and deliberate re-emissions of the same change retain it.')]
-    notification_type: Literal['account.change_recorded']
+    notification_type: Annotated[Literal['account.change_recorded'], PinnedDefault]
     fired_at: WireDatetime
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1MaxLen255

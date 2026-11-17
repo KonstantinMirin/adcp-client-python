@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import StrMinLen1, StrMinLen1MaxLen1024, ZipAssetDigest
 
@@ -25,7 +25,7 @@ class Reference(AttestationReference):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/rights-attestation-evaluation.json', pointer='#/properties/reference')
     issuer: AttestationBrandIssuer
-    claim_type: Annotated[Literal['https://adcontextprotocol.org/claims/rights/grant'], Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.')]
+    claim_type: Annotated[Literal['https://adcontextprotocol.org/claims/rights/grant'], Field(description='Open, absolute URI identifying the claim vocabulary. The URI is an identifier and need not be dereferenceable. AdCP does not maintain an enum of approved claims.'), PinnedDefault]
     subject: ObjTypeResourceType
 
 
@@ -40,7 +40,7 @@ class ActionBinding(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('action_id',), ('action_digest',)), 'anyOf'),
     )
-    action_type: Annotated[Literal['https://adcontextprotocol.org/actions/rights-grant-evaluation'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.')]
+    action_type: Annotated[Literal['https://adcontextprotocol.org/actions/rights-grant-evaluation'], Field(description='Absolute URI naming the action vocabulary, such as an AdCP governance-check or audience-evidence snapshot type.'), PinnedDefault]
     action_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable identifier of the consuming action within the domain consumer's namespace.")]
     action_digest: Annotated[ZipAssetDigest, Field(description='SHA-256 digest of the domain-defined canonical action preimage.')]
 

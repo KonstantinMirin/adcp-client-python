@@ -11,6 +11,7 @@ from adcp.types._base import (
     BranchDispatchMixin,
     OmittedNotNull,
     OmittedWhenNone,
+    PinnedDefault,
     SchemaRef,
 )
 from adcp.types._runtime import ForbiddenGroups, Rule
@@ -84,7 +85,7 @@ class BudgetReallocationUnlimited(Budget):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reallocation_threshold',),)),
     )
-    reallocation_unlimited: Annotated[Literal[True], Field(description='Set to true to allow the orchestrator to reallocate without any limit up to `total`. Mutually exclusive with `reallocation_threshold`. Use this for deliberate full-autonomy declarations rather than setting `reallocation_threshold: total` (which silently tightens when `total` changes).')]
+    reallocation_unlimited: Annotated[Literal[True], Field(description='Set to true to allow the orchestrator to reallocate without any limit up to `total`. Mutually exclusive with `reallocation_threshold`. Use this for deliberate full-autonomy declarations rather than setting `reallocation_threshold: total` (which silently tightens when `total` changes).'), PinnedDefault]
 
 
 Budget._branch_models = (BudgetReallocationThreshold, BudgetReallocationUnlimited,)

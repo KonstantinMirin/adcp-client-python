@@ -6,7 +6,15 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, StrictFloat, StrictInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -1339,7 +1347,7 @@ class ColorRefName(ColorRef):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/0')
-    kind: Annotated[Literal[Kind.NAME], Field(description='Discriminator for the color reference variant.')]
+    kind: Annotated[Literal[Kind.NAME], Field(description='Discriminator for the color reference variant.'), PinnedDefault]
     name: Annotated[str, Field(description='Key from the colors object, such as market_yellow, river_green, or any custom palette key. Unambiguous lookup into colors{}.')]
 
 
@@ -1348,7 +1356,7 @@ class ColorRefValue(ColorRef):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/1')
-    kind: Annotated[Literal[Kind.VALUE], Field(description='Discriminator for the color reference variant.')]
+    kind: Annotated[Literal[Kind.VALUE], Field(description='Discriminator for the color reference variant.'), PinnedDefault]
     value: Annotated[HexColor, Field(description='Literal hex color when no palette key exists.')]
 
 
@@ -1357,7 +1365,7 @@ class ColorRefSurface(ColorRef):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='brand.json', pointer='#/definitions/color_ref/oneOf/2')
-    kind: Annotated[Literal[Kind.SURFACE], Field(description='Discriminator for the color reference variant.')]
+    kind: Annotated[Literal[Kind.SURFACE], Field(description='Discriminator for the color reference variant.'), PinnedDefault]
     surface: Annotated[Surface, Field(description='Usage surface rather than a specific color value.')]
 
 

@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    MemberAlias,
+    OmittedNotNull,
+    OmittedWhenNone,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types.constraints import FloatMin0Max1, HostedUrl
 
 from ..core.ext import ExtensionObject
@@ -54,7 +62,7 @@ class ClaimedValue(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/audit-observation.json', pointer='#/properties/details/properties/claimed_value')
     human_oversight: Annotated[HumanOversight, Field(description='Human oversight level declared by the creative provenance.')]
-    disclosure_required: Annotated[Literal[False], Field(description='Disclosure-required claim declared by the creative provenance.')]
+    disclosure_required: Annotated[Literal[False], Field(description='Disclosure-required claim declared by the creative provenance.'), PinnedDefault]
 
 
 class Details(AdCPBaseModel):

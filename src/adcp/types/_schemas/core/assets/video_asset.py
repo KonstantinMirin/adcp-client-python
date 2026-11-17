@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, StrictFloat, StrictInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import HostedUrl, IntMin1, SchemaIntegral
 
 from ...enums.audio_channel_layout import AudioChannelLayout
@@ -97,7 +97,7 @@ class VideoAsset(AdCPBaseModel):
         Approximation(document='core/assets/video-asset.json', pointer='#/properties/audio_description_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/assets/video-asset.json', pointer='#/properties/audio_description_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    asset_type: Annotated[Literal['video'], Field(description='Discriminator identifying this as a video asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['video'], Field(description='Discriminator identifying this as a video asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     url: Annotated[HostedUrl, Field(description='URL to the video asset')]
     width: Annotated[IntMin1, Field(description="Width in pixels — the video file's intrinsic native width. Required: a hosted file always has concrete dimensions. (Tag-delivered video carries no width; see the `vast` asset.)")]
     height: Annotated[IntMin1, Field(description="Height in pixels — the video file's intrinsic native height. Required: a hosted file always has concrete dimensions. (Tag-delivered video carries no height; see the `vast` asset.)")]

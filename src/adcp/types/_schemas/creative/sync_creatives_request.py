@@ -11,6 +11,7 @@ from adcp.types._base import (
     BranchDispatchMixin,
     OmittedNotNull,
     OmittedWhenNone,
+    PinnedDefault,
     SchemaRef,
 )
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, RequiredGroups, Rule, UniqueItems
@@ -94,7 +95,7 @@ class AssignOrUpdate(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('placement_ids'),
     )
-    operation: Literal['assign']
+    operation: Annotated[Literal['assign'], PinnedDefault]
     creative_id: StrMinLen1
     package_id: StrMinLen1
     weight: Annotated[FloatMin0Max100 | None, OmittedNotNull] = None
@@ -106,7 +107,7 @@ class Unassign(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/sync-creatives-request.json', pointer='#/properties/assignment_operations/items/oneOf/1')
-    operation: Literal['unassign']
+    operation: Annotated[Literal['unassign'], PinnedDefault]
     creative_id: StrMinLen1
     package_id: StrMinLen1
 
@@ -119,7 +120,7 @@ class ReplaceAssignment(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('placement_ids'),
     )
-    operation: Literal['replace']
+    operation: Annotated[Literal['replace'], PinnedDefault]
     creative_id: Annotated[StrMinLen1, Field(description='Replacement creative ID.')]
     replaces_creative_id: Annotated[StrMinLen1, Field(description='Currently assigned creative ID to remove atomically.')]
     package_id: StrMinLen1

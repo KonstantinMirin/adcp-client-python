@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 
 from .signal_id import SignalID
@@ -38,7 +38,7 @@ class SignalTargetingBinary(SignalTargeting):
     )
     signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.'), OmittedNotNull] = None
     signal_id: Annotated[SignalID | None, Field(deprecated=True, description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
-    value_type: Annotated[Literal['binary'], Field(description='Discriminator for binary signals')]
+    value_type: Annotated[Literal['binary'], Field(description='Discriminator for binary signals'), PinnedDefault]
     value: Annotated[StrictBool, Field(description='Whether to include (true) or exclude (false) users matching this signal')]
 
 
@@ -55,7 +55,7 @@ class SignalTargetingCategorical(SignalTargeting):
     )
     signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.'), OmittedNotNull] = None
     signal_id: Annotated[SignalID | None, Field(deprecated=True, description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
-    value_type: Annotated[Literal['categorical'], Field(description='Discriminator for categorical signals')]
+    value_type: Annotated[Literal['categorical'], Field(description='Discriminator for categorical signals'), PinnedDefault]
     values: Annotated[list[str], Field(description='Values to target. Users with any of these values will be included.', min_length=1)]
 
 
@@ -72,7 +72,7 @@ class SignalTargetingNumeric(SignalTargeting):
     )
     signal_ref: Annotated[SignalRef | None, Field(description='The signal to target. New targeting constraints SHOULD use signal_ref.'), OmittedNotNull] = None
     signal_id: Annotated[SignalID | None, Field(deprecated=True, description='DEPRECATED. Use signal_ref instead. Legacy SignalId retained for compatibility with older clients.'), OmittedNotNull] = None
-    value_type: Annotated[Literal['numeric'], Field(description='Discriminator for numeric signals')]
+    value_type: Annotated[Literal['numeric'], Field(description='Discriminator for numeric signals'), PinnedDefault]
     min_value: Annotated[StrictFloat | None, Field(description="Minimum value (inclusive). Omit for no minimum. Must be <= max_value when both are provided. Should be >= signal's range.min if defined."), OmittedNotNull] = None
     max_value: Annotated[StrictFloat | None, Field(description="Maximum value (inclusive). Omit for no maximum. Must be >= min_value when both are provided. Should be <= signal's range.max if defined."), OmittedNotNull] = None
 

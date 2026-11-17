@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import (
     AgentReportingDestinationFileTransferDestinationTransport,
     StrMinLen1MaxLen255,
@@ -33,7 +33,7 @@ class ReportingWriteDestinationExisting(ReportingWriteDestination):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-write-destination.json', pointer='#/oneOf/0')
-    mode: Literal['existing']
+    mode: Annotated[Literal['existing'], PinnedDefault]
     destination_ref: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued immutable destination-generation reference returned by sync_agent_configuration, an earlier sync, or bilateral setup.')]
 
 
@@ -42,7 +42,7 @@ class ProvisionBinding(ReportingWriteDestination):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-write-destination.json', pointer='#/oneOf/1')
-    mode: Literal['provision']
+    mode: Annotated[Literal['provision'], PinnedDefault]
     provider: Annotated[ObjDomain, Field(description='Platform hosting the destination.')]
     location: Annotated[StrMinLen1MaxLen2048, Field(description='Provider-native bucket, prefix, project/dataset, catalog/schema, or equivalent locator. It MUST NOT contain an embedded credential or signed URL.')]
     access_mode: Annotated[AgentReportingDestinationFileTransferDestinationTransport | None, Field(description='Optional provider access family used for capability matching.'), OmittedNotNull] = None

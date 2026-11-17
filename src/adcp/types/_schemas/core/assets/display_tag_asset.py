@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import InlineMarkupMarkup
 
@@ -31,7 +31,7 @@ class DisplayTagAsset(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    asset_type: Annotated[Literal['display_tag'], Field(description='Discriminator identifying an atomic third-party display-tag representation.')]
+    asset_type: Annotated[Literal['display_tag'], Field(description='Discriminator identifying an atomic third-party display-tag representation.'), PinnedDefault]
     macro_declarations: Annotated[list[MacroDeclaration] | None, Field(description='Exact macro tokens present anywhere in this representation. Tokens remain byte-preserved until the resolver named by each declaration substitutes them.', min_length=1), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, Field(description='Provenance metadata for this asset, overriding manifest-level provenance.'), OmittedNotNull] = None
 
@@ -49,7 +49,7 @@ class TagURL(DisplayTagAsset):
     )
     macro_declarations: Annotated[list[TagURLMacroDeclarationsItem] | None, Field(description='Exact macro tokens present anywhere in this representation. Tokens remain byte-preserved until the resolver named by each declaration substitutes them.', min_length=1), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, OmittedNotNull] = None
-    delivery_type: Literal['tag_url']
+    delivery_type: Annotated[Literal['tag_url'], PinnedDefault]
     url: Annotated[MacroBearingURL, Field(description='Ad-request URL invoked at impression time. It is equivalent to the backward-compatible `url` asset with `url_type: "ad_request"`.')]
 
 
@@ -58,7 +58,7 @@ class InlineMarkupMacroDeclarationsItemLocation(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/display-tag-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items/allOf/1/properties/location')
-    field: Annotated[Literal['markup'], Field(description='Asset field containing this occurrence.')]
+    field: Annotated[Literal['markup'], Field(description='Asset field containing this occurrence.'), PinnedDefault]
     occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 
@@ -96,7 +96,7 @@ class InlineMarkup(DisplayTagAsset):
     )
     macro_declarations: Annotated[list[InlineMarkupMacroDeclarationsItem] | None, Field(description='Exact macro tokens present anywhere in this representation. Tokens remain byte-preserved until the resolver named by each declaration substitutes them.', min_length=1), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, OmittedNotNull] = None
-    delivery_type: Literal['inline_markup']
+    delivery_type: Annotated[Literal['inline_markup'], PinnedDefault]
     markup_type: Annotated[MarkupType, Field(description='How the destination traffics the byte-preserved markup.')]
     markup: Annotated[InlineMarkupMarkup, Field(description='Exact third-party tag markup. Receivers MUST preserve its bytes and MUST NOT reinterpret it as a seller-hosted HTML5 bundle.')]
 
@@ -142,7 +142,7 @@ class PairedRedirect(DisplayTagAsset):
     )
     macro_declarations: Annotated[list[PairedRedirectMacroDeclarationsItem] | None, Field(description='Exact macro tokens present anywhere in this representation. Tokens remain byte-preserved until the resolver named by each declaration substitutes them.', min_length=1), OmittedNotNull] = None
     provenance: Annotated[Provenance | None, OmittedNotNull] = None
-    delivery_type: Literal['paired_redirect']
+    delivery_type: Annotated[Literal['paired_redirect'], PinnedDefault]
     ad_request_url: Annotated[MacroBearingURL, Field(description='Image or ad-request URL entered into the destination ad server. This field deliberately accepts byte-preserved vendor tokens that are not RFC 6570 URI templates.')]
     clickthrough_url: Annotated[MacroBearingURL, Field(description='Click-through URL paired with `ad_request_url`. This field deliberately accepts byte-preserved vendor tokens that are not RFC 6570 URI templates. The pair MUST NOT be split, mixed, or revised independently.')]
 

@@ -110,6 +110,7 @@ from adcp.types._base import (
     SchemaBound,
     SchemaRef,
     omits_null,
+    pins_default,
 )
 from codegen import attribution, bundle, dump_exemptions, keywords
 from codegen.keywords import Position, Rung
@@ -3106,7 +3107,28 @@ def check_refuses(
 
 
 def the_marker_declares(instance: Any, candidate: Any, built: Any) -> bool:
-    """Whether ``OmittedNotNull`` AT THE ADMITTING FIELD is this widening's declaration.
+    """Whether A MARKER AT THE ADMITTING FIELD is this widening's declaration.
+
+    **TWO MARKERS AND TWO WITNESS SHAPES, one per route-split decision**, and the shape of
+    the witness says which marker could ever answer for it:
+
+    * the witness carries an explicit ``null`` at one key -> :data:`OmittedNotNull`, §2's
+      *"``None`` is absence and ``null`` is a value"*;
+    * the witness DROPS one required key -> :data:`adcp.types._base.PinnedDefault`, and
+      only where the document pins that property to one value
+      (``verdicts/a-pinned-default-is-the-documents-own.md``).
+
+    **THE SECOND CLAUSE REPLACES A SENTENCE THAT SAID THERE WAS NOTHING TO SAY.**  It read:
+    *"``key not in candidate`` is the DROPPED-REQUIRED-KEY witness, whose one difference is
+    a key the candidate does not carry at all -- a widening about ``required`` and not
+    about this property's type, so the marker says nothing about it."*  That is still true
+    of ``OmittedNotNull``, which is about a TYPE's null arm.  It is not true of the tree:
+    a pinned required property is supplied on the Python route BY DECISION, so the
+    constructor admits exactly this witness at every such field, and the fact is declared
+    at the field by the marker the emitter writes there.  Reported instead, it would be
+    one identical record per position over the bundle's 22,252 required-and-pinned
+    positions -- §8's "a fact is declared once", which is the same argument the paragraph
+    below makes for the first marker.
 
     **THE MARKER IS THE DECLARATION, AND §8'S RULE IS THAT A FACT IS DECLARED ONCE.**
     ``docs/plan/rebuild-plan.md`` §2 *"``None`` is absence and ``null`` is a value"* states
@@ -3123,15 +3145,22 @@ def the_marker_declares(instance: Any, candidate: Any, built: Any) -> bool:
     conditions, each of which has to hold:
 
     1. the witness differs from the accepted instance **at exactly one key** -- the shape
-       ``refused_witnesses`` builds for its explicit-null derivation
-       (``{**instance, key: None}``), and nothing else;
-    2. the value at that key **is ``None``**.  Any other value at a marked field is a
-       widening the marker says nothing about and stays undeclared;
-    3. the field the admitting class binds that key to **carries the marker**.  A ``None``
-       at a field WITHOUT it stays undeclared, which is the direction that matters: the
-       marker is on the fields whose document refuses ``null``, so a field without one
-       either admits ``null`` (and the document refuses nothing, so there is no witness) or
-       is a real undeclared widening.
+       ``refused_witnesses`` builds for both of its key-wise derivations
+       (``{**instance, key: None}`` and ``instance`` less one required key), and nothing
+       else;
+    2. the value at that key is **``None``**, or the key is **absent**.  Any other value at
+       a marked field is a widening neither marker says anything about and stays
+       undeclared;
+    3. the field the admitting class binds that key to **carries the marker for that
+       shape** -- :data:`adcp.types._base.OmittedNotNull` for the ``None``,
+       :data:`adcp.types._base.PinnedDefault` for the absence.  A ``None`` at a field
+       WITHOUT the first stays undeclared, which is the direction that matters: the marker
+       is on the fields whose document refuses ``null``, so a field without one either
+       admits ``null`` (and the document refuses nothing, so there is no witness) or is a
+       real undeclared widening.  A dropped key at a field without the second is the same
+       reading one case over: the second marker is on the fields whose node admits exactly
+       one value, so a field without one is a property the document leaves the caller a
+       choice about, and inventing the choice is the thing ``0z0u`` measured.
 
     The key is matched by the field's WIRE spelling -- ``field.alias or name``, the
     document's own property name and the only accepted one (``emit.field_name``), read the
@@ -3156,16 +3185,18 @@ def the_marker_declares(instance: Any, candidate: Any, built: Any) -> bool:
     if len(differing) != 1:
         return False
     key = differing[0]
-    #: ``key not in candidate`` is the DROPPED-REQUIRED-KEY witness, whose one difference
-    #: is a key the candidate does not carry at all -- a widening about ``required`` and
-    #: not about this property's type, so the marker says nothing about it.
-    if key not in candidate or candidate[key] is not None:
-        return False
     fields = getattr(type(built), "model_fields", None)
     if not isinstance(fields, dict):
         return False
     field = {(f.alias or name): f for name, f in fields.items()}.get(key)
-    return field is not None and omits_null(field)
+    if field is None:
+        return False
+    # The witness shape decides which marker is asked: a key the candidate does not carry
+    # at all is the DROPPED-REQUIRED-KEY witness and a pinned property's own; a key
+    # carrying ``null`` is the explicit-null witness and an ``OmittedNotNull`` property's.
+    if key not in candidate:
+        return pins_default(field)
+    return candidate[key] is None and omits_null(field)
 
 
 def refusing_payload(

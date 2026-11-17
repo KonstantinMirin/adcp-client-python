@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types.constraints import HostedUrl
 from adcp.types.envelopes import AdcpRequest
@@ -39,7 +39,7 @@ class PassItemUrl(AdCPBaseModel):
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf/0/properties/value', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/pass/items/oneOf/0/properties/value', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    type: Annotated[Literal['url'], Field(description='Indicates this is a URL reference')]
+    type: Annotated[Literal['url'], Field(description='Indicates this is a URL reference'), PinnedDefault]
     value: Annotated[HostedUrl, Field(description="Full URL to a specific page (e.g., 'https://espn.com/nba/story/_/id/12345/lakers-win')")]
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL'), OmittedNotNull] = None
 
@@ -53,7 +53,7 @@ class ObjTypeValueLanguage(AdCPBaseModel):
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf/0/properties/value', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='content-standards/create-content-standards-request.json', pointer='#/properties/calibration_exemplars/properties/fail/items/oneOf/0/properties/value', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    type: Annotated[Literal['url'], Field(description='Indicates this is a URL reference')]
+    type: Annotated[Literal['url'], Field(description='Indicates this is a URL reference'), PinnedDefault]
     value: Annotated[HostedUrl, Field(description="Full URL to a specific page (e.g., 'https://news.example.com/controversial-article')")]
     language: Annotated[str | None, Field(description='BCP 47 language tag for content at this URL'), OmittedNotNull] = None
 

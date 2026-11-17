@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 
 from ..enums.attribution_methodology import AttributionMethodology
@@ -37,7 +37,7 @@ class CommittedMetricStandard(CommittedMetric):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/committed-metric.json', pointer='#/oneOf/0')
-    scope: Annotated[Literal['standard'], Field(description='Standard metric from the closed `available-metric.json` enum.')]
+    scope: Annotated[Literal['standard'], Field(description='Standard metric from the closed `available-metric.json` enum.'), PinnedDefault]
     metric_id: Annotated[AvailableMetric, Field(description='Identifier for the standard metric.')]
     qualifier: Annotated[CanonicalMetricQualifier | None, Field(description="Disambiguates metrics whose definition varies by qualifier. Today carries five keys — `viewability_standard` (MRC vs GroupM viewability), `completion_source` (seller- vs vendor-attested completion), `attribution_methodology` (how attribution was computed for outcome metrics), `attribution_window` (the time window over which outcomes were attributed), and `lift_dimension` (which dimension of brand_lift this row represents — awareness, consideration, etc.). Required when the underlying `metric_id` has multiple incompatible measurement paths AND the seller commits to a specific one. Symmetric on `missing_metrics`. Reserved for additive qualifiers in future minors — schema is closed (`additionalProperties: false`); new keys ship explicitly. **Heterogeneous value types**: qualifier values can be either string enums (`viewability_standard`, `completion_source`, `attribution_methodology`, `lift_dimension`) or structured objects (`attribution_window` is a duration `{interval, unit}`). Consumers MUST dispatch on key name to know value shape; structured-value qualifiers join on canonical (key-sorted) deep equality so `{interval: 14, unit: 'days'}` and `{unit: 'days', interval: 14}` resolve to the same partition. Rate-style metrics (`new_to_brand_rate`, `engagement_rate`, etc.) inherit the methodology of their numerator — when a rate carries `attribution_methodology` qualifier, it applies to the underlying conversions/events being rated."), OmittedNotNull] = None
     committed_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when this metric became part of the contract. Day-1 commitments use `create_media_buy.confirmed_at`; mid-flight additions use the time the amendment was accepted.')]
@@ -63,7 +63,7 @@ class CommittedMetricVendor(CommittedMetric):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/committed-metric.json', pointer='#/oneOf/1')
-    scope: Annotated[Literal['vendor'], Field(description='Vendor-defined metric, identified by the tuple `(vendor, metric_id)`.')]
+    scope: Annotated[Literal['vendor'], Field(description='Vendor-defined metric, identified by the tuple `(vendor, metric_id)`.'), PinnedDefault]
     vendor: Annotated[BrandReference, Field(description="Vendor that defines and computes this metric. The vendor's `brand.json` `agents[type='measurement']` is the canonical anchor.")]
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary.")]
     methodology_version: Annotated[str | None, Field(description="Optional pin of the vendor's `get_adcp_capabilities.measurement.metrics[].methodology_version` that this commitment is contracted against. When present, the seller commits to reporting values computed under this methodology version; a vendor-side methodology change that alters the value definition is a contract change and SHOULD surface as a new appended entry with its own `committed_at`, never a silent substitution. Absence means the contract does not pin a version and buyers MUST treat methodology changes as untracked. Opaque string — compare for equality, do not parse."), OmittedNotNull] = None

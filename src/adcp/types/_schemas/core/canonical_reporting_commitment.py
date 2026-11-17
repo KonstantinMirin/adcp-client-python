@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 
 from ..enums.available_metric import AvailableMetric
@@ -32,7 +32,7 @@ class CanonicalReportingCommitmentStandard(CanonicalReportingCommitment):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-reporting-commitment.json', pointer='#/oneOf/0')
-    scope: Literal['standard']
+    scope: Annotated[Literal['standard'], PinnedDefault]
     metric_id: AvailableMetric
     qualifier: Annotated[CanonicalMetricQualifier | None, OmittedNotNull] = None
     effective_at: Annotated[WireDatetime | None, OmittedNotNull] = None
@@ -43,7 +43,7 @@ class CanonicalReportingCommitmentVendor(CanonicalReportingCommitment):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-reporting-commitment.json', pointer='#/oneOf/1')
-    scope: Literal['vendor']
+    scope: Annotated[Literal['vendor'], PinnedDefault]
     vendor: BrandKey
     metric_id: VendorMetricID
     qualifier: Annotated[CanonicalMetricQualifier | None, OmittedNotNull] = None

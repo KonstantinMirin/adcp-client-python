@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -64,7 +64,7 @@ class IndicatorsChangedWebhook(AdCPBaseModel):
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Random fire identifier reused across retries. Receivers dedupe within the authenticated sender scope.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identity for this logical snapshot change across re-emissions. A later semantic change receives a new value.')]
-    notification_type: Literal['indicators.changed']
+    notification_type: Annotated[Literal['indicators.changed'], PinnedDefault]
     fired_at: WireDatetime
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: str

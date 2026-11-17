@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, OmittedWhenNone, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, OmittedWhenNone, PinnedDefault, SchemaRef
 from adcp.types.constraints import HostedUrl, PrincipalDeclarationsStateSelectedAsyncAdcpVersion
 
 
@@ -18,13 +18,13 @@ class AdCPExtensionFileSchema(AdCPBaseModel):
         Approximation(document='extensions/extension-meta.json', pointer='#/properties/docs_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='extensions/extension-meta.json', pointer='#/properties/docs_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    schema_: Annotated[Literal['http://json-schema.org/draft-07/schema#'], Field(alias='$schema')]
+    schema_: Annotated[Literal['http://json-schema.org/draft-07/schema#'], Field(alias='$schema'), PinnedDefault]
     title: Annotated[str, Field(description='Human-readable title for the extension')]
     description: Annotated[str, Field(description='Description of what this extension provides')]
     valid_from: Annotated[PrincipalDeclarationsStateSelectedAsyncAdcpVersion, Field(description="Minimum AdCP version this extension is compatible with (e.g., '2.5'). Extension will be included in all versioned schema builds >= this version.")]
     valid_until: Annotated[PrincipalDeclarationsStateSelectedAsyncAdcpVersion | None, Field(description="Last AdCP version this extension is compatible with (e.g., '3.0'). Omit if extension is still valid for current and future versions."), OmittedNotNull] = None
     docs_url: Annotated[HostedUrl | None, Field(description='URL to documentation for implementors of this extension'), OmittedNotNull] = None
-    type: Annotated[Literal['object'], Field(description='Extensions must be objects (data within ext.{namespace})')]
+    type: Annotated[Literal['object'], Field(description='Extensions must be objects (data within ext.{namespace})'), PinnedDefault]
     properties: Annotated[dict[str, Any], Field(description='Schema properties defining the structure of ext.{namespace} data')]
     required: Annotated[list[str] | None, Field(description='Required properties within the extension data'), OmittedNotNull] = None
     additionalProperties: Annotated[Any | None, Field(description='Whether additional properties are allowed in the extension data'), OmittedWhenNone] = None

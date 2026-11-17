@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import (
     BrandDiscoveryColorValue,
     IntMin0Max8192,
@@ -61,7 +61,7 @@ class CreativeSlot(AdCPBaseModel):
     width: IntMin1Max8192
     height: IntMin1Max8192
     fit: Annotated[CreativeSlotFit, Field(description='How the creative render is scaled into the slot. contain preserves the whole render, cover fills and crops, and stretch fills without preserving aspect ratio.')]
-    clip: Annotated[Literal[True], Field(description='Slot overflow is always clipped so composition is deterministic.')]
+    clip: Annotated[Literal[True], Field(description='Slot overflow is always clipped so composition is deterministic.'), PinnedDefault]
 
 
 class Layer(StrEnum):
@@ -90,7 +90,7 @@ class BoxDecoration(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/box_decoration')
-    kind: Literal['box']
+    kind: Annotated[Literal['box'], PinnedDefault]
     layer: Layer
     bounds: Rectangle
     fill_color: Color
@@ -101,7 +101,7 @@ class TextDecoration(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/text_decoration')
-    kind: Literal['text']
+    kind: Annotated[Literal['text'], PinnedDefault]
     layer: Layer
     bounds: Rectangle
     text: TextDecorationText
@@ -132,7 +132,7 @@ class ImageDecoration(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#/definitions/image_decoration')
-    kind: Literal['image']
+    kind: Annotated[Literal['image'], PinnedDefault]
     layer: Layer
     bounds: Rectangle
     image_ref: ImageRef
@@ -147,7 +147,7 @@ class PlacementPresentationDocument(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-presentation.json', pointer='#')
-    schema_version: Literal['1.0']
+    schema_version: Annotated[Literal['1.0'], PinnedDefault]
     canvas: Canvas
     creative_slot: Annotated[CreativeSlot, Field(description='Rectangle into which the selected creative render is fitted and clipped without changing its manifest or renderer.')]
     decorations: Annotated[list[BoxDecoration | TextDecoration | ImageDecoration] | None, Field(max_length=100), OmittedNotNull] = None

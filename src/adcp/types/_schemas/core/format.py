@@ -6,7 +6,15 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types.constraints import FloatGt0, FormatRendersItemDimensionsAspectRatio, HostedUrl, IntMin1
 
@@ -88,7 +96,7 @@ class RendersItemParametersFromFormatId(RendersItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('dimensions',),)),
     )
-    parameters_from_format_id: Annotated[Literal[True], Field(description='When true, parameters for this render (dimensions and/or duration) are specified in the format_id. Used for template formats that accept parameters. Mutually exclusive with specifying dimensions object explicitly.')]
+    parameters_from_format_id: Annotated[Literal[True], Field(description='When true, parameters for this render (dimensions and/or duration) are specified in the format_id. Used for template formats that accept parameters. Mutually exclusive with specifying dimensions object explicitly.'), PinnedDefault]
 
 
 RendersItem._branch_models = (RendersItemDimensions, RendersItemParametersFromFormatId,)
@@ -106,12 +114,12 @@ class AssetsItemIndividual(BranchDispatchMixin, AdCPBaseModel):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    item_type: Literal['individual']
+    item_type: Annotated[Literal['individual'], PinnedDefault]
 
 
 class BaseIndividualAsset(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/$defs/baseIndividualAsset')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
     asset_id: Annotated[str, Field(description='Unique identifier for this asset. Creative manifests MUST use this exact value as the key in the assets object.')]
     asset_role: Annotated[str | None, Field(description="Descriptive label for this asset's purpose (e.g., 'hero_image', 'logo', 'third_party_tracking'). For documentation and UI display only — manifests key assets by asset_id, not asset_role."), OmittedNotNull] = None
     required: Annotated[StrictBool, Field(description='Whether this asset is required (true) or optional (false). Required assets must be provided for a valid creative. Optional assets enhance the creative but are not mandatory.')]
@@ -125,8 +133,8 @@ class IndividualImageAsset(AssetsItemIndividual, BaseIndividualAsset):
     Image asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/0')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['image']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['image'], PinnedDefault]
     requirements: Annotated[ImageAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -135,8 +143,8 @@ class IndividualVideoAsset(AssetsItemIndividual, BaseIndividualAsset):
     Video asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/1')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['video']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['video'], PinnedDefault]
     requirements: Annotated[VideoAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -145,8 +153,8 @@ class IndividualAudioAsset(AssetsItemIndividual, BaseIndividualAsset):
     Audio asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/2')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['audio']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['audio'], PinnedDefault]
     requirements: Annotated[AudioAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -155,8 +163,8 @@ class IndividualTextAsset(AssetsItemIndividual, BaseIndividualAsset):
     Text asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/3')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['text']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['text'], PinnedDefault]
     requirements: Annotated[TextAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -165,8 +173,8 @@ class IndividualMarkdownAsset(AssetsItemIndividual, BaseIndividualAsset):
     Markdown asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/4')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['markdown']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['markdown'], PinnedDefault]
     requirements: Annotated[MarkdownAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -175,8 +183,8 @@ class IndividualHtmlAsset(AssetsItemIndividual, BaseIndividualAsset):
     HTML asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/5')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['html']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['html'], PinnedDefault]
     requirements: Annotated[HTMLAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -185,8 +193,8 @@ class IndividualCssAsset(AssetsItemIndividual, BaseIndividualAsset):
     CSS asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/6')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['css']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['css'], PinnedDefault]
     requirements: Annotated[CSSAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -195,8 +203,8 @@ class IndividualJavaScriptAsset(AssetsItemIndividual, BaseIndividualAsset):
     JavaScript asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/7')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['javascript']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['javascript'], PinnedDefault]
     requirements: Annotated[JavaScriptAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -205,8 +213,8 @@ class IndividualZipAsset(AssetsItemIndividual, BaseIndividualAsset):
     Zip-bundled asset (HTML5 banner bundles, etc.)
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/8')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['zip']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['zip'], PinnedDefault]
 
 
 class IndividualVastAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -214,8 +222,8 @@ class IndividualVastAsset(AssetsItemIndividual, BaseIndividualAsset):
     VAST asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/9')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['vast']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['vast'], PinnedDefault]
     requirements: Annotated[VASTAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -224,8 +232,8 @@ class IndividualDaastAsset(AssetsItemIndividual, BaseIndividualAsset):
     DAAST asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/10')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['daast']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['daast'], PinnedDefault]
     requirements: Annotated[DAASTAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -234,8 +242,8 @@ class IndividualUrlAsset(AssetsItemIndividual, BaseIndividualAsset):
     URL asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/11')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['url']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['url'], PinnedDefault]
     requirements: Annotated[URLAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -244,8 +252,8 @@ class IndividualWebhookAsset(AssetsItemIndividual, BaseIndividualAsset):
     Webhook asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/12')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['webhook']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['webhook'], PinnedDefault]
     requirements: Annotated[WebhookAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -254,8 +262,8 @@ class IndividualBriefAsset(AssetsItemIndividual, BaseIndividualAsset):
     Brief asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/13')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['brief']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['brief'], PinnedDefault]
 
 
 class IndividualCatalogAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -263,8 +271,8 @@ class IndividualCatalogAsset(AssetsItemIndividual, BaseIndividualAsset):
     Catalog asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/14')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['catalog']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['catalog'], PinnedDefault]
     requirements: Annotated[CatalogRequirements | None, OmittedNotNull] = None
 
 
@@ -273,8 +281,8 @@ class IndividualDisplayTagAsset(AssetsItemIndividual, BaseIndividualAsset):
     Third-party display tag asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/15')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['display_tag']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['display_tag'], PinnedDefault]
 
 
 class IndividualPublishedPostAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -282,8 +290,8 @@ class IndividualPublishedPostAsset(AssetsItemIndividual, BaseIndividualAsset):
     Published post asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/16')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['published_post']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['published_post'], PinnedDefault]
 
 
 class IndividualCardAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -291,8 +299,8 @@ class IndividualCardAsset(AssetsItemIndividual, BaseIndividualAsset):
     Card asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/17')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['card']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['card'], PinnedDefault]
 
 
 class IndividualPixelTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -300,8 +308,8 @@ class IndividualPixelTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
     Pixel tracker asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/18')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['pixel_tracker']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['pixel_tracker'], PinnedDefault]
 
 
 class IndividualVastTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -309,8 +317,8 @@ class IndividualVastTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
     VAST tracker asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/19')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['vast_tracker']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['vast_tracker'], PinnedDefault]
 
 
 class IndividualDaastTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
@@ -318,8 +326,8 @@ class IndividualDaastTrackerAsset(AssetsItemIndividual, BaseIndividualAsset):
     DAAST tracker asset
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/0/oneOf/20')
-    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset')]
-    asset_type: Literal['daast_tracker']
+    item_type: Annotated[Literal['individual'], Field(description='Discriminator indicating this is an individual asset'), PinnedDefault]
+    asset_type: Annotated[Literal['daast_tracker'], PinnedDefault]
 
 
 AssetsItemIndividual._branch_models = (IndividualImageAsset, IndividualVideoAsset, IndividualAudioAsset, IndividualTextAsset, IndividualMarkdownAsset, IndividualHtmlAsset, IndividualCssAsset, IndividualJavaScriptAsset, IndividualZipAsset, IndividualVastAsset, IndividualDaastAsset, IndividualUrlAsset, IndividualWebhookAsset, IndividualBriefAsset, IndividualCatalogAsset, IndividualDisplayTagAsset, IndividualPublishedPostAsset, IndividualCardAsset, IndividualPixelTrackerAsset, IndividualVastTrackerAsset, IndividualDaastTrackerAsset,)
@@ -351,7 +359,7 @@ class GroupImageAsset(BaseGroupAsset):
     Image asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/0')
-    asset_type: Literal['image']
+    asset_type: Annotated[Literal['image'], PinnedDefault]
     requirements: Annotated[ImageAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -360,7 +368,7 @@ class GroupVideoAsset(BaseGroupAsset):
     Video asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/1')
-    asset_type: Literal['video']
+    asset_type: Annotated[Literal['video'], PinnedDefault]
     requirements: Annotated[VideoAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -369,7 +377,7 @@ class GroupAudioAsset(BaseGroupAsset):
     Audio asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/2')
-    asset_type: Literal['audio']
+    asset_type: Annotated[Literal['audio'], PinnedDefault]
     requirements: Annotated[AudioAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -378,7 +386,7 @@ class GroupTextAsset(BaseGroupAsset):
     Text asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/3')
-    asset_type: Literal['text']
+    asset_type: Annotated[Literal['text'], PinnedDefault]
     requirements: Annotated[TextAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -387,7 +395,7 @@ class GroupMarkdownAsset(BaseGroupAsset):
     Markdown asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/4')
-    asset_type: Literal['markdown']
+    asset_type: Annotated[Literal['markdown'], PinnedDefault]
     requirements: Annotated[MarkdownAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -396,7 +404,7 @@ class GroupHtmlAsset(BaseGroupAsset):
     HTML asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/5')
-    asset_type: Literal['html']
+    asset_type: Annotated[Literal['html'], PinnedDefault]
     requirements: Annotated[HTMLAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -405,7 +413,7 @@ class GroupCssAsset(BaseGroupAsset):
     CSS asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/6')
-    asset_type: Literal['css']
+    asset_type: Annotated[Literal['css'], PinnedDefault]
     requirements: Annotated[CSSAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -414,7 +422,7 @@ class GroupJavaScriptAsset(BaseGroupAsset):
     JavaScript asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/7')
-    asset_type: Literal['javascript']
+    asset_type: Annotated[Literal['javascript'], PinnedDefault]
     requirements: Annotated[JavaScriptAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -423,7 +431,7 @@ class GroupZipAsset(BaseGroupAsset):
     Zip-bundled asset in group (HTML5 banner bundles, etc.)
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/8')
-    asset_type: Literal['zip']
+    asset_type: Annotated[Literal['zip'], PinnedDefault]
 
 
 class GroupVastAsset(BaseGroupAsset):
@@ -431,7 +439,7 @@ class GroupVastAsset(BaseGroupAsset):
     VAST asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/9')
-    asset_type: Literal['vast']
+    asset_type: Annotated[Literal['vast'], PinnedDefault]
     requirements: Annotated[VASTAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -440,7 +448,7 @@ class GroupDaastAsset(BaseGroupAsset):
     DAAST asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/10')
-    asset_type: Literal['daast']
+    asset_type: Annotated[Literal['daast'], PinnedDefault]
     requirements: Annotated[DAASTAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -449,7 +457,7 @@ class GroupUrlAsset(BaseGroupAsset):
     URL asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/11')
-    asset_type: Literal['url']
+    asset_type: Annotated[Literal['url'], PinnedDefault]
     requirements: Annotated[URLAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -458,7 +466,7 @@ class GroupWebhookAsset(BaseGroupAsset):
     Webhook asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/12')
-    asset_type: Literal['webhook']
+    asset_type: Annotated[Literal['webhook'], PinnedDefault]
     requirements: Annotated[WebhookAssetRequirements | None, OmittedNotNull] = None
 
 
@@ -467,7 +475,7 @@ class GroupBriefAsset(BaseGroupAsset):
     Brief asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/13')
-    asset_type: Literal['brief']
+    asset_type: Annotated[Literal['brief'], PinnedDefault]
 
 
 class GroupCatalogAsset(BaseGroupAsset):
@@ -475,7 +483,7 @@ class GroupCatalogAsset(BaseGroupAsset):
     Catalog asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/14')
-    asset_type: Literal['catalog']
+    asset_type: Annotated[Literal['catalog'], PinnedDefault]
     requirements: Annotated[CatalogRequirements | None, OmittedNotNull] = None
 
 
@@ -484,7 +492,7 @@ class GroupDisplayTagAsset(BaseGroupAsset):
     Third-party display tag asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/15')
-    asset_type: Literal['display_tag']
+    asset_type: Annotated[Literal['display_tag'], PinnedDefault]
 
 
 class GroupPublishedPostAsset(BaseGroupAsset):
@@ -492,7 +500,7 @@ class GroupPublishedPostAsset(BaseGroupAsset):
     Published post asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/16')
-    asset_type: Literal['published_post']
+    asset_type: Annotated[Literal['published_post'], PinnedDefault]
 
 
 class GroupCardAsset(BaseGroupAsset):
@@ -500,7 +508,7 @@ class GroupCardAsset(BaseGroupAsset):
     Card asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/17')
-    asset_type: Literal['card']
+    asset_type: Annotated[Literal['card'], PinnedDefault]
 
 
 class GroupPixelTrackerAsset(BaseGroupAsset):
@@ -508,7 +516,7 @@ class GroupPixelTrackerAsset(BaseGroupAsset):
     Pixel tracker asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/18')
-    asset_type: Literal['pixel_tracker']
+    asset_type: Annotated[Literal['pixel_tracker'], PinnedDefault]
 
 
 class GroupVastTrackerAsset(BaseGroupAsset):
@@ -516,7 +524,7 @@ class GroupVastTrackerAsset(BaseGroupAsset):
     VAST tracker asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/19')
-    asset_type: Literal['vast_tracker']
+    asset_type: Annotated[Literal['vast_tracker'], PinnedDefault]
 
 
 class GroupDaastTrackerAsset(BaseGroupAsset):
@@ -524,7 +532,7 @@ class GroupDaastTrackerAsset(BaseGroupAsset):
     DAAST tracker asset in group
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1/properties/assets/items/oneOf/20')
-    asset_type: Literal['daast_tracker']
+    asset_type: Annotated[Literal['daast_tracker'], PinnedDefault]
 
 
 class RepeatableGroupAsset(AdCPBaseModel):
@@ -532,7 +540,7 @@ class RepeatableGroupAsset(AdCPBaseModel):
     Repeatable asset group (for carousels, slideshows, playlists, etc.)
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format.json', pointer='#/properties/assets/items/oneOf/1')
-    item_type: Annotated[Literal['repeatable_group'], Field(description='Discriminator indicating this is a repeatable asset group')]
+    item_type: Annotated[Literal['repeatable_group'], Field(description='Discriminator indicating this is a repeatable asset group'), PinnedDefault]
     asset_group_id: Annotated[str, Field(description="Identifier for this asset group (e.g., 'product', 'slide', 'card')")]
     required: Annotated[StrictBool, Field(description='Whether this asset group is required. If true, at least min_count repetitions must be provided.')]
     min_count: Annotated[NonNegativeInt, Field(description='Minimum number of repetitions required (if group is required) or allowed (if optional)')]

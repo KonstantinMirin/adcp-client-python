@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, PinnedDefault, SchemaRef
 from adcp.types.constraints import AgentReportingDestinationFileTransferDestinationTransport
 
 from .reporting_dataset_share_destination import ReportingDatasetShareDestination
@@ -57,7 +57,7 @@ class ReportingDeliveryMethodFileTransfer(ReportingDeliveryMethod):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-method.json', pointer='#/oneOf/0')
-    pattern: Annotated[Literal['file_transfer'], Field(description='Immutable file/object publication with a manifest-last commit boundary.')]
+    pattern: Annotated[Literal['file_transfer'], Field(description='Immutable file/object publication with a manifest-last commit boundary.'), PinnedDefault]
     transport: Annotated[AgentReportingDestinationFileTransferDestinationTransport, Field(description='Storage transport such as s3, gcs, azure_blob, or sftp.')]
     orchestration: ReportingOrchestration
     destination: ReportingWriteDestination
@@ -69,7 +69,7 @@ class DatasetShare(ReportingDeliveryMethod):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-method.json', pointer='#/oneOf/1')
-    pattern: Annotated[Literal['dataset_share'], Field(description="Producer-hosted relation or share read through the intended recipient's access path.")]
+    pattern: Annotated[Literal['dataset_share'], Field(description="Producer-hosted relation or share read through the intended recipient's access path."), PinnedDefault]
     transport: Annotated[AgentReportingDestinationFileTransferDestinationTransport, Field(description='Sharing transport such as delta_sharing, snowflake_secure_sharing, or bigquery_authorized_view.')]
     orchestration: ReportingOrchestration
     destination: ReportingDatasetShareDestination
@@ -80,7 +80,7 @@ class WarehouseMaterialization(ReportingDeliveryMethod):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-method.json', pointer='#/oneOf/2')
-    pattern: Annotated[Literal['warehouse_materialization'], Field(description='Exact-revision publication into a warehouse relation or partition.')]
+    pattern: Annotated[Literal['warehouse_materialization'], Field(description='Exact-revision publication into a warehouse relation or partition.'), PinnedDefault]
     transport: Annotated[AgentReportingDestinationFileTransferDestinationTransport, Field(description='Warehouse or transfer transport such as bigquery, snowflake, databricks_sql, or gam_bigquery_transfer.')]
     orchestration: ReportingOrchestration
     destination: ReportingWriteDestination

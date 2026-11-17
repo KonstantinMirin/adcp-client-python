@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 from adcp.types.constraints import StrMinLen1MaxLen1000, StrMinLen1MaxLen2000
 from adcp.types.envelopes import AdcpResponse
@@ -51,7 +51,7 @@ class RefinementAppliedItemRequest(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/refinement_applied/items/oneOf/0')
-    scope: Annotated[Literal['request'], Field(description="Echoes scope 'request' from the corresponding refine entry.")]
+    scope: Annotated[Literal['request'], Field(description="Echoes scope 'request' from the corresponding refine entry."), PinnedDefault]
     status: Annotated[RefinementAppliedItemRequestStatus, Field(description="'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled — see notes for details. 'unable': the seller could not fulfill the ask — see notes for why.")]
     notes: Annotated[str | None, Field(description="Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."), OmittedNotNull] = None
 
@@ -64,7 +64,7 @@ class RefinementAppliedItemProduct(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/refinement_applied/items/oneOf/1')
-    scope: Annotated[Literal['product'], Field(description="Echoes scope 'product' from the corresponding refine entry.")]
+    scope: Annotated[Literal['product'], Field(description="Echoes scope 'product' from the corresponding refine entry."), PinnedDefault]
     product_id: Annotated[str, Field(description='Echoes product_id from the corresponding refine entry.')]
     status: Annotated[RefinementAppliedItemProductStatus, Field(description="'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled — see notes for details. 'unable': the seller could not fulfill the ask — see notes for why.")]
     notes: Annotated[str | None, Field(description="Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."), OmittedNotNull] = None
@@ -78,7 +78,7 @@ class RefinementAppliedItemProposal(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/refinement_applied/items/oneOf/2')
-    scope: Annotated[Literal['proposal'], Field(description="Echoes scope 'proposal' from the corresponding refine entry.")]
+    scope: Annotated[Literal['proposal'], Field(description="Echoes scope 'proposal' from the corresponding refine entry."), PinnedDefault]
     proposal_id: Annotated[str, Field(description='Echoes proposal_id from the corresponding refine entry.')]
     status: Annotated[RefinementAppliedItemProposalStatus, Field(description="'applied': the ask was fulfilled. 'partial': the ask was partially fulfilled — see notes for details. 'unable': the seller could not fulfill the ask — see notes for why.")]
     notes: Annotated[str | None, Field(description="Seller explanation of what was done, what couldn't be done, or why. Recommended when status is 'partial' or 'unable'."), OmittedNotNull] = None
