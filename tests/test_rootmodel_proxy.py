@@ -21,17 +21,19 @@ from adcp.types import (
     Product,
     ReportingCapabilities,
 )
-
-# `Product.pricing_options` states `core/pricing_option.json`, so its elements
-# are THAT union's branches. The flat `CpmPricingOption` / `FlatRatePricingOption`
-# name a different subject -- the standalone `pricing-options/cpm-option.json`
-# document -- and a value built from it is not a value this field admits.
 from adcp.types.domains.core.pricing_option import PricingOptionCpm, PricingOptionFlatRate
 
 
 @pytest.fixture
 def product_with_pricing() -> Product:
-    """Create a Product with pricing options for testing."""
+    """Create a Product with pricing options for testing.
+
+    ``Product.pricing_options`` states ``core/pricing_option.json``, so its
+    elements are THAT union's branches. The flat ``CpmPricingOption`` /
+    ``FlatRatePricingOption`` name a different subject -- the standalone
+    ``pricing-options/cpm-option.json`` document -- and a value built from one
+    of those is not a value this field admits.
+    """
     return Product(
         product_id="test",
         name="Test Product",
