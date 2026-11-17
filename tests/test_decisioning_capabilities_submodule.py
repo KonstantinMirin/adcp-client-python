@@ -14,11 +14,27 @@ import fails here before adopters hit it.
 
 from __future__ import annotations
 
+import typing
+
 import pytest
 
 
 def test_wire_spec_names_resolve_in_submodule() -> None:
-    """Adopter-facing names match the AdCP wire spec field types 1:1."""
+    """Adopter-facing names match the AdCP wire spec field types 1:1.
+
+    **The WORD is this submodule's; the CLASS NAME is the document's position.**
+    ``rebuild-plan.md`` §4 names a nested class ``pascal_case(property)`` and
+    resolves a collision by FIRST FIT down an ordered candidate list, so
+    ``#/properties/account`` is ``GetAdCPCapabilitiesResponseAccount`` wherever
+    a sibling document already holds ``Account``. §4 also says why pinning
+    ``__name__`` here grades the wrong thing: *"a name is not an acceptance
+    fact"* -- moving along the candidate list changes nothing an instance can
+    observe.
+
+    So each adopter-facing word is checked against the document position it
+    serves (``__adcp_schema__``), which is the mapping that would actually
+    drift, rather than against the spelling the generator derived for it.
+    """
     from adcp.decisioning.capabilities import (
         Account,
         Adcp,
@@ -29,15 +45,26 @@ def test_wire_spec_names_resolve_in_submodule() -> None:
         Targeting,
     )
 
+    capabilities = "protocol/get-adcp-capabilities-response.json"
     # Spot-check a few — full surface is covered by ``__all__``.
-    assert Account.__name__ == "Account"
-    assert MediaBuy.__name__ == "MediaBuy"
-    assert Creative.__name__ == "Creative"
-    assert Adcp.__name__ == "Adcp"
-    assert Targeting.__name__ == "Targeting"
-    assert IdempotencySupported.__name__ == "Idempotency"  # the supported variant
+    assert Account.__adcp_schema__.document == capabilities
+    assert Account.__adcp_schema__.pointer == "#/properties/account"
+    assert MediaBuy.__adcp_schema__.pointer == "#/properties/media_buy"
+    assert Creative.__adcp_schema__.pointer == "#/properties/creative"
+    assert Adcp.__adcp_schema__.pointer == "#/properties/adcp"
+    assert (
+        Targeting.__adcp_schema__.pointer
+        == "#/properties/media_buy/properties/execution/properties/targeting"
+    )
+    # The two idempotency variants are the two branches of one ``oneOf``, named
+    # for what distinguishes them rather than for their index.
     assert IdempotencyUnsupported is not IdempotencySupported
-    assert IdempotencyUnsupported.__name__.startswith("Idempotency")  # the unsupported variant
+    assert IdempotencySupported.__adcp_schema__.pointer == (
+        "#/properties/adcp/properties/idempotency/oneOf/0"
+    )
+    assert IdempotencyUnsupported.__adcp_schema__.pointer == (
+        "#/properties/adcp/properties/idempotency/oneOf/1"
+    )
 
 
 def test_preview_capability_models_construct_with_bundled_creative() -> None:
@@ -390,12 +417,18 @@ def test_dual_transport_serve_registers_upstream_pool_shutdown() -> None:
 
 
 def test_signals_features_and_content_standards_re_exported() -> None:
-    """``SignalsFeatures`` (codegen ``Features2`` for ``Signals.features``)
-    and ``ContentStandards`` (the ``MediaBuy.content_standards`` type, which
-    collides with the unrelated wire ``adcp.types.ContentStandards``) are
-    surfaced through :mod:`adcp.decisioning.capabilities` so adopters
-    declaring deep Signals / MediaBuy blocks don't have to dig into
-    the generated tree.
+    """``SignalsFeatures`` (``Signals.features``) and ``ContentStandards``
+    (the ``MediaBuy.content_standards`` type, which collides with the unrelated
+    wire ``adcp.types.ContentStandards``) are surfaced through
+    :mod:`adcp.decisioning.capabilities` so adopters declaring deep Signals /
+    MediaBuy blocks don't have to dig into the generated tree.
+
+    The class the collision resolves to is ``MediaBuyContentStandards`` --
+    §4's candidate list by first fit, with the parent property supplying the
+    distinguishing word. The assertion is that each word binds the type its
+    PARENT FIELD takes, which is what an adopter's declaration depends on; the
+    old ``__name__`` check pinned the previous generator's spelling
+    (``Features2``) and §4 replaced the derivation that produced it.
     """
     from adcp.decisioning.capabilities import (
         ContentStandards,
@@ -407,7 +440,17 @@ def test_signals_features_and_content_standards_re_exported() -> None:
 
     # Content-standards collision guard — same pattern as Account / MediaBuy / Creative.
     assert ContentStandards is not WireContentStandards
-    assert ContentStandards.__name__ == "ContentStandards"
+    assert ContentStandards.__adcp_schema__.pointer == (
+        "#/properties/media_buy/properties/content_standards"
+    )
+    assert WireContentStandards.__adcp_schema__.document == (
+        "content-standards/content-standards.json"
+    )
+    # Each word is the type its own parent field takes.
+    assert ContentStandards in typing.get_args(
+        MediaBuy.model_fields["content_standards"].annotation
+    )
+    assert SignalsFeatures in typing.get_args(Signals.model_fields["features"].annotation)
 
     # SignalsFeatures usable on a Signals declaration.
     sig = Signals(features=SignalsFeatures(catalog_signals=True))

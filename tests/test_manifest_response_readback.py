@@ -360,12 +360,25 @@ def test_nested_readback_accepts_known_source_models(case):
 
 
 def test_nested_build_readback_preserves_envelopes_and_constraints():
+    """The envelope is carried where the document STATES it, and nowhere else.
+
+    ``media-buy/build-creative-response.json#/oneOf/2`` composes
+    ``core/version-envelope.json``, so the response branch carries
+    ``adcp_version`` -- and its ``creatives`` items and their ``variants``
+    items state no envelope at all. Reading 1 is what decides this: a class
+    accepts exactly what its own document accepts, so a nested item class that
+    inherited ``adcp_version`` would admit a property no node of the document
+    states, at every position of the array. The constraints the items DO state
+    are asserted below and are unchanged.
+    """
     model, payload = response_case("build-variants")
     response = model.model_validate(payload)
     creative = response.creatives[0]
     variant = creative.variants[0]
+    assert isinstance(response, AdcpVersionEnvelope)
     for node in (creative, variant):
-        assert isinstance(node, AdcpVersionEnvelope)
+        assert not isinstance(node, AdcpVersionEnvelope)
+        assert "adcp_version" not in type(node).model_fields
         assert_publicly_addressed(type(node))
 
     payload["creatives"][0]["variants"][0]["rank"] = 0
@@ -383,12 +396,19 @@ def test_nested_build_readback_preserves_envelopes_and_constraints():
 
 
 def test_build_readback_preserves_empty_and_error_branch_rules():
+    """Both payloads carry the envelope's own ``status``, for ``response_case``'s
+    reason: it is required one ``allOf`` up and these documents compose it. A
+    payload omitting it is refused on ``status`` FIRST -- ``missing ('status',)``
+    precedes ``too_short ('creative_manifests',)`` -- so the array rule this
+    test exists for would be read out of ``errors()[0]`` of a different refusal.
+    """
     with pytest.raises(ValidationError) as empty_manifests:
-        BuildCreativeMultiSuccess.model_validate({"creative_manifests": []})
+        BuildCreativeMultiSuccess.model_validate({"status": "completed", "creative_manifests": []})
     assert empty_manifests.value.errors()[0]["type"] == "too_short"
 
     response = BuildCreativeVariantSuccess.model_validate(
         {
+            "status": "completed",
             "creatives": [
                 {
                     "build_creative_id": "creative-1",

@@ -575,10 +575,34 @@ async def test_create_media_buy_rejects_disallowed_pricing_model(
     handler: PlatformHandler,
     store: InMemoryProposalStore,
 ) -> None:
-    """Buyer requests a pricing_model outside the recipe's overlap →
-    INVALID_REQUEST with field='packages[i].pricing_option_id' before
-    the adapter runs. Per § D4.
+    """The buyer's attempt is refused before the adapter runs — by the DOCUMENT.
+
+    § D4's gate reads a buyer's ``packages[]`` against the recipe's
+    ``capability_overlap`` and raises ``INVALID_REQUEST`` at
+    ``packages[i].pricing_option_id``. This test crafted a request carrying
+    ``proposal_id`` AND ``packages`` to reach it.
+
+    ``media-buy/create-media-buy-request.json``'s root ``anyOf`` forbids that
+    pairing, and now lowers to BRANCH CLASSES that enforce it (``rebuild-plan.md``
+    §4, *"a base plus one class per branch"*):
+    ``#/anyOf/2`` ("Committed proposal execution") requires ``proposal_id`` and
+    states ``not: {anyOf: [{required: [packages]}, …]}``; ``#/anyOf/0`` and
+    ``#/anyOf/1`` require ``packages`` and forbid ``proposal_id``. So the
+    fixture satisfies no branch and is refused at REQUEST VALIDATION -- earlier
+    than the gate, and still before the adapter runs, which is what this test
+    exists to guarantee.
+
+    § D4's refusal itself stays graded, including the exact field path and the
+    ``update_media_buy`` prefix, by ``tests/test_proposal_lifecycle.py``'s
+    ``validate_capability_overlap`` tests. What is NOT reachable through a
+    document the schema admits is the create-path gate over BUYER-SUPPLIED
+    packages: ``maybe_hydrate_recipes_for_create_media_buy`` returns early
+    without ``proposal_id``, and with one the document permits no ``packages``
+    for it to read -- so only DERIVED packages reach it there. Recorded in
+    FINDINGS-stale.md as a question for the owner, not fixed here.
     """
+    from pydantic import ValidationError
+
     from adcp.types import CreateMediaBuyRequest, GetProductsRequest
 
     # Walk to COMMITTED.
@@ -602,32 +626,47 @@ async def test_create_media_buy_rejects_disallowed_pricing_model(
         ToolContext(),
     )
 
-    # Buyer crafts a packages array with pricing_model=cpcv (overlap is cpm).
-    cmb_req = CreateMediaBuyRequest.model_validate(
-        {
-            "proposal_id": PROPOSAL_ID,
-            "total_budget": {"amount": 50000, "currency": "USD"},
-            "start_time": "2026-04-01T00:00:00Z",
-            "end_time": "2026-06-30T23:59:59Z",
-            "buyer_ref": "test-buyer-rej",
-            "idempotency_key": _CMB_IDEM + "reject",
-            "brand": _BRAND,
-            "account": _ACCOUNT,
-            "packages": [
-                {
-                    "buyer_ref": "pkg-1",
-                    "product_id": "ctv-premium-q2",
-                    "pricing_option_id": "po-ctv-cpm",
-                    "_resolved_pricing_model": "cpcv",  # outside overlap
-                    "budget": 10000,
-                }
-            ],
-        }
+    # Buyer crafts a packages array with pricing_model=cpcv (overlap is cpm),
+    # alongside the proposal it means to execute.
+    crafted = {
+        "proposal_id": PROPOSAL_ID,
+        "total_budget": {"amount": 50000, "currency": "USD"},
+        "start_time": "2026-04-01T00:00:00Z",
+        "end_time": "2026-06-30T23:59:59Z",
+        "buyer_ref": "test-buyer-rej",
+        "idempotency_key": _CMB_IDEM + "reject",
+        "brand": _BRAND,
+        "account": _ACCOUNT,
+        "packages": [
+            {
+                "buyer_ref": "pkg-1",
+                "product_id": "ctv-premium-q2",
+                "pricing_option_id": "po-ctv-cpm",
+                "_resolved_pricing_model": "cpcv",  # outside overlap
+                "budget": 10000,
+            }
+        ],
+    }
+    with pytest.raises(ValidationError) as exc_info:
+        CreateMediaBuyRequest.model_validate(crafted)
+
+    reasons = str(exc_info.value)
+    # Each branch says what it refused the pairing for, and names itself.
+    assert "which the document forbids" in reasons
+    assert "#/anyOf/0 (ExplicitPackagesWithFixedAllocation)" in reasons
+    assert "#/anyOf/2 (CommittedProposalExecution)" in reasons
+    assert {"proposal_id", "packages"} & {
+        error["loc"][0] for error in exc_info.value.errors() if error["loc"]
+    }
+
+    # Dropping ``packages`` leaves the committed-proposal branch, which is the
+    # shape the document gives a buyer executing a proposal: the allocation is
+    # the SELLER's, derived from the proposal it committed.
+    executed = CreateMediaBuyRequest.model_validate(
+        {key: value for key, value in crafted.items() if key != "packages"}
     )
-    with pytest.raises(AdcpError) as exc_info:
-        await handler.create_media_buy(cmb_req, ToolContext())
-    assert exc_info.value.code == "INVALID_REQUEST"
-    assert "packages[0].pricing_option_id" in (exc_info.value.field or "")
+    assert type(executed).__name__ == "CommittedProposalExecution"
+    assert executed.packages is None
 
 
 # ---------------------------------------------------------------------------

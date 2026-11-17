@@ -162,11 +162,28 @@ def test_non_schema_symbol_stays_light() -> None:
 
 
 def test_schema_symbol_triggers_build() -> None:
-    """Accessing a schema symbol realizes the graph — 'asking for schema symbols'."""
+    """Accessing a schema symbol realizes the graph — 'asking for schema symbols'.
+
+    **The module a first access walks through is the EMITTED one.**
+    ``adcp.types._generated`` was the flat internal namespace the previous
+    layering routed every symbol through (``CLAUDE.md``'s import-architecture
+    diagram, ``domains/`` → ``_generated`` → ``aliases`` → ``_eager``). The
+    rebuild emits the tree at ``adcp.types._schemas/<domain>/<schema>.py``,
+    where every class is DEFINED, and the facade resolves a name to its own
+    module -- so what proves the graph was realized is the schema module that
+    defines ``Product``, not a consolidation layer it no longer passes through.
+
+    Both halves are asserted in one subprocess so the "before" is a fact of
+    this interpreter rather than of the suite's import order.
+    """
     out = _run(
-        "import sys; from adcp import Product;" "print('adcp.types._generated' in sys.modules)"
+        "import sys, adcp.types;"
+        "module = 'adcp.types._schemas.core.product';"
+        "print(module in sys.modules);"
+        "from adcp import Product;"
+        "print(module in sys.modules)"
     )
-    assert out == "True"
+    assert out.splitlines() == ["False", "True"], out
 
 
 # --------------------------------------------------------------------------- #

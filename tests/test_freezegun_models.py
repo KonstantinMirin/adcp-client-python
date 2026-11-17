@@ -91,7 +91,13 @@ else:
             pass
         else:
             raise AssertionError('prewarming changed strict construction defaults')
-        assert LegacyFormatId(agent_url='https://creative.example', id='display').agent_url == 'https://creative.example'
+        # A `format: uri` node holds a URL OBJECT, not a `str`: the index's
+        # two-URL-types decision (rebuild-plan.md §2) makes every other
+        # `format: uri` node `AnyUrl` with a host required, and this SDK's
+        # wire-preserving `adcp.types._wire.WireAnyUrl` is that type. So the
+        # comparison is against `str(...)`, which is the value a client puts on
+        # the wire; `== '<the string>'` asks a `_BaseUrl` to equal a `str`.
+        assert str(LegacyFormatId(agent_url='https://creative.example', id='display').agent_url) == 'https://creative.example'
     assert datetime.date is real_date
     assert datetime.datetime is real_datetime
     # Cleanup also holds when user code raises inside a successfully started freeze.

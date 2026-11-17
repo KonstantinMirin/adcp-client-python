@@ -462,10 +462,25 @@ async def test_empty_established_catalog_has_no_purchase_continuation() -> None:
 
 
 def test_completed_payload_does_not_invent_newer_response_defaults() -> None:
+    """The payload is the seller's own fields, and nothing a newer model adds.
+
+    ``_completed_payload`` dumps with ``exclude_unset``, so what reaches the
+    buyer is what the seller SET. ``cache_scope`` and ``replayed`` are newer
+    response properties with model-side defaults, and neither appears.
+
+    ``status`` has left that list, because it is no longer a default the model
+    could invent: ``core/protocol-envelope.json`` REQUIRES it and
+    ``media-buy/get-products-response.json`` composes that envelope one
+    ``allOf`` up (``CLAUDE.md`` → "REQUIREDNESS IS A CONJUNCTION"), so a 3.x
+    seller states it or its response is refused outright. It appears here
+    because the wire said so and with the value the wire gave -- which is the
+    opposite of an invention, and is why the assertion is on the VALUE now.
+    """
     client = _Client("3.2-rc.1", {})
     tools = ["get_products", "create_media_buy"]
     coordinator = MediaBuyLifecycleCoordinator(client, _caps(["3.0"], tools=tools), tools)
     wire = copy.deepcopy(_CASES[1]["legacy_response"])
+    wire["status"] = "completed"
     typed = LegacyGetProductsResponse.model_validate(wire)
 
     payload = coordinator._completed_payload(
@@ -476,7 +491,7 @@ def test_completed_payload_does_not_invent_newer_response_defaults() -> None:
 
     assert "cache_scope" not in payload
     assert "replayed" not in payload
-    assert "status" not in payload
+    assert payload["status"] == wire["status"]
 
 
 @pytest.mark.asyncio

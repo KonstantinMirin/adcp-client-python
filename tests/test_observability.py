@@ -66,10 +66,15 @@ async def test_client_task_creates_one_bounded_span(
     client = ADCPClient(_config())
 
     async def completed(_params: dict[str, Any]) -> TaskResult[Any]:
+        # ``status`` is the envelope's, required by
+        # ``core/protocol-envelope.json`` one ``allOf`` up from
+        # ``media-buy/get-products-response.json`` -- so a stub seller that
+        # omits it hands the client a document the protocol refuses, and the
+        # client reports a parse failure rather than the span this test reads.
         return TaskResult(
             status=TaskStatus.COMPLETED,
             success=True,
-            data={"products": []},
+            data={"status": "completed", "products": []},
         )
 
     with patch.object(client.adapter, "get_products", new=completed):
@@ -127,10 +132,15 @@ async def test_nested_execute_task_does_not_duplicate_spans(
     client = ADCPClient(_config())
 
     async def completed(_params: dict[str, Any]) -> TaskResult[Any]:
+        # ``status`` is the envelope's, required by
+        # ``core/protocol-envelope.json`` one ``allOf`` up from
+        # ``media-buy/get-products-response.json`` -- so a stub seller that
+        # omits it hands the client a document the protocol refuses, and the
+        # client reports a parse failure rather than the span this test reads.
         return TaskResult(
             status=TaskStatus.COMPLETED,
             success=True,
-            data={"products": []},
+            data={"status": "completed", "products": []},
         )
 
     with patch.object(client.adapter, "get_products", new=completed):
