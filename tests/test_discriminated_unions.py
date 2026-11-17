@@ -192,8 +192,8 @@ class TestResponseUnions:
         # `status` is required by core/protocol-envelope.json, which this
         # document composes via allOf. Upstream's generator dropped
         # allOf-composed required fields, so their fixtures omit it.
-        # `errors` is REQUIRED here, which marks the rejection arm of the
-        # oneOf; the envelope says such an arm emits `rejected`.
+        # `errors` is REQUIRED here, which marks the rejection branch of the
+        # oneOf; the envelope says such a branch emits `rejected`.
         error = CreateMediaBuyErrorResponse(
             status="rejected",
             errors=[{"code": "invalid_budget", "message": "Budget too low"}],
@@ -219,8 +219,8 @@ class TestResponseUnions:
         # `status` is required by core/protocol-envelope.json, which this
         # document composes via allOf. Upstream's generator dropped
         # allOf-composed required fields, so their fixtures omit it.
-        # `errors` is REQUIRED here, which marks the rejection arm of the
-        # oneOf; the envelope says such an arm emits `rejected`.
+        # `errors` is REQUIRED here, which marks the rejection branch of the
+        # oneOf; the envelope says such a branch emits `rejected`.
         error = ActivateSignalErrorResponse(
             status="rejected",
             errors=[{"code": "unauthorized", "message": "Not authorized"}],
@@ -373,8 +373,8 @@ class TestSerializationRoundtrips:
         # `status` is required by core/protocol-envelope.json, which this
         # document composes via allOf. Upstream's generator dropped
         # allOf-composed required fields, so their fixtures omit it.
-        # `errors` is REQUIRED here, which marks the rejection arm of the
-        # oneOf; the envelope says such an arm emits `rejected`.
+        # `errors` is REQUIRED here, which marks the rejection branch of the
+        # oneOf; the envelope says such a branch emits `rejected`.
         original = CreateMediaBuyErrorResponse(
             status="rejected",
             errors=[{"code": "invalid", "message": "Invalid"}],
@@ -848,7 +848,7 @@ class TestRootModelUnwrapForSubclassing:
         assert not isinstance(public_alias, type)
 
     def test_account_reference_union_validates_and_arms_remain_subclassable(self):
-        """Consumers can validate the union and customize a concrete arm."""
+        """Consumers can validate the union and customize a concrete branch."""
         from pydantic import ConfigDict, TypeAdapter
 
         from adcp.types import AccountReference, AccountReferenceById

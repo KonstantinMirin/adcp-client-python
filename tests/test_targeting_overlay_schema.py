@@ -16,7 +16,7 @@ from adcp.server.mcp_tools import (
 from adcp.types import TargetingOverlayInput
 
 # ``packages`` is optional but not nullable on every request, so the
-# advertised node is the array itself rather than an ``anyOf`` with a null arm
+# advertised node is the array itself rather than an ``anyOf`` with a null branch
 # (#1547; the canonical create/update redeclarations inherit the generated
 # never-null marker since #1620).
 _PACKAGE_PATH = ("properties", "packages", "items", "properties", "targeting_overlay")

@@ -211,7 +211,7 @@ def test_nonempty_map_constraint_is_preserved(
         model.model_validate({field: {}})
     schema = model.model_json_schema()["properties"][field]
     assert schema.get("minProperties") == 1 or any(
-        arm.get("minProperties") == 1 for arm in schema.get("anyOf", [])
+        branch.get("minProperties") == 1 for branch in schema.get("anyOf", [])
     )
 
 
