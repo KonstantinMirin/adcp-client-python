@@ -224,32 +224,35 @@ def test_all_asset_type_aliases_exported():
 
 
 def test_discriminated_union_aliases_point_to_correct_types():
-    """Test that discriminated union aliases point to the correct generated types."""
-    from adcp.types.domains.core.assets.asset_union import (
-        DaastAsset1,
-        DaastAsset2,
-        VastAsset1,
-        VastAsset2,
+    """Test that discriminated union aliases point to the correct generated types.
+
+    Section 4 emits no positional name, so `VastAsset1`, `DaastAsset1` and
+    `PreviewRender1` have no node behind them -- a caller had to count a
+    document's branches to learn which was which. Each branch is now named for
+    the `const` it pins, on its OWN document's module: `core/assets/vast-asset.json`
+    and `core/assets/daast-asset.json` rather than `core/assets/asset-union.json`,
+    which only references them.
+    """
+    from adcp.types.domains.core.assets.daast_asset import DAASTAssetInline, DAASTAssetUrl
+    from adcp.types.domains.core.assets.vast_asset import VASTAssetInline, VASTAssetUrl
+    from adcp.types.domains.creative.preview_render import (
+        PreviewRenderBoth,
+        PreviewRenderHtml,
+        PreviewRenderUrl,
     )
 
-    from adcp.types._generated import (
-        PreviewRender1,
-        PreviewRender2,
-        PreviewRender3,
-    )
-
-    # Preview renders - point to specific variants discriminated by output_format
-    assert UrlPreviewRender is PreviewRender1  # output_format='url'
-    assert HtmlPreviewRender is PreviewRender2  # output_format='html'
-    assert BothPreviewRender is PreviewRender3  # output_format='both'
+    # Preview renders - point to specific branches discriminated by output_format
+    assert UrlPreviewRender is PreviewRenderUrl  # output_format='url'
+    assert HtmlPreviewRender is PreviewRenderHtml  # output_format='html'
+    assert BothPreviewRender is PreviewRenderBoth  # output_format='both'
 
     # VAST assets
-    assert UrlVastAsset is VastAsset1
-    assert InlineVastAsset is VastAsset2
+    assert UrlVastAsset is VASTAssetUrl
+    assert InlineVastAsset is VASTAssetInline
 
     # DAAST assets
-    assert UrlDaastAsset is DaastAsset1
-    assert InlineDaastAsset is DaastAsset2
+    assert UrlDaastAsset is DAASTAssetUrl
+    assert InlineDaastAsset is DAASTAssetInline
 
 
 def test_semantic_aliases_can_be_imported_from_main_package():
