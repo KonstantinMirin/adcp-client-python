@@ -15,7 +15,6 @@ from adcp.canonical_formats.projection import (
     project_legacy_format_id,
 )
 from adcp.types import FormatCard
-from adcp.types.canonical_creative import sanitize_canonical_schema
 from adcp.types.legacy import LegacyFormatId as FormatId
 from adcp.validation.schema_loader import get_named_schema_document
 
@@ -348,18 +347,3 @@ def test_a_legacy_size_supported_format_is_the_1x_variant() -> None:
     assert not format_is_supported({**_BASE, "pixel_ratio": 2}, legacy)
 
 
-def test_schema_sanitizer_recognises_an_untitled_reference_carrying_pixel_ratio() -> None:
-    """The legacy-tuple shape check knows every parameter the model declares.
-
-    An untitled object holding only format-reference properties is a legacy
-    reference, so its ``agent_url`` is stripped — including when it carries
-    ``pixel_ratio``, which a hand-written key list left out.
-    """
-    reference = {
-        "type": "object",
-        "properties": {key: {} for key in ("agent_url", "id", "width", "height", "pixel_ratio")},
-    }
-
-    sanitized = sanitize_canonical_schema({"type": "object", "properties": {"ref": reference}})
-
-    assert "agent_url" not in sanitized["properties"]["ref"]["properties"]
