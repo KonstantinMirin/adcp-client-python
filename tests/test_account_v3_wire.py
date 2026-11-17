@@ -55,7 +55,6 @@ from adcp.types import (
     Authentication,
     AuthorizationRequiredDetails,
     BusinessEntity,
-    CreditLimit,
     DownstreamConnectionRequirement,
     Error,
     GovernanceAgent,
@@ -72,7 +71,17 @@ from adcp.types import (
 # `GovernanceAgent`) and the response-side variant (no authentication
 # field). Importing the response-side type explicitly so the
 # schema-shape regression test can assert the input/output split.
+#
+# CreditLimit comes from the domain path for the same reason: the flat
+# namespace cannot bind the word, because two documents declare it.
+# `adcp.types._adapter.__adcp_refused__["CreditLimit"]` declares the flat
+# spelling DOCUMENT-NO-WORD-NO-IDENTITY against upstream's subject,
+# `account/sync-accounts-response.json`. The subject THIS file builds is
+# `core/account.json#/properties/credit_limit` -- `Account.credit_limit`,
+# the field set two lines below each use -- and that class is emitted and
+# addressed here.
 from adcp.types.domains.core.account import (
+    CreditLimit,
     GovernanceAgent as ResponseGovernanceAgent,
 )
 
