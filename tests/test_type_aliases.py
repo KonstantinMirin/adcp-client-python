@@ -36,6 +36,8 @@ from adcp.types._generated import (
     BuildCreativeResponse1,
     BuildCreativeResponse2,
     BuildCreativeResponse6,
+    CreateMediaBuyResponse1,
+    CreateMediaBuyResponse2,
     SyncAudiencesResponse3,
     SyncCatalogsResponse3,
     SyncCreativesResponse3,
@@ -54,7 +56,6 @@ from adcp.types.aliases import (
 from adcp.types.aliases import (
     CreateMediaBuySuccessResponse as AliasCreateMediaBuySuccessResponse,
 )
-from adcp.types.canonical_creative import CreateMediaBuyResponse1, CreateMediaBuyResponse2
 
 
 def test_aliases_import():
@@ -222,16 +223,17 @@ def test_all_asset_type_aliases_exported():
 
 def test_discriminated_union_aliases_point_to_correct_types():
     """Test that discriminated union aliases point to the correct generated types."""
-    from adcp.types._generated import (
-        PreviewRender1,
-        PreviewRender2,
-        PreviewRender3,
-    )
     from adcp.types.domains.core.assets.asset_union import (
         DaastAsset1,
         DaastAsset2,
         VastAsset1,
         VastAsset2,
+    )
+
+    from adcp.types._generated import (
+        PreviewRender1,
+        PreviewRender2,
+        PreviewRender3,
     )
 
     # Preview renders - point to specific variants discriminated by output_format
@@ -443,11 +445,11 @@ def test_property_id_and_tag_are_constrained_strings():
     compare and hash as their wire value — see #1277.
     """
     import pytest
-    from pydantic import RootModel, ValidationError
 
     # Import directly from the core modules to avoid collision
     from adcp.types.domains.core.property_id import PropertyId as CorePropertyId
     from adcp.types.domains.core.property_tag import PropertyTag
+    from pydantic import RootModel, ValidationError
 
     # Create valid PropertyId and PropertyTag
     prop_id = CorePropertyId("my_property_id")
