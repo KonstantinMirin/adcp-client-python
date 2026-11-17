@@ -5,7 +5,11 @@ These utilities provide access to format assets from the `assets` field.
 
 import pytest
 
-from adcp.types.legacy import LegacyFormat as Format
+# `LegacyFormat` is the v1 named-format DEFINITION, and `adcp.types.legacy` is
+# the `Legacy`-prefixed surface over v1 DOCUMENTS -- a different thing, which does
+# not carry it. CLAUDE.md pins the one address: `adcp.types.core.LegacyFormat`,
+# beside `Format` for the canonical declaration.
+from adcp.types.core import LegacyFormat as Format
 from adcp.utils.format_assets import (
     get_asset_count,
     get_format_assets,

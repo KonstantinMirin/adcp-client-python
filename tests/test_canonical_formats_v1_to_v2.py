@@ -18,7 +18,12 @@ from adcp.canonical_formats import (
 )
 from adcp.canonical_formats.advisory import SDK_ID
 from adcp.types import CanonicalFormatKind
-from adcp.types.legacy import LegacyFormat
+
+# `LegacyFormat` is the v1 named-format DEFINITION, and `adcp.types.legacy` is
+# the `Legacy`-prefixed surface over v1 DOCUMENTS -- a different thing, which does
+# not carry it. CLAUDE.md pins the one address: `adcp.types.core.LegacyFormat`,
+# beside `Format` for the canonical declaration.
+from adcp.types.core import LegacyFormat
 
 _FIXTURES = Path(__file__).parent / "fixtures" / "canonical"
 

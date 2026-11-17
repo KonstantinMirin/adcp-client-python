@@ -8,9 +8,13 @@ import pytest
 
 from adcp.testing import test_agent
 from adcp.types import GetProductsResponse, Product
-from adcp.types.core import TaskResult, TaskStatus
+
+# `LegacyFormat` is the v1 named-format DEFINITION, and `adcp.types.legacy` is
+# the `Legacy`-prefixed surface over v1 DOCUMENTS -- a different thing, which does
+# not carry it. CLAUDE.md pins the one address: `adcp.types.core.LegacyFormat`,
+# beside `Format` for the canonical declaration.
+from adcp.types.core import LegacyFormat, TaskResult, TaskStatus
 from adcp.types.legacy import (
-    LegacyFormat,
     LegacyListCreativeFormatsRequest,
     LegacyListCreativeFormatsResponse,
     LegacyPreviewCreativeResponse1,
