@@ -126,14 +126,24 @@ class TestDictToModelCoercion:
 
 
 class TestFieldModelStringCoercion:
-    """Test that FieldModel lists accept string lists."""
+    """Test that FieldModel lists accept string lists.
+
+    A member's canonical spelling is `UPPER_SNAKE` and the lower-case second
+    spelling beside it is a `MemberAlias` descriptor. `'name'` is the one value
+    in the bundle that gets NO alias, under the compiler's counted
+    `TAKEN_BY_THE_BASE` reason ("a name the enumeration already resolves"):
+    `name = MemberAlias('NAME')` in the class body would shadow
+    `enum.Enum.name` and make `Member.name` return the member instead of
+    `'NAME'`. So `FieldModel.NAME` is the attribute, and the wire value is
+    `'name'` either way.
+    """
 
     def test_fields_accepts_string_list(self):
         """ListCreativesRequest.fields accepts ['creative_id', 'name']."""
         req = ListCreativesRequest(fields=["creative_id", "name", "status"])
         assert len(req.fields) == 3
         assert req.fields[0] == FieldModel.creative_id
-        assert req.fields[1] == FieldModel.name
+        assert req.fields[1] == FieldModel.NAME
         assert req.fields[2] == FieldModel.status
         assert all(isinstance(x, FieldModel) for x in req.fields)
 
@@ -144,8 +154,8 @@ class TestFieldModelStringCoercion:
 
     def test_fields_accepts_mixed_list(self):
         """ListCreativesRequest.fields accepts mixed string/enum list."""
-        req = ListCreativesRequest(fields=["creative_id", FieldModel.name])
-        assert req.fields == [FieldModel.creative_id, FieldModel.name]
+        req = ListCreativesRequest(fields=["creative_id", FieldModel.NAME])
+        assert req.fields == [FieldModel.creative_id, FieldModel.NAME]
 
     def test_all_field_models_coerce(self):
         """All canonical-safe FieldModel values coerce from strings."""
@@ -162,7 +172,7 @@ class TestSortEnumCoercion:
     def test_sort_field_accepts_string(self):
         """Sort.field accepts string value."""
         sort = Sort(field="name", direction=SortDirection.asc)
-        assert sort.field == CreativeSortField.name
+        assert sort.field == CreativeSortField.NAME
         assert isinstance(sort.field, CreativeSortField)
 
     def test_sort_direction_accepts_string(self):
@@ -183,7 +193,7 @@ class TestSortEnumCoercion:
             sort=Sort(field="name", direction="asc"),
             fields=["creative_id"],
         )
-        assert req.sort.field == CreativeSortField.name
+        assert req.sort.field == CreativeSortField.NAME
         assert req.sort.direction == SortDirection.asc
 
 
@@ -223,9 +233,9 @@ class TestBackwardCompatibility:
     def test_explicit_field_model_values_work(self):
         """Existing code using FieldModel enums still works."""
         req = ListCreativesRequest(
-            fields=[FieldModel.creative_id, FieldModel.name],
+            fields=[FieldModel.creative_id, FieldModel.NAME],
         )
-        assert req.fields == [FieldModel.creative_id, FieldModel.name]
+        assert req.fields == [FieldModel.creative_id, FieldModel.NAME]
 
 
 class TestListVariance:
