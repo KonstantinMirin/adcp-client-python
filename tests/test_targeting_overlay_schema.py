@@ -14,7 +14,6 @@ from adcp.server.mcp_tools import (
     _inline_refs,
 )
 from adcp.types import TargetingOverlayInput
-from adcp.types.canonical_creative import sanitize_canonical_schema
 
 # ``packages`` is optional but not nullable on every request, so the
 # advertised node is the array itself rather than an ``anyOf`` with a null arm
@@ -54,14 +53,19 @@ def test_advertised_targeting_mutations_keep_input_only_schema(tool: str) -> Non
     nodes = dict(_targeting_nodes(_inline_refs(advertised)))
     assert nodes.keys() == _TARGETING_PATHS[tool], tool
 
-    # Independent mutation-only reference. Canonical create/update schemas
-    # intentionally sanitize nested creative identities across their graph.
-    # The overlay property is optional, not nullable: the bundled schema
-    # declares the input shape with no null arm, and the advertised node now
-    # states the same (#1547), so the reference is the input shape itself.
+    # Independent mutation-only reference. The overlay property is optional,
+    # not nullable: the bundled schema declares the input shape with no null
+    # branch, and the advertised node now states the same (#1547), so the
+    # reference is the input shape itself.
+    #
+    # The create/update graphs were previously passed through
+    # `adcp.types.canonical_creative.sanitize_canonical_schema`, which stripped
+    # the nested creative identities the old emission carried into them.
+    # `__adcp_refused__["canonical_creative"]` declares that module
+    # UNRESOLVABLE-UPSTREAM; the overlay's own graph states no such identity
+    # here, so the reference is compared unsanitised for every tool and the
+    # assertions below are what prove that.
     expected = _inline_refs(TypeAdapter(TargetingOverlayInput).json_schema())
-    if tool in {"create_media_buy", "update_media_buy"}:
-        expected = sanitize_canonical_schema(expected)
     assert expected["title"] == "TargetingOverlayInput"
     assert expected["type"] == "object"
 
@@ -91,6 +95,22 @@ def test_advertised_targeting_mutations_keep_input_only_schema(tool: str) -> Non
         assert b'"title": "TargetingOverlay"' not in actual_bytes, (tool, path)
 
 
+def _advertised_description(field: dict[str, Any]) -> str | None:
+    """The description a buyer reads off one advertised field node.
+
+    An optional, nullable field advertises as ``{"anyOf": [<the shape>, {"type":
+    "null"}], "default": null}``, and the shape's own ``description`` sits on the
+    branch rather than on the node holding the ``anyOf``. Both positions are the
+    one field's documentation as a reader meets it, so both are looked at here.
+    """
+    if "description" in field:
+        return str(field["description"])
+    for branch in field.get("anyOf", ()):
+        if isinstance(branch, dict) and "description" in branch:
+            return str(branch["description"])
+    return None
+
+
 def test_advertised_targeting_fields_carry_the_description_the_schema_declares() -> None:
     """A buyer reading tools/list sees each targeting field documented.
 
@@ -98,12 +118,15 @@ def test_advertised_targeting_fields_carry_the_description_the_schema_declares()
     and every one of those properties declares a ``description``. A generated
     wrapper per pointed-to position moved the description onto the wrapper's own
     definition and left the field node bare, so the advertised input schema
-    documented 5 of the 37 targeting fields.
+    documented 5 of the 37 targeting fields, and ten stayed bare after the fix.
 
-    The ten still bare are the fields whose schema is a whole-file ``$ref`` (``age_restriction`` is a pointer to an object the generator shares).
-    Pydantic places the description on the referenced definition, and inlining the
-    reference replaces the node that carried it. That is a different behaviour and
-    it applies to ``core/targeting.json`` identically.
+    All 37 are documented now, and the list of exceptions is gone rather than
+    shortened. The ten were the fields whose schema is a whole-file ``$ref``:
+    pydantic put the description on the referenced definition and inlining the
+    reference replaced the node that carried it. This emission states each
+    optional field as an ``anyOf`` over the shape and ``null``, so the shape's
+    description travels on its own branch and ``_inline_refs`` has nothing left
+    to overwrite.
     """
     _ensure_pydantic_schemas_applied(_TARGETING_PATHS)
     advertised = next(
@@ -115,15 +138,5 @@ def test_advertised_targeting_fields_carry_the_description_the_schema_declares()
     assert set(fields) == set(
         TargetingOverlayInput.model_json_schema()["properties"]
     ), "advertised fields drifted from the model"
-    assert sorted(name for name, field in fields.items() if "description" not in field) == [
-        "age_restriction",
-        "collection_list",
-        "collection_list_exclude",
-        "collection_selection",
-        "demographics",
-        "frequency_cap",
-        "placement_selection",
-        "property_list",
-        "property_list_exclude",
-        "signal_targeting_groups",
-    ]
+    assert len(fields) == 37
+    assert [name for name, field in fields.items() if not _advertised_description(field)] == []
