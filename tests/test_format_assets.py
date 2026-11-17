@@ -105,6 +105,12 @@ class TestNormalizeAssetsRequired:
         assets_required = [
             {
                 "asset_group_id": "products",
+                # `core/format.json#/$defs/baseIndividualAsset` requires
+                # `['item_type', 'asset_id', 'asset_type', 'required']`, and each of
+                # the 21 branches requires `asset_type` again as its own const --
+                # so an individual slot with no `asset_type` satisfies no branch.
+                # The fixture stated `item_type: individual` without one.
+                "asset_type": "image",
                 "item_type": "individual",
                 "min_count": 2,
                 "max_count": 10,
