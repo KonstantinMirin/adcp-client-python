@@ -5,22 +5,21 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
-from typing import Any
+from typing import Any, get_args
 
 import pytest
+
+# There is no `adcp.types.domains.bundled`. It was a SECOND generated tree, and
+# the four `bundled-*` cases below were the same claims put to its copy of each
+# class. One bundle compiles to one tree here -- section 4's one class per
+# SUBJECT -- so those cases were the same object twice.
+from adcp.types.domains.core.geo_place_requirement import GeographicPlaceRequirement
+from adcp.types.domains.core.geo_place_system import GeographicPlaceIdentifierSystem
+from adcp.types.domains.core.targeting_overlay_support import PlaceSupport, TargetingOverlaySupport
+from adcp.types.domains.protocol.get_adcp_capabilities_response import Targeting
 from pydantic import BaseModel, ValidationError
 
 from adcp.types import GetAdcpCapabilitiesResponse, GetProductsRequest, GetProductsResponse, Product
-from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
-    GetAdcpCapabilitiesResponse as BundledCapabilities,
-)
-from adcp.types.domains.bundled.protocol.get_adcp_capabilities_response import (
-    Targeting as BundledTargeting,
-)
-from adcp.types.domains.core.geo_place_requirement import GeographicPlaceRequirement
-from adcp.types.domains.core.geo_place_system import GeographicPlaceIdentifierSystem1
-from adcp.types.domains.core.targeting_overlay_support import PlaceSupport, TargetingOverlaySupport
-from adcp.types.domains.protocol.get_adcp_capabilities_response import Targeting
 
 _COUNTRIES = {"US": ["city"]}
 _SUPPORT = {"countries": _COUNTRIES, "current_version": "v1", "system_versions": ["v1"]}
@@ -38,8 +37,25 @@ _MODELS = [
         GeographicPlaceRequirement, "systems", {"countries": _COUNTRIES}, id="requirement"
     ),
     pytest.param(Targeting, "geo_places", _CAPABILITY, id="capabilities"),
-    pytest.param(BundledTargeting, "geo_places", _CAPABILITY, id="bundled-capabilities"),
 ]
+def _registered_systems() -> list[str]:
+    """The tokens `core/geo-place-system.json` registers, read off the annotation.
+
+    The document states the system as a `oneOf` of a token enum and an HTTPS
+    URI. `GeographicPlaceIdentifierSystem1` was the enum half as its own class;
+    this emission lowers the node to one `Annotated` union, so the tokens are
+    the `Literal`'s own arguments and there is no member object to take a
+    `.value` off -- the key is already the plain string the wire carries.
+    """
+    for part in get_args(get_args(GeographicPlaceIdentifierSystem)[0]):
+        tokens = get_args(part)
+        if tokens and all(isinstance(token, str) for token in tokens):
+            return list(tokens)
+    raise AssertionError("no registered-token Literal in GeographicPlaceIdentifierSystem")
+
+
+_REGISTERED_SYSTEMS = _registered_systems()
+
 _SYSTEMS = [
     "geonames",
     "google_ads",
@@ -56,7 +72,6 @@ def test_cold_schema_imports_validate_without_flat_surface_initialization() -> N
             (PlaceSupport, "systems", _SUPPORT),
             (GeographicPlaceRequirement, "systems", {"countries": _COUNTRIES}),
             (Targeting, "geo_places", _CAPABILITY),
-            (BundledTargeting, "geo_places", _CAPABILITY),
         )
     ]
     script = """
@@ -148,17 +163,17 @@ def test_system_keys_round_trip(
 
 
 @pytest.mark.parametrize("model,field,value", _MODELS)
-@pytest.mark.parametrize("system", list(GeographicPlaceIdentifierSystem1))
+@pytest.mark.parametrize("system", _REGISTERED_SYSTEMS)
 def test_registered_enum_keys_become_plain_strings(
     model: type[BaseModel],
     field: str,
     value: dict[str, Any],
-    system: GeographicPlaceIdentifierSystem1,
+    system: str,
 ) -> None:
     result = model.model_validate({field: {system: value}})
     key = next(iter(getattr(result, field)))
     assert type(key) is str
-    assert key == system.value
+    assert key == system
 
 
 @pytest.mark.parametrize("model,field,value", _MODELS)
@@ -256,7 +271,7 @@ def test_overlay_product_and_discovery_parents(system: str, field: str, from_jso
         assert list(wire) == [system]
 
 
-@pytest.mark.parametrize("model", [GetAdcpCapabilitiesResponse, BundledCapabilities])
+@pytest.mark.parametrize("model", [GetAdcpCapabilitiesResponse])
 @pytest.mark.parametrize("system", ["geonames", "https://SELLER.example:443/places/%7eCity"])
 @pytest.mark.parametrize("from_json", [False, True], ids=["python", "json"])
 def test_full_capabilities_response(model: type[BaseModel], system: str, from_json: bool) -> None:
