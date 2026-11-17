@@ -2268,7 +2268,7 @@ class Construction:
         if built.source is Source.BACK_EDGE:
             return built
         screened = built.held and not self.refusals(document, pointer, built.value)
-        if screened and not self._decides(document, settled, built.value):
+        if screened and not self._refuted(document, settled, built.value):
             return built
         first, chosen, elected = built, settled, built if screened else None
         empty = None if built.held else built
@@ -2289,7 +2289,7 @@ class Construction:
                 continue
             if self.refusals(document, pointer, built.value):
                 continue
-            if not self._decides(document, settled, built.value):
+            if not self._refuted(document, settled, built.value):
                 return built
             if elected is None:
                 elected, chosen = built, settled
@@ -2325,12 +2325,37 @@ class Construction:
         partition the section asks of a conditional's value classes: *"a conditional's
         subject is TWO classes -- the condition matching and the condition not matching."*
 
-        **THIS LOOP IS NOT A CAP AND HAS NO PARAMETER.**  It terminates on the node's own
-        statements: an arm is folded in at most once (``taken``), so the number of rounds is
-        bounded by the number of conditional arms the node states, and a round that folds
-        nothing in is the last.  A value that changes its own condition's verdict is
-        therefore re-asked exactly as many times as the document gives it arms to be asked
-        about, and the figure is the document's rather than a budget's.
+        **THE FOLD IS A FIXED POINT AND NOT AN ACCUMULATION, which is that sentence read in
+        BOTH directions.**  "Folded in only where the value MATCHES its condition" is also a
+        statement about the consequents already folded: a round that changes the value changes
+        which conditions it matches, so a consequent the NEW value does not select is a scope
+        the document does not open for it and has to come OUT again.  The loop therefore
+        recomputes the whole selected set from the current value each round and rebuilds from
+        ``views`` plus exactly that set -- never from the set so far.
+
+        **THE COST OF ACCUMULATING WAS FIVE PAIRS OF THE GATE** (``core/macro-declaration.json#``
+        and the four ``macro_declarations/items`` positions that ``$ref`` it, measured
+        2026-11-17).  That document states fifteen conditionals over one object and they chain:
+        the first round reads ``operation`` at its own enum's first member
+        (``translate_to_native``) and ``required`` at the boolean floor (``true``), which
+        selects ``allOf/5`` (*requires* ``performed_by`` and ``translation_target``) and
+        ``allOf/11`` (``unavailable_behavior`` is ``reject``); ``allOf/13`` then pins
+        ``operation`` to ``preserve``, which selects ``allOf/8`` -- whose ``then`` pins
+        ``unavailable_behavior`` to ``preserve`` by ``const`` and forbids both of those keys by
+        ``not``.  With the first two consequents still folded the value carried ``reject`` and
+        both keys, so the node refused its own construction on exactly ``const`` and ``not``: a
+        value satisfying the scenario it no longer selects and violating the one it does.
+        Retracting the stale ones settles it in six rounds on a value the document admits.
+
+        **IT STILL TERMINATES ON THE NODE'S OWN STATEMENTS AND STILL HAS NO PARAMETER.**  The
+        value is a function of the selected set and the selected set a function of the value,
+        so the rounds are a deterministic orbit over the subsets of one finite list: it
+        either reaches a set that selects itself -- the fixed point, and the answer -- or
+        revisits a set it has already built, which IS the cycle and is where the reading
+        stops.  ``seen`` names that back edge the way :meth:`through`'s own ``seen`` does,
+        rather than counting toward a bound; a document whose conditionals have no
+        simultaneous solution is reported by the screen in :meth:`_construct` with the
+        keywords it violates, which is the honest answer and not a round budget.
 
         **AND A CONSEQUENT IS REACHED EXACTLY AS A CONJUNCT IS** (:meth:`_reach`), which a
         measurement forced.  ``{"if": ..., "then": {"$ref": "#/definitions/Shared1"}}`` is
@@ -2348,23 +2373,41 @@ class Construction:
         node's alternatives (:meth:`_decides`) and its other stated cases (:meth:`_stated`)
         are both read over the settled set and not over the set before the fold.
         """
-        taken: set[str] = set()
-        settled = tuple(views)
+        base = tuple(views)
+        #: The consequents the CURRENT value selects, as their pointers alone -- the path
+        #: each was reached by is derived from the set and so says nothing a second time, and
+        #: keying the orbit on it would call two routes to one consequent two different sets.
+        selected: tuple[str, ...] = ()
+        seen: set[tuple[str, ...]] = {selected}
+        #: The FIRST round whose value every conditional the node states already holds of
+        #: (:meth:`_unmet`).  Kept because an orbit that does not settle still walks real
+        #: readings of the node, and a round that satisfies the document's own rule is a
+        #: better answer than whichever round the orbit happened to close on.
+        clean: tuple[Built, tuple[tuple[str, tuple[str, ...]], ...]] | None = None
+        settled = base
         built = self._from(document, settled)
         while True:
-            arms = tuple(
-                arm for arm in self._arms(document, settled, built) if arm[0] not in taken
-            )
-            if not arms:
-                return built, settled
-            taken.update(at for at, _ in arms)
-            fresh = tuple(
-                v for v in self._reach(document, arms, pick, answered) if v not in settled
-            )
-            settled = (*settled, *fresh)
-            built = self._from(document, settled)
             if built.source is Source.BACK_EDGE:
                 return built, settled
+            opened = self._arms(document, settled, built)
+            fresh = tuple(at for at, _ in opened)
+            settles = built.held and not self._unmet(document, settled, built.value)
+            if fresh == selected or fresh in seen:
+                # Either every folded consequent is one this value selects and every
+                # consequent it selects is folded -- the fixed point -- or the orbit
+                # closed without settling, which is the termination clause above.
+                if settles or clean is None:
+                    return built, settled
+                return clean
+            if settles and clean is None:
+                clean = (built, settled)
+            seen.add(fresh)
+            selected = fresh
+            settled = (
+                *base,
+                *(v for v in self._reach(document, opened, pick, answered) if v not in base),
+            )
+            built = self._from(document, settled)
 
     def _arms(
         self,
@@ -2394,6 +2437,68 @@ class Construction:
             if isinstance(node.get(arm), Mapping):
                 out.append((f"{at}/{arm}", (*path, f"{at}/{arm}")))
         return tuple(out)
+
+    def _unmet(
+        self, document: str, views: Sequence[tuple[str, tuple[str, ...]]], value: Any
+    ) -> tuple[str, ...]:
+        """The keywords of the consequents this value SELECTS and then VIOLATES.
+
+        :meth:`_arms` answers which scope each conditional opens for this value; this asks
+        whether the value is one that scope admits.  The two are halves of draft-07's single
+        rule -- *if the condition holds then the consequent holds* -- and reading only the
+        first half is what :meth:`_settled`'s own measurement caught: a fold can pin a key by
+        ``const`` on one round and have the consequent that pinned it deselected on the next,
+        so a value whose consequents were all READ can still be one its own node refuses.
+
+        **IT ASKS THE CONSEQUENT AND NOT THE DOCUMENT**, which is :meth:`_decides`' own
+        boundary at the sibling keyword.  The cost is one validation of a consequent already
+        selected, at the nodes that state a conditional and nowhere else -- the same sum over
+        the document's conditions :meth:`_arms` already pays for the ``if``, and not a walk
+        per node.  A
+        conditional nested INSIDE a folded consequent is read because ``views`` is the
+        SETTLED set, so the reading reaches as far as the fold does and no further.
+        """
+        out: list[str] = []
+        for at, _ in views:
+            node = self.node(document, at)
+            if not isinstance(node, Mapping) or not isinstance(node.get("if"), Mapping):
+                continue
+            matched = not list(
+                self.validator(document).evolve(schema=node["if"]).iter_errors(value)
+            )
+            held = node.get("then" if matched else "else")
+            if not isinstance(held, Mapping):
+                continue
+            out.extend(
+                error.validator
+                for error in self.validator(document).evolve(schema=held).iter_errors(value)
+                if isinstance(error.validator, str)
+            )
+        return tuple(out)
+
+    def _refuted(
+        self, document: str, views: Sequence[tuple[str, tuple[str, ...]]], value: Any
+    ) -> tuple[str, ...]:
+        """Every statement of the node's OWN view set that refuses this value.
+
+        :meth:`_decides`' three keywords and :meth:`_unmet`'s selected consequents, which
+        are the statements the shallow screen (:meth:`refusals`) cannot answer for: it
+        strikes ``oneOf``, ``anyOf`` and ``not`` because no child can answer them, and it
+        strikes ``allOf`` with the rest of the descent column -- so a consequent's ``const``
+        is a fact about THIS instance that nothing in :meth:`refusals` reads.
+
+        **ONE PREDICATE BECAUSE THERE IS ONE QUESTION** -- *does this node's own composition
+        admit the value its positive keywords produced* -- and the callers that used to ask
+        only :meth:`_decides` were asking half of it.  Measured 2026-11-17: at
+        ``core/macro-declaration.json#`` and the four positions that ``$ref`` it, the shallow
+        screen was empty and the three deciders were empty, so :meth:`_construct` returned at
+        its first clause with a value the document refuses on ``const`` and ``not`` -- five of
+        the six ``accepts=fail:witness_refused`` rows of the gate.  :meth:`_recased`'s own
+        docstring had already named the case (*"a key whose first ``enum`` member is the
+        member a ``not`` forbids or an ``if`` selects an unsatisfiable consequent on"*); this
+        is the ``if`` half of that sentence, which was declared and not read.
+        """
+        return (*self._decides(document, views, value), *self._unmet(document, views, value))
 
     def _stated(
         self,
@@ -2458,13 +2563,13 @@ class Construction:
                 continue
             named = stated.get("format")
             for case in FORMAT_CASES.get(named, ()) if isinstance(named, str) else ():
-                if not self.refusals(document, pointer, case) and not self._decides(
+                if not self.refusals(document, pointer, case) and not self._refuted(
                     document, views, case
                 ):
                     return Built(case, Source.CONSTRUCTED)
             members = stated.get("enum")
             for member in members if isinstance(members, list) else ():
-                if not self.refusals(document, pointer, member) and not self._decides(
+                if not self.refusals(document, pointer, member) and not self._refuted(
                     document, views, member
                 ):
                     return Built(member, Source.CONSTRUCTED)
@@ -2488,7 +2593,7 @@ class Construction:
             if not isinstance(members, list):
                 continue
             for member in members:
-                if not self.refusals(document, pointer, member) and not self._decides(
+                if not self.refusals(document, pointer, member) and not self._refuted(
                     document, views, member
                 ):
                     return Built(member, Source.STATED, "the node's own examples")
@@ -2538,7 +2643,7 @@ class Construction:
         """
         if not built.held or not isinstance(built.value, Mapping):
             return None
-        if not self._decides(document, views, built.value):
+        if not self._refuted(document, views, built.value):
             return None
         for name in self._names(document, views, built.value):
             describing = [
@@ -2557,7 +2662,7 @@ class Construction:
                 candidate = {**built.value, name: case.value}
                 if self.refusals(document, pointer, candidate):
                     continue
-                if not self._decides(document, views, candidate):
+                if not self._refuted(document, views, candidate):
                     self.counters.recased += 1
                     return Built(candidate, Source.CONSTRUCTED)
         return None
@@ -2579,6 +2684,18 @@ class Construction:
         ``anyOf`` of ``$ref``\\ s as readily as inline and the key names are the same either
         way.
 
+        **A CONDITIONAL THE VALUE SELECTS AND VIOLATES IS SUCH A STATEMENT** (:meth:`_unmet`),
+        and its keys are read off BOTH of its halves: the consequent names the key it pins
+        and the ``if`` names the key whose value opened the scope.  Both are the document's
+        own text at this node and either one is a key worth varying -- the consequent's
+        because the pin is what the value fails, the condition's because changing it closes
+        the scope instead of satisfying it.  Measured 2026-11-17 at
+        ``core/macro-declaration.json#``: the consequent that refuses is ``allOf/11``'s, whose
+        ``then`` pins ``unavailable_behavior`` and whose ``if`` names ``required`` -- and
+        ``unavailable_behavior``'s own fourth enum member is the value the whole document
+        admits, which no reading of a ``not`` could have reached because that node states
+        none.
+
         **Terminating on the pointer set and not on a depth**, which is §9's own rule for a
         walk in this module: a pointer already seen is not walked again, so the walk is
         bounded by the statement's own subtree and no bound is introduced here.
@@ -2588,43 +2705,60 @@ class Construction:
             node = self.node(document, at)
             if not isinstance(node, Mapping):
                 continue
-            stated = {k: node[k] for k in ("oneOf", "anyOf", "not") if k in node}
-            if not stated:
-                continue
-            for keyword in stated:
-                refused = any(
+            #: The seeds of every statement at this view that refuses the value, in the
+            #: document's own keyword order: the three deciders first, because they are the
+            #: statements whose subject IS this instance's shape, then the consequent this value
+            #: selects with the condition that selected it.
+            seeds: list[str] = []
+            for keyword in ("oneOf", "anyOf", "not"):
+                if keyword not in node:
+                    continue
+                if not any(
                     True
                     for _ in self.validator(document)
-                    .evolve(schema={keyword: stated[keyword]})
+                    .evolve(schema={keyword: node[keyword]})
                     .iter_errors(value)
-                )
-                if not refused:
+                ):
                     continue
-                pending = [
+                seeds.extend(
                     f"{at}{suffix}"
                     for held, suffix, _, _ in bundle.subschemas(node)
                     if held == keyword
-                ]
-                seen: set[str] = set()
-                while pending:
-                    where, held = self.through(document, pending.pop(0))
-                    if where in seen or not isinstance(held, Mapping):
-                        continue
-                    seen.add(where)
-                    for key in held.get("properties") or ():
-                        if key not in out:
-                            out.append(key)
-                    for key in held.get("required") or ():
-                        if isinstance(key, str) and key not in out:
-                            out.append(key)
-                    # Only the subschemas that talk about THIS instance: a
-                    # ``properties`` entry's own ``required`` is a statement about
-                    # another value and its key names are not this object's.
-                    pending.extend(
-                        f"{where}{suffix}"
-                        for inner, suffix, _, _ in bundle.subschemas(held)
-                        if inner in ABOUT_ONE_INSTANCE
-                    )
+                )
+            if isinstance(node.get("if"), Mapping):
+                matched = not list(
+                    self.validator(document).evolve(schema=node["if"]).iter_errors(value)
+                )
+                which = "then" if matched else "else"
+                held = node.get(which)
+                if isinstance(held, Mapping) and any(
+                    True
+                    for _ in self.validator(document).evolve(schema=held).iter_errors(value)
+                ):
+                    seeds.extend((f"{at}/{which}", f"{at}/if"))
+            if not seeds:
+                continue
+            pending = seeds
+            seen: set[str] = set()
+            while pending:
+                where, held = self.through(document, pending.pop(0))
+                if where in seen or not isinstance(held, Mapping):
+                    continue
+                seen.add(where)
+                for key in held.get("properties") or ():
+                    if key not in out:
+                        out.append(key)
+                for key in held.get("required") or ():
+                    if isinstance(key, str) and key not in out:
+                        out.append(key)
+                # Only the subschemas that talk about THIS instance: a
+                # ``properties`` entry's own ``required`` is a statement about
+                # another value and its key names are not this object's.
+                pending.extend(
+                    f"{where}{suffix}"
+                    for inner, suffix, _, _ in bundle.subschemas(held)
+                    if inner in ABOUT_ONE_INSTANCE
+                )
         return tuple(out)
 
     def _views(
