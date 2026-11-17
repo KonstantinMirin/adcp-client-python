@@ -897,7 +897,7 @@ class TestUnionBaseSupportsSubclassing:
         assert len(branches) > 1
         assert all(issubclass(branch, public_base) for branch in branches)
 
-    def test_account_reference_union_validates_and_arms_remain_subclassable(self):
+    def test_account_reference_union_validates_and_branches_remain_subclassable(self):
         """Consumers can validate the union and customize a concrete branch."""
         from pydantic import ConfigDict, TypeAdapter
 
