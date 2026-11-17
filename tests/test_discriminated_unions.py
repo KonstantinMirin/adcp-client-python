@@ -70,7 +70,10 @@ class TestAuthorizationDiscriminatedUnions:
             property_ids=["site1", "site2"],
         )
         assert agent.authorization_type == "property_ids"
-        assert [p.root for p in agent.property_ids] == ["site1", "site2"]
+        # `core/property-id.json` is a constrained scalar at a root, which
+        # section 4 makes a module-level annotated ALIAS and not a class, so an
+        # item is the `str` itself and there is no `.root` to unwrap.
+        assert agent.property_ids == ["site1", "site2"]
         assert not hasattr(agent, "property_tags")
         assert not hasattr(agent, "properties")
 
@@ -84,7 +87,7 @@ class TestAuthorizationDiscriminatedUnions:
         }
         agent = AuthorizedAgentsPropertyIds.model_validate(data)
         assert agent.authorization_type == "property_ids"
-        assert [p.root for p in agent.property_ids] == ["site1", "site2"]
+        assert agent.property_ids == ["site1", "site2"]
 
     def test_property_ids_authorization_wrong_type_fails(self):
         """The property_ids branch rejects a wrong authorization_type value."""
@@ -107,7 +110,7 @@ class TestAuthorizationDiscriminatedUnions:
             property_tags=["news", "sports"],
         )
         assert agent.authorization_type == "property_tags"
-        assert [p.root for p in agent.property_tags] == ["news", "sports"]
+        assert agent.property_tags == ["news", "sports"]
         assert not hasattr(agent, "property_ids")
 
     def test_inline_properties_authorization(self):
@@ -768,9 +771,7 @@ class TestPropertyTagSharedSchema:
         )
 
         assert props.selection_type == "by_tag"
-        assert len(props.property_tags) == 2
-        assert str(props.property_tags[0].root) == "premium"
-        assert str(props.property_tags[1].root) == "video"
+        assert props.property_tags == ["premium", "video"]
 
     def test_shared_schema_prevents_collision(self):
         """Verify that both adagents and publisher_property_selector import from shared schema."""
@@ -800,16 +801,22 @@ class TestPropertyTagSharedSchema:
         assert "property_tag" in selector_source and "from . import" in selector_source
 
     def test_property_tag_validation(self):
-        """PropertyTag should validate according to shared schema rules."""
-        from adcp import PropertyTag
+        """PropertyTag should validate according to shared schema rules.
+
+        `PropertyTag` is an annotated `str` alias, so calling it is calling
+        `str` and validates nothing. The alias's own module binds the
+        `strict_validate` that applies its document, which is the entry point a
+        consumer reaches for a type with no class to carry the method.
+        """
+        from adcp.types.domains.core.property_tag import strict_validate
 
         # Valid tags: lowercase alphanumeric + underscores
-        valid = PropertyTag("premium_video")
-        assert str(valid.root) == "premium_video"
+        assert strict_validate("premium_video") == "premium_video"
 
         # Pattern validation should work
-        with pytest.raises(ValidationError):
-            PropertyTag("Invalid-Tag")  # Hyphens not allowed in property tags
+        with pytest.raises(ValidationError) as excinfo:
+            strict_validate("Invalid-Tag")  # Hyphens not allowed in property tags
+        assert excinfo.value.errors()[0]["type"] == "pattern"
 
 
 class TestRootModelUnwrapForSubclassing:
