@@ -58,12 +58,26 @@ typecheck: ## Run type checker (mypy) on source code (both distributions)
 typecheck-all: typecheck test-type-checks test-type-checks-pyright check-type-ignore-contract ## Run all type-check contracts
 	@echo "✓ All type-check contracts passed"
 
-test: ## Run test suite with coverage
-	$(PYTEST) tests/ -v --cov=src/adcp --cov-report=term-missing
+# THE TWO SUITES WRITE TO SEPARATE ARTIFACT PATHS, because `addopts` names ONE and the
+# last run therefore wins. Measured 2026-11-17: the emission gate ran after the SDK suite
+# and `test-results/report.json` held 2,609 pairs where a reader expected 17,000 tests --
+# so the SDK figure had to be read off a terminal log, which is the thing artifacts exist
+# to stop. A fixed path is a footgun whenever two suites exist.
+gate: ## THE emission gate: a schema-valid payload is accepted, an invalid one refused, the dump valid
+	$(PYTEST) tests_emit/test_the_grade_is_green.py::test_this_pair_meets_the_contract \
+		--junitxml=test-results/gate/junit.xml \
+		--json-report-file=test-results/gate/report.json
+
+test: ## Run SDK test suite with coverage
+	$(PYTEST) tests/ -v --cov=src/adcp --cov-report=term-missing \
+		--junitxml=test-results/sdk/junit.xml \
+		--json-report-file=test-results/sdk/report.json
 	@echo "✓ All tests passed"
 
-test-fast: ## Run tests without coverage (faster)
-	$(PYTEST) tests/ -v
+test-fast: ## Run SDK tests without coverage (faster)
+	$(PYTEST) tests/ -v \
+		--junitxml=test-results/sdk/junit.xml \
+		--json-report-file=test-results/sdk/report.json
 	@echo "✓ All tests passed"
 
 test-type-checks: ## Run adopter-pattern type-check suite (mypy --strict, zero type: ignore allowed)
