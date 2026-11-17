@@ -8,12 +8,12 @@ import pytest
 from pydantic import ValidationError
 
 from adcp.compat import legacy
-from adcp.types.legacy import (
-    LegacyCreativeAsset,
-    coerce_legacy_asset,
-    coerce_legacy_assets,
-    infer_asset_type,
-)
+
+# The three helpers are bound on the flat public surface, not on
+# `adcp.types.legacy` -- that module carries the `Legacy`-prefixed names for v1
+# DOCUMENTS, and a normalisation helper is not one of them.
+from adcp.types import coerce_legacy_asset, coerce_legacy_assets, infer_asset_type
+from adcp.types.legacy import LegacyCreativeAsset
 
 
 @pytest.mark.parametrize(
