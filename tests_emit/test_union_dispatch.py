@@ -55,7 +55,7 @@ from typing import Any
 import fresh
 import jsonschema
 import pytest
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 import adcp.types._schemas as schemas_pkg
 import constructed
@@ -1162,27 +1162,45 @@ def test_the_submitted_arm_requires_what_its_target_requires() -> None:
 #: as its own comment describes: a rename reddens here and a human says it is one subject.
 ACCOUNT_RESTATEMENTS = (
     ("media-buy/buy-products-request.json", "#/anyOf/1/properties/account",
-     "adcp.types._schemas.media_buy.buy_products_request", "BuyProductsRequestAccountAccount"),
+     "adcp.types._schemas.media_buy.buy_products_request", "BuyProductsRequestAccount"),
     ("media-buy/request-proposals-request.json", "#/anyOf/1/properties/account",
      "adcp.types._schemas.media_buy.request_proposals_request",
-     "RequestProposalsRequestAccountAccount"),
+     "RequestProposalsRequestAccount"),
 )
 
 
 @pytest.mark.parametrize(("document", "pointer", "module", "symbol"), ACCOUNT_RESTATEMENTS)
-def test_a_restated_required_key_is_required_of_the_class(
+def test_a_restated_required_key_is_a_declared_widening(
     document: str, pointer: str, module: str, symbol: str
 ) -> None:
-    """82m.24: ``allOf`` INTERSECTS, so the restated required keys bind at that position.
+    """The restated keys are NOT bound to the class, and the drop is DECLARED.
 
-    The judged node is the CONJUNCTION the class stands for -- what the root declares at
-    ``properties/account`` and what the branch restates there -- because that is what
-    draft-07 applies to an instance at that pointer and what §2's intersection rule has
-    the class carry.  Both conjuncts are read off the record rather than written here.
+    **THIS ROW REVERSES ITSELF, AND THE REVERSAL IS THE POINT.**  It used to assert that
+    ``allOf`` intersects, so the keys restated at ``#/anyOf/1/properties/account`` bind at
+    that position and the class refuses ``{"account_id": "a1"}``.  That is no longer the
+    emission and the change was deliberate: ``#/anyOf/1/properties/account`` is exactly
+    ``{"required": ["brand", "operator"]}``, which declares no member and only restricts
+    ones ``core/canonical-account-ref.json`` declares.  **A combinator branch does not
+    admit on its own** -- an instance is validated against the whole ``anyOf``, never
+    against one branch -- so a class minted there admitted a set no wire position is ever
+    checked against, and the gate reported it as narrower than its document.
 
-    The restated names are declared only inside the target's own ``anyOf/1``, so the base
-    has no field for either and its ``account_id`` branch declares neither: the class
-    resolved ``{"account_id": "a1"}`` to that branch and returned it.
+    **SO THE FACT IS DROPPED, AND WHAT THIS ROW NOW PINS IS THAT IT IS DROPPED OUT LOUD.**
+    No rule kind in ``_runtime.py`` can carry a NESTED requiredness -- ``RequiredGroups``,
+    ``PresenceGroups``, ``Dependencies``, ``Match`` and ``ConditionalRequired`` are each
+    about the class's OWN keys, and *account must carry brand and operator* is about a
+    child's.  An undeclared widening would be strictly worse than the narrowing it
+    replaced, so the position carries an :class:`~adcp.types._base.Approximation` instead:
+    ``CLAUDE.md``'s standing rule is that where a check reports a decision as a failure the
+    defect is the MISSING DECLARATION, never the decision.  The carrier is the named
+    follow-up in ``FINDINGS-pointer.md``; when it exists this row goes back to asserting
+    the refusal and the approximation goes away.
+
+    **CONJ is excluded and that was measured**: every ``allOf`` member must hold for every
+    instance reaching the position, so a restriction-only CONJUNCT genuinely narrows and
+    keeps its class.  Run without that exclusion,
+    ``core/signal-coverage-forecast.json#/properties/points/items/allOf/1/properties/metrics``
+    lost a class that had been grading green.
     """
     record = bundle.record(BUNDLE, document, set(bundle.portable(BUNDLE)))
     conjunction = {
@@ -1192,15 +1210,42 @@ def test_a_restated_required_key_is_required_of_the_class(
         ]
     }
     cls = getattr(importlib.import_module(module), symbol)
-    payload = {"account_id": "a1"}
-    assert not jsonschema.Draft7Validator(conjunction).is_valid(payload)
-    with pytest.raises(ValidationError):
-        cls.model_validate(payload)
-    # The control: an instance carrying the restated keys is admitted by both, so the
-    # row narrowed the class to its document and did not close it.
+
+    #: **ASKED AT THE POSITION AND NOT AT THE REQUEST ROOT.**  ``cls`` is the whole
+    #: request, which requires ``idempotency_key`` and ``brief`` besides; validating a
+    #: bare ``{"account": ...}`` against it would fail for reasons that are not this
+    #: row's subject.  The field's own annotation is what the document states at
+    #: ``#/properties/account``, and it is now the target's type rather than a wrapper.
+    at_the_position = TypeAdapter(cls.model_fields["account"].annotation)
+
+    #: The DOCUMENT still refuses it at that pointer -- nothing about the schema moved,
+    #: which is what makes this a widening rather than a reading of a changed document.
+    assert not jsonschema.Draft7Validator(conjunction).is_valid({"account_id": "a1"})
+
+    #: And the position now admits it, because the restriction was not lowered.
+    at_the_position.validate_python({"account_id": "a1"})
+
+    #: Declared, at this pointer, naming the keyword and the fact it dropped.  Read off
+    #: the class rather than a report, because an approximation the BUILD does not apply
+    #: is a lie (§3a) and this is the artifact a consumer actually receives.
+    declared = [
+        one
+        for one in cls.__adcp_approximations__
+        if one.pointer == pointer and one.keyword == "required"
+    ]
+    assert declared, (
+        f"{symbol} drops the keys restated at {pointer} and declares nothing: "
+        f"{cls.__adcp_approximations__}"
+    )
+    assert [one.kind for one in declared] == ["WIDENED"], declared
+    assert [sorted(one.fact) for one in declared] == [["brand", "operator"]], declared
+
+    #: The control, unchanged: the natural-key instance both documents mean is admitted
+    #: by the conjunction and by the class, so the row widened the class and did not
+    #: empty it.
     natural = {"brand": {"domain": "nova-athletics.example"}, "operator": "nova.example"}
     assert jsonschema.Draft7Validator(conjunction).is_valid(natural)
-    assert isinstance(cls.model_validate(natural), cls)
+    at_the_position.validate_python(natural)
 
 
 # --------------------------------------------------------------------------- #
