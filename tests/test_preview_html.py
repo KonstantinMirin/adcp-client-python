@@ -7,22 +7,32 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from adcp import ADCPClient, AgentConfig, Protocol
-from adcp.types import GetProductsRequest, GetProductsResponse, ImageContent, Product
+from adcp.types import (
+    Format,
+    GetProductsRequest,
+    GetProductsResponse,
+    ImageContent,
+    Product,
+)
 from adcp.types._generated import (
     CreativeManifest,
 )
-from adcp.types.canonical_creative import Format
-from adcp.types.core import TaskResult, TaskStatus
+
+# `LegacyFormat` is NOT in `adcp.types.legacy`, which carries the `Legacy`-prefixed
+# names for v1 DOCUMENTS. It is the v1 named-format DEFINITION, and CLAUDE.md pins
+# its one address: `adcp.types.core.LegacyFormat`, beside `Format` for the canonical
+# declaration. The rename had to break rather than redirect, which is why the old
+# spelling raises here instead of quietly resolving to v2.
+from adcp.types.core import LegacyFormat, TaskResult, TaskStatus
 from adcp.types.legacy import (
-    LegacyFormat,
+    LegacyFormatId as FormatId,
+)
+from adcp.types.legacy import (
     LegacyListCreativeFormatsRequest,
     LegacyListCreativeFormatsResponse,
     LegacyPreviewCreativeBatchResponse,
     LegacyPreviewCreativeRequest,
     LegacyPreviewCreativeResponse1,
-)
-from adcp.types.legacy import (
-    LegacyFormatId as FormatId,
 )
 from adcp.utils.preview_cache import (
     PreviewURLGenerator,
