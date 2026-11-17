@@ -121,10 +121,6 @@ def test_all_response_aliases_exported():
         # Activate signal
         "ActivateSignalSuccessResponse",
         "ActivateSignalErrorResponse",
-        # Build creative
-        "LegacyBuildCreativeSuccessResponse",
-        "LegacyBuildCreativeErrorResponse",
-        "LegacyBuildCreativeSubmittedResponse",
         # Create media buy
         "CreateMediaBuySuccessResponse",
         "CreateMediaBuyErrorResponse",
@@ -139,18 +135,33 @@ def test_all_response_aliases_exported():
         "SyncCatalogsSubmittedResponse",
         # Sync audiences
         "SyncAudiencesSubmittedResponse",
+    ]
+
+    # Upstream's own published spellings live in `adcp.types.legacy_names`,
+    # which binds one of their words per POSITION to the one class the compiler
+    # emits per SUBJECT. `adcp.types.legacy` is a different module -- upstream's
+    # `adcp.types.legacy` re-served -- and carries the legacy request and
+    # response roots rather than these per-branch words.
+    expected_upstream_names = [
+        # Build creative
+        "LegacyBuildCreativeSuccessResponse",
+        "LegacyBuildCreativeErrorResponse",
+        "LegacyBuildCreativeSubmittedResponse",
         # Update media buy
         "UpdateMediaBuySuccessResponse",
         "UpdateMediaBuyErrorResponse",
     ]
 
     import adcp.types.aliases as aliases_module
-    import adcp.types.legacy as legacy_module
+    import adcp.types.legacy_names as legacy_names_module
 
     for alias in expected_aliases:
-        module = legacy_module if alias.startswith("Legacy") else aliases_module
-        assert hasattr(module, alias), f"Missing alias: {alias}"
-        assert alias in module.__all__, f"Alias not in __all__: {alias}"
+        assert hasattr(aliases_module, alias), f"Missing alias: {alias}"
+        assert alias in aliases_module.__all__, f"Alias not in __all__: {alias}"
+
+    for name in expected_upstream_names:
+        assert hasattr(legacy_names_module, name), f"Missing alias: {name}"
+        assert name in legacy_names_module.__all__, f"Alias not in __all__: {name}"
 
 
 def test_all_request_aliases_exported():
@@ -186,23 +197,32 @@ def test_all_activation_key_aliases_exported():
 
 def test_all_preview_render_aliases_exported():
     """Test that all preview render aliases are exported."""
+    # Semantic aliases based on the output_format discriminator
     expected_aliases = [
-        "LegacyPreviewCreativeSingleResponse",
-        "LegacyPreviewCreativeBatchResponse",
-        "LegacyPreviewCreativeVariantResponse",
-        # Semantic aliases based on output_format discriminator
         "UrlPreviewRender",
         "HtmlPreviewRender",
         "BothPreviewRender",
     ]
 
+    # Upstream's own published spellings, in `adcp.types.legacy_names`;
+    # `adcp.types.legacy` is the re-served upstream module and carries the
+    # response ROOT rather than these per-branch words.
+    expected_upstream_names = [
+        "LegacyPreviewCreativeSingleResponse",
+        "LegacyPreviewCreativeBatchResponse",
+        "LegacyPreviewCreativeVariantResponse",
+    ]
+
     import adcp.types.aliases as aliases_module
-    import adcp.types.legacy as legacy_module
+    import adcp.types.legacy_names as legacy_names_module
 
     for alias in expected_aliases:
-        module = legacy_module if alias.startswith("Legacy") else aliases_module
-        assert hasattr(module, alias), f"Missing alias: {alias}"
-        assert alias in module.__all__, f"Alias not in __all__: {alias}"
+        assert hasattr(aliases_module, alias), f"Missing alias: {alias}"
+        assert alias in aliases_module.__all__, f"Alias not in __all__: {alias}"
+
+    for name in expected_upstream_names:
+        assert hasattr(legacy_names_module, name), f"Missing alias: {name}"
+        assert name in legacy_names_module.__all__, f"Alias not in __all__: {name}"
 
 
 def test_all_asset_type_aliases_exported():
