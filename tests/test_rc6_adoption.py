@@ -9,12 +9,21 @@ from functools import lru_cache
 from importlib.resources import files
 
 import pytest
+
+# The flat `SyncAccountsAccount` is declared DOCUMENT-NO-WORD-NO-IDENTITY.
+# The subject is the item of `accounts` on the response's success branch,
+# which `account/sync-accounts-response.json` states and this emission names
+# `AccountsItem` -- the module path already carries the document, so a nested
+# name does not repeat it.
+from adcp.types.domains.account.sync_accounts_response import (
+    AccountsItem as SyncAccountsAccount,
+)
 from jsonschema import FormatChecker
 from jsonschema.validators import validator_for
 from pydantic import TypeAdapter
 
 from adcp._version import resolve_adcp_version
-from adcp.types import GetAdcpCapabilitiesResponse, SyncAccountsAccount, SyncAccountsResponse
+from adcp.types import GetAdcpCapabilitiesResponse, SyncAccountsResponse
 from adcp.validation import schema_loader
 from tests.test_schema_datetime_formats import INVALID, VALID, request_with_timestamp
 
