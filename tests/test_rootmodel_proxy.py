@@ -21,7 +21,10 @@ from adcp.types import (
     Product,
     ReportingCapabilities,
 )
-from adcp.types.domains.core.pricing_option import PricingOptionCpm, PricingOptionFlatRate
+from adcp.types.domains.core.pricing_option import (
+    PricingOptionCpm,
+    PricingOptionFlatRate,
+)
 
 
 @pytest.fixture
