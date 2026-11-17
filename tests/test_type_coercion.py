@@ -439,9 +439,12 @@ class TestResponseTypeCoercion:
 
     def test_list_creative_formats_response_accepts_dict_context(self):
         """ListCreativeFormatsResponse.context accepts dict."""
-        from adcp.types.legacy import (
-            LegacyFormat as Format,
-        )
+        # `core/format.json` is the v1 named-format DEFINITION and is
+        # `deprecated: true` as a whole; the class the compiler derives from its
+        # own description ("Legacy named-format definition") lives on the
+        # document's module, `adcp.types.core`. `adcp.types.legacy` carries the
+        # legacy REQUEST and RESPONSE roots, not this definition.
+        from adcp.types.core import LegacyFormat as Format
         from adcp.types.legacy import (
             LegacyListCreativeFormatsResponse as ListCreativeFormatsResponse,
         )
@@ -465,9 +468,12 @@ class TestResponseTypeCoercion:
         """ListCreativeFormatsResponse.formats accepts Format subclass instances."""
         from pydantic import Field
 
-        from adcp.types.legacy import (
-            LegacyFormat as Format,
-        )
+        # `core/format.json` is the v1 named-format DEFINITION and is
+        # `deprecated: true` as a whole; the class the compiler derives from its
+        # own description ("Legacy named-format definition") lives on the
+        # document's module, `adcp.types.core`. `adcp.types.legacy` carries the
+        # legacy REQUEST and RESPONSE roots, not this definition.
+        from adcp.types.core import LegacyFormat as Format
         from adcp.types.legacy import (
             LegacyListCreativeFormatsResponse as ListCreativeFormatsResponse,
         )
@@ -588,9 +594,15 @@ class TestResponseTypeCoercion:
         """GetMediaBuyDeliveryResponse.context accepts dict."""
         from datetime import datetime, timezone
 
-        from adcp.types import GetMediaBuyDeliveryResponse, MediaBuyDelivery
+        from adcp.types.domains.media_buy.get_media_buy_delivery_response import (
+            MediaBuyDeliveriesItem,
+        )
 
-        delivery = MediaBuyDelivery(
+        from adcp.types import GetMediaBuyDeliveryResponse
+
+        # Section 4's nested rule names an array element `<Property>Item`, so
+        # the element of `media_buy_deliveries` is `MediaBuyDeliveriesItem`.
+        delivery = MediaBuyDeliveriesItem(
             media_buy_id="mb1",
             status="active",
             by_package=[
@@ -625,9 +637,12 @@ class TestResponseTypeCoercion:
         """Response types with coerced values can roundtrip through JSON."""
         import json
 
-        from adcp.types.legacy import (
-            LegacyFormat as Format,
-        )
+        # `core/format.json` is the v1 named-format DEFINITION and is
+        # `deprecated: true` as a whole; the class the compiler derives from its
+        # own description ("Legacy named-format definition") lives on the
+        # document's module, `adcp.types.core`. `adcp.types.legacy` carries the
+        # legacy REQUEST and RESPONSE roots, not this definition.
+        from adcp.types.core import LegacyFormat as Format
         from adcp.types.legacy import (
             LegacyListCreativeFormatsResponse as ListCreativeFormatsResponse,
         )
