@@ -1603,8 +1603,27 @@ class TestPydanticSchemas:
             assert tool in _PYDANTIC_SCHEMAS, f"{tool} missing Pydantic schema"
 
     def test_media_buy_output_schema_allows_30_and_31_sync_shapes(self):
+        """Both sync shapes stay advertised, where the DOCUMENT states them.
+
+        Repointed for FINDINGS-schema.md R12: the advertisement is derived
+        from the document of record now, not from ``model_json_schema()`` on
+        the class we compiled from it. That moves where ``status`` is stated,
+        not whether it is.
+
+        Pydantic rendered a ``status`` on each branch, so this test used to
+        read the success branch's. ``core/protocol-envelope.json`` states it
+        ONCE and the response root reaches it through ``allOf``, so it governs
+        every branch — the conjunction ``docs/reading-a-document.md`` warns
+        never to read one branch in isolation for.
+
+        It is also ``required`` there, because the document requires it. The
+        old rendering dropped ``status`` from ``required`` to make room for
+        the legacy widening; widening the envelope's accepted VALUES needs no
+        such room, and a negotiated 3.0 response does send the field.
+        """
         from adcp.server.mcp_tools import (
             _PYDANTIC_OUTPUT_SCHEMAS,
+            _definition_pointer_body,
             _ensure_pydantic_schemas_applied,
         )
 
@@ -1622,31 +1641,43 @@ class TestPydanticSchemas:
         def _deref(schema, node):
             """Follow a local ``$ref``.
 
-            Advertised schemas are compact, so union arms and nested models
-            are references rather than inline objects.
+            Advertised schemas are compact, so union branches and nested
+            models are references rather than inline objects. A document's
+            pointer may continue into a definition, so resolve it the way the
+            publisher does.
             """
             ref = node.get("$ref") if isinstance(node, dict) else None
             if isinstance(ref, str) and ref.startswith("#/$defs/"):
-                return schema["$defs"][ref[len("#/$defs/") :]]
+                return _definition_pointer_body(schema.get("$defs", {}), ref)
             return node
 
-        def _arm(schema, index):
+        def _branch(schema, index):
             return _deref(schema, schema["anyOf"][index])
 
         for tool in ("create_media_buy", "update_media_buy"):
-            success_schema = _arm(_PYDANTIC_OUTPUT_SCHEMAS[tool], 0)
-            properties = success_schema["properties"]
-            assert "status" not in success_schema["required"]
-            status_variants = properties["status"]["anyOf"]
-            assert status_variants[0]["const"] == "completed"
-            advertised_statuses = {status_variants[0]["const"], *status_variants[1]["enum"]}
-            assert advertised_statuses == media_buy_statuses
-            media_buy_status = _deref(
-                _PYDANTIC_OUTPUT_SCHEMAS[tool], properties["media_buy_status"]["anyOf"][0]
+            schema = _PYDANTIC_OUTPUT_SCHEMAS[tool]
+
+            # The status the envelope states, and the one place it is stated.
+            envelope = next(
+                resolved
+                for entry in schema["allOf"]
+                if isinstance(resolved := _deref(schema, entry), dict)
+                and "status" in resolved.get("properties", {})
             )
+            assert "status" in envelope["required"]
+            task_status, legacy_status = (
+                _deref(schema, variant) for variant in envelope["properties"]["status"]["anyOf"]
+            )
+            # 3.1+ sends the task-envelope status; a negotiated 3.0 buyer
+            # sends the lifecycle value in the same field.
+            assert "submitted" in task_status["enum"]
+            assert set(legacy_status["enum"]) == media_buy_statuses
+
+            success_schema = _branch(schema, 0)
+            media_buy_status = _deref(schema, success_schema["properties"]["media_buy_status"])
             assert set(media_buy_status["enum"]) == media_buy_statuses
 
-            submitted_schema = _arm(_PYDANTIC_OUTPUT_SCHEMAS[tool], 2)
+            submitted_schema = _branch(schema, 2)
             submitted_properties = submitted_schema["properties"]
             assert submitted_properties["status"]["const"] == "submitted"
             assert "task_id" in submitted_schema["required"]

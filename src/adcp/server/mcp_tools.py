@@ -43,7 +43,7 @@ from adcp.validation._response_envelope import uses_task_status_envelope
 from adcp.validation.client_hooks import UnknownFieldPolicy, ValidationHookConfig
 from adcp.validation.envelope import DEFAULT_UNNEGOTIATED_ADCP_VERSION
 from adcp.validation.schema_loader import (
-    get_mcp_schema,
+    get_portable_schema,
     get_validator,
     list_validator_keys,
 )
@@ -259,6 +259,77 @@ def _widen_media_buy_output_schema_for_legacy_statuses(
         }
 
     return widened_any
+
+
+def _widen_media_buy_document_status_for_legacy_statuses(
+    tool_name: str,
+    schema: dict[str, Any],
+) -> bool:
+    """The same widening, on the shape the document of record states.
+
+    The Pydantic rendering put ``status`` on the success branch, so the
+    function above looks for it there. The document does not: ``status`` is
+    stated once by ``core/protocol-envelope.json``, which the response root
+    reaches through ``allOf``, and it applies to every branch — the
+    conjunction ``docs/reading-a-document.md`` is about. A widening that reads
+    one branch in isolation finds no ``status`` on the document shape and
+    silently no-ops, which is the failure its own sibling's comment warns of:
+    the advertisement would then reject a legitimate negotiated-3.0
+    ``status: "pending_creatives"``.
+
+    **Both enums are the document's own.** ``status`` already refs
+    ``enums/task-status.json``; the value set a 3.0 buyer sends is
+    ``enums/media-buy-status.json``, which this same document states at
+    ``/anyOf/0/properties/media_buy_status`` — 3.0 carried the lifecycle value
+    in ``status`` because it had no ``media_buy_status`` field. So the union is
+    two definitions the document already carries, not a value set invented
+    here.
+
+    ``status`` stays in the envelope's ``required``: the document requires it
+    and a negotiated 3.0 response does send it. Only the accepted values
+    widen.
+
+    Measured on bundle 3.2: ``create_media_buy`` and ``update_media_buy`` each
+    reference the envelope, the task-status enum and the media-buy-status enum
+    exactly once, so widening in place is scoped to the one site that means
+    the response status and strands nothing.
+    """
+    if tool_name not in {"create_media_buy", "update_media_buy"}:
+        return False
+    defs = schema.get("$defs")
+    if not isinstance(defs, dict):
+        return False
+    legacy_name = next(
+        (name for name in defs if name.endswith("enums/media-buy-status.json")),
+        None,
+    )
+    if legacy_name is None:
+        # The document does not state the legacy value set here. There is no
+        # answer to invent, so advertise exactly what it does state.
+        return False
+    legacy_ref = {"$ref": f"#/$defs/{legacy_name.replace('~', '~0').replace('/', '~1')}"}
+    for entry in schema.get("allOf") or []:
+        if not isinstance(entry, dict):
+            continue
+        envelope = _definition_pointer_body(defs, entry.get("$ref"))
+        if not isinstance(envelope, dict):
+            continue
+        properties = envelope.get("properties")
+        if not isinstance(properties, dict) or "status" not in properties:
+            continue
+        status = properties["status"]
+        if isinstance(status, dict) and status.get("anyOf"):
+            # Already widened — a second pass must not nest another anyOf.
+            return False
+        properties["status"] = {
+            "anyOf": [status, legacy_ref],
+            "description": (
+                "Task envelope status for AdCP 3.1+ sync responses, or the "
+                "media-buy lifecycle status for AdCP 3.0 compatibility."
+            ),
+        }
+        return True
+    return False
 
 
 # MCP ToolAnnotations — behavioral hints for agent planning.
@@ -1592,6 +1663,13 @@ def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
     one ever appears it surfaces to the caller rather than being
     silently stripped.
 
+    A pointer that continues *into* a definition resolves too, through
+    :func:`_definition_pointer_body`. Pydantic never emits one; the documents
+    of record do, because a wire document keeps its own ``definitions`` table
+    and references it from inside itself. Refusing them left 16 references
+    unresolved in ``create_media_buy``'s inline rendering — and inline exists
+    precisely for the clients that resolve no references at all.
+
     Only definitions reachable from the schema body are traversed. Walking
     the whole ``$defs`` table before discarding it made startup proportional
     to the complete model graph rather than the advertised schema. Cycles
@@ -1617,39 +1695,40 @@ def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
         if isinstance(node, dict):
             ref = node.get("$ref")
             if isinstance(ref, str):
-                if not ref.startswith("#/$defs/"):
+                if not ref.startswith("#"):
                     # External ref (http://…, relative path). Pydantic
                     # doesn't emit these for our request models; leave
                     # untouched rather than risk silent corruption.
                     unresolved[0] = True
                     return {k: _resolve(v) for k, v in node.items()}
-                def_name = _local_definition_name(ref, whole=True)
-                if def_name is None:
-                    # A pointer into the middle of a definition: the body is
-                    # not a whole definition, so leave the reference.
-                    unresolved[0] = True
-                    return {k: _resolve(v) for k, v in node.items()}
-                if def_name in resolving_defs:
+                # The whole pointer is the key, not the definition it starts
+                # in: two pointers into one definition name two bodies, and
+                # memoizing them together would serve one for the other.
+                if ref in resolving_defs:
                     # Cycle — leave the $ref intact so a spec-compliant
                     # client can still resolve via $defs.
                     unresolved[0] = True
                     return {k: _resolve(v) for k, v in node.items()}
-                if def_name in resolved_defs:
-                    resolved = resolved_defs[def_name]
+                if ref in resolved_defs:
+                    resolved = resolved_defs[ref]
                 else:
-                    body = defs.get(def_name)
+                    # Resolved against the whole schema, not just its ``$defs``:
+                    # the documents also point at the root body
+                    # (``#/oneOf/0/properties/fonts/$defs/font_role``) and at
+                    # their own root ``definitions`` table.
+                    body = _pointer_body(schema, ref)
                     if body is None:
                         # Dangling ref — nothing in $defs matches. Leave
                         # the $ref for consumers to error on; preserving
                         # the shape is safer than silently stripping.
                         unresolved[0] = True
                         return {k: _resolve(v) for k, v in node.items()}
-                    resolving_defs.add(def_name)
+                    resolving_defs.add(ref)
                     try:
                         resolved = _resolve(body)
                     finally:
-                        resolving_defs.remove(def_name)
-                    resolved_defs[def_name] = resolved
+                        resolving_defs.remove(ref)
+                    resolved_defs[ref] = resolved
                 # Annotation-level merge — sibling description/title
                 # on the $ref node wins over the resolved body's
                 # same-named keys.
@@ -1662,7 +1741,15 @@ def _inline_refs(schema: dict[str, Any]) -> dict[str, Any]:
                             continue
                         merged[k] = _resolve(v)
                 return merged
-            return {k: _resolve(v) for k, v in node.items()}
+            # A definition table reached while resolving the BODY is dead
+            # weight there: every local pointer is rooted at ``#/$defs/``, so
+            # nothing can reference a table nested inside the body, and the
+            # root table is re-attached below untouched when a ref survives.
+            # The documents of record carry these — a wire document keeps its
+            # own ``definitions`` — and inlining used to copy them into the
+            # output, which is the one shape that exists to carry no
+            # definition table at all.
+            return {k: _resolve(v) for k, v in node.items() if k not in ("$defs", "definitions")}
         if isinstance(node, list):
             return [_resolve(item) for item in node]
         return node
@@ -1696,6 +1783,65 @@ def _local_definition_name(ref: Any, *, whole: bool = False) -> str | None:
     if whole and rest:
         return None
     return segment.replace("~1", "/").replace("~0", "~")
+
+
+def _pointer_body(root: Any, ref: Any) -> Any | None:
+    """What a local JSON Pointer names within ``root``, or ``None``.
+
+    RFC 6901: segments are unescaped (``~1`` → ``/``, ``~0`` → ``~``) and a
+    segment indexes a list by position. Pydantic emits only
+    ``#/$defs/ClassName``, so none of that was needed while the advertisement
+    came from a class. The documents of record use four forms, all measured on
+    bundle 3.2's response documents:
+
+    * ``#/$defs/external:core~1product.json`` — a whole definition. The names
+      are source paths, so ``~1`` is live in the first segment of every ref.
+    * ``#/$defs/external:core~1reporting-schedule.json/definitions/ReportingScheduleAlignment``
+      — a pointer continuing into a definition's own ``definitions`` table.
+    * ``#/$defs/external:core~1delivery-metric-aggregate.json/oneOf/0`` — a
+      pointer whose segment indexes a list.
+    * ``#/definitions/targeting_kvs`` and
+      ``#/oneOf/0/properties/fonts/$defs/font_role`` — rooted at the document
+      itself rather than at ``$defs``.
+
+    ``None`` where any segment is absent or lands on a scalar, which is the
+    dangling case the caller leaves as an unresolved ``$ref`` rather than
+    silently stripping.
+    """
+    if not isinstance(ref, str) or not ref.startswith("#"):
+        return None
+    pointer = ref[1:]
+    if not pointer:
+        return root
+    if not pointer.startswith("/"):
+        # A plain-name fragment (``#name``), not a pointer. Nothing in the
+        # bundle emits one; refuse rather than guess at a target.
+        return None
+    body: Any = root
+    for segment in pointer[1:].split("/"):
+        key = segment.replace("~1", "/").replace("~0", "~")
+        if isinstance(body, dict):
+            body = body.get(key)
+        elif isinstance(body, list):
+            if not key.isdigit() or int(key) >= len(body):
+                return None
+            body = body[int(key)]
+        else:
+            return None
+        if body is None:
+            return None
+    return body
+
+
+def _definition_pointer_body(defs: dict[str, Any], ref: Any) -> Any | None:
+    """What a ``#/$defs/...`` pointer names in ``defs``, or ``None``.
+
+    The ``$defs``-rooted view of :func:`_pointer_body`, for callers holding
+    the definition table rather than the whole schema.
+    """
+    if not isinstance(ref, str) or not ref.startswith("#/$defs/"):
+        return None
+    return _pointer_body({"$defs": defs}, ref)
 
 
 def _copy_json_without_aliases(value: Any) -> Any:
@@ -2509,26 +2655,39 @@ def _generate_pydantic_output_schemas(
     for tool_name, response_type in _tool_to_response.items():
         if selected is not None and tool_name not in selected:
             continue
-        schema = _model_to_json_schema(
-            response_type, allow_root_union=True, schema_mode=schema_mode
-        )
+        # The document of record first. It states the response contract, and
+        # the class is our compilation of it: where they disagree the document
+        # is right by definition. Pydantic stays the fallback for a tool the
+        # bundle does not carry, so a tool keeps an advertisement either way.
+        schema = _document_discovery_schema(tool_name, "sync", schema_mode=schema_mode)
+        from_document = schema is not None
+        if schema is None:
+            schema = _model_to_json_schema(
+                response_type, allow_root_union=True, schema_mode=schema_mode
+            )
         if schema is None:
             logger.debug(
-                "Pydantic output-schema generation failed for %s",
+                "Output-schema generation failed for %s — no bundled document "
+                "and Pydantic declined the model",
                 tool_name,
             )
             continue
         # MCP requires ``outputSchema`` root-level ``type: "object"`` —
         # the schema describes ``CallToolResult.structuredContent`` which
-        # is always a JSON object. Discriminated-union responses
-        # (CreateMediaBuyResponse, AcquireRightsResponse, etc.) come
-        # back from Pydantic as ``{"anyOf": [...]}`` with no ``type``,
-        # which Zod-validated MCP clients reject. Every variant in the
-        # union is itself an object, so adding ``"type": "object"``
-        # at the root is semantically equivalent and MCP-spec-conformant.
+        # is always a JSON object. A root union response (the document's
+        # ``oneOf``, which :func:`_simplify_wire_schema` renders as ``anyOf``,
+        # and what Pydantic emits for the same unions) carries no ``type`` of
+        # its own, and Zod-validated MCP clients reject that. Every branch is
+        # itself an object, so adding ``"type": "object"`` at the root is
+        # semantically equivalent and MCP-spec-conformant.
         schema.setdefault("type", "object")
-        if _widen_media_buy_output_schema_for_legacy_statuses(tool_name, schema):
-            # Widening repoints an arm at a new definition, which strands the
+        if from_document:
+            # The unpinned path serves whatever version the peer negotiates,
+            # so its advertisement spans them; a pinned server speaks one
+            # release and is not widened.
+            _widen_media_buy_document_status_for_legacy_statuses(tool_name, schema)
+        elif _widen_media_buy_output_schema_for_legacy_statuses(tool_name, schema):
+            # Widening repoints a branch at a new definition, which strands the
             # one it was pointing at. Leaving it published is not just dead
             # weight: the stranded twin still carries the narrow
             # ``status: {"const": "completed"}``, so a client that resolves
@@ -2815,30 +2974,80 @@ def _compact_wire_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return _drop_unreachable_defs(_prune_to_required_fields(_simplify_wire_schema(schema)))
 
 
-def _versioned_discovery_schema(
+def _document_discovery_schema(
     tool_name: str,
     direction: Literal["request", "sync"],
-    version: str,
     *,
-    compact: bool,
+    schema_mode: SchemaMode,
+    version: str | None = None,
+    profile: bool = False,
 ) -> dict[str, Any] | None:
-    """The bundled wire schema a pinned server advertises, compact on request.
+    """The document of record for one tool, rendered for ``tools/list``.
 
-    Both shapes are memoized with the loader state for ``version`` — see
+    **This is what a consumer is owed, and it is one translation from the
+    protocol rather than two.** The alternative — and what the unpinned path
+    used to publish — is ``model_json_schema()`` on the class we compiled from
+    the document, which renders pydantic's view of our compilation. Where the
+    two disagree the document wins by definition, and they do disagree: §4
+    lowers a root ``oneOf`` response to a base plus one subclass per branch,
+    the base declares no fields of its own, and pydantic then renders one
+    plain object with the branches gone. Three tools advertised that.
+
+    ``version=None`` means the SDK's own compile-time pin, which is what the
+    unpinned path advertises; a pinned server passes its release and gets that
+    release's contract. Both go through the same renderer, so the two paths
+    can no longer disagree about what a tool returns.
+
+    The three modes are three renderings of one contract, never three
+    contracts: ``defs`` is the self-contained document, ``compact`` prunes it
+    for a buyer's response budget (:func:`_compact_wire_schema`), and
+    ``inline`` expands its references for clients that resolve none. Each is
+    memoized with the loader state for ``version`` and keyed by mode — see
     :func:`adcp.validation.schema_loader.get_derived_mcp_schema` — so a
-    per-request caller (the pre-auth agent-card route) pays the transform
-    once, and a loader reset discards it with everything else.
-    """
-    if not compact:
-        return get_mcp_schema(tool_name, direction, version=version)
-    from adcp.validation.schema_loader import get_derived_mcp_schema
+    per-request caller (the pre-auth agent-card route) pays each transform
+    once, and a loader reset discards them with everything else.
 
-    return get_derived_mcp_schema(
+    ``profile`` picks the bundle's production-profile artifact over the source
+    document, and **it is a size decision with a known correctness cost.**
+    The profile is pre-deduplicated and about 0.56x the source compacted
+    (842 KB against 1.50 MB over 78 response documents), which is what keeps a
+    pinned 78-tool listing inside the half-budget headroom
+    ``test_discovery_payload_size`` guards. But it has been pruned, and one of
+    the prunings changes validation: its ``core/canonical-product.json``
+    carries 38 properties where the document carries 39, missing
+    ``description`` — dropped as though it were the annotation keyword of that
+    name — while ``additionalProperties: false`` stays. A product with a
+    description is a real response the advertisement then rejects.
+
+    So the unpinned path reads the document and the pinned path keeps the
+    profile: the unpinned advertisement is graded against real handler output
+    (``test_advertised_output_schemas_still_describe_real_responses``) and
+    fails on the profile, while moving the pinned path to the document would
+    break its byte headroom. Both publish the document; they differ in which
+    published rendering of it. **The profile's lossiness is a defect in the
+    artifact, not something to fix here** — see FINDINGS-schema.md.
+
+    ``None`` where no document ships for the pair, which is the caller's
+    signal to fall back rather than to advertise a guess.
+    """
+    from adcp.validation.schema_loader import (
+        get_derived_mcp_schema,
+        get_derived_portable_schema,
+        get_mcp_schema,
+    )
+
+    if schema_mode == "defs":
+        if profile:
+            return get_mcp_schema(tool_name, direction, version=version)
+        return get_portable_schema(tool_name, direction, version=version)
+    derive = _compact_wire_schema if schema_mode == "compact" else _inline_refs
+    derived = get_derived_mcp_schema if profile else get_derived_portable_schema
+    return derived(
         tool_name,
         direction,
         version=version,
-        derivation="compact",
-        derive=_compact_wire_schema,
+        derivation=schema_mode,
+        derive=derive,
     )
 
 
@@ -3044,12 +3253,11 @@ def get_tools_for_handler(
     # also removes tools absent from that release (for example, the compact
     # 3.2 lifecycle on a 3.1 endpoint) instead of leaking the process-global
     # current-model surface into tools/list.
-    compact = schema_mode == "compact"
     versioned: list[dict[str, Any]] = []
     for tool in selected:
         name = tool["name"]
-        input_schema = _versioned_discovery_schema(
-            name, "request", resolved_version, compact=compact
+        input_schema = _document_discovery_schema(
+            name, "request", schema_mode=schema_mode, version=resolved_version, profile=True
         )
         if input_schema is None:
             continue
@@ -3080,7 +3288,9 @@ def get_tools_for_handler(
             versioned.append(definition)
             continue
         definition["inputSchema"] = input_schema
-        output_schema = _versioned_discovery_schema(name, "sync", resolved_version, compact=compact)
+        output_schema = _document_discovery_schema(
+            name, "sync", schema_mode=schema_mode, version=resolved_version, profile=True
+        )
         if output_schema is not None:
             output_schema.setdefault("type", "object")
             definition["outputSchema"] = output_schema
