@@ -121,8 +121,8 @@ def test_v2_product_v1_outbound_round_trip(fixture_name: str) -> None:
     for d in declarations:
         if d.canonical_formats_only:
             continue
-        if d.legacy_format_refs:
-            expected_refs.extend(d.legacy_format_refs)
+        if d.v1_format_ref:
+            expected_refs.extend(d.v1_format_ref)
     assert result.format_ids == expected_refs, (
         f"{fixture_name}: outbound format_ids didn't equal the union of "
         f"declaration v1_format_ref[]"
@@ -190,8 +190,8 @@ def test_v1_reference_catalog_projection_round_trips_format_ids() -> None:
     v1 = json.loads((_FIXTURES / "v1-reference-formats.json").read_text())
     result = project_v1_catalog_to_v2(v1)
     for source, declaration in zip(v1, result.declarations):
-        assert len(declaration.legacy_format_refs) == 1
-        ref = declaration.legacy_format_refs[0]
+        assert len(declaration.v1_format_ref) == 1
+        ref = declaration.v1_format_ref[0]
         # Compare on (agent_url, id) — Pydantic AnyUrl may add a trailing
         # slash so compare the path-stripped + id form.
         assert ref.id == source["format_id"]["id"]
