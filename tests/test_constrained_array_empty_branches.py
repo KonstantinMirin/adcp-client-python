@@ -1,15 +1,16 @@
 """A schema-valid document validates or fails with ``ValidationError``; it never raises (#1616).
 
-datamodel-code-generator renders an array that carries an ``allOf`` of
+datamodel-code-generator rendered an array that carries an ``allOf`` of
 ``contains``/``if``-``then`` constraints as ``list[Item] | <empty model>``:
 ``losses`` on the legacy purchase continuation, ``refinements`` on
 ``refine_proposals_request``, ``results`` on ``refine_proposals_response``.
 Pydantic applied the array's ``min_length`` to the whole union, so a dict that
-reached the model arm raised ``TypeError: object of type 'Losses' has no len()``
-instead of a ``ValidationError`` -- and every schema-valid ``McpWebhookPayload``
-whose ``result`` union visited that arm crashed the same way.
-``post_generate_fixes.drop_empty_model_arms_from_array_fields`` strips the arm;
-these tests hold that line on the generated tree and on the public models.
+reached the model branch raised ``TypeError: object of type 'Losses' has no
+len()`` instead of a ``ValidationError`` -- and every schema-valid
+``McpWebhookPayload`` whose ``result`` union visited that branch crashed the
+same way. A post-generate pass used to strip the branch; this compiler emits
+no such branch at all, and these tests hold that line on the emitted tree and
+on the public models.
 """
 
 from __future__ import annotations
@@ -20,19 +21,27 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from adcp.types.domains.core.async_response_data import AdcpAsyncResponseData
+from adcp.types.domains.media_buy.refine_proposals_request import RefineProposalsRequest
+from adcp.types.domains.media_buy.refine_proposals_response import (
+    RefineProposalsResponseCompleted,
+)
+from adcp.types.domains.media_buy.request_proposals_response import (
+    PurchaseContinuationLegacyCreate,
+)
 from pydantic import TypeAdapter, ValidationError
 
 from adcp.types import McpWebhookPayload
-from adcp.types.domains.core.async_response_data import AdcpAsyncResponseData
-from adcp.types.domains.media_buy.refine_proposals_request import RefineProposalsRequest
-from adcp.types.domains.media_buy.refine_proposals_response import RefineProposalsResponse1
-from adcp.types.domains.media_buy.request_proposals_response import PurchaseContinuation1
 from adcp.validation.schema_loader import get_named_validator
 from tests.conformance import _round_trip as rt
 
 WEBHOOK_SCHEMA = "core/mcp-webhook-payload.json"
 ASYNC_SCHEMA = "core/async-response-data.json"
-_GENERATED_DIR = Path(__file__).resolve().parents[1] / "src/adcp/types/domains"
+# `adcp.types.domains` is a compatibility MIRROR with no files behind it; the
+# compiler writes the tree at `adcp.types._schemas`, so that is what a sweep
+# over the emission has to read. Pointed at the mirror this test walked one
+# `__init__.py` and passed on nothing.
+_EMITTED_DIR = Path(__file__).resolve().parents[1] / "src/adcp/types/_schemas"
 
 
 def _webhook_examples() -> list[Any]:
@@ -84,14 +93,14 @@ _LEGACY_CONTINUATION = {
 @pytest.mark.parametrize(
     ("model", "payload", "field"),
     [
-        pytest.param(PurchaseContinuation1, _LEGACY_CONTINUATION, "losses", id="losses"),
+        pytest.param(PurchaseContinuationLegacyCreate, _LEGACY_CONTINUATION, "losses", id="losses"),
         pytest.param(
             RefineProposalsRequest,
             {"idempotency_key": "idem_0123456789abcdef", "refinements": []},
             "refinements",
             id="refinements",
         ),
-        pytest.param(RefineProposalsResponse1, {"results": []}, "results", id="results"),
+        pytest.param(RefineProposalsResponseCompleted, {"results": []}, "results", id="results"),
     ],
 )
 def test_a_dict_on_a_constrained_array_is_a_validation_error(
@@ -106,24 +115,24 @@ def test_a_dict_on_a_constrained_array_is_a_validation_error(
 
 
 def test_legacy_continuation_still_accepts_its_losses() -> None:
-    parsed = PurchaseContinuation1.model_validate(_LEGACY_CONTINUATION)
+    parsed = PurchaseContinuationLegacyCreate.model_validate(_LEGACY_CONTINUATION)
     assert [loss.value for loss in parsed.losses] == _LEGACY_CONTINUATION["losses"]
     with pytest.raises(ValidationError):  # min_length=2 still applies to the list
-        PurchaseContinuation1.model_validate(
+        PurchaseContinuationLegacyCreate.model_validate(
             {**_LEGACY_CONTINUATION, "losses": ["feed_version_not_atomic"]}
         )
 
 
-def _union_arms(node: ast.expr) -> list[ast.expr]:
+def _union_branches(node: ast.expr) -> list[ast.expr]:
     if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-        return _union_arms(node.left) + _union_arms(node.right)
+        return _union_branches(node.left) + _union_branches(node.right)
     return [node]
 
 
-def test_generated_tree_has_no_empty_model_arm_beside_a_list() -> None:
+def test_emitted_tree_has_no_empty_model_branch_beside_a_list() -> None:
     """The generator rule holds across the whole tree, not only the three known fields."""
     violations: list[str] = []
-    for path in sorted(_GENERATED_DIR.rglob("*.py")):
+    for path in sorted(_EMITTED_DIR.rglob("*.py")):
         tree = ast.parse(path.read_text())
         empty = {
             node.name
@@ -141,12 +150,20 @@ def test_generated_tree_has_no_empty_model_arm_beside_a_list() -> None:
             for union in ast.walk(node.annotation):
                 if not (isinstance(union, ast.BinOp) and isinstance(union.op, ast.BitOr)):
                     continue
-                arms = _union_arms(union)
-                has_list = any(ast.unparse(arm).startswith("list[") for arm in arms)
-                empty_arms = [ast.unparse(arm) for arm in arms if ast.unparse(arm) in empty]
-                if has_list and empty_arms:
+                branches = _union_branches(union)
+                has_list = any(
+                    ast.unparse(branch).startswith("list[") for branch in branches
+                )
+                empty_branches = [
+                    ast.unparse(branch)
+                    for branch in branches
+                    if ast.unparse(branch) in empty
+                ]
+                if has_list and empty_branches:
                     violations.append(
-                        f"{path.relative_to(_GENERATED_DIR)}:{node.lineno} {empty_arms}"
+                        f"{path.relative_to(_EMITTED_DIR)}:{node.lineno} {empty_branches}"
                     )
                     break
-    assert not violations, "empty-model arms beside a list (#1616):\n" + "\n".join(violations)
+    assert not violations, "empty-model branches beside a list (#1616):\n" + "\n".join(
+        violations
+    )
