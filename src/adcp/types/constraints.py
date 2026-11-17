@@ -93,22 +93,6 @@ HostedUrl = Annotated[WireAnyUrl, UrlConstraints(host_required=True)]
 
 AdCPUrl = Annotated[WireAnyUrl, UrlConstraints(max_length=2083, allowed_schemes=["https"])]
 
-#: ``format: email``, admitting EXACTLY what the bundled schema admits and not one value
-#: less.  ``jsonschema``'s own checker is ``is_email``, which is literally ``"@" in
-#: instance`` -- so it admits ``'@'`` and ``'x@'`` -- and the SDK ships both validators for
-#: every tool, so a type that disagrees with it makes one of them wrong about the same
-#: payload (``tests/conformance/test_schema_model_parity.py``).
-#:
-#: **``EmailStr`` IS THE TRAP, and it is already a P1 bug here**
-#: (``adcp-client-python-87ll``, "a pydantic type substituted for a document's format is
-#: NARROWER than the document", 367 instances).  ``EmailStr`` refuses ``'@'`` and ``'x@'``,
-#: which the document admits, so it would trade a widening for a narrowing and reverse the
-#: parity failure instead of closing it.  It also wants the ``email-validator`` package,
-#: which is a dependency this surface does not need.
-#:
-#: Verified against ``jsonschema.FormatChecker`` on both sides of the boundary -- ``yes``,
-#: ``true``, ``''``, ``AAAA``, ``!!NOT-VALID!!`` refused by both; ``a@b``, ``a@b.com``,
-#: ``@``, ``x@``, ``a b@c`` admitted by both.
 EmailAddress = Annotated[str, Field(pattern=r"@")]
 AcceptancePolicyProfileRegionAliases = Annotated[str, Field(pattern='^[A-Z][A-Z0-9_-]*$')]
 AcceptancePolicyRequirementId = Annotated[str, Field(pattern='^[a-z][a-z0-9_.:-]*$')]

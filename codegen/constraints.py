@@ -199,6 +199,13 @@ ANY_URL = "AnyUrl"
 #: in this compiler reads a description to decide a type.
 HIERARCHICAL = "HostedUrl"
 
+#: ``format: email``'s carrier, declared in the generated ``constraints.py`` beside the
+#: URL types (``render.EMAIL_LINE``) and NOT hand-added to the committed file.  A fixed
+#: declaration that only exists in the artifact is a module importing a name a fresh run
+#: does not produce -- which is exactly how ``adcp-client-python-8jwk`` was filed against
+#: the first pass of this fix.
+EMAIL = "EmailAddress"
+
 
 
 #: The one pattern that restricts a ``uri`` node's SCHEME to https and says nothing

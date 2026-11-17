@@ -2157,6 +2157,24 @@ URL_LINE = "\n".join(
     ]
 )
 
+#: ``format: email``'s carrier, for :data:`URL_LINE`'s own reason -- a DECISION rather
+#: than a thing a run meets, so it is declared whatever the run met.
+#:
+#: The pattern is ``@`` and nothing more, because the BUNDLED SCHEMA's checker is
+#: ``jsonschema``'s ``is_email``, which is literally ``"@" in instance`` and so admits
+#: ``'@'`` and ``'x@'``.  ``EmailStr`` refuses both, which the document admits, so it
+#: would trade a widening for a NARROWING -- ``adcp-client-python-87ll``, "a pydantic type
+#: substituted for a document's format is NARROWER than the document" -- and would want
+#: the ``email-validator`` package besides.  Verified against ``FormatChecker`` on both
+#: sides: ``yes``, ``true``, ``''``, ``AAAA``, ``!!NOT-VALID!!`` refused by both; ``a@b``,
+#: ``a@b.com``, ``@``, ``x@``, ``a b@c`` admitted by both.
+EMAIL_LINE = (
+    f'{constraint_names.EMAIL} = Annotated[str, Field(pattern=r"@")]'
+)
+
+#: What :data:`EMAIL_LINE` names.
+EMAIL_IMPORTS = {("typing", "Annotated"), ("pydantic", "Field")}
+
 #: **THE SCALAR CARRIERS, declared whatever a run met, for :data:`URL_LINE`'s own
 #: reason**: :data:`codegen.ir.STRICT_SCALAR` is a DECISION about what a ``type`` keyword
 #: admits, every scalar field in the tree points at one of these, and a consumer
@@ -2606,8 +2624,8 @@ def constraints_module(shapes: Mapping[str, constraint_names.Shape]) -> str:
     grouping.  The copy had drifted by one blank line, which is one ``I001``.
     """
     declared, variables = constraint_names.declarations(shapes)
-    imports: set[tuple[str, str]] = set(URL_IMPORTS) | set(STRICT_IMPORTS)
-    lines: list[str] = [STRICT_LINE, "", URL_LINE]
+    imports: set[tuple[str, str]] = set(URL_IMPORTS) | set(STRICT_IMPORTS) | set(EMAIL_IMPORTS)
+    lines: list[str] = [STRICT_LINE, "", URL_LINE, "", EMAIL_LINE]
     for name in sorted(declared):
         rendered = alias(declared[name])
         lines.append(rendered.text)

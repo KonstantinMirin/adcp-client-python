@@ -152,7 +152,7 @@ FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
     #: reading and the reason ``EmailStr`` is not it: that would be NARROWER than the
     #: document (``adcp-client-python-87ll``) and would reverse the parity failure rather
     #: than close it.
-    "email": lambda node: f"{constraints_module.MODULE}.EmailAddress",
+    "email": lambda node: f"{constraints_module.MODULE}.{constraints_module.EMAIL}",
 }
 
 #: The formats whose selected type is a URL type, which is what the one refusal
