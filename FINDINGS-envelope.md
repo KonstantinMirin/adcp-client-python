@@ -233,7 +233,16 @@ field whose value is seller business state this example does not model; authorin
 
 These predate this lane and are unchanged by it.
 
-### 3. Three `test_server_principal.py` failures the `status` fix UNMASKED
+### 3. `examples/hello_seller_async_handoff.py` has the identical mis-filled slot
+
+Three sites in that example put `"active"` in the envelope's `status`
+(lines 151, 162, 234), the same defect corrected in `hello_seller.py`. It is outside this
+lane's write scope, so it was not touched. `tests/test_hello_seller_async_handoff_integration.py`
+lines 100 and 181 assert `status == "active"`, so both the example and its test need the same
+paired change — `status: "completed"` plus `media_buy_status: "active"` — and the test passes
+today only because the example is still wrong in the matching way.
+
+### 4. Three `test_server_principal.py` failures the `status` fix UNMASKED
 
 All nine baseline failures in that file were the same `ValidationError: status` at
 `principal.py:374/471/487`. The fix resolves that error in all nine; in three, a second

@@ -113,7 +113,14 @@ async def test_create_media_buy_sync_path(handler: PlatformHandler) -> None:
     # to "hello:anonymous" per per-principal scoping. The hello seller
     # encodes the resolved account.id into media_buy_id.
     assert resp["media_buy_id"].startswith("mb_hello:anonymous_"), resp
-    assert resp["status"] == "active"
+    # The two statuses are different fields and this assertion used to conflate them.
+    # `create-media-buy-response.json#/oneOf/0/properties/media_buy_status` says so in its
+    # own words: "This field carries the media buy lifecycle state; top-level `status` is
+    # reserved for the protocol-envelope TaskStatus (`completed` on synchronous success)."
+    # `active` is absent from `enums/task-status.json`, so the old expectation encoded a
+    # payload every branch of the response document refused.
+    assert resp["status"] == "completed"
+    assert resp["media_buy_status"] == "active"
     assert len(resp["packages"]) == 1
 
 
