@@ -14,16 +14,20 @@ from __future__ import annotations
 
 import pytest
 
+# `adcp.types.domains` is the compatibility mirror of the private tree, so no
+# file sits at this path on disk and ruff's isort grades it third-party. Kept
+# in its own block for that reason, as `test_account_v3_wire.py` does.
+from adcp.types.domains.core.pricing_option import (
+    PricingOptionCpm,
+    PricingOptionFlatRate,
+)
+
 from adcp.types import (
     DeliveryMeasurement,
     DeliveryType,
     Format,
     Product,
     ReportingCapabilities,
-)
-from adcp.types.domains.core.pricing_option import (
-    PricingOptionCpm,
-    PricingOptionFlatRate,
 )
 
 
@@ -71,7 +75,7 @@ def product_with_pricing() -> Product:
 
 
 def test_pricing_option_attribute_access(product_with_pricing: Product):
-    """PricingOption RootModel proxies attribute access to the inner type."""
+    """A PricingOption element exposes its own fields, with no root to go through."""
     po = product_with_pricing.pricing_options[0]
 
     assert po.pricing_option_id == "flat_1"
@@ -81,7 +85,7 @@ def test_pricing_option_attribute_access(product_with_pricing: Product):
 
 
 def test_cpm_variant_attribute_access(product_with_pricing: Product):
-    """CPM variant attributes are accessible through the proxy."""
+    """The CPM branch's own fields are reachable on the element itself."""
     po = product_with_pricing.pricing_options[1]
 
     assert po.pricing_model == "cpm"
@@ -112,7 +116,7 @@ def test_pricing_option_missing_attribute_raises(product_with_pricing: Product):
 
 
 def test_pricing_option_private_attribute_raises(product_with_pricing: Product):
-    """Private/dunder attributes are not proxied to root."""
+    """A private name is not resolved anywhere else either."""
     po = product_with_pricing.pricing_options[0]
 
     with pytest.raises(AttributeError):
@@ -120,7 +124,7 @@ def test_pricing_option_private_attribute_raises(product_with_pricing: Product):
 
 
 def test_pricing_option_serialization_roundtrip(product_with_pricing: Product):
-    """Serialization and validation are unaffected by the __getattr__ proxy."""
+    """Serialisation and validation round-trip on the branch itself."""
     po = product_with_pricing.pricing_options[0]
 
     dumped = po.model_dump(mode="json")
