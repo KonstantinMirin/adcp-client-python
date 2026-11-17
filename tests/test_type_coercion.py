@@ -673,7 +673,13 @@ class TestResponseTypeCoercion:
         from adcp.types.domains.core.product import DeliveryMeasurement
         from pydantic import Field
 
-        from adcp.types import CpmPricingOption, DeliveryType, GetProductsResponse, Product
+        # `product.pricing_options` items are `core/pricing-option.json`, whose
+        # `oneOf/0` is a bare `$ref` to `pricing-options/cpm-option.json`, so
+        # section 4 names that branch for its target's distinguishing
+        # remainder: `PricingOptionCpm`, with `CPMPricingOption` as its second
+        # base. `CpmPricingOption` names the TARGET document's own root, which
+        # is a different class and satisfies no branch of the union.
+        from adcp.types import DeliveryType, GetProductsResponse, PricingOptionCpm, Product
 
         class ExtendedProduct(Product):
             """Extended with internal tracking fields."""
@@ -696,7 +702,7 @@ class TestResponseTypeCoercion:
                 "timezone": "UTC",
             },
             pricing_options=[
-                CpmPricingOption(
+                PricingOptionCpm(
                     currency="USD",
                     pricing_option_id="opt-1",
                     fixed_price=5.0,
