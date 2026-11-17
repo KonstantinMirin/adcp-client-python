@@ -37,9 +37,130 @@ from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, field
 from typing import Any
 
-from codegen import compiler, intersect, ir
+from codegen import bundle, compiler, intersect, ir
 from codegen.keywords import Position
+from codegen.lower import approximate
 from codegen.refusal import Kind, Refusal
+
+
+def _nearest_combinator(pointer: str) -> Position | None:
+    """The position the nearest combinator ENCLOSING ``pointer`` holds its subschemas at,
+    or ``None`` where no combinator encloses it.
+
+    ``Position.BRANCH`` for an ``anyOf`` / ``oneOf`` and ``Position.CONJ`` for an
+    ``allOf``, and neither is written here: both are read out of
+    :data:`codegen.bundle.DESCENDS`, which is the ONE descent table
+    (``docs/plan/architecture.md`` §11) and the same column the walk spelled this pointer
+    with.  So this is the walk's own step read backwards, not a pattern matched against a
+    string -- a segment is a keyword only where the table holds a subschema under it, a
+    ``properties`` or a ``patternProperties`` spends the NAME beside its own word
+    (:data:`codegen.bundle.HELD_BY_NAME`), and a combinator spends an INDEX
+    (:data:`codegen.bundle.HELD_IN_A_LIST`), which is what keeps a property NAMED
+    ``allOf`` a property.
+
+    **Why the question is asked at all** -- the owner's ruling of 2026-11-17, which is the
+    knob ``FINDINGS-pointer.md`` §4 reported and the honest form of the argument
+    :func:`_restricts_without_declaring` carries: *a branch does not admit on its own*.  A
+    payload is validated against the WHOLE combinator, so a restriction-only BRANCH
+    describes a set no wire position is ever checked against and a class minted for it is
+    the defect.  Every conjunct of an ``allOf`` must be satisfied by every instance
+    reaching that position, so a restriction-only CONJ genuinely narrows and its class is
+    CORRECT: ``{}`` satisfies ``core/forecast-point.json``'s ``metrics`` and is refused at
+    ``core/signal-coverage-forecast.json#/properties/points/items/allOf/1/properties/metrics``,
+    which is §3a's own admission test answering that the two positions admit different
+    sets.  Measured: that node is the one site the unconditioned reading took that it had
+    no business taking, and the narrowing subclass it had was right.
+    """
+    found: Position | None = None
+    parts = pointer.split("/")[1:]  # the leading ``#`` names the root and holds nothing
+    index = 0
+    while index < len(parts):
+        held = bundle.DESCENDS.get(parts[index])
+        if held is None:
+            index += 1
+        elif parts[index] in bundle.HELD_BY_NAME:
+            index += 2  # the keyword and the NAME it holds the subschema under
+        elif parts[index] in bundle.HELD_IN_A_LIST:
+            if index + 1 < len(parts) and parts[index + 1].isdigit():
+                found = held
+                index += 2
+            else:  # the word is a property name the segment above already spent
+                index += 1
+        else:
+            index += 1  # a keyword holding exactly ONE subschema: ``items``, ``not``
+    return found
+
+
+#: The two keywords a declaration can state while declaring NO MEMBER of its own.
+#: ``required`` names members and declares none of them; ``properties`` names members and
+#: declares whatever its ENTRIES declare, which is why the reading below recurses through
+#: it rather than stopping at it.  Every other keyword states something about an instance
+#: that is not "which of the members declared elsewhere must be there" -- a ``type`` word,
+#: a ``$ref``, an ``additionalProperties``, a bound, a ``const``, a combinator -- so a
+#: declaration stating one is a DECLARATION and this reading declines it.
+_RESTRICTING = frozenset({"required", "properties"})
+
+
+def _restricts_without_declaring(declaration: Any) -> list[tuple[str, Any]] | None:
+    """The facts ``declaration`` states if it only RESTRICTS members declared elsewhere,
+    or ``None`` if it declares a member of its own.
+
+    **A combinator branch does not admit on its own** (the owner's correction of
+    2026-11-17, which reverses ``TASK.md``'s reading of the same two pairs as a mis-keyed
+    ``__adcp_schema__``).  A payload is validated against the WHOLE combinator and never
+    against one branch, so a class minted for a position that states no type admits a set
+    no wire position is ever validated against -- and that is what the gate reports when it
+    calls such a class narrower than its document.  The line between the two is what a node
+    STATES: a node declaring a member an instance can carry states a TYPE; a node whose
+    every keyword only restricts members declared elsewhere states a RULE.
+
+    **THE READING IS RECURSIVE AND THAT IS THE WHOLE OF IT.**  A keyword test would stop at
+    ``properties`` and call ``{"properties": {"account": {"required": [...]}}}`` a
+    declaration, which leaves ``media-buy/buy-products-request.json`` at
+    ``#/anyOf/1/properties/account`` exactly where it was: that node names a member and
+    declares nothing about it -- it NARROWS one ``core/canonical-account-ref.json``
+    declares -- so the recursion asks the same question of every entry and the answer is
+    the conjunction.  Measured over the bundle: **13,785 combinator branches declare a
+    shape and 19,411 state only a rule**, so a coarse test does not misplace a handful of
+    nodes, it misplaces thousands.
+
+    **``core/canonical-account-ref.json``'s own two ``anyOf`` branches are in the FIRST
+    group and must stay there.**  Each states ``properties`` with a real declaration under
+    it, ``required`` and ``additionalProperties`` -- so ``additionalProperties`` alone takes
+    them out of ``_RESTRICTING``, the entries' own declarations take them out again, and
+    ``CanonicalAccountReferenceAccountId`` / ``...BrandOperator`` are correct classes this
+    reading never reaches.
+
+    **``None`` IS THE SAFE ANSWER AND EVERY UNCERTAIN SHAPE TAKES IT.**  A ``None`` leaves
+    the key where the merge already put it, so nothing moves; a list leaves the key
+    INHERITED and the model gets wider, which is permitted only because the caller declares
+    the dropped fact.  So a declaration that states NOTHING answers ``None`` -- it has no
+    restriction to drop and the clauses around this one already decide it -- an empty
+    ``required`` answers ``None``, an empty or non-mapping ``properties`` answers ``None``,
+    and an entry this function cannot read as a restriction takes the whole declaration out.
+
+    The facts are returned as ``(keyword, the document's own value)`` pairs in document
+    order, because that is what :func:`codegen.lower.approximate.declare` writes and §2
+    requires the declaration to carry the document's own spelling.  Annotations are not
+    among them: :func:`codegen.intersect.constraining` has already dropped every key whose
+    cell carries nothing, and an annotation the restatement states is decided by the row
+    that exists for it.
+    """
+    if not isinstance(declaration, Mapping):
+        return None
+    stated = intersect.constraining(declaration)
+    if not stated or set(stated) - _RESTRICTING:
+        return None
+    names = stated.get("required")
+    if names is not None and not (isinstance(names, list) and names):
+        return None
+    entries = stated.get("properties")
+    if entries is not None:
+        if not isinstance(entries, Mapping) or not entries:
+            return None
+        if any(_restricts_without_declaring(sub) is None for sub in entries.values()):
+            return None
+    return [(keyword, stated[keyword]) for keyword in stated]
 
 
 @dataclass
@@ -235,8 +356,50 @@ def merge(
             # state no ``required`` reached the arm below and kept the base's type and
             # bound.
             out.own[key] = composed
-            if not intersect.constraining(stating) or intersect.constraining(out.own[key]) == intersect.constraining(
-                intersect.dereferenced(inherited[key], mod.resolve_node)
+            # **A RESTATEMENT THAT DECLARES NO MEMBER OF ITS OWN IS A RULE AND NOT A TYPE**
+            # (:func:`_restricts_without_declaring`, the owner's correction of 2026-11-17).
+            # It narrows -- that is why this row has it -- but what it narrows are members
+            # some base declares, so there is no type of its own for a class to be: lowered
+            # as a node it becomes a second declaration of the base's subject at this
+            # pointer, and where the base is a UNION ROOT §5's distribution crosses it with
+            # every branch and mints one class per branch at a position the document states
+            # no type at.  Measured, that is the whole of the two pairs this lane was opened
+            # for: ``media-buy/buy-products-request.json`` and
+            # ``media-buy/request-proposals-request.json`` at
+            # ``#/anyOf/1/properties/account``, each ``{"required": ["brand", "operator"]}``
+            # over the root's ``{"allOf": [{"$ref": "core/canonical-account-ref.json"}]}``,
+            # whose ``account_id`` cross is a class that refuses every payload the pointer
+            # admits.
+            #
+            # So the key takes the requiredness overlay's own treatment -- the base's
+            # DECIDED field, re-used -- and the restriction is DECLARED rather than
+            # enforced, which is the one thing this row owes: no rule kind in
+            # ``adcp.types._runtime`` reaches into a child's members (every rule is about
+            # the class's own keys), so the fact cannot be carried and the class gets WIDER
+            # than its document at that pointer.  §2 permits that only as a declared
+            # WIDENING, and ``FINDINGS-pointer.md`` names the carrier that would enforce it
+            # instead.
+            #
+            # **AND ONLY UNDER A BRANCH, NEVER UNDER A CONJ** (the owner's ruling of
+            # 2026-11-17).  The reason a restriction-only node states no type is not that
+            # it declares no member -- it is that A BRANCH DOES NOT ADMIT ON ITS OWN, and
+            # that argument holds at exactly one of the two positions a combinator holds a
+            # subschema at.  :func:`_nearest_combinator` is the question and
+            # ``bundle.DESCENDS`` is the answer; the measurement is in its docstring.
+            stated_at = at.get(key, f"{pointer}/properties/{key}")
+            restricting = (
+                _restricts_without_declaring(stating)
+                if _nearest_combinator(stated_at) is Position.BRANCH
+                else None
+            )
+            if restricting is not None:
+                for keyword, fact in restricting:
+                    approximate.declare(mod, stated_at, keyword, Position.PROP, fact)
+            if (
+                not intersect.constraining(stating)
+                or restricting is not None
+                or intersect.constraining(out.own[key])
+                == intersect.constraining(intersect.dereferenced(inherited[key], mod.resolve_node))
             ):
                 # **The restatement says nothing about the instance the base does not,
                 # so this is section 2's REQUIREDNESS OVERLAY and takes its answer**:
