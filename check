@@ -9,6 +9,27 @@ exec env PYTHONPATH=.:src "$(dirname "$0")/.venv/bin/python" "$0" "$@"
 """
 """The fast loop: the three numbers in 0.06 s, or one document's report in seconds.
 
+**THESE NUMBERS ARE NOT A RESULT AND MUST NOT BE QUOTED AS ONE.**  They say what the
+COMPILER did -- how many documents it emitted, refused, and declared an approximation at.
+They say nothing about whether a class accepts what its schema accepts, refuses what its
+schema refuses, or dumps something its schema admits.  That is
+``tests_emit/test_the_grade_is_green.py::test_this_pair_meets_the_contract``, and it is
+the only gate.
+
+Measured, 2026-11-17, over one week in which this script printed ``emitted 1059 /
+refused 0; approximated 803 facts in 238 documents`` UNCHANGED while:
+
+  * ``format: email`` dropped a ``maxLength`` at 53 nodes and three shipped fields
+    accepted ``'!!NOT-VALID!!'``;
+  * 101 bare-``$ref`` positions re-emitted their target without its branch classes, so
+    one document produced a class that refuses a bad payload and a class that accepts it;
+  * the contract gate went from 2,588 to 2,582 passing.
+
+Every one of those is invisible here BY CONSTRUCTION -- the compiler emitted exactly what
+it was told, and being told the wrong thing is not a refusal.  A reader who quotes these
+three figures as evidence that the emission is sound is making the mistake this paragraph
+exists to prevent, and it was made for a week.
+
 **Why this exists.**  The full suite is the GATE, not the loop, and a lane that runs it to
 answer "did my change work" waits 40 minutes for a number it can have instantly.  ONE cache
 makes that true -- ``tests_emit/compiled.py`` holds one compile per population keyed on the
@@ -110,6 +131,15 @@ def numbers() -> int:
         f"chained {chained}  ->  primary {len(out.refusals) - chained}, chained {chained}"
     )
     print(f"approximated {facts} facts in {len(out.approximations)} documents")
+    #: **PRINTED EVERY TIME, because the three figures above were quoted as evidence the
+    #: emission was sound for a week while the gate was red and moving.**  They are the
+    #: COMPILER's own counts; being told the wrong thing is not a refusal and so cannot
+    #: appear here.  The gate is named so a reader never has to go looking for it.
+    print(
+        "\nthese are the COMPILER's counts, not a result: they cannot see a class that "
+        "accepts\nwhat its schema refuses. the gate is\n"
+        "    pytest tests_emit/test_the_grade_is_green.py::test_this_pair_meets_the_contract"
+    )
     print(f"({time.time() - started:.2f} s)", file=sys.stderr)
     return 0
 
