@@ -78,11 +78,19 @@ def test_display_tag_key_is_inferred_as_display_tag():
 
 
 def test_key_inference_covers_every_asset_type_the_schema_declares():
-    from adcp.types.domains.core import format as format_module
+    from adcp.types._legacy_assets import discriminator_values
+    from adcp.types.core import AssetsItemIndividual
 
     # The format slot union derives its own vocabulary from the same pin; the
     # creative-asset vocabulary key inference uses must not lag behind it.
-    declared = format_module._KNOWN_BASE_INDIVIDUAL_ASSET_TYPES
+    #
+    # `_KNOWN_BASE_INDIVIDUAL_ASSET_TYPES` was the previous generator's list of
+    # that vocabulary. This emission makes `core/format.json`'s individual-slot
+    # `oneOf` a base (`AssetsItemIndividual`) plus one branch per asset type, so
+    # the vocabulary IS the branches' `asset_type` consts -- read with the same
+    # derivation the helpers themselves read, which is what keeps the two sides
+    # from drifting apart rather than a second list.
+    declared = discriminator_values(AssetsItemIndividual)
     assert "display_tag" in declared
     for asset_type in declared:
         assert infer_asset_type(asset_type, {"content": "x"}) == asset_type
@@ -116,8 +124,16 @@ def test_strict_construction_stays_default():
             "id": "display_300x250",
         },
     }
-    with pytest.raises(ValidationError, match="Unable to extract tag"):
+    # "Unable to extract tag" was pydantic's tagged-union message, which the
+    # previous generator's `Field(discriminator=...)` produced. This emission
+    # makes the asset union a base plus one branch per `asset_type`, and an
+    # un-normalised asset satisfies no branch -- so the refusal is the union's
+    # own `oneOf`, still naming `asset_type` as the keyword that routes it.
+    with pytest.raises(
+        ValidationError, match=r"is not valid under any of the \d+ branches"
+    ) as refusal:
         LegacyCreativeAsset(**data, assets=assets)
+    assert "asset_type" in str(refusal.value)
     creative = LegacyCreativeAsset(**data, assets=coerce_legacy_assets(assets))
     wire = creative.model_dump(mode="json")
     assert wire["assets"]["banner"]["asset_type"] == "image"
