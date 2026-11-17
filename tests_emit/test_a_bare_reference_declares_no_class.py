@@ -70,9 +70,11 @@ BUNDLE = fresh.BUNDLE
 #: duration. That is the defect §3a's catalogue exists to remove, arriving at the layer
 #: whose key was missing.
 MINTS_A_WRAPPER: dict[tuple[str, str], tuple[str, str]] = {
-    ("compliance/comply-test-controller-request.json", "/properties/params/properties/dooh_metrics"): (
+    ("compliance/comply-test-controller-request.json",
+     "/properties/params/properties/dooh_metrics"): (
         "core/delivery-metrics.json#/properties/dooh_metrics", "ParamsDoohMetrics"),
-    ("compliance/comply-test-controller-request.json", "/properties/params/properties/viewability"): (
+    ("compliance/comply-test-controller-request.json",
+     "/properties/params/properties/viewability"): (
         "core/delivery-metrics.json#/properties/viewability", "ParamsViewability"),
     ("core/attribution-window.json", "/properties/post_click"): ("core/duration.json", "PostClick"),
     ("core/attribution-window.json", "/properties/post_view"): ("core/duration.json", "PostView"),
@@ -87,7 +89,8 @@ MINTS_A_WRAPPER: dict[tuple[str, str], tuple[str, str]] = {
     ("core/media-buy.json", "/properties/bidding"): ("core/bidding-policy.json", "Bidding"),
     ("core/optimization-goal.json", "/oneOf/0/properties/target_frequency/properties/window"): (
         "core/duration.json", "Window"),
-    ("core/optimization-goal.json", "/oneOf/0/properties/vendor"): ("core/brand-ref.json", "Vendor"),
+    ("core/optimization-goal.json", "/oneOf/0/properties/vendor"): (
+        "core/brand-ref.json", "Vendor"),
     ("core/optimization-goal.json", "/oneOf/1/properties/attribution_window"): (
         "core/attribution-window.json", "OptimizationGoalEventAttributionWindow"),
     ("core/outcome-measurement.json", "/properties/window"): ("core/duration.json", "Window"),
@@ -109,12 +112,15 @@ MINTS_A_WRAPPER: dict[tuple[str, str], tuple[str, str]] = {
         "core/bidding-policy.json", "PackagesItemBidding"),
     ("media-buy/get-products-request.json", "/properties/time_budget"): (
         "core/duration.json", "TimeBudget"),
-    ("media-buy/get-products-response.json", "/properties/incomplete/items/properties/estimated_wait"): (
+    ("media-buy/get-products-response.json",
+     "/properties/incomplete/items/properties/estimated_wait"): (
         "core/duration.json", "EstimatedWait"),
-    ("media-buy/package-request.json", "/properties/bidding"): ("core/bidding-policy.json", "Bidding"),
+    ("media-buy/package-request.json", "/properties/bidding"): (
+        "core/bidding-policy.json", "Bidding"),
     ("media-buy/update-media-buy-response.json", "/oneOf/0/properties/bidding"): (
         "core/bidding-policy.json", "Bidding"),
-    ("signals/get-signals-response.json", "/properties/incomplete/items/properties/estimated_wait"): (
+    ("signals/get-signals-response.json",
+     "/properties/incomplete/items/properties/estimated_wait"): (
         "core/duration.json", "EstimatedWait"),
 }
 
@@ -137,6 +143,7 @@ def test_a_bare_annotated_reference_declares_no_class() -> None:
     alike.
     """
     from compiled import compiled
+
     from survey.composites import compositions
 
     bare = claimed(
