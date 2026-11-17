@@ -1,7 +1,11 @@
-"""Tests for RootModel __getattr__ proxy.
+"""What became of the RootModel ``__getattr__`` proxy.
 
-Validates that RootModel union types proxy attribute access to the wrapped type,
-so users don't need .root to access inner model attributes.
+Issue #145 asked that a union element not oblige a caller to write ``.root``,
+and the answer then was a proxy on the wrapper. Section 4 removes the wrapper
+instead: a union is a base plus one child per branch, so an element IS the
+branch and the question the proxy answered no longer arises. These tests pin
+that -- attribute access reaches the fields directly, ``root`` is absent, and
+``isinstance`` holds against the union base.
 
 See: https://github.com/adcontextprotocol/adcp-client-python/issues/145
 """
@@ -11,14 +15,18 @@ from __future__ import annotations
 import pytest
 
 from adcp.types import (
-    CpmPricingOption,
     DeliveryMeasurement,
     DeliveryType,
-    FlatRatePricingOption,
+    Format,
     Product,
     ReportingCapabilities,
 )
-from adcp.types.canonical_creative import Format
+
+# `Product.pricing_options` states `core/pricing_option.json`, so its elements
+# are THAT union's branches. The flat `CpmPricingOption` / `FlatRatePricingOption`
+# name a different subject -- the standalone `pricing-options/cpm-option.json`
+# document -- and a value built from it is not a value this field admits.
+from adcp.types.domains.core.pricing_option import PricingOptionCpm, PricingOptionFlatRate
 
 
 @pytest.fixture
@@ -41,13 +49,13 @@ def product_with_pricing() -> Product:
             timezone="UTC",
         ),
         pricing_options=[
-            FlatRatePricingOption(
+            PricingOptionFlatRate(
                 pricing_option_id="flat_1",
                 pricing_model="flat_rate",
                 fixed_price=100.0,
                 currency="USD",
             ),
-            CpmPricingOption(
+            PricingOptionCpm(
                 pricing_option_id="cpm_1",
                 pricing_model="cpm",
                 floor_price=2.50,
@@ -76,11 +84,11 @@ def test_cpm_variant_attribute_access(product_with_pricing: Product):
     assert po.pricing_option_id == "cpm_1"
 
 
-def test_pricing_option_is_the_arm_itself(product_with_pricing: Product):
-    """A union root publishes its arms, so an element has no wrapper to unwrap."""
+def test_pricing_option_is_the_branch_itself(product_with_pricing: Product):
+    """A union root publishes its branches, so an element has no wrapper to unwrap."""
     po = product_with_pricing.pricing_options[0]
 
-    assert type(po).__name__ == "FlatRatePricingOption"
+    assert type(po) is PricingOptionFlatRate
     assert not hasattr(po, "root")
 
 
@@ -120,20 +128,35 @@ def test_pricing_option_serialization_roundtrip(product_with_pricing: Product):
     assert restored.pricing_model == "flat_rate"
 
 
-def test_retained_rootmodel_unions_have_getattr():
-    """A union another union discriminates against keeps its wrapper and its proxy.
+def test_a_union_another_union_discriminates_against_keeps_no_wrapper_either():
+    """The last wrapper is gone too, so there is no proxy left to need.
 
-    ``AssetVariant`` discriminates on ``asset_type``, and both ``VastAsset``
-    shapes carry ``asset_type='vast'``, so the wrapper is the one choice that
-    tag maps to.
+    ``AssetVariant`` discriminates on ``asset_type`` and the VAST branch was the
+    case that used to keep a ``RootModel`` around its target. Section 4 emits a
+    union as a base plus one child per branch, so the branch IS the model: there
+    is no ``root`` to unwrap, attribute access needs no ``__getattr__``, and
+    ``isinstance`` holds against the union base.
     """
-    from adcp.types.domains.core.assets.asset_union import VastAsset, VastAsset1
+    from adcp.types.domains.core.assets.asset_union import AssetVariant, AssetVariantVast
 
-    inner = VastAsset1(
+    branch = AssetVariantVast(
         asset_type="vast", delivery_type="url", asset_id="a-1", url="https://cdn.test/v.xml"
     )
-    wrapped = VastAsset(root=inner)
 
-    assert wrapped.asset_type == "vast"
-    assert wrapped.delivery_type == "url"
-    assert wrapped.asset_id == "a-1"
+    assert isinstance(branch, AssetVariant)
+    assert not hasattr(branch, "root")
+    assert branch.asset_type == "vast"
+    assert branch.delivery_type == "url"
+    assert branch.asset_id == "a-1"
+
+    # And the base dispatches a payload to that branch, which is the fact the
+    # wrapper used to stand in for.
+    dispatched = AssetVariant.model_validate(
+        {
+            "asset_type": "vast",
+            "delivery_type": "url",
+            "asset_id": "a-1",
+            "url": "https://cdn.test/v.xml",
+        }
+    )
+    assert isinstance(dispatched, AssetVariantVast)
