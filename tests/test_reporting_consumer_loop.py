@@ -95,7 +95,10 @@ def _revision(**overrides: Any) -> ReportingRevision:
         "finality": "snapshot",
         "revision_content_sha256": "a" * 64,
         "row_count": 2,
-        "control_totals": [{"name": "impressions", "value": "5"}],
+        # `value_type` is on the control-total item's own `required` list, and
+        # the item is a two-branch `oneOf` keyed on it -- without it the payload
+        # satisfies neither branch.
+        "control_totals": [{"name": "impressions", "value": "5", "value_type": "integer"}],
         "observed_at": PERIOD_END.isoformat().replace("+00:00", "Z"),
         "created_at": EXPECTED_AT.isoformat().replace("+00:00", "Z"),
         "coverage": _COVERAGE,
@@ -106,6 +109,10 @@ def _revision(**overrides: Any) -> ReportingRevision:
         "schema_uri": "https://contracts.example.test/rows-v1",
         "schema_sha256": "c" * 64,
         "schema_version": "1.0.0",
+        # Both of these are on `core/reporting-revision.json`'s own `required`
+        # list and both are stated with a `const`. The fixture carried neither.
+        "schema_dialect": "https://json-schema.org/draft/2020-12/schema",
+        "schema_ref_policy": "local_fragment_only",
     }
     payload.update(overrides)
     return ReportingRevision.model_validate(payload)
@@ -307,7 +314,10 @@ def test_classification_never_looks_at_counts() -> None:
         classify_content_mismatch(
             obligation=_obligation(),
             revision=_revision(
-                row_count=1_000_000, control_totals=[{"name": "impressions", "value": "999999"}]
+                row_count=1_000_000,
+                control_totals=[
+                    {"name": "impressions", "value": "999999", "value_type": "integer"}
+                ],
             ),
             reading=_reading(),
             definition=DEFINITION,
@@ -813,7 +823,19 @@ def test_required_finality_decides_whether_a_revision_counts() -> None:
             [_obligation(required_finality="official")],
             now=EXPECTED_AT + RECOVERY,
             automated_recovery_window=RECOVERY,
-            obligation_revisions={"rpo_1": [_revision(finality="official")]},
+            # `finality='official'` makes three more properties required --
+            # `finality_basis`, `finality_policy_id` and `finalized_at` -- which
+            # is the document's conditional, not a defaultable const.
+            obligation_revisions={
+                "rpo_1": [
+                    _revision(
+                        finality="official",
+                        finality_basis="contractual_cutoff",
+                        finality_policy_id="fin_policy_1",
+                        finalized_at=EXPECTED_AT.isoformat().replace("+00:00", "Z"),
+                    )
+                ]
+            },
         )
 
 
