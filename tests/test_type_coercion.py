@@ -9,6 +9,14 @@ Reference: https://github.com/adcontextprotocol/adcp-client-python/issues/102
 from __future__ import annotations
 
 import pytest
+from adcp.types.domains.creative.list_creative_formats_request import (
+    ListCreativeFormatsRequestCreativeAgent,
+)
+from adcp.types.domains.creative.list_creatives_request import Field1 as FieldModel
+from adcp.types.domains.creative.list_creatives_request import Sort
+from adcp.types.domains.enums.creative_sort_field import CreativeSortField
+from adcp.types.domains.enums.sort_direction import SortDirection
+from pydantic import ValidationError
 
 from adcp.types import (
     AssetContentType,
@@ -17,15 +25,6 @@ from adcp.types import (
     ListCreativesRequest,
     PackageRequest,
 )
-from adcp.types.domains.core.context import ContextObject
-from adcp.types.domains.core.ext import ExtensionObject
-from adcp.types.domains.creative.list_creative_formats_request import (
-    ListCreativeFormatsRequestCreativeAgent,
-)
-from adcp.types.domains.creative.list_creatives_request import Field1 as FieldModel
-from adcp.types.domains.creative.list_creatives_request import Sort
-from adcp.types.domains.enums.creative_sort_field import CreativeSortField
-from adcp.types.domains.enums.sort_direction import SortDirection
 from adcp.types.legacy import LegacyListCreativeFormatsRequest as ListCreativeFormatsRequest
 from tests.conftest import validate_union
 
@@ -68,39 +67,63 @@ class TestEnumListCoercion:
         [ListCreativeFormatsRequest, ListCreativeFormatsRequestCreativeAgent],
     )
     @pytest.mark.parametrize(
-        ("field", "values", "expected"),
+        ("field", "values"),
         [
-            ("disclosure_positions", ["footer", "prominent", "footer"], ["footer", "prominent"]),
-            (
-                "disclosure_persistence",
-                ["initial", "continuous", "initial"],
-                ["initial", "continuous"],
-            ),
+            ("disclosure_positions", ["footer", "prominent"]),
+            ("disclosure_persistence", ["initial", "continuous"]),
         ],
     )
-    def test_unique_disclosure_filters_are_deduplicated(
-        self, request_type, field, values, expected
-    ):
-        """Both role-specific models preserve first-seen order for uniqueItems."""
+    def test_unique_disclosure_filters_keep_their_order(self, request_type, field, values):
+        """Both role-specific models preserve the order a distinct list was given in."""
         req = request_type(**{field: values})
-        assert [item.value for item in getattr(req, field)] == expected
+        assert [item.value for item in getattr(req, field)] == values
+
+    @pytest.mark.parametrize(
+        "request_type",
+        [ListCreativeFormatsRequest, ListCreativeFormatsRequestCreativeAgent],
+    )
+    @pytest.mark.parametrize(
+        ("field", "values"),
+        [
+            ("disclosure_positions", ["footer", "prominent", "footer"]),
+            ("disclosure_persistence", ["initial", "continuous", "initial"]),
+        ],
+    )
+    def test_repeated_disclosure_filters_are_refused(self, request_type, field, values):
+        """Both documents state `uniqueItems: true`, which refuses a repeat.
+
+        What stood here asserted a silent de-duplication to
+        `['footer', 'prominent']`. `uniqueItems` makes a repeating instance
+        INVALID; it does not ask the consumer to drop the repeat, and dropping
+        it would return a filter the caller did not send.
+        """
+        with pytest.raises(ValidationError) as excinfo:
+            request_type(**{field: values})
+        assert excinfo.value.errors()[0]["type"] == "uniqueItems"
 
 
 class TestDictToModelCoercion:
-    """Test that model fields accept dict values."""
+    """Test that mapping fields accept dict values.
+
+    `core/context.json` and `core/ext.json` are objects stating NO `properties`
+    and `additionalProperties: true`, so section 4's row gives each a
+    `dict[str, Any]`: `ContextObject` and `ExtensionObject` are annotated
+    mapping aliases, not classes. A dict is therefore the value type rather
+    than something coerced into a model -- there is no attribute to read and no
+    class to `isinstance` against, and identity is not preserved because
+    pydantic copies a validated mapping.
+    """
 
     def test_context_accepts_dict(self):
         """ListCreativeFormatsRequest.context accepts dict."""
         req = ListCreativeFormatsRequest(context={"user_id": "123", "session": "abc"})
-        assert isinstance(req.context, ContextObject)
-        assert req.context.user_id == "123"
-        assert req.context.session == "abc"
+        assert req.context == {"user_id": "123", "session": "abc"}
 
     def test_context_accepts_model(self):
-        """ListCreativeFormatsRequest.context still accepts ContextObject."""
-        ctx = ContextObject(user_id="456")
+        """ListCreativeFormatsRequest.context keeps the mapping it was given."""
+        ctx = {"user_id": "456"}
         req = ListCreativeFormatsRequest(context=ctx)
-        assert req.context is ctx
+        assert req.context == ctx
 
     def test_context_accepts_none(self):
         """ListCreativeFormatsRequest.context accepts None."""
@@ -110,27 +133,35 @@ class TestDictToModelCoercion:
     def test_ext_accepts_dict(self):
         """ListCreativeFormatsRequest.ext accepts dict."""
         req = ListCreativeFormatsRequest(ext={"custom_field": "value"})
-        assert isinstance(req.ext, ExtensionObject)
-        assert req.ext.custom_field == "value"
+        assert req.ext == {"custom_field": "value"}
 
     def test_get_products_request_context_accepts_dict(self):
         """GetProductsRequest.context accepts dict."""
         req = validate_union(
             GetProductsRequest, {"buying_mode": "wholesale", "context": {"key": "value"}}
         )
-        assert isinstance(req.context, ContextObject)
-        assert req.context.key == "value"
+        assert req.context == {"key": "value"}
 
 
 class TestFieldModelStringCoercion:
-    """Test that FieldModel lists accept string lists."""
+    """Test that FieldModel lists accept string lists.
+
+    A member's canonical spelling is `UPPER_SNAKE` and the lower-case second
+    spelling beside it is a `MemberAlias` descriptor. `'name'` is the one value
+    in the bundle that gets NO alias, under the compiler's counted
+    `TAKEN_BY_THE_BASE` reason ("a name the enumeration already resolves"):
+    `name = MemberAlias('NAME')` in the class body would shadow
+    `enum.Enum.name` and make `Member.name` return the member instead of
+    `'NAME'`. So `FieldModel.NAME` is the attribute, and the wire value is
+    `'name'` either way.
+    """
 
     def test_fields_accepts_string_list(self):
         """ListCreativesRequest.fields accepts ['creative_id', 'name']."""
         req = ListCreativesRequest(fields=["creative_id", "name", "status"])
         assert len(req.fields) == 3
         assert req.fields[0] == FieldModel.creative_id
-        assert req.fields[1] == FieldModel.name
+        assert req.fields[1] == FieldModel.NAME
         assert req.fields[2] == FieldModel.status
         assert all(isinstance(x, FieldModel) for x in req.fields)
 
@@ -141,8 +172,8 @@ class TestFieldModelStringCoercion:
 
     def test_fields_accepts_mixed_list(self):
         """ListCreativesRequest.fields accepts mixed string/enum list."""
-        req = ListCreativesRequest(fields=["creative_id", FieldModel.name])
-        assert req.fields == [FieldModel.creative_id, FieldModel.name]
+        req = ListCreativesRequest(fields=["creative_id", FieldModel.NAME])
+        assert req.fields == [FieldModel.creative_id, FieldModel.NAME]
 
     def test_all_field_models_coerce(self):
         """All canonical-safe FieldModel values coerce from strings."""
@@ -159,7 +190,7 @@ class TestSortEnumCoercion:
     def test_sort_field_accepts_string(self):
         """Sort.field accepts string value."""
         sort = Sort(field="name", direction=SortDirection.asc)
-        assert sort.field == CreativeSortField.name
+        assert sort.field == CreativeSortField.NAME
         assert isinstance(sort.field, CreativeSortField)
 
     def test_sort_direction_accepts_string(self):
@@ -180,7 +211,7 @@ class TestSortEnumCoercion:
             sort=Sort(field="name", direction="asc"),
             fields=["creative_id"],
         )
-        assert req.sort.field == CreativeSortField.name
+        assert req.sort.field == CreativeSortField.NAME
         assert req.sort.direction == SortDirection.asc
 
 
@@ -196,8 +227,7 @@ class TestPackageRequestCoercion:
             product_id="prod1",
             ext={"custom": "data"},
         )
-        assert isinstance(req.ext, ExtensionObject)
-        assert req.ext.custom == "data"
+        assert req.ext == {"custom": "data"}
 
 
 class TestBackwardCompatibility:
@@ -211,26 +241,37 @@ class TestBackwardCompatibility:
         assert req.asset_types == [AssetContentType.image, AssetContentType.video]
 
     def test_explicit_model_values_work(self):
-        """Existing code using explicit model construction still works."""
-        ctx = ContextObject(user_id="123")
-        ext = ExtensionObject(custom="value")
+        """Mappings built ahead of the request still reach it by value."""
+        ctx = {"user_id": "123"}
+        ext = {"custom": "value"}
         req = ListCreativeFormatsRequest(context=ctx, ext=ext)
-        assert req.context is ctx
-        assert req.ext is ext
+        assert req.context == ctx
+        assert req.ext == ext
 
     def test_explicit_field_model_values_work(self):
         """Existing code using FieldModel enums still works."""
         req = ListCreativesRequest(
-            fields=[FieldModel.creative_id, FieldModel.name],
+            fields=[FieldModel.creative_id, FieldModel.NAME],
         )
-        assert req.fields == [FieldModel.creative_id, FieldModel.name]
+        assert req.fields == [FieldModel.creative_id, FieldModel.NAME]
 
 
 class TestListVariance:
-    """Test that subclass instances work without cast() due to coercion."""
+    """Test that subclass instances work without cast() due to coercion.
+
+    `core/creative-asset.json#` states the v1/v2 addressing choice, so section 4
+    emits `CreativeAsset` as a BASE plus one class per branch --
+    `V1CreativeNamedFormatReference` and `V2CreativeCanonicalFormatKind` -- and
+    the base is the dispatch point rather than a payload shape of its own. An
+    extension therefore derives from the BRANCH it means, and `isinstance`
+    against `CreativeAsset` still holds; a subclass of the base alone satisfies
+    neither branch and no field accepts it. The same reading applies to
+    `create-media-buy-request.json#/anyOf/0/properties/packages/items`, whose
+    own class is `PackagesItem` and which composes `media-buy/package-request.json`.
+    """
 
     def test_subclass_creatives_work_without_cast(self):
-        """PackageRequest accepts CreativeAsset subclass instances without cast().
+        """PackageRequest accepts CreativeAsset branch subclass instances without cast().
 
         Due to the coerce_subclass_list validator, users no longer need to use
         cast() when passing lists of extended types. The validator accepts Any
@@ -238,10 +279,10 @@ class TestListVariance:
         """
         from pydantic import Field
 
-        from adcp.types import CreativeAsset, PackageRequest
+        from adcp.types import CreativeAsset, PackageRequest, V2CreativeCanonicalFormatKind
 
-        # Create an extended creative type
-        class ExtendedCreative(CreativeAsset):
+        # Create an extended creative type, on the canonical `format_kind` branch
+        class ExtendedCreative(V2CreativeCanonicalFormatKind):
             """Extended with internal tracking fields."""
 
             internal_id: str | None = Field(None, exclude=True)
@@ -264,6 +305,7 @@ class TestListVariance:
             creatives=[creative],  # type: ignore[list-item]
         )
 
+        assert isinstance(creative, CreativeAsset)
         assert len(package.creatives) == 1
         assert package.creatives[0].creative_id == "c1"
         # Internal field is preserved at runtime
@@ -291,15 +333,16 @@ class TestListVariance:
         assert data["creative_id"] == "c1"
 
     def test_create_media_buy_accepts_extended_packages(self):
-        """CreateMediaBuyRequest.packages accepts PackageRequest subclass instances."""
-        from datetime import datetime, timezone
-
+        """CreateMediaBuyRequest.packages accepts PackagesItem subclass instances."""
+        from adcp.types.domains.media_buy.create_media_buy_request import PackagesItem
         from pydantic import Field
 
         from adcp.types import CreateMediaBuyRequest, PackageRequest
 
-        # Create an extended package type
-        class ExtendedPackage(PackageRequest):
+        # Create an extended package type, on the position's own class --
+        # `PackagesItem` composes `media-buy/package-request.json` and is a
+        # subclass of `PackageRequest`.
+        class ExtendedPackage(PackagesItem):
             """Extended with internal tracking fields."""
 
             campaign_id: str | None = Field(None, exclude=True)
@@ -311,15 +354,18 @@ class TestListVariance:
             product_id="prod1",
             campaign_id="internal-campaign-456",
         )
+        assert isinstance(package, PackageRequest)
 
-        # No cast() needed!
+        # No cast() needed! The times are the document's own `format: date-time`
+        # strings: the base selects its branch by applying the document, which
+        # states `type: string` there and so refuses a `datetime` object.
         request = CreateMediaBuyRequest(
             idempotency_key="test-idempotency-key",
             account={"account_id": "acct-1"},
             brand={"domain": "example.com"},
             buyer_ref="buyer-ref",
-            start_time=datetime.now(timezone.utc),
-            end_time=datetime(2025, 12, 31, tzinfo=timezone.utc),
+            start_time="2026-05-01T00:00:00Z",
+            end_time="2026-12-31T00:00:00Z",
             packages=[package],  # type: ignore[list-item]
         )
 
@@ -332,9 +378,9 @@ class TestListVariance:
         """UpdateMediaBuyRequest PackageUpdate types accept extended CreativeAsset."""
         from pydantic import Field
 
-        from adcp.types import CreativeAsset, PackageUpdate
+        from adcp.types import PackageUpdate, V2CreativeCanonicalFormatKind
 
-        class ExtendedCreative(CreativeAsset):
+        class ExtendedCreative(V2CreativeCanonicalFormatKind):
             internal_id: str | None = Field(None, exclude=True)
 
         creative = ExtendedCreative(
@@ -380,7 +426,7 @@ class TestSerializationRoundtrip:
         json_str = req.model_dump_json()
         restored = ListCreativeFormatsRequest.model_validate_json(json_str)
         assert restored.asset_types == [AssetContentType.image, AssetContentType.html]
-        assert restored.context.key == "value"
+        assert restored.context == {"key": "value"}
         assert restored.name_search == "test"
 
 
@@ -393,9 +439,12 @@ class TestResponseTypeCoercion:
 
     def test_list_creative_formats_response_accepts_dict_context(self):
         """ListCreativeFormatsResponse.context accepts dict."""
-        from adcp.types.legacy import (
-            LegacyFormat as Format,
-        )
+        # `core/format.json` is the v1 named-format DEFINITION and is
+        # `deprecated: true` as a whole; the class the compiler derives from its
+        # own description ("Legacy named-format definition") lives on the
+        # document's module, `adcp.types.core`. `adcp.types.legacy` carries the
+        # legacy REQUEST and RESPONSE roots, not this definition.
+        from adcp.types.core import LegacyFormat as Format
         from adcp.types.legacy import (
             LegacyListCreativeFormatsResponse as ListCreativeFormatsResponse,
         )
@@ -413,16 +462,18 @@ class TestResponseTypeCoercion:
             formats=[format_obj],
             context={"request_id": "456"},
         )
-        assert isinstance(response.context, ContextObject)
-        assert response.context.request_id == "456"
+        assert response.context == {"request_id": "456"}
 
     def test_list_creative_formats_response_accepts_format_subclass(self):
         """ListCreativeFormatsResponse.formats accepts Format subclass instances."""
         from pydantic import Field
 
-        from adcp.types.legacy import (
-            LegacyFormat as Format,
-        )
+        # `core/format.json` is the v1 named-format DEFINITION and is
+        # `deprecated: true` as a whole; the class the compiler derives from its
+        # own description ("Legacy named-format definition") lives on the
+        # document's module, `adcp.types.core`. `adcp.types.legacy` carries the
+        # legacy REQUEST and RESPONSE roots, not this definition.
+        from adcp.types.core import LegacyFormat as Format
         from adcp.types.legacy import (
             LegacyListCreativeFormatsResponse as ListCreativeFormatsResponse,
         )
@@ -543,9 +594,15 @@ class TestResponseTypeCoercion:
         """GetMediaBuyDeliveryResponse.context accepts dict."""
         from datetime import datetime, timezone
 
-        from adcp.types import GetMediaBuyDeliveryResponse, MediaBuyDelivery
+        from adcp.types.domains.media_buy.get_media_buy_delivery_response import (
+            MediaBuyDeliveriesItem,
+        )
 
-        delivery = MediaBuyDelivery(
+        from adcp.types import GetMediaBuyDeliveryResponse
+
+        # Section 4's nested rule names an array element `<Property>Item`, so
+        # the element of `media_buy_deliveries` is `MediaBuyDeliveriesItem`.
+        delivery = MediaBuyDeliveriesItem(
             media_buy_id="mb1",
             status="active",
             by_package=[
@@ -574,16 +631,18 @@ class TestResponseTypeCoercion:
             media_buy_deliveries=[delivery],
             context={"request_id": "789"},
         )
-        assert isinstance(response.context, ContextObject)
-        assert response.context.request_id == "789"
+        assert response.context == {"request_id": "789"}
 
     def test_response_serialization_roundtrip(self):
         """Response types with coerced values can roundtrip through JSON."""
         import json
 
-        from adcp.types.legacy import (
-            LegacyFormat as Format,
-        )
+        # `core/format.json` is the v1 named-format DEFINITION and is
+        # `deprecated: true` as a whole; the class the compiler derives from its
+        # own description ("Legacy named-format definition") lives on the
+        # document's module, `adcp.types.core`. `adcp.types.legacy` carries the
+        # legacy REQUEST and RESPONSE roots, not this definition.
+        from adcp.types.core import LegacyFormat as Format
         from adcp.types.legacy import (
             LegacyListCreativeFormatsResponse as ListCreativeFormatsResponse,
         )
@@ -607,14 +666,20 @@ class TestResponseTypeCoercion:
 
         assert len(restored.formats) == 1
         assert restored.formats[0].name == "Banner 300x250"
-        assert restored.context.key == "value"
+        assert restored.context == {"key": "value"}
 
     def test_get_products_response_accepts_product_subclass(self):
         """GetProductsResponse.products accepts Product subclass instances."""
+        from adcp.types.domains.core.product import DeliveryMeasurement
         from pydantic import Field
 
-        from adcp.types import CpmPricingOption, DeliveryType, GetProductsResponse, Product
-        from adcp.types.domains.core.product import DeliveryMeasurement
+        # `product.pricing_options` items are `core/pricing-option.json`, whose
+        # `oneOf/0` is a bare `$ref` to `pricing-options/cpm-option.json`, so
+        # section 4 names that branch for its target's distinguishing
+        # remainder: `PricingOptionCpm`, with `CPMPricingOption` as its second
+        # base. `CpmPricingOption` names the TARGET document's own root, which
+        # is a different class and satisfies no branch of the union.
+        from adcp.types import DeliveryType, GetProductsResponse, PricingOptionCpm, Product
 
         class ExtendedProduct(Product):
             """Extended with internal tracking fields."""
@@ -637,7 +702,7 @@ class TestResponseTypeCoercion:
                 "timezone": "UTC",
             },
             pricing_options=[
-                CpmPricingOption(
+                PricingOptionCpm(
                     currency="USD",
                     pricing_option_id="opt-1",
                     fixed_price=5.0,
@@ -664,13 +729,12 @@ class TestResponseTypeCoercion:
 
     def test_response_errors_accepts_error_subclass(self):
         """Response types with errors field accept Error subclass instances."""
-        from pydantic import Field
-
-        from adcp.types import GetProductsResponse
-
         # Import Error from core.error - the type used in ergonomic coercion
         # (adcp.types.Error exports a different Error from content_standards)
         from adcp.types.domains.core.error import Error as CoreError
+        from pydantic import Field
+
+        from adcp.types import GetProductsResponse
 
         class ExtendedError(CoreError):
             """Extended with internal tracking fields."""

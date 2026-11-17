@@ -95,10 +95,12 @@ def test_aliases_have_docstrings():
     """
     import adcp.types.aliases as aliases_module
 
-    # Module should have documentation
+    # Module should have documentation, and it should say what an alias IS --
+    # the module is generated and its own docstring states the rule rather than
+    # using the word "semantic", which nothing in this surface is named for.
     assert aliases_module.__doc__ is not None
-    assert "semantic" in aliases_module.__doc__.lower()
     assert "alias" in aliases_module.__doc__.lower()
+    assert "an alias is a name and never a second type" in aliases_module.__doc__.lower()
 
 
 def test_semantic_names_are_meaningful():
@@ -119,10 +121,6 @@ def test_all_response_aliases_exported():
         # Activate signal
         "ActivateSignalSuccessResponse",
         "ActivateSignalErrorResponse",
-        # Build creative
-        "LegacyBuildCreativeSuccessResponse",
-        "LegacyBuildCreativeErrorResponse",
-        "LegacyBuildCreativeSubmittedResponse",
         # Create media buy
         "CreateMediaBuySuccessResponse",
         "CreateMediaBuyErrorResponse",
@@ -137,18 +135,33 @@ def test_all_response_aliases_exported():
         "SyncCatalogsSubmittedResponse",
         # Sync audiences
         "SyncAudiencesSubmittedResponse",
+    ]
+
+    # Upstream's own published spellings live in `adcp.types.legacy_names`,
+    # which binds one of their words per POSITION to the one class the compiler
+    # emits per SUBJECT. `adcp.types.legacy` is a different module -- upstream's
+    # `adcp.types.legacy` re-served -- and carries the legacy request and
+    # response roots rather than these per-branch words.
+    expected_upstream_names = [
+        # Build creative
+        "LegacyBuildCreativeSuccessResponse",
+        "LegacyBuildCreativeErrorResponse",
+        "LegacyBuildCreativeSubmittedResponse",
         # Update media buy
         "UpdateMediaBuySuccessResponse",
         "UpdateMediaBuyErrorResponse",
     ]
 
     import adcp.types.aliases as aliases_module
-    import adcp.types.legacy as legacy_module
+    import adcp.types.legacy_names as legacy_names_module
 
     for alias in expected_aliases:
-        module = legacy_module if alias.startswith("Legacy") else aliases_module
-        assert hasattr(module, alias), f"Missing alias: {alias}"
-        assert alias in module.__all__, f"Alias not in __all__: {alias}"
+        assert hasattr(aliases_module, alias), f"Missing alias: {alias}"
+        assert alias in aliases_module.__all__, f"Alias not in __all__: {alias}"
+
+    for name in expected_upstream_names:
+        assert hasattr(legacy_names_module, name), f"Missing alias: {name}"
+        assert name in legacy_names_module.__all__, f"Alias not in __all__: {name}"
 
 
 def test_all_request_aliases_exported():
@@ -184,23 +197,32 @@ def test_all_activation_key_aliases_exported():
 
 def test_all_preview_render_aliases_exported():
     """Test that all preview render aliases are exported."""
+    # Semantic aliases based on the output_format discriminator
     expected_aliases = [
-        "LegacyPreviewCreativeSingleResponse",
-        "LegacyPreviewCreativeBatchResponse",
-        "LegacyPreviewCreativeVariantResponse",
-        # Semantic aliases based on output_format discriminator
         "UrlPreviewRender",
         "HtmlPreviewRender",
         "BothPreviewRender",
     ]
 
+    # Upstream's own published spellings, in `adcp.types.legacy_names`;
+    # `adcp.types.legacy` is the re-served upstream module and carries the
+    # response ROOT rather than these per-branch words.
+    expected_upstream_names = [
+        "LegacyPreviewCreativeSingleResponse",
+        "LegacyPreviewCreativeBatchResponse",
+        "LegacyPreviewCreativeVariantResponse",
+    ]
+
     import adcp.types.aliases as aliases_module
-    import adcp.types.legacy as legacy_module
+    import adcp.types.legacy_names as legacy_names_module
 
     for alias in expected_aliases:
-        module = legacy_module if alias.startswith("Legacy") else aliases_module
-        assert hasattr(module, alias), f"Missing alias: {alias}"
-        assert alias in module.__all__, f"Alias not in __all__: {alias}"
+        assert hasattr(aliases_module, alias), f"Missing alias: {alias}"
+        assert alias in aliases_module.__all__, f"Alias not in __all__: {alias}"
+
+    for name in expected_upstream_names:
+        assert hasattr(legacy_names_module, name), f"Missing alias: {name}"
+        assert name in legacy_names_module.__all__, f"Alias not in __all__: {name}"
 
 
 def test_all_asset_type_aliases_exported():
@@ -222,32 +244,35 @@ def test_all_asset_type_aliases_exported():
 
 
 def test_discriminated_union_aliases_point_to_correct_types():
-    """Test that discriminated union aliases point to the correct generated types."""
-    from adcp.types.domains.core.assets.asset_union import (
-        DaastAsset1,
-        DaastAsset2,
-        VastAsset1,
-        VastAsset2,
+    """Test that discriminated union aliases point to the correct generated types.
+
+    Section 4 emits no positional name, so `VastAsset1`, `DaastAsset1` and
+    `PreviewRender1` have no node behind them -- a caller had to count a
+    document's branches to learn which was which. Each branch is now named for
+    the `const` it pins, on its OWN document's module: `core/assets/vast-asset.json`
+    and `core/assets/daast-asset.json` rather than `core/assets/asset-union.json`,
+    which only references them.
+    """
+    from adcp.types.domains.core.assets.daast_asset import DAASTAssetInline, DAASTAssetUrl
+    from adcp.types.domains.core.assets.vast_asset import VASTAssetInline, VASTAssetUrl
+    from adcp.types.domains.creative.preview_render import (
+        PreviewRenderBoth,
+        PreviewRenderHtml,
+        PreviewRenderUrl,
     )
 
-    from adcp.types._generated import (
-        PreviewRender1,
-        PreviewRender2,
-        PreviewRender3,
-    )
-
-    # Preview renders - point to specific variants discriminated by output_format
-    assert UrlPreviewRender is PreviewRender1  # output_format='url'
-    assert HtmlPreviewRender is PreviewRender2  # output_format='html'
-    assert BothPreviewRender is PreviewRender3  # output_format='both'
+    # Preview renders - point to specific branches discriminated by output_format
+    assert UrlPreviewRender is PreviewRenderUrl  # output_format='url'
+    assert HtmlPreviewRender is PreviewRenderHtml  # output_format='html'
+    assert BothPreviewRender is PreviewRenderBoth  # output_format='both'
 
     # VAST assets
-    assert UrlVastAsset is VastAsset1
-    assert InlineVastAsset is VastAsset2
+    assert UrlVastAsset is VASTAssetUrl
+    assert InlineVastAsset is VASTAssetInline
 
     # DAAST assets
-    assert UrlDaastAsset is DaastAsset1
-    assert InlineDaastAsset is DaastAsset2
+    assert UrlDaastAsset is DAASTAssetUrl
+    assert InlineDaastAsset is DAASTAssetInline
 
 
 def test_semantic_aliases_can_be_imported_from_main_package():
@@ -441,35 +466,41 @@ def test_property_id_and_tag_are_constrained_strings():
     with different structures. The core PropertyId is a scalar string schema while the artifact
     PropertyId is an object type. This test verifies the core types from their original modules.
 
-    Both scalar schemas are ``str`` subclasses rather than ``RootModel`` wrappers, so they
-    compare and hash as their wire value — see #1277.
+    Both scalar schemas are ANNOTATED ALIASES over ``str`` rather than ``RootModel``
+    wrappers, so a value compares and hashes as its wire text — see #1277. An alias
+    is not a class, so calling it is calling ``str`` and enforces nothing; the
+    module's own ``strict_validate`` is what applies the document, and it is the
+    entry point for a type that has no class to carry the method.
     """
     import pytest
 
     # Import directly from the core modules to avoid collision
-    from adcp.types.domains.core.property_id import PropertyId as CorePropertyId
-    from adcp.types.domains.core.property_tag import PropertyTag
-    from pydantic import RootModel, ValidationError
+    from adcp.types.domains.core import property_id as property_id_module
+    from adcp.types.domains.core import property_tag as property_tag_module
+    from pydantic import ValidationError
 
-    # Create valid PropertyId and PropertyTag
-    prop_id = CorePropertyId("my_property_id")
-    prop_tag = PropertyTag("premium")
+    # Create valid PropertyId and PropertyTag through each document's own half
+    prop_id = property_id_module.strict_validate("my_property_id")
+    prop_tag = property_tag_module.strict_validate("premium")
 
-    # Each is its wire value, with the schema's pattern enforced at construction
+    # Each is its wire value
     assert prop_id == "my_property_id"
     assert prop_tag == "premium"
     assert isinstance(prop_id, str)
     assert isinstance(prop_tag, str)
-    with pytest.raises(ValidationError):
-        PropertyTag("Not A Tag")
 
-    # Neither is a RootModel wrapper any more
-    assert not issubclass(CorePropertyId, RootModel)
-    assert not issubclass(PropertyTag, RootModel)
+    # And the pattern is applied there
+    with pytest.raises(ValidationError) as excinfo:
+        property_tag_module.strict_validate("Not A Tag")
+    assert excinfo.value.errors()[0]["type"] == "pattern"
 
-    # They are separate types, not in an inheritance relationship
-    assert CorePropertyId is not PropertyTag
-    assert not issubclass(PropertyTag, CorePropertyId)
+    # Neither is a class at all, so neither is a RootModel wrapper
+    assert not isinstance(property_id_module.PropertyId, type)
+    assert not isinstance(property_tag_module.PropertyTag, type)
+
+    # They are separate aliases over two separate documents
+    assert property_id_module.PropertyId is not property_tag_module.PropertyTag
+    assert property_id_module.__adcp_schema__ != property_tag_module.__adcp_schema__
 
 
 def test_deployment_aliases_imports():
@@ -599,51 +630,64 @@ def test_pricing_option_union_import():
     assert PricingOption is AliasPricingOption
 
 
-def test_pricing_option_union_is_union_type():
-    """Test that PricingOption is a union type, not a RootModel."""
-    import types
+def test_pricing_option_union_is_a_dispatching_base():
+    """Test that PricingOption is the union's base, not a RootModel.
+
+    Section 4 emits a `oneOf` of object types as a BASE plus one class per
+    BRANCH: the base is a class a payload is handed to, each branch subclasses
+    it, and `isinstance` holds against the base. So the union's parts are
+    `__subclasses__()` and `get_args` answers nothing -- there is no
+    `types.UnionType` to read.
+    """
+    from pydantic import RootModel
 
     from adcp import PricingOption
 
-    # Should be a Union type, not a class
-    # In Python 3.10+, unions created with | are types.UnionType
-    assert isinstance(PricingOption, types.UnionType)
+    assert isinstance(PricingOption, type)
+    assert not issubclass(PricingOption, RootModel)
 
 
 def test_pricing_option_union_contains_all_variants():
-    """Test that PricingOption union contains all pricing variants."""
-    from typing import get_args
+    """Test that PricingOption contains all ten pricing branches.
 
-    from adcp import (
-        CpaPricingOption,
-        CpcPricingOption,
-        CpcvPricingOption,
-        CpmPricingOption,
-        CppPricingOption,
-        CpvPricingOption,
-        FlatRatePricingOption,
-        PricingOption,
-        TimeBasedPricingOption,
-        VcpmPricingOption,
+    Each branch of `core/pricing-option.json` is a bare `$ref`, so section 4
+    names it for its target's distinguishing remainder -- `PricingOptionCpm`
+    for `pricing-options/cpm-option.json` -- and the target's own root class
+    (`CPMPricingOption`, bound publicly as `CpmPricingOption`) is that
+    branch's second base rather than the branch itself. The list that stood
+    here named nine of the document's TEN branches, omitting revenue share.
+    """
+    from adcp.types.domains.core.pricing_option import (
+        PricingOptionCpa,
+        PricingOptionCpc,
+        PricingOptionCpcv,
+        PricingOptionCpm,
+        PricingOptionCpp,
+        PricingOptionCpv,
+        PricingOptionFlatRate,
+        PricingOptionRevenueShare,
+        PricingOptionTime,
+        PricingOptionVcpm,
     )
 
-    # Get all types in the union
-    union_args = set(get_args(PricingOption))
+    from adcp import PricingOption
 
-    # Verify all pricing option variants are in the union
-    expected_variants = {
-        CpmPricingOption,
-        VcpmPricingOption,
-        CpcPricingOption,
-        CpcvPricingOption,
-        CpvPricingOption,
-        CppPricingOption,
-        CpaPricingOption,
-        FlatRatePricingOption,
-        TimeBasedPricingOption,
+    # Verify all pricing option branches are branches of the base
+    expected_branches = {
+        PricingOptionCpm,
+        PricingOptionVcpm,
+        PricingOptionCpc,
+        PricingOptionCpcv,
+        PricingOptionCpv,
+        PricingOptionCpp,
+        PricingOptionCpa,
+        PricingOptionRevenueShare,
+        PricingOptionFlatRate,
+        PricingOptionTime,
     }
 
-    assert union_args == expected_variants
+    assert set(PricingOption.__subclasses__()) == expected_branches
+    assert all(issubclass(branch, PricingOption) for branch in expected_branches)
 
 
 def test_pricing_option_union_exported():
@@ -757,32 +801,28 @@ def test_deployment_union_import():
     assert Deployment is AliasDeployment
 
 
-def test_deployment_union_is_union_type():
-    """Test that Deployment is a union type, not a RootModel."""
-    import types
+def test_deployment_union_is_a_dispatching_base():
+    """Test that Deployment is the union's base, not a RootModel."""
+    from pydantic import RootModel
 
     from adcp import Deployment
 
-    # Should be a Union type, not a class
-    assert isinstance(Deployment, types.UnionType)
+    assert isinstance(Deployment, type)
+    assert not issubclass(Deployment, RootModel)
 
 
 def test_deployment_union_contains_all_variants():
-    """Test that Deployment union contains all deployment variants."""
-    from typing import get_args
-
+    """Test that Deployment contains both deployment branches."""
     from adcp import AgentDeployment, Deployment, PlatformDeployment
 
-    # Get all types in the union
-    union_args = set(get_args(Deployment))
-
-    # Verify all deployment variants are in the union
-    expected_variants = {
+    # Verify both deployment branches are branches of the base
+    expected_branches = {
         PlatformDeployment,
         AgentDeployment,
     }
 
-    assert union_args == expected_variants
+    assert set(Deployment.__subclasses__()) == expected_branches
+    assert all(issubclass(branch, Deployment) for branch in expected_branches)
 
 
 def test_destination_union_import():
@@ -794,32 +834,28 @@ def test_destination_union_import():
     assert Destination is AliasDestination
 
 
-def test_destination_union_is_union_type():
-    """Test that Destination is a union type, not a RootModel."""
-    import types
+def test_destination_union_is_a_dispatching_base():
+    """Test that Destination is the union's base, not a RootModel."""
+    from pydantic import RootModel
 
     from adcp import Destination
 
-    # Should be a Union type, not a class
-    assert isinstance(Destination, types.UnionType)
+    assert isinstance(Destination, type)
+    assert not issubclass(Destination, RootModel)
 
 
 def test_destination_union_contains_all_variants():
-    """Test that Destination union contains all destination variants."""
-    from typing import get_args
-
+    """Test that Destination contains both destination branches."""
     from adcp import AgentDestination, Destination, PlatformDestination
 
-    # Get all types in the union
-    union_args = set(get_args(Destination))
-
-    # Verify all destination variants are in the union
-    expected_variants = {
+    # Verify both destination branches are branches of the base
+    expected_branches = {
         PlatformDestination,
         AgentDestination,
     }
 
-    assert union_args == expected_variants
+    assert set(Destination.__subclasses__()) == expected_branches
+    assert all(issubclass(branch, Destination) for branch in expected_branches)
 
 
 def test_get_signals_request_is_base_model_not_root_model():

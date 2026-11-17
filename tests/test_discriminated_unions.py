@@ -70,7 +70,10 @@ class TestAuthorizationDiscriminatedUnions:
             property_ids=["site1", "site2"],
         )
         assert agent.authorization_type == "property_ids"
-        assert [p.root for p in agent.property_ids] == ["site1", "site2"]
+        # `core/property-id.json` is a constrained scalar at a root, which
+        # section 4 makes a module-level annotated ALIAS and not a class, so an
+        # item is the `str` itself and there is no `.root` to unwrap.
+        assert agent.property_ids == ["site1", "site2"]
         assert not hasattr(agent, "property_tags")
         assert not hasattr(agent, "properties")
 
@@ -84,7 +87,7 @@ class TestAuthorizationDiscriminatedUnions:
         }
         agent = AuthorizedAgentsPropertyIds.model_validate(data)
         assert agent.authorization_type == "property_ids"
-        assert [p.root for p in agent.property_ids] == ["site1", "site2"]
+        assert agent.property_ids == ["site1", "site2"]
 
     def test_property_ids_authorization_wrong_type_fails(self):
         """The property_ids branch rejects a wrong authorization_type value."""
@@ -107,7 +110,7 @@ class TestAuthorizationDiscriminatedUnions:
             property_tags=["news", "sports"],
         )
         assert agent.authorization_type == "property_tags"
-        assert [p.root for p in agent.property_tags] == ["news", "sports"]
+        assert agent.property_tags == ["news", "sports"]
         assert not hasattr(agent, "property_ids")
 
     def test_inline_properties_authorization(self):
@@ -308,7 +311,10 @@ class TestUnionTypeValidation:
 
     def test_success_response_from_dict(self):
         """CreateMediaBuySuccessResponse should validate success from dict."""
+        # `status` is not on the branch's own node; `core/protocol-envelope.json`
+        # requires it one `allOf` up, and requiredness is the conjunction.
         data = {
+            "status": "completed",
             "media_buy_id": "mb_123",
             "buyer_ref": "ref_456",
             "packages": [],
@@ -321,7 +327,9 @@ class TestUnionTypeValidation:
 
     def test_error_response_from_dict(self):
         """CreateMediaBuyErrorResponse should validate error from dict."""
+        # `status` is required by the envelope conjunct, as above.
         data = {
+            "status": "failed",
             "errors": [{"code": "invalid", "message": "Invalid request"}],
         }
         response = CreateMediaBuyErrorResponse.model_validate(data)
@@ -621,11 +629,18 @@ class TestPreviewRenderDiscriminatedUnion:
 
 
 class TestVastAssetDiscriminators:
-    """Test VastAsset discriminator field values match semantic aliases."""
+    """Test VastAsset discriminator field values match semantic aliases.
+
+    `asset_type` is required at `core/assets/vast-asset.json`'s own root, where
+    it is a `const` of `"vast"`, and the `oneOf` branches add
+    `delivery_type` + `url`/`content`. Requiredness is the conjunction, so a
+    branch payload carries all three.
+    """
 
     def test_url_vast_asset_has_url_discriminator(self):
         """UrlVastAsset has delivery_type='url'."""
         asset = UrlVastAsset(
+            asset_type="vast",
             delivery_type="url",
             url="https://vast.example.com/ad.xml",
         )
@@ -636,6 +651,7 @@ class TestVastAssetDiscriminators:
     def test_inline_vast_asset_has_inline_discriminator(self):
         """InlineVastAsset has delivery_type='inline'."""
         asset = InlineVastAsset(
+            asset_type="vast",
             delivery_type="inline",
             content="<VAST>...</VAST>",
         )
@@ -668,6 +684,7 @@ class TestDaastAssetDiscriminators:
     def test_url_daast_asset_has_url_discriminator(self):
         """UrlDaastAsset has delivery_type='url'."""
         asset = UrlDaastAsset(
+            asset_type="daast",
             delivery_type="url",
             url="https://daast.example.com/ad.xml",
         )
@@ -678,6 +695,7 @@ class TestDaastAssetDiscriminators:
     def test_inline_daast_asset_has_inline_discriminator(self):
         """InlineDaastAsset has delivery_type='inline'."""
         asset = InlineDaastAsset(
+            asset_type="daast",
             delivery_type="inline",
             content="<DAAST>...</DAAST>",
         )
@@ -723,6 +741,7 @@ class TestSemanticAliasDiscriminatorRoundtrips:
     def test_url_vast_asset_roundtrip(self):
         """UrlVastAsset roundtrips with delivery_type='url'."""
         original = UrlVastAsset(
+            asset_type="vast",
             delivery_type="url",
             url="https://vast.example.com/ad.xml",
         )
@@ -744,18 +763,30 @@ class TestPropertyTagSharedSchema:
     """
 
     def test_public_property_tag_is_from_shared_schema(self):
-        """Public PropertyTag should be from the shared property_tag schema."""
+        """Public PropertyTag should be from the shared property_tag schema.
+
+        An annotated alias is not a class, so it carries no `__module__` of its
+        own -- `typing` owns the object. What identifies the declaring module is
+        IDENTITY with the symbol that module binds, and the module's own
+        `__adcp_schema__` says which document it is.
+        """
+        from adcp.types.domains.core import property_tag
+
         from adcp import PropertyTag
 
         # Should come from the shared schema in core/, not embedded in another schema
-        assert PropertyTag.__module__ == "adcp.types.domains.core.property_tag"
+        assert PropertyTag is property_tag.PropertyTag
+        assert property_tag.__adcp_schema__.document == "core/property-tag.json"
 
     def test_property_id_is_from_shared_schema(self):
         """Public PropertyId should be from the shared property_id schema."""
+        from adcp.types.domains.core import property_id
+
         from adcp import PropertyId
 
         # Should come from the shared schema in core/
-        assert PropertyId.__module__ == "adcp.types.domains.core.property_id"
+        assert PropertyId is property_id.PropertyId
+        assert property_id.__adcp_schema__.document == "core/property-id.json"
 
     def test_property_tag_works_with_publisher_properties_by_tag(self):
         """PropertyTag should work correctly with PublisherPropertiesByTag."""
@@ -768,9 +799,7 @@ class TestPropertyTagSharedSchema:
         )
 
         assert props.selection_type == "by_tag"
-        assert len(props.property_tags) == 2
-        assert str(props.property_tags[0].root) == "premium"
-        assert str(props.property_tags[1].root) == "video"
+        assert props.property_tags == ["premium", "video"]
 
     def test_shared_schema_prevents_collision(self):
         """Verify that both adagents and publisher_property_selector import from shared schema."""
@@ -792,34 +821,46 @@ class TestPropertyTagSharedSchema:
         adagents_source = inspect.getsource(adagents_module)
         selector_source = inspect.getsource(selector_module)
 
-        # May be on same line as other imports or separate line
-        # Both should import property_tag (from .core or from .) rather than defining their own
-        assert "property_tag" in adagents_source and (
-            "from .core import" in adagents_source or "from . import" in adagents_source
-        )
-        assert "property_tag" in selector_source and "from . import" in selector_source
+        # Each imports the MODULE's symbol by its module path rather than
+        # declaring a second alias of its own, which is what "one class per
+        # subject" means for an alias: `adagents.json` sits a package above
+        # `core/`, so its import is `.core.property_tag`, and the selector is a
+        # sibling in `core/` and imports `.property_tag`.
+        assert "from .core.property_tag import PropertyTag" in adagents_source
+        assert "from .property_tag import PropertyTag" in selector_source
 
     def test_property_tag_validation(self):
-        """PropertyTag should validate according to shared schema rules."""
-        from adcp import PropertyTag
+        """PropertyTag should validate according to shared schema rules.
+
+        `PropertyTag` is an annotated `str` alias, so calling it is calling
+        `str` and validates nothing. The alias's own module binds the
+        `strict_validate` that applies its document, which is the entry point a
+        consumer reaches for a type with no class to carry the method.
+        """
+        from adcp.types.domains.core.property_tag import strict_validate
 
         # Valid tags: lowercase alphanumeric + underscores
-        valid = PropertyTag("premium_video")
-        assert str(valid.root) == "premium_video"
+        assert strict_validate("premium_video") == "premium_video"
 
         # Pattern validation should work
-        with pytest.raises(ValidationError):
-            PropertyTag("Invalid-Tag")  # Hyphens not allowed in property tags
+        with pytest.raises(ValidationError) as excinfo:
+            strict_validate("Invalid-Tag")  # Hyphens not allowed in property tags
+        assert excinfo.value.errors()[0]["type"] == "pattern"
 
 
-class TestRootModelUnwrapForSubclassing:
-    """Test that unwrapped RootModel unions support consumer subclassing.
+class TestUnionBaseSupportsSubclassing:
+    """Test that a union's branches support consumer subclassing.
 
     See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
 
-    Pydantic 2 forbids model_config overrides on RootModel subclasses.
-    By unwrapping select RootModel unions to plain Union type aliases,
-    consumers can subclass the individual variants with custom model_config.
+    Pydantic 2 forbids `model_config` overrides on a `RootModel` subclass, and
+    that is the thing #155 asked to be rid of. Section 4's answer is not a type
+    alias: a `oneOf`/`anyOf` of object types emits a BASE plus one class per
+    BRANCH, the base dispatches a payload to the branch it satisfies, and each
+    branch is an ordinary model a consumer can subclass with any
+    `model_config`. So the wrapper is gone, `isinstance` holds against the
+    base, and the subclassing #155 wanted works -- which is what these grade,
+    rather than the alias the previous emission reached for.
     """
 
     def test_get_signals_request_is_base_model_class(self):
@@ -831,23 +872,32 @@ class TestRootModelUnwrapForSubclassing:
         assert isinstance(GetSignalsRequest, type)
         assert issubclass(GetSignalsRequest, BaseModel)
 
-    def test_create_media_buy_response_is_union_alias(self):
-        """CreateMediaBuyResponse should be a Union type alias, not a RootModel class."""
-        import types
+    def test_create_media_buy_response_is_a_dispatching_base(self):
+        """CreateMediaBuyResponse should be the union's base, not a RootModel wrapper."""
+        from pydantic import RootModel
 
-        from adcp.types import CreateMediaBuyResponse
+        from adcp.types import CreateMediaBuyResponse, CreateMediaBuySuccessResponse
 
-        assert isinstance(CreateMediaBuyResponse, types.UnionType)
+        assert isinstance(CreateMediaBuyResponse, type)
+        assert not issubclass(CreateMediaBuyResponse, RootModel)
+        assert issubclass(CreateMediaBuySuccessResponse, CreateMediaBuyResponse)
 
     @pytest.mark.parametrize("name", ["AccountReference", "PostalArea", "SignalRef"])
     def test_public_object_unions_are_not_rootmodel_wrappers(self, name: str):
-        """Composable object unions are exposed as aliases, not RootModel classes."""
+        """Composable object unions are a base plus branches, not RootModel classes."""
+        from pydantic import RootModel
+
         import adcp.types
 
-        public_alias = getattr(adcp.types, name)
-        assert not isinstance(public_alias, type)
+        public_base = getattr(adcp.types, name)
+        assert isinstance(public_base, type)
+        assert not issubclass(public_base, RootModel)
+        # The branches are the subclasses, and there is more than one of them.
+        branches = public_base.__subclasses__()
+        assert len(branches) > 1
+        assert all(issubclass(branch, public_base) for branch in branches)
 
-    def test_account_reference_union_validates_and_arms_remain_subclassable(self):
+    def test_account_reference_union_validates_and_branches_remain_subclassable(self):
         """Consumers can validate the union and customize a concrete branch."""
         from pydantic import ConfigDict, TypeAdapter
 
@@ -862,16 +912,24 @@ class TestRootModelUnwrapForSubclassing:
         with pytest.raises(ValidationError):
             StrictAccountReference(account_id="acct-1", legacy_id="old")
 
-    def test_signal_reference_alias_preserves_required_discriminator(self):
-        """Removing the wrapper must not weaken SignalRef's wire validation."""
+    def test_signal_reference_base_preserves_required_discriminator(self):
+        """Removing the wrapper must not weaken SignalRef's wire validation.
+
+        A payload naming no `scope` satisfies none of the three branches and is
+        still refused. What changed is the error NAME: the compiler reports the
+        JSON Schema keyword that bit, so this is `oneOf` on `scope` rather than
+        pydantic's own `union_tag_not_found`.
+        """
         from pydantic import TypeAdapter
 
         from adcp.types import SignalRef
 
-        with pytest.raises(ValidationError, match="union_tag_not_found"):
+        with pytest.raises(ValidationError) as excinfo:
             TypeAdapter(SignalRef).validate_python(
                 {"signal_source_url": "https://signals.example", "signal_id": "sig-1"}
             )
+        assert excinfo.value.errors()[0]["type"] == "oneOf"
+        assert excinfo.value.errors()[0]["loc"] == ("scope",)
 
     def test_subclass_get_signals_request_with_extra_forbid(self):
         """Consumer can subclass GetSignalsRequest directly with extra='forbid'."""
@@ -899,7 +957,9 @@ class TestRootModelUnwrapForSubclassing:
         class MySuccessResponse(CreateMediaBuySuccessResponse):
             model_config = ConfigDict(extra="forbid")
 
+        # `status` comes from the envelope conjunct, as everywhere else here.
         resp = MySuccessResponse(
+            status="completed",
             media_buy_id="mb_123",
             packages=[],
             confirmed_at="2026-05-27T12:00:00Z",
@@ -910,6 +970,7 @@ class TestRootModelUnwrapForSubclassing:
         # extra='forbid' should reject unknown fields
         with pytest.raises(ValidationError):
             MySuccessResponse(
+                status="completed",
                 media_buy_id="mb_123",
                 packages=[],
                 unknown_field="should fail",
