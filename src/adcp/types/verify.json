@@ -3,10 +3,11 @@
   "fail:accepts:model_refused_valid": 2,
   "fail:accepts:witness_refused": 6,
   "fail:admits:model_refused_admitted": 8,
+  "fail:undeclared:widened_undeclared": 6,
   "fail:widening:unproved_widening": 5
  },
  "graded": 2609,
- "not_pass": 21,
+ "not_pass": 27,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -45,6 +46,19 @@
    "refuses": "refuses=pass",
    "undeclared": "undeclared=absent:no_witness",
    "verdict": "verdict=fail:admits:model_refused_admitted",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "AssetVariantDisplayTag",
+   "document": "core/assets/asset-union.json",
+   "dump": "dump=pass",
+   "note": "undeclared widening on oneOf: the class admitted {\"asset_type\": \"display_tag\", \"delivery_type\": \"tag_url\", \"markup\": \"\", \"markup_type\": \"\", \"url\": \"https://example.com/{id}\"} which the document refuses on const, enum, minLength, not, oneOf, required; undeclared widening on oneOf: the class admitted {\"ad_request_url\": \"\", \"asset_type\": \"display_tag\", \"clickthrough_url\": \"\", \"delivery_type\": \"tag_ur",
+   "pointer": "#/oneOf/4",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
    "widening": "widening=absent:no_declarations"
   },
   {
@@ -97,6 +111,71 @@
    "refuses": "refuses=absent:no_payload",
    "undeclared": "undeclared=absent:unrun",
    "verdict": "verdict=fail:accepts:witness_refused",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "AdCPAsyncResponseDataCreateMediaBuyResponse",
+   "document": "core/async-response-data.json",
+   "dump": "dump=pass",
+   "note": "undeclared widening on oneOf: the class admitted {\"confirmed_at\": \"2026-11-09T12:00:00Z\", \"errors\": [], \"media_buy_id\": \"\", \"packages\": [], \"revision\": 1, \"status\": \"submitted\"} which the document refuses on minItems, not, oneOf, required; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class",
+   "pointer": "#/anyOf/18",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "AdCPAsyncResponseDataUpdateMediaBuyResponse",
+   "document": "core/async-response-data.json",
+   "dump": "dump=pass",
+   "note": "undeclared widening on oneOf: the class admitted {\"errors\": [], \"media_buy_id\": \"\", \"revision\": 1, \"status\": \"submitted\"} which the document refuses on minItems, not, oneOf, required; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for AdCPAsyncResponse",
+   "pointer": "#/anyOf/22",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "AdCPAsyncResponseDataGetCreativeFeaturesResponse",
+   "document": "core/async-response-data.json",
+   "dump": "dump=pass",
+   "note": "undeclared widening on oneOf: the class admitted {\"results\": [], \"status\": \"submitted\", \"task_id\": \"a\"} which the document refuses on not, oneOf, required; undeclared widening on oneOf: the class admitted {\"errors\": [], \"status\": \"submitted\", \"task_id\": \"a\"} which the document refuses on not, oneOf, required; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format",
+   "pointer": "#/anyOf/32",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "AdCPAsyncResponseDataSyncCreativesResponse",
+   "document": "core/async-response-data.json",
+   "dump": "dump=pass",
+   "note": "undeclared widening on oneOf: the class admitted {\"creatives\": [], \"status\": \"submitted\", \"task_id\": \"\"} which the document refuses on not, oneOf, required; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for AdCPAsyncResponseDataSyncCreativesResponse p",
+   "pointer": "#/anyOf/34",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "AdCPAsyncResponseDataSyncCatalogsResponse",
+   "document": "core/async-response-data.json",
+   "dump": "dump=pass",
+   "note": "undeclared widening on oneOf: the class admitted {\"catalogs\": [], \"errors\": [], \"status\": \"completed\"} which the document refuses on const, minItems, not, oneOf, required; narrower than its document [url_parsing at ('push_notification_config', 'url')] on format: at ('push_notification_config',): at ('url',): uri case 2; the class refused it with 1 validation error for AdCPAsyncResponseDataSyncCata",
+   "pointer": "#/anyOf/38",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
    "widening": "widening=absent:no_declarations"
   },
   {
@@ -282,7 +361,7 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2588,
+ "pass": 2582,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -305,9 +384,9 @@
    "pass": 2597
   },
   "undeclared": {
-   "absent": 123,
-   "fail": 0,
-   "pass": 2486
+   "absent": 107,
+   "fail": 6,
+   "pass": 2496
   },
   "widening": {
    "absent": 2427,
@@ -316,10 +395,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/584cb753ac01bd7963f9c7dcff0411003af752d4c48a5f1d2c8ab882adc11240",
-  "head": "972972701",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/1210efb7e72db8fc07e939ae4bbab245381a0a45d96e527794718e3459abcabe",
+  "head": "467d32bbf+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 433.6,
- "seconds_per_pair": 0.1662
+ "seconds": 1023.8,
+ "seconds_per_pair": 0.3924
 }
