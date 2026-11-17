@@ -108,45 +108,14 @@ print('cold schema imports passed')
     assert "cold schema imports passed" in result.stdout
 
 
-def test_place_key_rewrite_survives_codegen_and_is_idempotent(tmp_path, monkeypatch) -> None:
-    from scripts import post_generate_fixes
-
-    target = tmp_path / "core" / "geo_place_requirement.py"
-    target.parent.mkdir()
-    target.write_text(
-        "from adcp.types.base import AdCPBaseModel\n"
-        "class GeographicPlaceRequirement(AdCPBaseModel):\n"
-        "    systems: Annotated[dict[geo_place_system.GeographicPlaceIdentifierSystem, "
-        "CatalogRequirement], Field(min_length=1)]\n"
-    )
-    monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", tmp_path)
-    post_generate_fixes.preserve_geo_place_system_map_keys()
-    updated = target.read_text()
-    assert "dict[GeoPlaceSystemKey, CatalogRequirement]" in updated
-    assert "Field(min_length=1)" in updated
-    assert "import AdCPBaseModel, GeoPlaceSystemKey" in updated
-    post_generate_fixes.preserve_geo_place_system_map_keys()
-    assert target.read_text() == updated
-
-
-def test_bundled_key_rewrite_survives_generated_type_renumbering(tmp_path, monkeypatch) -> None:
-    from scripts import post_generate_fixes
-
-    target = tmp_path / "bundled" / "protocol" / "get_adcp_capabilities_response.py"
-    target.parent.mkdir(parents=True)
-    target.write_text(
-        "from adcp.types.base import AdCPBaseModel\n"
-        "class Targeting(AdCPBaseModel):\n"
-        "    geo_places: Annotated[dict[CatalogSystem77 | CatalogSystem812, "
-        "PlaceCatalog], Field(min_length=1)] | None = None\n"
-    )
-    monkeypatch.setattr(post_generate_fixes, "OUTPUT_DIR", tmp_path)
-    post_generate_fixes.preserve_geo_place_system_map_keys()
-    updated = target.read_text()
-    assert "dict[GeoPlaceSystemKey, PlaceCatalog]" in updated
-    assert "Field(min_length=1)] | None = None" in updated
-    post_generate_fixes.preserve_geo_place_system_map_keys()
-    assert target.read_text() == updated
+# The two key-rewrite tests that stood here graded
+# `scripts.post_generate_fixes.preserve_geo_place_system_map_keys`, a
+# post-generate text rewrite that retyped the map key to
+# `adcp.types.base.GeoPlaceSystemKey` after the previous generator had written
+# `dict[GeographicPlaceIdentifierSystem, ...]`. There is no such pass here: the
+# compiler lowers `core/geo-place-system.json`'s own `anyOf` into the key type
+# directly, so there is no generated spelling to rewrite and no second
+# `bundled/` tree to rewrite it in. Their only subject was that layer.
 
 
 @pytest.mark.parametrize("model,field,value", _MODELS)
