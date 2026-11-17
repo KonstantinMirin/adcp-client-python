@@ -20,7 +20,7 @@ to, and which country/system pairs are refused.
 from __future__ import annotations
 
 import pytest
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
 
 from adcp.types.core import PostalArea, PostalAreaWithFusedSystem, TargetingOverlay
 
@@ -141,15 +141,41 @@ def test_native_postal_country_system_pairs_round_trip(country: str, system: str
     [("US", "plz"), ("DE", "zip"), ("NL", "plz")],
 )
 def test_native_postal_country_system_mismatches_fail_closed(country: str, system: str):
-    with pytest.raises(ValueError, match="postal system .* is not valid for country"):
+    """The pair is refused BY THE BRANCH UNION, not by a hand-written validator.
+
+    ``core/postal-area.json``'s native half is a per-country ``anyOf``: each
+    branch pins its own ``country`` ``const`` beside the ``system`` enum that
+    country admits. ``rebuild-plan.md`` §4 lowers that to *"a base plus one
+    class per branch"*, so a mismatched pair now satisfies NO branch and the
+    refusal is the union's -- every branch's reason, with the branch named --
+    rather than one sentence a validator composed. The refusal itself is
+    unchanged: what moved is who states it.
+
+    So this asserts the mismatch is refused and that the reasons come from the
+    branches (the ``anyOf`` error type, at the two fields that disagree),
+    instead of matching wording no document states.
+    """
+    with pytest.raises(ValidationError) as refused:
         _POSTAL_AREA_ADAPTER.validate_python(
             {"country": country, "system": system, "values": ["example"]}
         )
 
+    errors = refused.value.errors()
+    assert {error["type"] for error in errors} == {"anyOf"}
+    assert {error["loc"][-1] for error in errors if error["loc"]} <= {"country", "system"}
+    # The branch that refused is named in the message, so a reader can see
+    # which countries were offered rather than counting positions.
+    assert "PostalArea" in str(refused.value)
+
 
 def test_targeting_overlay_rejects_mismatched_postal_pair():
-    with pytest.raises(ValueError, match="postal system 'plz' is not valid for country 'US'"):
+    """The same union refuses at a nested position, with the item's path kept."""
+    with pytest.raises(ValidationError) as refused:
         TargetingOverlay(geo_postal_areas=[{"country": "US", "system": "plz", "values": ["10001"]}])
+
+    locations = {error["loc"] for error in refused.value.errors()}
+    assert ("geo_postal_areas", 0, "system") in locations
+    assert all(error["type"] == "anyOf" for error in refused.value.errors())
 
 
 def test_schema_validation_rejects_mismatched_postal_pair():

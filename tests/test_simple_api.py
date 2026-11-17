@@ -222,7 +222,20 @@ async def test_preview_creative_simple_api():
         from adcp.types.legacy import LegacyFormatId as FormatId
 
         format_id = FormatId(agent_url="https://creative.example.com", id="banner_300x250")
-        creative_manifest = CreativeManifest.model_construct(format_id=format_id, assets={})
+        # VALIDATED, not ``model_construct``ed. ``core/creative-manifest.json``
+        # is a union over the two addressing forms (``CLAUDE.md`` → Formats),
+        # so the field's annotation is the BASE and the base's core schema is
+        # the union over its branches -- ``rebuild-plan.md`` §4,
+        # *"``__get_pydantic_core_schema__`` on the mixin returns the branches'
+        # union"*. ``model_construct`` bypasses that dispatch, so the instance
+        # it returns is a bare base, a member of no branch, and the field it is
+        # handed to refuses it. Handing the payload to the base is how a
+        # consumer reaches a branch: the ``format_id`` here selects
+        # ``NamedFormatManifest``, which is the v1 addressing form this legacy
+        # helper takes.
+        creative_manifest = CreativeManifest.model_validate(
+            {"format_id": format_id.model_dump(mode="json"), "assets": {}}
+        )
 
         result = await creative_agent.simple.preview_creative_legacy(
             request_type="single",

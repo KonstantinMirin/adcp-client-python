@@ -34,6 +34,13 @@ from pydantic import BaseModel, RootModel, ValidationError
 from pydantic.fields import FieldInfo
 
 import adcp.types as public_types
+from adcp._null_clear import nullable_request_paths, preserve_explicit_nulls
+
+# `VendorPricingOptionCpm` and `VendorPricingOptionUnion` are both refused on the
+# flat surface -- the first DOCUMENT-NO-WORD-NO-IDENTITY, the second as an
+# Annotated expression with no document behind it. The subjects are both
+# emitted from `core/vendor-pricing-option.json`: `VendorPricingOption` is the
+# union base and `VendorPricingOptionCpm` is the `model: cpm` branch.
 from adcp.types import (
     Product,
     ReportingWebhook,
@@ -41,12 +48,7 @@ from adcp.types import (
     TrustedMatch,
     UpdateMediaBuyRequest,
 )
-
-# `VendorPricingOptionCpm` and `VendorPricingOptionUnion` are both refused on the
-# flat surface -- the first DOCUMENT-NO-WORD-NO-IDENTITY, the second as an
-# Annotated expression with no document behind it. The subjects are both
-# emitted from `core/vendor-pricing-option.json`: `VendorPricingOption` is the
-# union base and `VendorPricingOptionCpm` is the `model: cpm` branch.
+from adcp.types._base import OmittedNotNull, omits_null
 from adcp.types.base import _REFUSE_JSON_NULL, AdCPBaseModel, NoExplicitNull, is_no_explicit_null
 from tests.conformance import _schema_parity as parity
 
@@ -185,35 +187,76 @@ class _Holder(BaseModel):
     request: UpdateMediaBuyRequest
 
 
-def test_nullable_fields_still_emit_null_from_a_plain_parent() -> None:
-    """A schema-admitted ``null`` is a value, and the parent's dump keeps it."""
+def test_a_nullable_optional_is_omitted_from_a_plain_parent_too() -> None:
+    """An OPTIONAL property's ``None`` is omitted whatever its type admits.
+
+    Decision 2 of ``rebuild-plan.md`` §2's index: *"a required property keeps
+    its ``null`` on the wire, because a required key cannot be absent; an
+    optional one is omitted whatever its type admits. Serialisation keys on
+    ``required``, validation still keys on nullability."* So the exclusion is on
+    every optional field -- ``OmittedNotNull`` where the document refuses
+    ``null``, ``OmittedWhenNone`` where it admits one -- and the split this test
+    was written for (nullable keeps its ``null``) is the superseded half.
+
+    Validation is unaffected and is asserted below: this request still ACCEPTS
+    the explicit ``null`` its document admits, and still refuses one where the
+    document does not.
+    """
     holder = _Holder(request=UpdateMediaBuyRequest.model_validate(_NULLABLE_UPDATE))
     for body in (holder.model_dump_json(), holder.model_dump_json(exclude_none=False)):
         document = json.loads(body)["request"]
-        assert document["budget_cap_timezone"] is None
-        assert document["daily_budget_cap"] is None
-        # Marked optional fields that were never supplied stay off the wire.
+        assert "budget_cap_timezone" not in document
+        assert "daily_budget_cap" not in document
         assert "name" not in document
         assert "push_notification_config" not in document
+        # The round trip still holds: the omitted keys read back as ``None``,
+        # which is this SDK's spelling of "not supplied".
         assert _Holder.model_validate_json(body) == holder
 
+    # The nullable property keeps ADMITTING a ``null`` -- the exclusion is the
+    # serialisation half only.
+    admitted = UpdateMediaBuyRequest.model_validate_json(
+        json.dumps({**_NULLABLE_UPDATE, "budget_cap_timezone": None})
+    )
+    assert admitted.budget_cap_timezone is None
+    assert "budget_cap_timezone" in admitted.model_fields_set
+    with pytest.raises(ValidationError):
+        # ``name`` carries ``OmittedNotNull``: its document admits no ``null``.
+        UpdateMediaBuyRequest.model_validate_json(json.dumps({**_NULLABLE_UPDATE, "name": None}))
 
-def test_exclude_none_false_on_a_direct_dump_keeps_only_schema_admitted_nulls() -> None:
-    """``exclude_none=False`` is still honoured where ``null`` can mean something.
 
-    A marked field is left off even then: ``null`` is never a valid value for it,
-    so there is nothing to keep, and the document stays readable in JSON mode.
+def test_an_explicit_clear_reaches_the_wire_through_preserve_explicit_nulls() -> None:
+    """The three-state convention survives the omission, by the stated mechanism.
+
+    ``core/targeting-input.json``'s convention is omitted = leave unchanged,
+    ``null`` = clear, a value = replace. With the omission on the field, no
+    ``exclude_none`` setting can put that ``null`` back -- and
+    ``adcp._null_clear.preserve_explicit_nulls`` is the mechanism that does,
+    from the two facts that decide it: ``model_fields_set`` (did the caller
+    supply the key) and the bundled REQUEST SCHEMA (does ``null`` mean anything
+    at that path). That module's own docstring states the contract; this test is
+    what grades it for the clear the model dump no longer carries.
+
+    Asserted on the client's own serialisation path, which is where the clear
+    has to survive: ``model_dump(exclude_none=True)`` then
+    ``preserve_explicit_nulls``.
     """
     request = UpdateMediaBuyRequest.model_validate(_NULLABLE_UPDATE)
-    assert "budget_cap_timezone" not in request.model_dump()
-    loose = request.model_dump(exclude_none=False)
-    assert loose["budget_cap_timezone"] is None
-    assert loose["daily_budget_cap"] is None
-    assert "name" not in loose
-    assert "push_notification_config" not in loose
-    wire = request.model_dump_json(exclude_none=False)
-    assert UpdateMediaBuyRequest.model_validate_json(wire).budget_cap_timezone is None
-    assert "budget_cap_timezone" in UpdateMediaBuyRequest.model_validate_json(wire).model_fields_set
+    assert {"budget_cap_timezone", "daily_budget_cap"} <= request.model_fields_set
+    assert ("budget_cap_timezone",) in nullable_request_paths("update_media_buy")
+
+    params = request.model_dump(mode="json", exclude_none=True)
+    assert "budget_cap_timezone" not in params
+    wire = preserve_explicit_nulls(request, params, task_name="update_media_buy")
+    assert wire["budget_cap_timezone"] is None
+    assert wire["daily_budget_cap"] is None
+    # A property the caller never mentioned stays absent: the clear is a
+    # command, and only a supplied key issues it.
+    assert "name" not in wire
+
+    reread = UpdateMediaBuyRequest.model_validate_json(json.dumps(wire))
+    assert reread.budget_cap_timezone is None
+    assert "budget_cap_timezone" in reread.model_fields_set
 
 
 def test_exclude_none_false_keeps_an_unmarked_none_inside_an_open_dict() -> None:
@@ -232,20 +275,36 @@ def test_exclude_none_false_keeps_an_unmarked_none_inside_an_open_dict() -> None
 
 
 def test_marker_carries_the_exclusion_and_the_refusal() -> None:
+    """The EMITTED marker is ``adcp.types._base.OmittedNotNull``, both halves.
+
+    Two spellings of one marker, and ``is_no_explicit_null`` is the predicate
+    that knows it: this module's ``NoExplicitNull`` is upstream's, carried by
+    the hand-written code kept as machinery, and the generator writes
+    ``OmittedNotNull``. What differs is the ``exclude_if`` FUNCTION OBJECT each
+    holds, and identity is what the predicate compares -- so asking an emitted
+    field for upstream's object answers ``False`` about a field that carries the
+    marker, which is the measurement that docstring records.
+    """
     field = TrustedMatch.model_fields["providers"]
     assert is_no_explicit_null(field)
-    assert field.exclude_if is NoExplicitNull.exclude_if
+    assert omits_null(field)
+    assert field.exclude_if is OmittedNotNull.exclude_if
     assert field.exclude_if(None) is True
     assert field.exclude_if([]) is False
-    assert isinstance(NoExplicitNull, FieldInfo)
-    assert _REFUSE_JSON_NULL in field.metadata
-    assert [repr(item) for item in field.metadata if item is _REFUSE_JSON_NULL] == [
-        "NoExplicitNull"
-    ]
+    assert isinstance(OmittedNotNull, FieldInfo)
+    # The validation half, in ``metadata``: a JSON ``null`` at this key is
+    # refused with the type's own error, and no null arm is published.
+    validation_half = OmittedNotNull.metadata[0]
+    assert validation_half in field.metadata
+    assert [repr(item) for item in field.metadata if item == validation_half] == ["OmittedNotNull"]
     # The marker is merged into the field, never itself in ``metadata``; the
-    # halves are distinct objects and compare by identity.
-    assert NoExplicitNull not in field.metadata
-    assert _REFUSE_JSON_NULL != NoExplicitNull
+    # halves are distinct objects.
+    assert OmittedNotNull not in field.metadata
+    assert validation_half != OmittedNotNull
+    # Upstream's spelling is a DIFFERENT object, which is why the predicate is a
+    # membership test over both and not an identity test against one.
+    assert _REFUSE_JSON_NULL is not validation_half
+    assert NoExplicitNull.exclude_if is not OmittedNotNull.exclude_if
     # A generated ``Field(description=...)`` beside the marker survives the merge.
     assert field.description
 
@@ -370,19 +429,51 @@ def _adcp_models() -> list[tuple[str, type[AdCPBaseModel]]]:
     return models
 
 
-def test_every_marked_field_in_the_generated_tree_carries_the_exclusion() -> None:
-    """The two halves never come apart: marked iff excluded-when-None."""
+def test_the_exclusion_is_on_every_optional_field_and_on_no_required_one() -> None:
+    """Serialisation keys on ``required``; validation keys on nullability.
+
+    Decision 2 of ``rebuild-plan.md`` §2's index, stated as a tree-wide
+    invariant. Three facts, and the second is what this test used to assert the
+    negation of:
+
+    * a field carrying the VALIDATION half (``OmittedNotNull``, in
+      ``metadata``) is optional, and carries the exclusion -- the two halves
+      never come apart;
+    * a field with NO validation half still carries the exclusion when it is
+      optional (``OmittedWhenNone``: its document admits a ``null`` on input and
+      does not require the property, so the dump omits it anyway). The old
+      invariant read ``exclude_if is None`` here and so pinned the superseded
+      nullable-keeps-null split;
+    * a REQUIRED field carries no exclusion, because a required key cannot be
+      absent and its ``null`` is the one that stays on the wire.
+
+    One clause beside those three, and it is not an exception to them: a field
+    dropped from EVERY dump (``exclude=True`` -- a write-only strip such as
+    ``BusinessEntityResponse.bank``, which the spec forbids echoing) has no
+    ``None`` for a conditional exclusion to omit.
+    """
     marked = 0
+    excluded = 0
+    stripped = 0
+    validation_half = OmittedNotNull.metadata[0]
     for name, model in _adcp_models():
         for field_name, field in model.model_fields.items():
-            refuses = _REFUSE_JSON_NULL in field.metadata
+            refuses = validation_half in field.metadata
             if refuses:
                 marked += 1
                 assert is_no_explicit_null(field), (name, field_name)
                 assert not field.is_required(), (name, field_name)
-            else:
+            if field.exclude:
                 assert field.exclude_if is None, (name, field_name)
+                stripped += 1
+            elif field.is_required():
+                assert field.exclude_if is None, (name, field_name)
+            else:
+                assert field.exclude_if is OmittedNotNull.exclude_if, (name, field_name)
+                excluded += 1
     assert marked > 5000
+    assert excluded > marked
+    assert stripped
 
 
 def test_default_instances_of_every_model_dump_no_null_for_marked_fields() -> None:

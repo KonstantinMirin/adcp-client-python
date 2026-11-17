@@ -25,6 +25,7 @@ import pytest
 from adcp.server import ADCPHandler, create_mcp_server
 from adcp.server.mcp_tools import (
     _local_ref_names,
+    _normalize_response_envelope,
     _simplify_wire_schema,
     get_tools_for_handler,
 )
@@ -226,6 +227,20 @@ async def test_advertised_output_schemas_still_describe_real_responses(
     so what the seller actually returns still validates against what it
     advertises. Checked against real handler output rather than a hand-written
     sample — a sample would drift from the model and prove nothing.
+
+    **The output is graded as the SERVER SERVES IT, envelope included.** A
+    handler answers with its task's own payload; the envelope is stated at the
+    transport boundary by ``_normalize_response_envelope``, which is the one
+    place the SDK writes it and the shape every buyer receives. The advertised
+    ``outputSchema`` is the whole response's, and
+    ``core/protocol-envelope.json`` requires ``status`` there — required
+    through the ``allOf`` each response document composes, which is the half of
+    the conjunction the previous generator dropped (``CLAUDE.md`` →
+    "REQUIREDNESS IS A CONJUNCTION"). So a bare handler dict is not the
+    document the schema describes, and comparing them graded a shape nothing
+    sends. The two cases this reaches are ``list_creatives`` and the
+    ``create_media_buy`` error branch, both of which come from SDK response
+    helpers (``adcp.server.responses``) that are deliberately pre-envelope.
     """
     jsonschema = pytest.importorskip("jsonschema")
 
@@ -235,9 +250,12 @@ async def test_advertised_output_schemas_still_describe_real_responses(
         tools = {t["name"]: t for t in get_tools_for_handler(seller)}
     schema = tools[tool_name]["outputSchema"]
 
-    response = await getattr(seller, tool_name)({**params, "adcp_version": "3.2.0"})
+    raw_params = {**params, "adcp_version": "3.2.0"}
+    response = await getattr(seller, tool_name)(raw_params)
+    served = json.loads(json.dumps(response, default=str))
+    _normalize_response_envelope(tool_name, served, raw_params, adcp_version="3.2.0")
 
-    jsonschema.validate(json.loads(json.dumps(response, default=str)), schema)
+    jsonschema.validate(served, schema)
 
 
 def test_compact_output_schemas_still_reject_unknown_fields() -> None:

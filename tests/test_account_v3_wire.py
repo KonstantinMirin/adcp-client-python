@@ -47,6 +47,7 @@ from adcp.decisioning.account_projection import strip_credentials_from_wire_resu
 from adcp.decisioning.accounts import _call_with_optional_ctx
 from adcp.decisioning.handler import PlatformHandler
 from adcp.server.base import ToolContext
+from adcp.server.mcp_tools import _normalize_response_envelope
 from adcp.server.helpers import STANDARD_ERROR_CODES, TERMINAL_CODES
 from adcp.types import (
     AccountAuthorization,
@@ -94,6 +95,28 @@ from adcp.types.domains.core.business_entity import Address, Bank
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
+
+def _with_envelope(tool_name: str, result: dict[str, Any]) -> dict[str, Any]:
+    """The payload as the SERVER serves it, envelope included.
+
+    ``status`` is required on every response: ``core/protocol-envelope.json``
+    states it and each response document composes that envelope one ``allOf``
+    up, so requiredness is the conjunction of the node's own ``required`` and
+    the envelope's (``CLAUDE.md`` → "REQUIREDNESS IS A CONJUNCTION").
+
+    The account PROJECTIONS and ``PlatformHandler`` both answer with the
+    task's own payload and leave the envelope to the transport --
+    ``adcp.server.mcp_tools._normalize_response_envelope`` is where the SDK
+    states it, on the path a buyer's bytes actually travel. Validating a
+    handler's dict as a whole response is a category error that only parsed
+    while the envelope's half of the conjunction was dropped, so these tests
+    apply the same normalisation the server applies rather than hand-writing
+    a key.
+    """
+    normalized = dict(result)
+    _normalize_response_envelope(tool_name, normalized, {}, adcp_version=None)
+    return normalized
 
 
 def _bank_fixture() -> Bank:
@@ -265,7 +288,9 @@ def test_list_accounts_projects_multiple_tiktok_authorization_grants() -> None:
     )
 
     rows = [to_wire_account(ads_account), to_wire_account(creator_account)]
-    response = ListAccountsResponse.model_validate({"accounts": rows})
+    response = ListAccountsResponse.model_validate(
+        _with_envelope("list_accounts", {"accounts": rows})
+    )
     dumped = response.model_dump(mode="json", exclude_none=True)
 
     assert dumped["accounts"][0]["account_id"] == "tiktok_ads_123"
@@ -401,7 +426,7 @@ async def test_handler_list_accounts_returns_ads_and_publisher_identity_grants()
         )
         result = await handler.list_accounts(ListAccountsRequest(), ToolContext())
 
-    response = ListAccountsResponse.model_validate(result)
+    response = ListAccountsResponse.model_validate(_with_envelope("list_accounts", result))
     dumped = response.model_dump(mode="json", exclude_none=True)
 
     assert [row["account_id"] for row in dumped["accounts"]] == [
@@ -436,15 +461,18 @@ def test_sync_creatives_authorization_required_can_name_publisher_identity() -> 
         ]
     )
     response = TypeAdapter(SyncCreativesResponse).validate_python(
-        {
-            "errors": [
-                Error(
-                    code="AUTHORIZATION_REQUIRED",
-                    message="Authorize the creator identity before boosting this URL.",
-                    details=details.model_dump(mode="json", exclude_none=True),
-                )
-            ]
-        }
+        _with_envelope(
+            "sync_creatives",
+            {
+                "errors": [
+                    Error(
+                        code="AUTHORIZATION_REQUIRED",
+                        message="Authorize the creator identity before boosting this URL.",
+                        details=details.model_dump(mode="json", exclude_none=True),
+                    )
+                ]
+            },
+        )
     )
     dumped = TypeAdapter(SyncCreativesResponse).dump_python(
         response,

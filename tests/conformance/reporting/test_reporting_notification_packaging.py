@@ -38,6 +38,28 @@ STORAGE_SRC = STORAGE_ROOT / "src/adcp_reporting_storage"
 #: adcp wheel or sdist of the current tree -> (storage wheel, storage sdist) built with it.
 STORAGE_DISTRIBUTIONS: dict[Path, tuple[Path, Path]] = {}
 
+#: The ONE directory this build input excludes by path: ``src/adcp/_schemas``, the
+#: gitignored bundled-schema cache, which ``MANIFEST.in`` prunes for the same
+#: reason ("A clean VCS source tree has no ignored ``src/adcp/_schemas``
+#: directory").
+#:
+#: **IT IS A PREFIX AND NOT A COMPONENT NAME, because another tracked directory
+#: now carries that word.** The emitted type tree moved from
+#: ``src/adcp/types/domains/`` to ``src/adcp/types/_schemas/`` -- 2,153 tracked
+#: files that ``pyproject.toml`` ships deliberately
+#: (``"types/_schemas/**/*.json"``, whose comment records the move) -- so a
+#: component test dropped all 1,094 generated modules from the wheel this
+#: fixture builds, and importing the installed distribution failed with a
+#: module-not-found the fixture redacts to a sha256.
+SCHEMA_CACHE = ROOT / "src/adcp/_schemas"
+
+
+def _excluded_from_the_distribution(path: Path) -> bool:
+    """Whether ``path`` is a build input the released distribution leaves out."""
+    if path.is_relative_to(SCHEMA_CACHE):
+        return True
+    return any(part == "__pycache__" or part.endswith(".egg-info") for part in path.parts)
+
 
 def register_storage(*adcp_artifacts, wheel, source):
     for artifact in adcp_artifacts:
@@ -322,10 +344,7 @@ def built_distribution(tmp_path_factory, request):
     sources.extend(
         p
         for p in (ROOT / "src").rglob("*")
-        if p.is_file()
-        and not any(
-            part in {"__pycache__", "_schemas"} or part.endswith(".egg-info") for part in p.parts
-        )
+        if p.is_file() and not _excluded_from_the_distribution(p)
     )
     sources.extend(p for p in (ROOT / "schemas/cache").rglob("*.json"))
     sources.extend(p for p in (ROOT / "schemas/releases").rglob("*.json"))
@@ -355,11 +374,15 @@ def built_distribution(tmp_path_factory, request):
         shutil.copy2(ROOT / name, project / name)
     for source in ROOT.glob("MIGRATION*.md"):
         shutil.copy2(source, project / source.name)
-    shutil.copytree(
-        ROOT / "src",
-        project / "src",
-        ignore=shutil.ignore_patterns("__pycache__", "*.egg-info", "_schemas"),
-    )
+
+    def ignore_build_inputs(directory: str, names: list[str]) -> set[str]:
+        """The same exclusion as the fingerprint above, by PATH and not by name."""
+        ignored = set(shutil.ignore_patterns("__pycache__", "*.egg-info")(directory, names))
+        if Path(directory).resolve() == SCHEMA_CACHE.parent.resolve():
+            ignored |= {name for name in names if name == SCHEMA_CACHE.name}
+        return ignored
+
+    shutil.copytree(ROOT / "src", project / "src", ignore=ignore_build_inputs)
     pin = (ROOT / "src/adcp/ADCP_VERSION").read_text().strip()
     current = pin if "-" in pin else ".".join(pin.split(".")[:2])
     for version in dict.fromkeys(("3.0", "3.1", "3.1.15", current)):

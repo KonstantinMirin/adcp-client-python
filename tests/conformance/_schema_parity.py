@@ -599,41 +599,31 @@ DECLARED: dict[str, Callable[[Divergence], bool]] = {
     "union_arm_absorbs_a_type_error": lambda d: (
         d.direction == MODEL_ACCEPTS and d.keyword in ("oneOf", "anyOf")
     ),
-    # ``CanonicalBoundaryModel`` refuses any payload carrying a legacy
-    # creative identity, while ``core/format-id.json`` is marked deprecated
-    # and retained for 3.x compatibility, so the bundled schema accepts it.
-    # Closing this needs a decision: either the canonical model accepts and
-    # projects the legacy shape the way ``LegacyFormatId`` does, or the
-    # schemas stop retaining it.
-    "canonical_model_refuses_legacy_creative_identity": lambda d: (
-        d.direction == SCHEMA_ACCEPTS and d.error_types == frozenset({"value_error"})
-    ),
-    # ``core/canonical-format-kind.json`` is the one schema this SDK
-    # deliberately does not reproduce. It declares a closed 16-member ``enum``
-    # and, in the same file, requires a consumer to retain an unknown
-    # ``format_kind`` and not fail the payload — "the producer-side enum stays
-    # closed; the consumer-side enum stays open". The schema knows the rule is
-    # directional and then encodes it as one closed enum, which cannot carry
-    # that, so every reference generates ``str`` and no model refuses a value:
-    # a pinned SDK cannot tell a kind a seller invented from a kind defined
-    # after its pin, and refusing the second to prevent the first would make
-    # this library's version a ceiling on what the protocol permits. Checking
-    # the vocabulary is the caller's, through
-    # ``adcp.types.is_canonical_format_kind``, whose vocabulary is a parameter
-    # because only the caller knows which spec version its counterpart speaks.
-    # Every model therefore accepts a value the bundled enum refuses. The
-    # property names are derived from the bundle (``open_vocabulary_properties``)
-    # so this stays ONE entry covering ONE schema rather than a list of fields.
-    # Closing it needs the upstream fix: adcontextprotocol/adcp#7929.
-    "format_kind_is_an_open_vocabulary_by_decision": lambda d: (
-        d.direction == MODEL_ACCEPTS
-        and d.keyword == "enum"
-        and refused_property(d.schema_path) in open_vocabulary_properties()
-    ),
-    # The model marks a field required that the schema leaves optional.
-    "model_requires_a_field_the_schema_does_not": lambda d: (
-        d.direction == SCHEMA_ACCEPTS and d.error_types == frozenset({"missing"})
-    ),
+    # THREE ENTRIES WERE DELETED HERE, and the suite's own rule is why: it
+    # reports a predicate matching nothing and says to delete it, because this
+    # set only SHRINKS. Each had become unreachable for a stated reason:
+    #
+    # * ``canonical_model_refuses_legacy_creative_identity`` -- the canonical
+    #   models state ``format_ids`` / ``format_id`` where their documents do,
+    #   deprecated or not (``CLAUDE.md``: *"``deprecated`` is metadata, not
+    #   absence"*), so no ``value_error`` refusal of a legacy identity is left
+    #   to account for.
+    # * ``format_kind_is_an_open_vocabulary_by_decision`` -- the widening it
+    #   declared came from ``adcp.types._forward_compat``, deleted by
+    #   ``verdicts/the-dead-patch-layer.md``. ``format_kind`` is now the closed
+    #   16-member enum of ``core/canonical-format-kind.json``, which
+    #   ``rebuild-plan.md`` §6 calls faithful to a vocabulary opened only in a
+    #   namespace the validator ignores, so the model no longer accepts a value
+    #   the bundled enum refuses.
+    # * ``model_requires_a_field_the_schema_does_not`` -- requiredness is now
+    #   the CONJUNCTION of a node's own ``required`` and every ancestor's
+    #   (``CLAUDE.md``), so the models require what their documents require and
+    #   no ``missing``-only divergence remains.
+    #
+    # ``refused_property`` and ``open_vocabulary_properties`` above are kept:
+    # they read the bundle rather than this table, and the next open-vocabulary
+    # question asks them again.
+    #
     # **PYDANTIC COERCES AT THE PYTHON BOUNDARY, AND THAT IS CORRECT** -- the same shape
     # as ``datetime_field_parses_a_number`` above, which declares the identical thing for
     # ``AwareDatetime``.  A ``{"type": "number"}`` field takes ``"1000"`` and ``True`` and

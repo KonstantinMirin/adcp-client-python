@@ -24,6 +24,7 @@ from __future__ import annotations
 import inspect
 import socket
 import threading
+import typing
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from unittest.mock import patch
@@ -95,11 +96,38 @@ def test_httpcore_connection_pool_accepts_network_backend() -> None:
 def test_httpcore2_backends_match_the_httpcore_signatures() -> None:
     """The ``2``-suffixed transports pin through the same extension
     point in the httpcore2 generation. One signature test covers both,
-    because the port is only valid while the two agree."""
-    assert inspect.signature(SyncBackend2.connect_tcp) == inspect.signature(SyncBackend.connect_tcp)
-    assert inspect.signature(AnyIOBackend2.connect_tcp) == inspect.signature(
-        AnyIOBackend.connect_tcp
-    )
+    because the port is only valid while the two agree.
+
+    **What has to agree is the CALL SHAPE, not the annotations' source
+    spelling.** These are two independently-versioned distributions: one writes
+    ``socket_options: 'typing.Iterable[SOCKET_OPTION]'`` and the other
+    ``'Iterable[SOCKET_OPTION]'`` for ``collections.abc.Iterable`` -- the same
+    type, since ``typing.Iterable`` is an alias of it -- and each annotates its
+    return as its OWN ``NetworkStream`` class, which can never be equal. A
+    whole-``Signature`` equality therefore grades the generations' idiom, which
+    the port does not depend on and we do not control.
+
+    So this compares the parameters by name, kind and default (what an override
+    has to match), and resolves the one annotation the pin actually reads
+    through to its origin.
+    """
+
+    def call_shape(method: object) -> list[tuple[str, object, object]]:
+        return [
+            (parameter.name, parameter.kind, parameter.default)
+            for parameter in inspect.signature(method).parameters.values()
+        ]
+
+    def socket_options_origin(method: object) -> object:
+        annotation = typing.get_type_hints(method)["socket_options"]
+        iterable = next(arg for arg in typing.get_args(annotation) if arg is not type(None))
+        return typing.get_origin(iterable)
+
+    for ported, original in ((SyncBackend2, SyncBackend), (AnyIOBackend2, AnyIOBackend)):
+        assert call_shape(ported.connect_tcp) == call_shape(original.connect_tcp)
+        assert socket_options_origin(ported.connect_tcp) is socket_options_origin(
+            original.connect_tcp
+        )
     assert "network_backend" in inspect.signature(httpcore2.ConnectionPool.__init__).parameters
     assert "network_backend" in inspect.signature(httpcore2.AsyncConnectionPool.__init__).parameters
 

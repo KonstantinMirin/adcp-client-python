@@ -72,8 +72,13 @@ async def test_sync_persists_state_negotiation_and_exact_replay() -> None:
     assert first.replayed is False
     assert replay.replayed is True
     assert first.result.kind == "applied"
-    assert first.context.correlation_id == "principal--apply"
-    assert current.context.correlation_id == "principal--read"
+    # ``core/context.json`` declares no ``properties``, so §4's "What becomes
+    # what" emits ``dict[str, Any]`` for it and not a class: an opaque JSON
+    # object the protocol echoes unchanged has no attributes to read, and
+    # minting a class with one would narrow the document to the keys this SDK
+    # happened to name.
+    assert first.context["correlation_id"] == "principal--apply"
+    assert current.context["correlation_id"] == "principal--read"
     assert current.result.kind == "current"
     destination = current.result.configuration.reporting_destinations[0]
     assert destination.state == "validating"
@@ -182,7 +187,10 @@ async def test_suspension_preserves_generation_and_revocation_retires_it() -> No
     assert third.result.configuration.reporting_destinations == []
     retired = third.result.configuration.retired_destinations[0]
     assert retired.destination_id == "archive"
-    assert retired.destination_refs[0].root == original.destination_ref
+    # A ``$ref``ed SCALAR mints no class -- §4: *"a scalar at a root → a
+    # module-level annotated alias, not a class"* -- so a destination ref is
+    # the string itself and carries no ``.root``.
+    assert retired.destination_refs[0] == original.destination_ref
 
 
 @pytest.mark.asyncio
@@ -230,7 +238,8 @@ async def test_seller_declaration_change_emits_without_version_churn() -> None:
     declarations = await service.refresh_declarations(IDENTITY)
     current = await service.get_principal(IDENTITY)
 
-    assert [item.root for item in declarations.accepted.async_adcp_versions] == ["3.2"]
+    # Same §4 row: the accepted versions are the scalars the document states.
+    assert list(declarations.accepted.async_adcp_versions) == ["3.2"]
     assert current.result.configuration_version == version
     assert changes[0].reason == "declarations_intersection_changed"
 
