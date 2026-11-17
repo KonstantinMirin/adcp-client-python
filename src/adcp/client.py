@@ -3000,8 +3000,11 @@ class ADCPClient:
         """Return raw media-buy delivery carrying legacy format identity."""
 
         self._warn_legacy_creative_api("get_media_buy_delivery_legacy")
+        # Same request document, same exact-mode presence prohibition at
+        # ``#/allOf/1`` as the canonical ``get_media_buy_delivery`` above -- the
+        # legacy projection changes the RESPONSE type, not what the request may carry.
         raw = await self.adapter.get_media_buy_delivery(
-            request.model_dump(mode="json", exclude_none=True)
+            request.model_dump(mode="json", exclude_none=True, exclude_unset=True)
         )
         return self.adapter._parse_response(raw, LegacyGetMediaBuyDeliveryResponse)
 
@@ -3203,7 +3206,16 @@ class ADCPClient:
         """
         self._creative_dialect(request, legacy_projection_available=True)
         operation_id = self._task_operation_id()
-        params = request.model_dump(mode="json", exclude_none=True)
+        # ``exclude_unset=True`` is load-bearing, not tidiness
+        # (``adcp-client-python-u7qa``).  ``media-buy/get-media-buy-delivery-request.json``
+        # forbids the PRESENCE -- not the value -- of ten aggregate selectors in exact
+        # mode: ``#/allOf/1`` reads "if ``reporting_revision_id`` is present, then NOT
+        # (``media_buy_ids`` or ... or ``include_package_daily_breakdown`` or
+        # ``include_window_breakdown``)".  Two of those ten carry ``default: false``,
+        # which the model states faithfully, so ``exclude_none=True`` ALONE materialises
+        # them and the document refuses the result.  ``exclude_unset=True`` sends only
+        # what the caller actually set, so an explicit value still reaches the seller.
+        params = request.model_dump(mode="json", exclude_none=True, exclude_unset=True)
 
         self._emit_activity(
             Activity(
@@ -3643,7 +3655,15 @@ class ADCPClient:
             ...     vast_url = result.data.assets[0].url
         """
         operation_id = self._task_operation_id()
-        params = request.model_dump(mode="json", exclude_none=True)
+        # ``media-buy/build-creative-request.json#/allOf/7`` is the same shape of
+        # presence prohibition as get_media_buy_delivery: "if
+        # ``creative_representation_set`` is present, then NOT (``message`` or ... or
+        # ``max_variants`` or ... or ``keep_mode`` or ...)" -- representation-set
+        # resolution is "a seller-bound, deterministic, single-output selection mode"
+        # ($comment) and may not be handed generation knobs.  ``max_variants`` and
+        # ``keep_mode`` carry ``default: 1`` / ``default: "keep_all"``, so
+        # ``exclude_none=True`` alone materialises two of the forbidden names.
+        params = request.model_dump(mode="json", exclude_none=True, exclude_unset=True)
 
         self._emit_activity(
             Activity(
