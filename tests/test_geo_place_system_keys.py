@@ -227,8 +227,11 @@ def test_overlay_product_and_discovery_parents(system: str, field: str, from_jso
         (TargetingOverlaySupport, overlay, [field, "systems"]),
         (Product, product, ["overlay_support", field, "systems"]),
         (
+            # `status` is not stated by `media-buy/get-products-response.json`'s
+            # own node; it is required one `allOf` up, by
+            # `core/protocol-envelope.json`, and requiredness is the conjunction.
             GetProductsResponse,
-            {"products": [product]},
+            {"status": "completed", "products": [product]},
             ["products", 0, "overlay_support", field, "systems"],
         ),
         (
