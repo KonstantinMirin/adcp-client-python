@@ -16,6 +16,7 @@ from adcp.types.domains.creative.list_creatives_request import Field1 as FieldMo
 from adcp.types.domains.creative.list_creatives_request import Sort
 from adcp.types.domains.enums.creative_sort_field import CreativeSortField
 from adcp.types.domains.enums.sort_direction import SortDirection
+from pydantic import ValidationError
 
 from adcp.types import (
     AssetContentType,
@@ -66,22 +67,39 @@ class TestEnumListCoercion:
         [ListCreativeFormatsRequest, ListCreativeFormatsRequestCreativeAgent],
     )
     @pytest.mark.parametrize(
-        ("field", "values", "expected"),
+        ("field", "values"),
         [
-            ("disclosure_positions", ["footer", "prominent", "footer"], ["footer", "prominent"]),
-            (
-                "disclosure_persistence",
-                ["initial", "continuous", "initial"],
-                ["initial", "continuous"],
-            ),
+            ("disclosure_positions", ["footer", "prominent"]),
+            ("disclosure_persistence", ["initial", "continuous"]),
         ],
     )
-    def test_unique_disclosure_filters_are_deduplicated(
-        self, request_type, field, values, expected
-    ):
-        """Both role-specific models preserve first-seen order for uniqueItems."""
+    def test_unique_disclosure_filters_keep_their_order(self, request_type, field, values):
+        """Both role-specific models preserve the order a distinct list was given in."""
         req = request_type(**{field: values})
-        assert [item.value for item in getattr(req, field)] == expected
+        assert [item.value for item in getattr(req, field)] == values
+
+    @pytest.mark.parametrize(
+        "request_type",
+        [ListCreativeFormatsRequest, ListCreativeFormatsRequestCreativeAgent],
+    )
+    @pytest.mark.parametrize(
+        ("field", "values"),
+        [
+            ("disclosure_positions", ["footer", "prominent", "footer"]),
+            ("disclosure_persistence", ["initial", "continuous", "initial"]),
+        ],
+    )
+    def test_repeated_disclosure_filters_are_refused(self, request_type, field, values):
+        """Both documents state `uniqueItems: true`, which refuses a repeat.
+
+        What stood here asserted a silent de-duplication to
+        `['footer', 'prominent']`. `uniqueItems` makes a repeating instance
+        INVALID; it does not ask the consumer to drop the repeat, and dropping
+        it would return a filter the caller did not send.
+        """
+        with pytest.raises(ValidationError) as excinfo:
+            request_type(**{field: values})
+        assert excinfo.value.errors()[0]["type"] == "uniqueItems"
 
 
 class TestDictToModelCoercion:
