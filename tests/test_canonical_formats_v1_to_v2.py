@@ -28,6 +28,21 @@ from adcp.types.core import LegacyFormat
 _FIXTURES = Path(__file__).parent / "fixtures" / "canonical"
 
 
+def _params(declaration: object) -> dict[str, object]:
+    """The declaration's ``params`` as the wire dict its document states.
+
+    ``core/product-format-declaration.json`` types ``params`` per branch -- the
+    ``image`` branch's params ARE ``formats/canonical/image.json``
+    (``CanonicalFormatImage``), not a free dict -- so a comparison against a
+    literal goes through the model's own dump. ``exclude_unset`` keeps the
+    comparison to what the projection actually set, and ``mode="json"`` is the
+    mode whose values are the wire's (a python-mode dump yields enum members
+    and ``WireAnyUrl``, which is correct pydantic behaviour and not what a
+    literal spells).
+    """
+    return declaration.params.model_dump(exclude_unset=True, mode="json")  # type: ignore[attr-defined]
+
+
 # ---------------------------------------------------------------------------
 # Step 1 — explicit canonical annotation
 # ---------------------------------------------------------------------------
@@ -47,10 +62,10 @@ def test_explicit_canonical_annotation_wins() -> None:
     assert result.declaration.format_kind == CanonicalFormatKind.image
     assert result.advisories == []
     # asset_source from canonical threads into params:
-    assert result.declaration.params.get("asset_source") == "buyer_uploaded"
+    assert result.declaration.params.asset_source == "buyer_uploaded"
     # v1_format_ref points back at the source:
-    assert len(result.declaration.legacy_format_refs) == 1
-    assert result.declaration.legacy_format_refs[0].id == "display_300x250_image"
+    assert len(result.declaration.v1_format_ref) == 1
+    assert result.declaration.v1_format_ref[0].id == "display_300x250_image"
 
 
 def test_explicit_canonical_bypasses_registry_with_no_advisory() -> None:
@@ -81,9 +96,9 @@ def test_slots_override_threads_into_params() -> None:
     }
     result = project_v1_format_to_declaration(v1)
     assert result.declaration is not None
-    slots = result.declaration.params.get("slots")
+    slots = result.declaration.params.slots
     assert isinstance(slots, list) and len(slots) == 2
-    assert slots[0]["asset_group_id"] == "image_main"
+    assert slots[0].asset_group_id == "image_main"
 
 
 def test_seller_slots_override_registry_retina_slot_contract() -> None:
@@ -107,7 +122,7 @@ def test_seller_slots_override_registry_retina_slot_contract() -> None:
     result = project_v1_format_to_declaration(v1)
 
     assert result.declaration is not None
-    assert result.declaration.params == {
+    assert _params(result.declaration) == {
         "width": 300,
         "height": 250,
         "slots": [
@@ -135,7 +150,7 @@ def test_seller_kind_does_not_inherit_registry_retina_contract() -> None:
 
     assert result.declaration is not None
     assert result.declaration.format_kind == CanonicalFormatKind.html5
-    assert result.declaration.params == {"width": 300, "height": 250}
+    assert _params(result.declaration) == {"width": 300, "height": 250}
     assert result.advisories == []
 
 
@@ -173,8 +188,8 @@ def test_registry_literal_mappings_project_canonical_params(
 
     assert result.declaration is not None
     assert result.declaration.format_kind == kind
-    assert result.declaration.params == params
-    assert result.declaration.legacy_format_refs[0].id == format_id
+    assert _params(result.declaration) == params
+    assert result.declaration.v1_format_ref[0].id == format_id
     assert result.advisories == []
 
 
@@ -204,7 +219,7 @@ def test_retina_only_registry_mappings_preserve_pixel_ratio(
 
     assert result.declaration is not None
     assert result.declaration.format_kind == CanonicalFormatKind.image
-    assert result.declaration.params == {
+    assert _params(result.declaration) == {
         "width": width,
         "height": height,
         "pixel_ratios": [2],
@@ -227,7 +242,7 @@ def test_retina_rendition_set_registry_mapping_preserves_slot_contract(
 
     assert result.declaration is not None
     assert result.declaration.format_kind == CanonicalFormatKind.image
-    assert result.declaration.params == {
+    assert _params(result.declaration) == {
         "width": width,
         "height": height,
         "pixel_ratios": [1, 2],
@@ -337,7 +352,7 @@ def test_structural_match_carries_registry_params_into_declaration() -> None:
     result = project_v1_format_to_declaration(v1)
     assert result.declaration is not None
     # The registry's video_vast >= 4.0 entry carries parameters.vast_version
-    assert result.declaration.params.get("vast_version") == "4.2"
+    assert result.declaration.params.vast_version == "4.2"
 
 
 # ---------------------------------------------------------------------------
