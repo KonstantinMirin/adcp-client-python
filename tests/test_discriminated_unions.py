@@ -848,14 +848,19 @@ class TestPropertyTagSharedSchema:
         assert excinfo.value.errors()[0]["type"] == "pattern"
 
 
-class TestRootModelUnwrapForSubclassing:
-    """Test that unwrapped RootModel unions support consumer subclassing.
+class TestUnionBaseSupportsSubclassing:
+    """Test that a union's branches support consumer subclassing.
 
     See: https://github.com/adcontextprotocol/adcp-client-python/issues/155
 
-    Pydantic 2 forbids model_config overrides on RootModel subclasses.
-    By unwrapping select RootModel unions to plain Union type aliases,
-    consumers can subclass the individual variants with custom model_config.
+    Pydantic 2 forbids `model_config` overrides on a `RootModel` subclass, and
+    that is the thing #155 asked to be rid of. Section 4's answer is not a type
+    alias: a `oneOf`/`anyOf` of object types emits a BASE plus one class per
+    BRANCH, the base dispatches a payload to the branch it satisfies, and each
+    branch is an ordinary model a consumer can subclass with any
+    `model_config`. So the wrapper is gone, `isinstance` holds against the
+    base, and the subclassing #155 wanted works -- which is what these grade,
+    rather than the alias the previous emission reached for.
     """
 
     def test_get_signals_request_is_base_model_class(self):
@@ -867,21 +872,30 @@ class TestRootModelUnwrapForSubclassing:
         assert isinstance(GetSignalsRequest, type)
         assert issubclass(GetSignalsRequest, BaseModel)
 
-    def test_create_media_buy_response_is_union_alias(self):
-        """CreateMediaBuyResponse should be a Union type alias, not a RootModel class."""
-        import types
+    def test_create_media_buy_response_is_a_dispatching_base(self):
+        """CreateMediaBuyResponse should be the union's base, not a RootModel wrapper."""
+        from pydantic import RootModel
 
-        from adcp.types import CreateMediaBuyResponse
+        from adcp.types import CreateMediaBuyResponse, CreateMediaBuySuccessResponse
 
-        assert isinstance(CreateMediaBuyResponse, types.UnionType)
+        assert isinstance(CreateMediaBuyResponse, type)
+        assert not issubclass(CreateMediaBuyResponse, RootModel)
+        assert issubclass(CreateMediaBuySuccessResponse, CreateMediaBuyResponse)
 
     @pytest.mark.parametrize("name", ["AccountReference", "PostalArea", "SignalRef"])
     def test_public_object_unions_are_not_rootmodel_wrappers(self, name: str):
-        """Composable object unions are exposed as aliases, not RootModel classes."""
+        """Composable object unions are a base plus branches, not RootModel classes."""
+        from pydantic import RootModel
+
         import adcp.types
 
-        public_alias = getattr(adcp.types, name)
-        assert not isinstance(public_alias, type)
+        public_base = getattr(adcp.types, name)
+        assert isinstance(public_base, type)
+        assert not issubclass(public_base, RootModel)
+        # The branches are the subclasses, and there is more than one of them.
+        branches = public_base.__subclasses__()
+        assert len(branches) > 1
+        assert all(issubclass(branch, public_base) for branch in branches)
 
     def test_account_reference_union_validates_and_arms_remain_subclassable(self):
         """Consumers can validate the union and customize a concrete branch."""
@@ -898,16 +912,24 @@ class TestRootModelUnwrapForSubclassing:
         with pytest.raises(ValidationError):
             StrictAccountReference(account_id="acct-1", legacy_id="old")
 
-    def test_signal_reference_alias_preserves_required_discriminator(self):
-        """Removing the wrapper must not weaken SignalRef's wire validation."""
+    def test_signal_reference_base_preserves_required_discriminator(self):
+        """Removing the wrapper must not weaken SignalRef's wire validation.
+
+        A payload naming no `scope` satisfies none of the three branches and is
+        still refused. What changed is the error NAME: the compiler reports the
+        JSON Schema keyword that bit, so this is `oneOf` on `scope` rather than
+        pydantic's own `union_tag_not_found`.
+        """
         from pydantic import TypeAdapter
 
         from adcp.types import SignalRef
 
-        with pytest.raises(ValidationError, match="union_tag_not_found"):
+        with pytest.raises(ValidationError) as excinfo:
             TypeAdapter(SignalRef).validate_python(
                 {"signal_source_url": "https://signals.example", "signal_id": "sig-1"}
             )
+        assert excinfo.value.errors()[0]["type"] == "oneOf"
+        assert excinfo.value.errors()[0]["loc"] == ("scope",)
 
     def test_subclass_get_signals_request_with_extra_forbid(self):
         """Consumer can subclass GetSignalsRequest directly with extra='forbid'."""
