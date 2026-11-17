@@ -153,8 +153,50 @@ def pytest_generate_tests(metafunc: Any) -> None:
         )
 
 
-def test_this_pair_passes(pair_index: int, setup: Any) -> None:
-    """This pair passes all six checks, and none of them is absent.
+#: **THE THREE CHECKS THAT ARE THE CONTRACT**, in the owner's words (2026-11-17):
+#: *"All we need to make sure is that schema valid and schema invalid payload are being
+#: validated by the emitted Python classes and that valid Python class instantiated and
+#: filled produces the valid JSON serialization when it is being dumped. That's it."*
+#:
+#: So the gate is three assertions per pair and not six:
+#:
+#:     accepts   a payload the DOCUMENT admits, the class admits
+#:     refuses   a payload the DOCUMENT refuses, the class refuses
+#:     dump      an instance's dump is valid against the document
+#:
+#: **AND ROUND-TRIP BYTE-IDENTITY IS EXPLICITLY NOT THE TEST**, also his words -- *"we do
+#: not test round trip without changing bytes because that would be impossible to meet"*.
+#: `dump` asserts the dump is document-VALID, which is a different and achievable claim.
+#:
+#: `widening`, `undeclared` and `admits` are the approximation bookkeeping -- they grade
+#: whether a DECLARATION matches the direction a class differs from its document. They
+#: are measured and reported by :func:`test_this_pair_has_no_undeclared_approximation`
+#: below, which is deliberately NOT this gate: a pair can satisfy the contract above
+#: while its declaration is mislabelled, and conflating the two is how 19 bookkeeping
+#: rows came to be quoted as emission defects.
+CONTRACT = ("accepts", "refuses", "dump")
+
+#: The approximation bookkeeping, graded apart from the contract.
+BOOKKEEPING = ("widening", "undeclared", "admits")
+
+
+def _cells(row: str) -> dict[str, str]:
+    """A row's cells, read as the artifact spells them.
+
+    `csv.DictReader` over the real header is the only reader for `verdicts.tsv`, and
+    this is its per-row equivalent: a `split("=")` by hand answered 0 graded pairs for a
+    file holding 2,550 of them, minutes before a correct read answered 101. A hand-rolled
+    reader that is wrong is worse than no reader, because it reports.
+    """
+    return dict(field.split("=", 1) for field in row.split("\t") if "=" in field)
+
+
+def test_this_pair_meets_the_contract(pair_index: int, setup: Any) -> None:
+    """A document-valid payload is accepted, a document-invalid one refused, the dump valid.
+
+    :data:`CONTRACT`'s three checks, and **absent is not a pass** -- a check never put to
+    this pair is a fact about the draw and not evidence about the class, which is what
+    `verdicts.tsv`'s own header says.
 
     One test per PAIR, so ``pytest -n auto`` may place any pair on any worker.
     """
@@ -167,7 +209,51 @@ def test_this_pair_passes(pair_index: int, setup: Any) -> None:
         construction=construction,
         formats=formats,
     )
-    bad = [r for r in rows if "\tverdict=pass" not in r]
-    assert not bad, f"{len(bad)} of {len(rows)} pairs:\n" + "\n".join(
-        "  " + r.split("\t", 3)[-1][:220] for r in bad[:10]
+    bad = []
+    for row in rows:
+        cells = _cells(row)
+        for check in CONTRACT:
+            #: The cell's VALUE, which is `pass`, `fail:<cause>` or `absent:<cause>`.
+            #: Comparing it to the check's NAME is the mistake that made every one of
+            #: 2,609 pairs fail on this gate's first run -- a hand-rolled reader being
+            #: wrong in the commit that exists to stop hand-rolling readers.
+            if cells.get(check, "") != "pass":
+                where = f"{cells.get('document', '?')}{cells.get('pointer', '')}"
+                bad.append(f"{where}: {cells.get(check)}")
+    assert not bad, f"{len(bad)} contract failures:\n" + "\n".join("  " + b[:220] for b in bad[:10])
+
+
+def test_this_pair_has_no_undeclared_approximation(pair_index: int, setup: Any) -> None:
+    """:data:`BOOKKEEPING`, graded APART from the contract and for a different reason.
+
+    These three ask whether a class that differs from its document carries a DECLARATION
+    saying so, and in which direction. A failure here is a mislabelled or missing
+    declaration, not a payload the class gets wrong -- so it must not be able to redden
+    the contract gate, and the contract gate must not be able to hide it.
+    """
+    from codegen.__main__ import graded_rows
+
+    found, identity_of, construction, formats = setup
+    rows = graded_rows(
+        [found[pair_index]],
+        identity_of=identity_of,
+        construction=construction,
+        formats=formats,
+    )
+    bad = []
+    for row in rows:
+        cells = _cells(row)
+        for check in BOOKKEEPING:
+            #: **ONLY AN EXPLICIT `fail`**, because `absent` is the CORRECT state here
+            #: and not a gap: `widening=absent:no_declarations` is what a pair with no
+            #: declarations must say, so counting absent would redden 2,468 of 2,609
+            #: pairs for being ordinary. That is the opposite of :data:`CONTRACT`, where
+            #: a check never put to the pair is no evidence about the class and so is
+            #: not a pass. Verified against the artifact: 22 pairs fail here, 14 fail
+            #: the contract.
+            if (cells.get(check) or "").startswith("fail"):
+                where = f"{cells.get('document', '?')}{cells.get('pointer', '')}"
+                bad.append(f"{where}: {check}={cells.get(check)}")
+    assert not bad, f"{len(bad)} bookkeeping failures:\n" + "\n".join(
+        "  " + b[:220] for b in bad[:10]
     )
