@@ -577,11 +577,12 @@ ignored, so an author who wants to annotate a reference has one idiom available 
 ```
 
 That node asserts a reference and a sentence. It states no property, no `required`, no narrowing
-keyword — **nothing an instance can tell apart from the target itself.** Measured over the 1,054
-portable documents of `schemas/cache/3.2`, with `catalogue.ANNOTATIONS` deciding what an
-annotation is: **156 stating positions over 104 documents** are exactly this shape, and **122 of
-them carry a `description` or a `title`** — the idiom, not a coincidence. A further 382 occur
-inside `$defs`/`definitions` mirrors, which the section rule above already takes out of the key.
+keyword — **nothing an instance can tell apart from the target itself.** Measured by
+`survey/composites.py`, which reads the document screen off `catalogue.stating`, the walk off
+`bundle.nodes_at` and the annotation set off `catalogue.ANNOTATIONS`: of the 376 positions in
+`schemas/cache/3.2` that compose exactly one bare `$ref`, **73 over 51 documents are this shape,
+and all 73 of them carry a `description` or a `title`.** Not a majority — every one. The wrapper
+exists to hold the sentence, which is the idiom and not a coincidence.
 
 **SO THE RULE IS DERIVED AND NOT CHOSEN: such a position is a §5 `$ref` row.** The key test this
 section already states is admission-equivalence — *in the key if and only if some instance turns
@@ -589,15 +590,35 @@ on it* — and the whole of the difference between the wrapper and its target is
 drops. A node that admits exactly what the target admits is not a second type, and the compiler
 may not be the thing that decides it is one.
 
-**WHAT IT COST WHILE THE KEY WAS ABSENT, read off the emitted tree.** At 45 of the 156 the emitter
-declares a class, and each is a wrapper named from the PROPERTY PATH where the `$ref` already
-names the concept — `PostClick` and `PostView` for two durations, `Window` and `Suppress` on a
-frequency cap, `Period`, `Bidding`, `Forecast`. The three `properties/account` positions of
-`buy-products-request`, `list-products-request` and `request-proposals-request` are the same shape
-reached through an `anyOf`, and there the wrapper is composed with the target's two branches, so
-one concept becomes **three classes per request** — a local base crossed with a foreign one, which
-is §4's two-base emission doing exactly what it is told at a position that should have told it
-nothing.
+**WHAT IT COST WHILE THE KEY WAS ABSENT, read off the emitted tree by joining each position's
+`SchemaRef` to the class declared at it.** 45 of the 73 declare a class. **18 of those are
+document ROOTS and are not the defect** — a root is a public named type, and
+`BuyProductsSubmitted` on `{allOf: [$ref core/compact-task-submitted.json]}` gives the operation
+its own word, which is a service. **The remaining 27 are wrappers at a PROP or ELEM position,
+each named from the property path where the `$ref` already names the concept**, and the naming
+collapse is what makes the cost legible:
+
+| the class minted | positions | the one target they all reference |
+|---|---|---|
+| `Bidding` | 7 | `core/bidding-policy.json` |
+| `Window` | 3 | `core/duration.json` |
+| `EstimatedWait` | 2 | `core/duration.json` |
+| `PostClick`, `PostView`, `Suppress`, `TimeBudget`, `Period` | 1 each | `core/duration.json` |
+
+So **`core/duration.json` is one concept and is emitted as eight differently-named wrapper
+classes**, and `Bidding` is one name minted seven times over. A consumer holding a
+`FrequencyCap.window` cannot pass it where an `AttributionWindow.post_click` is wanted, though the
+document says they are the same duration — which is the defect §3a's catalogue exists to remove,
+arriving at the layer the key was missing from.
+
+**AND THE ACCOUNT CASE IS THIS SHAPE PLUS A SECOND FAULT, which is why it reached the gate.**
+`media-buy/buy-products-request.json#/properties/account` is a bare annotated `$ref` to
+`core/canonical-account-ref.json`, as are the same property on `list-products-request` and
+`request-proposals-request`. The root `anyOf` then states
+`{"properties": {"account": {"required": ["brand", "operator"]}}}` at `#/anyOf/1`, and the
+wrapper is composed with the target's two branches, so one concept becomes **three classes per
+request**. See the subsection below for the second fault: that `anyOf` branch declares no member
+at all.
 
 **THE CATALOGUE ALREADY SEES THE GROUP AND DECLINES IT, which is the sharper half of this.**
 `collect_shapes(admitted, "L2C", standing)` returns **0 entries and 28 untitled groups**, and the
@@ -612,10 +633,55 @@ case: the name is not missing, it is on the document the `$ref` reaches.
 position's own text states something an instance can see — a `required` the target does not carry,
 a property the target does not declare, a narrowing of one of its branches — the crossing is the
 document's own meaning and the compiler is transcribing it correctly (§5: the compiler transcribes
-a document; it never decides whether the document is satisfiable). Those positions are
-**candidates for an upstream schema fix** and are carried to the owner as such, never silently
-collapsed here. The line between them is the admission key and nothing softer: no judgement about
-which keywords look important, only whether a payload can tell.
+a document; it never decides whether the document is satisfiable). Measured, those are the other
+two groups: **14 positions state `required` and nothing else** (the type is the target's, which
+branch is a rule on it) and **289 declare a member of their own**, of which 127 are document
+roots. They are **candidates for an upstream schema fix** and are carried to the owner as such,
+never silently collapsed here. The line between them is the admission key and nothing softer: no
+judgement about which keywords look important, only whether a payload can tell.
+
+### A COMBINATOR BRANCH THAT DECLARES NO MEMBER STATES A RULE, AND §3a's CLAUSE DOES NOT REACH IT
+
+**THE CLAUSE AS IT STANDS IS A KEYWORD LIST, AND THAT IS THE DEFECT IN IT.** §3a says *"a node
+inside an `if`, `then`, `else` or `not` is not a stating position of any layer. A conditional
+states a RULE on the nearest class; it does not state a type."* Read against `bundle.DESCENDS`,
+those four keywords are exactly `Position.RULE` — and `anyOf` and `oneOf` are `Position.BRANCH`.
+**So the clause does not cover a combinator branch at all**, and the case that reached the gate is
+one:
+
+```json
+"anyOf": [{"required": ["brand"]},
+          {"properties": {"account": {"required": ["brand", "operator"]}}}]
+```
+
+`media-buy/buy-products-request.json#/anyOf/1` declares no property. It restricts a member
+`#/properties/account` already references. A class is minted for it anyway, because it is a BRANCH
+and the clause names four other keywords.
+
+**THE SUBSTANCE OF THE CLAUSE IS RIGHT, AND THE REASON IS STRONGER THAN THE ONE IT GIVES.** A
+combinator branch does not admit on its own: an instance is validated against the whole `anyOf`,
+never against branch 1 in isolation. A class minted for branch 1 therefore admits a set **no wire
+position is ever checked against** — strictly narrower than every position the branch participates
+in. That is precisely what the gate reports at these two pairs, as `model_refused_valid` with the
+note *"narrower than its document"*: the emitted class refuses a payload the document accepts
+through the sibling branch. The clause's own justification — *a conditional states a rule* — is
+true of a non-declaring branch for the same reason and does not depend on the keyword.
+
+**SO THE TEST IS STRUCTURAL AND RECURSIVE, AND IT IS NOT "DOES THE NODE STATE `properties`".** A
+node states a TYPE when it declares a member an instance can carry; it states a RULE when every
+keyword it states only restricts members declared elsewhere. `{"required": [...]}` is a rule.
+`{"properties": {"account": {"required": [...]}}}` is **also** a rule — it states `properties`,
+and the property it names declares nothing, so the node narrows `account` rather than declaring
+it. A test that stopped at the `properties` keyword would call that a declaration and get the
+account case wrong in the other direction.
+
+**AND THE COARSE TEST IS NOT A SMALL ERROR, WHICH IS WHY THE RECURSION IS STATED HERE RATHER THAN
+LEFT TO A READER.** Measured over the bundle's combinator branches: **13,785 declare a shape and
+19,411 state only a rule.** `core/canonical-account-ref.json`'s own two `anyOf` branches each
+state `properties`, `required` and `additionalProperties`, so they DECLARE —
+`CanonicalAccountReferenceAccountId` and `CanonicalAccountReferenceBrandOperator` are correct
+classes and the union dispatches between them. A keyword-level test that reclassified those would
+take 13,785 genuine branches with it.
 
 **AN UNTITLED ENTRY WITH NO NAMING POSITION LIVES IN A MODULE WITH NO DOCUMENT**, which the export
 record permits now that it is keyed on the module. The module sits in the namespace §3a's
