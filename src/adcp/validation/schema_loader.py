@@ -1327,6 +1327,47 @@ def get_derived_mcp_schema(
     return cast(dict[str, Any], json.loads(cached))
 
 
+def get_derived_portable_schema(
+    tool_name: str,
+    direction: Literal["request", "sync"],
+    *,
+    version: str | None = None,
+    derivation: str,
+    derive: Callable[[dict[str, Any]], dict[str, Any]],
+) -> dict[str, Any] | None:
+    """Return ``derive(get_portable_schema(...))``, memoized with the state.
+
+    The counterpart of :func:`get_derived_mcp_schema` over the SOURCE document
+    rather than the production-profile artifact, for callers that must publish
+    what the document states.
+
+    **The profile is a derivative, and it is lossy in a way that changes
+    validation.** Measured on bundle 3.2: its inlined copy of
+    ``core/canonical-product.json`` carries 38 properties where the source
+    document carries 39 — ``description`` is gone, dropped as though it were
+    the annotation keyword of the same name — while
+    ``additionalProperties: false`` is kept. A product with a description is a
+    real response that the advertised schema then rejects. Nothing here
+    repairs that; this reads the document instead, which is the only copy that
+    was never pruned.
+
+    Memo keys are namespaced so a source derivation and a profile derivation
+    of the same name cannot serve one for the other.
+    """
+    state = _ensure_state(version)
+    if state is None:
+        return None
+    key = (f"source:{derivation}", tool_name, direction)
+    cached = state.derived_mcp_schemas.get(key)
+    if cached is None:
+        source = get_portable_schema(tool_name, direction, version=version)
+        if source is None:
+            return None
+        cached = json.dumps(derive(source), separators=(",", ":"))
+        state.derived_mcp_schemas[key] = cached
+    return cast(dict[str, Any], json.loads(cached))
+
+
 def list_validator_keys(*, version: str | None = None) -> list[str]:
     """Every ``tool::direction`` pair with a shipped schema. Used by tests."""
     state = _ensure_state(version)

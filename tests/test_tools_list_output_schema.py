@@ -23,7 +23,7 @@ import pytest
 from asgi_lifespan import LifespanManager
 
 from adcp.server import ADCPHandler, create_mcp_server
-from adcp.server.mcp_tools import ADCP_TOOL_DEFINITIONS
+from adcp.server.mcp_tools import ADCP_TOOL_DEFINITIONS, _definition_pointer_body
 
 # Sample of tools to lock in: one read-only catalog tool, one mutating
 # tool with a discriminated union response, one discovery tool. If any
@@ -87,19 +87,30 @@ def test_create_media_buy_output_schema_includes_response_union() -> None:
 def _resolve(schema: dict[str, Any], node: dict[str, Any]) -> dict[str, Any]:
     """Follow a local ``$ref`` into ``schema["$defs"]``.
 
-    Advertised schemas are compact on both sides, so a union arm is a
-    reference rather than an inline object.
+    Advertised schemas are compact on both sides, so a union branch is a
+    reference rather than an inline object. A document's pointer may continue
+    into a definition, so resolve it the way the publisher does.
     """
     ref = node.get("$ref")
     if not isinstance(ref, str) or not ref.startswith("#/$defs/"):
         return node
-    target = schema.get("$defs", {})[ref[len("#/$defs/") :]]
+    target = _definition_pointer_body(schema.get("$defs", {}), ref)
     assert isinstance(target, dict)
     return target
 
 
 def test_media_buy_output_schema_accepts_negotiated_30_statuses() -> None:
-    """The advertised schema must match the negotiated 3.0 wire shape too."""
+    """The advertised schema must match the negotiated 3.0 wire shape too.
+
+    Repointed for FINDINGS-schema.md R12: the advertisement comes from the
+    document of record now rather than from ``model_json_schema()``, so
+    ``status`` is read where ``core/protocol-envelope.json`` states it — once,
+    reached through the root ``allOf``, governing every branch — instead of on
+    the success branch, where only Pydantic's per-branch rendering put it.
+    The accepted value set is unchanged, and it is checked here by validating
+    a real negotiated-3.0 payload rather than by re-describing the shape.
+    """
+    jsonschema = pytest.importorskip("jsonschema")
     by_name = {t["name"]: t for t in ADCP_TOOL_DEFINITIONS}
     expected_statuses = {
         "active",
@@ -113,11 +124,34 @@ def test_media_buy_output_schema_accepts_negotiated_30_statuses() -> None:
 
     for tool_name in ("create_media_buy", "update_media_buy"):
         schema = by_name[tool_name]["outputSchema"]
-        success_schema = _resolve(schema, schema["anyOf"][0])
-        success_status = success_schema["properties"]["status"]
-        status_variants = success_status["anyOf"]
-        assert "status" not in success_schema["required"]
-        assert {status_variants[0]["const"], *status_variants[1]["enum"]} == expected_statuses
+        envelope = next(
+            resolved
+            for entry in schema["allOf"]
+            if isinstance(resolved := _resolve(schema, entry), dict)
+            and "status" in resolved.get("properties", {})
+        )
+        # The document requires ``status``; the widening adds the 3.0
+        # lifecycle values beside the task-envelope ones, it does not
+        # make the field optional.
+        assert "status" in envelope["required"]
+        advertised = set()
+        for variant in envelope["properties"]["status"]["anyOf"]:
+            advertised.update(_resolve(schema, variant).get("enum", ()))
+        assert expected_statuses <= advertised
+
+        # What the advertisement is for: a negotiated 3.0 buyer's success
+        # payload has to validate against it.
+        jsonschema.validate(
+            {
+                "adcp_version": "3.0",
+                "status": "pending_creatives",
+                "media_buy_id": "mb-1",
+                "packages": [],
+                "confirmed_at": "2026-01-01T00:00:00Z",
+                "revision": 1,
+            },
+            schema,
+        )
 
 
 def test_new_brand_creative_tools_have_output_schema() -> None:

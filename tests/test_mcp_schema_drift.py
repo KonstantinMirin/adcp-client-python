@@ -31,6 +31,7 @@ from adcp.server.mcp_tools import (
     _generate_pydantic_schemas,
     _inline_refs,
     _model_to_json_schema,
+    _pointer_body,
     _prune_to_required_fields,
 )
 
@@ -549,18 +550,22 @@ def test_advertised_output_schemas_use_local_refs_like_input_schemas() -> None:
     assert "$defs" in create_media_buy["inputSchema"]
     output = create_media_buy["outputSchema"]
     assert "$defs" in output
-    # Every ``$defs`` entry is REACHED by a local ``$ref`` from the body, which
-    # is what "compact" means and what inlining would have removed. The refs
-    # are read off properties rather than off union branches: the advertised output
-    # for a union-rooted response carries the envelope's own properties and no
-    # ``anyOf`` at all, which is the separate finding
-    # ``test_tools_list_output_schema`` reports.
+    # Every reference from the body RESOLVES, which is what "compact" means
+    # and what inlining would have removed.
+    #
+    # Repointed for FINDINGS-schema.md R12: the output side comes from the
+    # document of record now, and it does carry the root ``anyOf`` this
+    # comment used to record as missing — the branches are back. A document's
+    # definition names are source paths, so its pointers escape ``/`` as
+    # ``~1`` (RFC 6901 §3); matching the raw text against the ``$defs`` keys
+    # called six resolvable references dangling. Resolution is asked of the
+    # publisher's own resolver instead of re-implemented here.
+    assert len(output["anyOf"]) == 3
     body = {key: value for key, value in output.items() if key != "$defs"}
-    referenced = {
-        ref.removeprefix("#/$defs/") for ref in re.findall(r'"\$ref": "([^"]+)"', json.dumps(body))
-    }
+    referenced = set(re.findall(r'"\$ref": "([^"]+)"', json.dumps(body)))
     assert referenced, body
-    assert referenced <= set(output["$defs"])
+    unresolved = [ref for ref in referenced if _pointer_body(output, ref) is None]
+    assert not unresolved, unresolved
 
 
 # ---------------------------------------------------------------------------
