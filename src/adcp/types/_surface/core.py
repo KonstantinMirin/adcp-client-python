@@ -298,8 +298,6 @@ from .._schemas.core.attestation_subject import AttestationBrandSubject as Attes
 from .._schemas.core.attestation_subject import AttestationResourceSubject as AttestationResourceSubject
 from .._schemas.core.attestation_subject import AttestationSubject as AttestationSubject
 from .._schemas.core.attribution_window import AttributionWindow as AttributionWindow
-from .._schemas.core.attribution_window import PostClick as AttributionWindowPostClick
-from .._schemas.core.attribution_window import PostView as AttributionWindowPostView
 from .._schemas.core.audience_activation_method import AdCPAudienceSync as AdCPAudienceSync
 from .._schemas.core.audience_activation_method import AudienceActivationMethod as AudienceActivationMethod
 from .._schemas.core.audience_activation_method import (
@@ -485,7 +483,6 @@ from .._schemas.core.canonical_projection_slot_override import (
     CanonicalProjectionSlotOverride as CanonicalProjectionSlotOverride,
 )
 from .._schemas.core.canonical_proposal import CanonicalProposal as CanonicalProposal
-from .._schemas.core.canonical_proposal import Forecast as CanonicalProposalForecast
 from .._schemas.core.canonical_proposal import ProposalKind as CanonicalProposalProposalKind
 from .._schemas.core.canonical_proposal import TotalBudgetGuidance as CanonicalProposalTotalBudgetGuidance
 from .._schemas.core.canonical_reporting_capabilities import (
@@ -652,7 +649,6 @@ from .._schemas.core.delivery_metrics import Kind as DeliveryMetricsReachWindowK
 from .._schemas.core.delivery_metrics import ObjKindPeriod as DeliveryMetricsReachWindow
 from .._schemas.core.delivery_metrics import OohMetrics as DeliveryMetricsOohMetrics
 from .._schemas.core.delivery_metrics import PanelsItem as DeliveryMetricsOohMetricsPanelsItem
-from .._schemas.core.delivery_metrics import Period as DeliveryMetricsReachWindowPeriod
 from .._schemas.core.delivery_metrics import PostingsItem as DeliveryMetricsOohMetricsPostingsItem
 from .._schemas.core.delivery_metrics import PostingsItemEventType as DeliveryMetricsOohMetricsPostingsItemEventType
 from .._schemas.core.delivery_metrics import QuartileData as DeliveryMetricsQuartileData
@@ -841,8 +837,6 @@ from .._schemas.core.format_shape_vocabulary import (
     AdCPFormatShapeVocabularyRegistry as AdCPFormatShapeVocabularyRegistry,
 )
 from .._schemas.core.frequency_cap import FrequencyCap as FrequencyCap
-from .._schemas.core.frequency_cap import Suppress as FrequencyCapSuppress
-from .._schemas.core.frequency_cap import Window as FrequencyCapWindow
 from .._schemas.core.frequency_cap_constraints import FrequencyCapConstraints as FrequencyCapConstraints
 from .._schemas.core.frequency_cap_duration_unit import FrequencyCapDurationUnit as FrequencyCapDurationUnit
 from .._schemas.core.frequency_cap_impression_constraints import (
@@ -960,7 +954,6 @@ from .._schemas.core.measurement_terms import BillingMeasurement as MeasurementT
 from .._schemas.core.measurement_terms import MakegoodPolicy as MeasurementTermsMakegoodPolicy
 from .._schemas.core.measurement_terms import MeasurementTerms as MeasurementTerms
 from .._schemas.core.measurement_window import MeasurementWindow as MeasurementWindow
-from .._schemas.core.media_buy import Bidding as MediaBuyBidding
 from .._schemas.core.media_buy import MediaBuy as MediaBuy
 from .._schemas.core.media_buy import ObjCanceledAtCanceledByReason as MediaBuyCancellation
 from .._schemas.core.media_buy_available_action import MediaBuyAvailableAction as MediaBuyAvailableAction
@@ -968,7 +961,6 @@ from .._schemas.core.media_buy_available_action import Task as MediaBuyAvailable
 from .._schemas.core.media_buy_available_action_id import MediaBuyAvailableActionID as MediaBuyAvailableActionID
 from .._schemas.core.media_buy_change_term_id import MediaBuyChangeTermID as MediaBuyChangeTermID
 from .._schemas.core.media_buy_features import MediaBuyFeatures as MediaBuyFeatures
-from .._schemas.core.media_buy_features import MediaBuyFeaturesBiddingPolicy as MediaBuyFeaturesBiddingPolicy
 from .._schemas.core.media_buy_frequency_cap import MediaBuyFrequencyCap as MediaBuyFrequencyCap
 from .._schemas.core.media_buy_frequency_cap_capability import (
     MediaBuyFrequencyCapCapability as MediaBuyFrequencyCapCapability,
@@ -1004,9 +996,6 @@ from .._schemas.core.opportunity_context import Status as OpportunityContextStat
 from .._schemas.core.optimization_goal import EventSourcesItem as OptimizationGoalEventEventSourcesItem
 from .._schemas.core.optimization_goal import OptimizationGoal as OptimizationGoal
 from .._schemas.core.optimization_goal import OptimizationGoalEvent as OptimizationGoalEvent
-from .._schemas.core.optimization_goal import (
-    OptimizationGoalEventAttributionWindow as OptimizationGoalEventAttributionWindow,
-)
 from .._schemas.core.optimization_goal import OptimizationGoalEventTargetCostPer as OptimizationGoalEventTargetCostPer
 from .._schemas.core.optimization_goal import OptimizationGoalMetric as OptimizationGoalMetric
 from .._schemas.core.optimization_goal import OptimizationGoalMetricTargetCostPer as OptimizationGoalMetricTargetCostPer
@@ -1024,16 +1013,12 @@ from .._schemas.core.optimization_goal import OptimizationMetric as Optimization
 from .._schemas.core.optimization_goal import TargetFrequency as OptimizationGoalMetricTargetFrequency
 from .._schemas.core.optimization_goal import TargetMaximizeValue as TargetMaximizeValue
 from .._schemas.core.optimization_goal import TargetPerAdSpend as TargetPerAdSpend
-from .._schemas.core.optimization_goal import Vendor as OptimizationGoalMetricVendor
-from .._schemas.core.optimization_goal import Window as OptimizationGoalMetricTargetFrequencyWindow
 from .._schemas.core.outcome_measurement import OutcomeMeasurement as OutcomeMeasurement
-from .._schemas.core.outcome_measurement import Window as OutcomeMeasurementWindow
 from .._schemas.core.outcome_target_cost_per import OutcomeTargetCostPer as OutcomeTargetCostPer
 from .._schemas.core.overlay import Bounds as OverlayBounds
 from .._schemas.core.overlay import Overlay as Overlay
 from .._schemas.core.overlay import Unit as OverlayBoundsUnit
 from .._schemas.core.overlay import Visual as OverlayVisual
-from .._schemas.core.package import Bidding as PackageBidding
 from .._schemas.core.package import Cancellation as PackageCancellation
 from .._schemas.core.package import Package as Package
 from .._schemas.core.package_delivery_metric_value import PackageDeliveryMetricValue as PackageDeliveryMetricValue
@@ -1136,7 +1121,6 @@ from .._schemas.core.placement_ref import PlacementReference as PlacementReferen
 from .._schemas.core.placement_selection import PlacementSelection as PlacementSelection
 from .._schemas.core.placement_selection import ProductDefaultPlacements as ProductDefaultPlacements
 from .._schemas.core.placement_selection import SelectedPlacements as SelectedPlacements
-from .._schemas.core.planned_delivery import Bidding as PlannedDeliveryBidding
 from .._schemas.core.planned_delivery import Geo as PlannedDeliveryGeo
 from .._schemas.core.planned_delivery import PlannedDelivery as PlannedDelivery
 from .._schemas.core.platform_extension_ref import PlatformExtensionReference as PlatformExtensionReference
@@ -1326,7 +1310,6 @@ from .._schemas.core.product_format_declaration import VASTVideoFormatDeclaratio
 from .._schemas.core.product_identity import ProductIdentity as ProductIdentity
 from .._schemas.core.product_offer_filters import AvailabilityHorizon as ProductOfferFiltersAvailabilityHorizon
 from .._schemas.core.product_offer_filters import ProductOfferFilters as ProductOfferFilters
-from .._schemas.core.product_offer_filters import RequiredFeatures as ProductOfferFiltersRequiredFeatures
 from .._schemas.core.product_offer_filters import (
     RequiredPerformanceStandardsItem as ProductOfferFiltersRequiredPerformanceStandardsItem,
 )
@@ -1487,9 +1470,6 @@ from .._schemas.core.registry_event import (
 )
 from .._schemas.core.registry_event import (
     RegistryEventPublisherAdagentsChangedPublisher as RegistryEventPublisherAdagentsChangedPublisher,
-)
-from .._schemas.core.registry_event import (
-    RegistryEventPublisherAdagentsChangedPublisherPayload as RegistryEventPublisherAdagentsChangedPublisherPayload,
 )
 from .._schemas.core.registry_event import (
     RegistryEventPublisherAdagentsDiscoveredPublisher as RegistryEventPublisherAdagentsDiscoveredPublisher,
@@ -1934,7 +1914,6 @@ from .._schemas.core.targeting_overlay_support import (
 )
 from .._schemas.core.targeting_overlay_support import DaypartSupport as DaypartSupport
 from .._schemas.core.targeting_overlay_support import DaypartSupportTimezoneModes as DaypartSupportTimezoneModes
-from .._schemas.core.targeting_overlay_support import FrequencyCapSupport as TargetingOverlaySupportFrequencyCapSupport
 from .._schemas.core.targeting_overlay_support import KeywordSupport as KeywordSupport
 from .._schemas.core.targeting_overlay_support import (
     KeywordSupportSupportedMatchTypes as KeywordSupportSupportedMatchTypes,
@@ -2275,8 +2254,6 @@ __all__ = [
     'AttestationResourceSubject',
     'AttestationSubject',
     'AttributionWindow',
-    'AttributionWindowPostClick',
-    'AttributionWindowPostView',
     'AudienceActivationMethod',
     'AudienceActivationMethodFileTransfer',
     'AudienceActivationMethodsItemCleanRoom',
@@ -2419,7 +2396,6 @@ __all__ = [
     'CanonicalProjectionReference',
     'CanonicalProjectionSlotOverride',
     'CanonicalProposal',
-    'CanonicalProposalForecast',
     'CanonicalProposalProposalKind',
     'CanonicalProposalTotalBudgetGuidance',
     'CanonicalReportingCapabilities',
@@ -2596,7 +2572,6 @@ __all__ = [
     'DeliveryMetricsQuartileData',
     'DeliveryMetricsReachWindow',
     'DeliveryMetricsReachWindowKind',
-    'DeliveryMetricsReachWindowPeriod',
     'DeliveryMetricsTimeBasedViewsItem',
     'DeliveryMetricsViewability',
     'DeliveryMetricsViewabilityViewedSecondsHistogramItem',
@@ -2708,8 +2683,6 @@ __all__ = [
     'FrequencyCapIntervalConstraintsAllowedIntervals',
     'FrequencyCapIntervalConstraintsMaximumIntervalMinimumInterval',
     'FrequencyCapRequirements',
-    'FrequencyCapSuppress',
-    'FrequencyCapWindow',
     'GenerationCredential',
     'GeoCountries',
     'GeoCountriesExclude',
@@ -2888,14 +2861,12 @@ __all__ = [
     'MediaBuyAvailableAction',
     'MediaBuyAvailableActionID',
     'MediaBuyAvailableActionTask',
-    'MediaBuyBidding',
     'MediaBuyCancellation',
     'MediaBuyChangeTermID',
     'MediaBuyCommitmentResponseCompleted',
     'MediaBuyCommitmentResponseFailed',
     'MediaBuyCommitmentResponseSubmitted',
     'MediaBuyFeatures',
-    'MediaBuyFeaturesBiddingPolicy',
     'MediaBuyFrequencyCap',
     'MediaBuyFrequencyCapCapability',
     'MediaBuyFrequencyCapRequirement',
@@ -2932,28 +2903,23 @@ __all__ = [
     'OpportunityContextStatus',
     'OptimizationGoal',
     'OptimizationGoalEvent',
-    'OptimizationGoalEventAttributionWindow',
     'OptimizationGoalEventEventSourcesItem',
     'OptimizationGoalEventTargetCostPer',
     'OptimizationGoalMetric',
     'OptimizationGoalMetricMetric',
     'OptimizationGoalMetricTargetCostPer',
     'OptimizationGoalMetricTargetFrequency',
-    'OptimizationGoalMetricTargetFrequencyWindow',
     'OptimizationGoalMetricTargetThresholdRate',
-    'OptimizationGoalMetricVendor',
     'OptimizationGoalVendorMetric',
     'OptimizationGoalVendorMetricTargetCostPer',
     'OptimizationGoalVendorMetricTargetThresholdRate',
     'OutcomeMeasurement',
-    'OutcomeMeasurementWindow',
     'OutcomeTargetCostPer',
     'Overlay',
     'OverlayBounds',
     'OverlayBoundsUnit',
     'OverlayVisual',
     'Package',
-    'PackageBidding',
     'PackageCancellation',
     'PackageDeliveryMetricValue',
     'PackageDeliveryMetricValueQualifier',
@@ -3032,7 +2998,6 @@ __all__ = [
     'PlacementReference',
     'PlacementSelection',
     'PlannedDelivery',
-    'PlannedDeliveryBidding',
     'PlannedDeliveryGeo',
     'PlatformDistribution',
     'PlatformExtensionReference',
@@ -3136,7 +3101,6 @@ __all__ = [
     'ProductMetricOptimizationSupportedTargetsItem',
     'ProductOfferFilters',
     'ProductOfferFiltersAvailabilityHorizon',
-    'ProductOfferFiltersRequiredFeatures',
     'ProductOfferFiltersRequiredPerformanceStandardsItem',
     'ProductOfferFiltersRequiredVendorMetricsItem',
     'ProductProductCard',
@@ -3257,7 +3221,6 @@ __all__ = [
     'RegistryEventPropertyUpdatedProperty',
     'RegistryEventPropertyUpdatedPropertyPayload',
     'RegistryEventPublisherAdagentsChangedPublisher',
-    'RegistryEventPublisherAdagentsChangedPublisherPayload',
     'RegistryEventPublisherAdagentsDiscoveredPublisher',
     'RegistryEventPublisherAdagentsPayload',
     'RegistryEventStoryboardStatus',
@@ -3522,7 +3485,6 @@ __all__ = [
     'TargetingOverlayStoreCatchmentsItem',
     'TargetingOverlaySupport',
     'TargetingOverlaySupportDemographicsAge',
-    'TargetingOverlaySupportFrequencyCapSupport',
     'TargetingOverlaySupportGeoProximity',
     'TargetingOverlaySupportPlaceCatalogSupport',
     'TargetingOverlaySupportPlaceSupport',

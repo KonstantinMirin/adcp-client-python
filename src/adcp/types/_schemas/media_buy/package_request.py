@@ -33,16 +33,6 @@ from ..core.version_envelope import AdCPVersionEnvelope
 from ..enums.pacing import Pacing
 
 
-class Bidding(BiddingPolicy):
-    """
-    Package-authored bidding policy. This complete block replaces, rather than field-merges with, any media-buy bidding policy for this package. `{automatic:true}` explicitly overrides a media-buy policy with provider automatic bidding; omission inherits the complete media-buy block. Monetary fields use the media-buy currency, while the selected pricing option supplies only the auction unit and MUST declare that same currency. Sellers MUST reject a new bidding block combined with legacy bid_price or legacy monetary optimization-goal targets on the same effective package with AMBIGUOUS_BIDDING_POLICY.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/bidding')
-
-
 class CommittedMetricsItemVendor(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -85,7 +75,7 @@ class PackageRequest(AdCPVersionEnvelope):
     pacing: Annotated[Pacing | None, Field(description='Package pacing, subordinate to media-buy pacing. In seller-optimized mode, pacing that differs from the media-buy pacing requires advertised media_buy.features.seller_optimized_package_pacing; otherwise rejected with UNSUPPORTED_FEATURE.'), OmittedNotNull] = None
     pricing_option_id: Annotated[str, Field(description="ID of the selected pricing option from the product's pricing_options array")]
     bid_price: Annotated[NonNegativeFloat | None, Field(deprecated=True, description='DEPRECATED in 3.2 and removed in the next major. Use bidding.bid_amount or bidding.max_bid. Legacy normalization: selected pricing_option.max_bid=true maps to bidding.max_bid; otherwise maps to bidding.bid_amount. A package MUST NOT supply both representations.'), OmittedNotNull] = None
-    bidding: Annotated[Bidding | None, Field(description='Package-authored bidding policy. This complete block replaces, rather than field-merges with, any media-buy bidding policy for this package. `{automatic:true}` explicitly overrides a media-buy policy with provider automatic bidding; omission inherits the complete media-buy block. Monetary fields use the media-buy currency, while the selected pricing option supplies only the auction unit and MUST declare that same currency. Sellers MUST reject a new bidding block combined with legacy bid_price or legacy monetary optimization-goal targets on the same effective package with AMBIGUOUS_BIDDING_POLICY.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description='Package-authored bidding policy. This complete block replaces, rather than field-merges with, any media-buy bidding policy for this package. `{automatic:true}` explicitly overrides a media-buy policy with provider automatic bidding; omission inherits the complete media-buy block. Monetary fields use the media-buy currency, while the selected pricing option supplies only the auction unit and MUST declare that same currency. Sellers MUST reject a new bidding block combined with legacy bid_price or legacy monetary optimization-goal targets on the same effective package with AMBIGUOUS_BIDDING_POLICY.'), OmittedNotNull] = None
     impressions: Annotated[NonNegativeFloat | None, Field(description='Impression goal for this package'), OmittedNotNull] = None
     daily_budget_cap: Annotated[NonNegativeFloat | None, Field(description="Optional hard package daily spend ceiling in the media-buy currency. It is subordinate, not a reserved allocation; package caps need not sum to the aggregate cap. Uses the media buy's cap timezone. Requires advertised package budget-capping scope; otherwise rejected with UNSUPPORTED_FEATURE."), OmittedNotNull] = None
     start_time: Annotated[Annotated[WireDatetime, AfterValidator(NotValue(('asap',)))] | None, Field(description="Flight start date/time for this package in ISO 8601 format. When omitted, the package inherits the media buy's start_time. Must fall within the media buy's date range."), OmittedNotNull] = None

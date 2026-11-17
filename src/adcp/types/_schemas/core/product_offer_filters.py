@@ -50,16 +50,6 @@ class AvailabilityHorizon(AdCPBaseModel):
     end_time: Annotated[WireDatetime, Field(description='Exclusive horizon end (RFC 3339 date-time with timezone offset). MUST be after start_time.')]
 
 
-class RequiredFeatures(CanonicalMediaBuyFeatures):
-    """
-    Canonical protocol features the seller must support.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-offer-filters.json', pointer='#/properties/required_features')
-
-
 class RequiredPerformanceStandardsItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='allow',
@@ -128,7 +118,7 @@ class ProductOfferFilters(AdCPBaseModel):
     sponsored_placement_types: Annotated[list[SponsoredPlacementType] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     social_placement_surfaces: Annotated[list[SocialPlacementSurface] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     trusted_match: Annotated[ObjProvidersResponseTypes | None, OmittedNotNull] = None
-    required_features: Annotated[RequiredFeatures | None, Field(description='Canonical protocol features the seller must support.'), OmittedNotNull] = None
+    required_features: Annotated[CanonicalMediaBuyFeatures | None, Field(description='Canonical protocol features the seller must support.'), OmittedNotNull] = None
     required_performance_standards: Annotated[list[RequiredPerformanceStandardsItem] | None, Field(min_length=1), OmittedNotNull] = None
     required_metrics: Annotated[list[AvailableMetric] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     required_vendor_metrics: Annotated[list[RequiredVendorMetricsItem] | None, Field(min_length=1), OmittedNotNull] = None

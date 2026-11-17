@@ -14,11 +14,7 @@ from adcp.types.envelopes import AdcpRequest
 from ..core.bidding_policy import BiddingPolicy
 from ..core.brand_key import BrandKey
 from ..core.business_entity import BusinessEntity
-from ..core.canonical_account_ref import (
-    CanonicalAccountReference,
-    CanonicalAccountReferenceAccountId,
-    CanonicalAccountReferenceBrandOperator,
-)
+from ..core.canonical_account_ref import CanonicalAccountReference
 from ..core.canonical_budget_allocation import CanonicalBudgetAllocation
 from ..core.context import ContextObject
 from ..core.ext import ExtensionObject
@@ -68,6 +64,7 @@ class BuyProductsRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpRequest):
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/buy-products-request.json', pointer='#/properties/opportunity/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'status': {'const': 'closed'}}, 'required': ['status']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
+        Approximation(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account', keyword='required', kind='WIDENED', rung='KEYWORD', fact=['brand', 'operator'], attribution='docs/plan/rebuild-plan.md §5 structure/required'),
     )
     adcp_version: Annotated[AdcpVersion | None, OmittedNotNull] = None
     adcp_major_version: Annotated[AdcpMajorVersion | None, OmittedNotNull] = None
@@ -108,43 +105,15 @@ class BuyProductsRequestBrand(BuyProductsRequest):
     brand: Annotated[BrandKey, Field(description='Brand source required when account is ID-only. Omit when account already contains brand and operator.')]
 
 
-class BuyProductsRequestAccountAccount(BranchDispatchMixin, AdCPBaseModel):
-    """
-    Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.
-    """
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account')
-    _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
-    _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('brand', 'operator')
-    _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
-    @classmethod
-    def _branch_combinator(cls) -> str:
-        return "anyOf"
-
-
-class BuyProductsRequestAccountAccountAccountId(BuyProductsRequestAccountAccount, CanonicalAccountReferenceAccountId):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account')
-
-
-class BuyProductsRequestAccountAccountBrandOperator(BuyProductsRequestAccountAccount, CanonicalAccountReferenceBrandOperator):
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account')
-
-
-BuyProductsRequestAccountAccount._branch_models = (BuyProductsRequestAccountAccountAccountId, BuyProductsRequestAccountAccountBrandOperator,)
-BuyProductsRequestAccountAccount.model_rebuild(force=True)
-
-
 class BuyProductsRequestAccount(BuyProductsRequest):
     model_config = ConfigDict(
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/buy-products-request.json', pointer='#/anyOf/1')
-    account: Annotated[BuyProductsRequestAccountAccount, Field(description='Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.')]
+    __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
+        Approximation(document='media-buy/buy-products-request.json', pointer='#/anyOf/1/properties/account', keyword='required', kind='WIDENED', rung='KEYWORD', fact=['brand', 'operator'], attribution='docs/plan/rebuild-plan.md §5 structure/required'),
+    )
+    account: Annotated[CanonicalAccountReference, Field(description='Execution account. A natural-key account is the single brand source and MUST NOT be combined with top-level brand.')]
 
 
 BuyProductsRequest._branch_models = (BuyProductsRequestBrand, BuyProductsRequestAccount,)

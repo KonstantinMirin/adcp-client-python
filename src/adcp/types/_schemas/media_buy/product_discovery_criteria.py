@@ -19,16 +19,6 @@ from .acceptance_context import AcceptanceContext
 from .outcome_target import OutcomeTarget
 
 
-class ProductDiscoveryCriteriaOutcomeTarget(OutcomeTarget):
-    """
-    Reverse-forecast planning input for sellers declaring media_buy.outcome_target: a goal plus a volume, a cost target, or both, answered on proposals. Inert on list_products for every seller. See outcome-target.json.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/product-discovery-criteria.json', pointer='#/properties/outcome_target')
-
-
 class ProductDiscoveryCriteria(AdCPBaseModel):
     """
     Structured criteria shared by product listing and proposal requests. Offer filters decide which commercial offers may be returned; targeting_overlay constrains deliverable inventory; required_overlay_support requires package-level targeting capability; required_media_buy_support requires participation in shared MediaBuy controls; acceptance_context supplies facts for advisory seller-policy preflight.
@@ -48,7 +38,7 @@ class ProductDiscoveryCriteria(AdCPBaseModel):
     media_buy_frequency_cap: Annotated[MediaBuyFrequencyCap | None, Field(description='Concrete aggregate max-impression cap expected at the MediaBuy root. Every returned product must participate in one shared counter for this exact value. Proposals carry it in commercial_terms.frequency_cap.'), OmittedNotNull] = None
     required_overlay_support: Annotated[TargetingOverlayRequirements | None, Field(description='Minimum product-scoped targeting dimensions the buyer must be able to select independently on packages later. This requests capability, not current values, value-specific availability, a forecast for every later value, or one product per value.'), OmittedNotNull] = None
     required_media_buy_support: Annotated[ProductMediaBuySupportRequirements | None, Field(description='Minimum product participation in shared MediaBuy-level controls. For frequency caps, every returned product is promising composability in one aggregate seller counter for each requested per unit.'), OmittedNotNull] = None
-    outcome_target: Annotated[ProductDiscoveryCriteriaOutcomeTarget | None, Field(description='Reverse-forecast planning input for sellers declaring media_buy.outcome_target: a goal plus a volume, a cost target, or both, answered on proposals. Inert on list_products for every seller. See outcome-target.json.'), OmittedNotNull] = None
+    outcome_target: Annotated[OutcomeTarget | None, Field(description='Reverse-forecast planning input for sellers declaring media_buy.outcome_target: a goal plus a volume, a cost target, or both, answered on proposals. Inert on list_products for every seller. See outcome-target.json.'), OmittedNotNull] = None
     acceptance_context: Annotated[AcceptanceContext | None, Field(description='Structured campaign and advertiser facts for coarse acceptance-policy matching. A matching product is not a guarantee of final acceptance.'), OmittedNotNull] = None
     catalog: Annotated[CatalogSelection | None, OmittedNotNull] = None
     policy_ids: Annotated[list[StrMinLen1] | None, Field(json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None

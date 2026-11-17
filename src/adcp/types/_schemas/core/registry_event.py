@@ -731,16 +731,6 @@ class RegistryEventPublisherAdagentsDiscoveredPublisher(RegistryEvent):
     payload: Annotated[PublisherAdagentsPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
-class RegistryEventPublisherAdagentsChangedPublisherPayload(PublisherAdagentsPayload):
-    """
-    Event-type-specific payload. Shape is determined by event_type per the oneOf below.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/16/properties/payload')
-
-
 class RegistryEventPublisherAdagentsChangedPublisher(RegistryEvent):
     """
     publisher.adagents_changed - the registry crawler detected a semantic change anywhere in a publisher adagents.json document, including formats-only or placements-only revisions. Transport metadata such as $schema and last_updated does not trigger this event by itself.
@@ -748,7 +738,7 @@ class RegistryEventPublisherAdagentsChangedPublisher(RegistryEvent):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/registry-event.json', pointer='#/oneOf/16')
     event_type: Annotated[Literal[RegistryEventEventType.PUBLISHER_ADAGENTS_CHANGED], Field(description='Discriminator. Determines the shape of payload.')]
     entity_type: Annotated[Literal[EntityType.PUBLISHER], Field(description='Entity class touched by this event.')]
-    payload: Annotated[RegistryEventPublisherAdagentsChangedPublisherPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
+    payload: Annotated[PublisherAdagentsPayload, Field(description='Event-type-specific payload. Shape is determined by event_type per the oneOf below.')]
 
 
 class AuthorizationType(StrEnum):

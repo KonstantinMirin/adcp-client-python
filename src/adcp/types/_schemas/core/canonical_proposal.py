@@ -52,16 +52,6 @@ class TotalBudgetGuidance(AdCPBaseModel):
     currency: CurrencyCode
 
 
-class Forecast(CanonicalDeliveryForecast):
-    """
-    Aggregate forecasted delivery for the proposal. For outcome_target requests, points carry the goal's metric or event key in metrics; with cost_per, that is the goal volume planned under the commercial_terms.bidding policy, and currency equals cost_per.currency.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-proposal.json', pointer='#/properties/forecast')
-
-
 class CanonicalProposal(AdCPBaseModel):
     """
     Compact immutable proposal for the AdCP 3.2 lifecycle. commercial_terms is the sole authoritative commercial envelope; narrative fields do not duplicate legacy allocation or creative graphs.
@@ -94,7 +84,7 @@ class CanonicalProposal(AdCPBaseModel):
     terms_digest: Annotated[CanonicalProposalTermsDigest, Field(description='Base64url SHA-256 digest of the RFC 8785 JCS serialization of commercial_terms, prefixed with sha256:.')]
     insertion_order: Annotated[InsertionOrder | None, OmittedNotNull] = None
     total_budget_guidance: Annotated[TotalBudgetGuidance | None, Field(description="Optional budget guidance for this proposal — the planning answer to criteria.outcome_target and to open-budget briefs. commercial_terms.total_budget remains the concrete figure the plan is priced at; this band expresses the seller's recommended range around it. When criteria.outcome_target carries cost_per, the cost answer is commercial_terms.bidding.cost_per and this band's currency equals cost_per.currency."), OmittedNotNull] = None
-    forecast: Annotated[Forecast | None, Field(description="Aggregate forecasted delivery for the proposal. For outcome_target requests, points carry the goal's metric or event key in metrics; with cost_per, that is the goal volume planned under the commercial_terms.bidding policy, and currency equals cost_per.currency."), OmittedNotNull] = None
+    forecast: Annotated[CanonicalDeliveryForecast | None, Field(description="Aggregate forecasted delivery for the proposal. For outcome_target requests, points carry the goal's metric or event key in metrics; with cost_per, that is the goal volume planned under the commercial_terms.bidding policy, and currency equals cost_per.currency."), OmittedNotNull] = None
 
 
 __all__ = ["CanonicalProposal"]

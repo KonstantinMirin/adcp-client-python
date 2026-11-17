@@ -34,12 +34,6 @@ from .._schemas.compliance.comply_test_controller_request import (
 )
 from .._schemas.compliance.comply_test_controller_request import Operation as ComplyTestControllerRequestParamsOperation
 from .._schemas.compliance.comply_test_controller_request import Params as ComplyTestControllerRequestParams
-from .._schemas.compliance.comply_test_controller_request import (
-    ParamsDoohMetrics as ComplyTestControllerRequestParamsDoohMetrics,
-)
-from .._schemas.compliance.comply_test_controller_request import (
-    ParamsViewability as ComplyTestControllerRequestParamsViewability,
-)
 from .._schemas.compliance.comply_test_controller_request import PurgeKind as ComplyTestControllerRequestParamsPurgeKind
 from .._schemas.compliance.comply_test_controller_response import (
     AttestationMode as UpstreamTrafficSuccessRecordedCallsItemAttestationMode,
@@ -89,11 +83,9 @@ __all__ = [
     'ComplyTestControllerRequestParams',
     'ComplyTestControllerRequestParamsAdvanceTo',
     'ComplyTestControllerRequestParamsArm',
-    'ComplyTestControllerRequestParamsDoohMetrics',
     'ComplyTestControllerRequestParamsMetricsItem',
     'ComplyTestControllerRequestParamsOperation',
     'ComplyTestControllerRequestParamsPurgeKind',
-    'ComplyTestControllerRequestParamsViewability',
     'ComplyTestControllerResponse',
     'ControllerError',
     'ControllerErrorError',

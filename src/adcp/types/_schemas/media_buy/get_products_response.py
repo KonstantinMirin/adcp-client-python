@@ -100,16 +100,6 @@ class Scope(StrEnum):
     wholesale_feed = MemberAlias('WHOLESALE_FEED')
 
 
-class EstimatedWait(Duration):
-    """
-    How much additional time is expected to resolve this scope. Allows the buyer to decide whether to make a new attempt with a larger time_budget; its presence is not an automatic-retry instruction.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/incomplete/items/properties/estimated_wait')
-
-
 class IncompleteItem(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
@@ -117,7 +107,7 @@ class IncompleteItem(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-products-response.json', pointer='#/properties/incomplete/items')
     scope: Annotated[Scope, Field(description="'products': not all inventory sources were searched. 'pricing': products returned but pricing is absent or unconfirmed. 'forecast': products returned but forecast data is absent. 'proposals': proposals were not generated or are incomplete. 'wholesale_feed': in wholesale mode, full feed enumeration could not complete in the time budget — symmetric with get_signals' 'wholesale_feed' scope so sellers have a precise way to declare wholesale-incomplete on the products surface.")]
     description: Annotated[str, Field(description='Human-readable explanation of what is missing and why.')]
-    estimated_wait: Annotated[EstimatedWait | None, Field(description='How much additional time is expected to resolve this scope. Allows the buyer to decide whether to make a new attempt with a larger time_budget; its presence is not an automatic-retry instruction.'), OmittedNotNull] = None
+    estimated_wait: Annotated[Duration | None, Field(description='How much additional time is expected to resolve this scope. Allows the buyer to decide whether to make a new attempt with a larger time_budget; its presence is not an automatic-retry instruction.'), OmittedNotNull] = None
 
 
 class Semantics(StrEnum):

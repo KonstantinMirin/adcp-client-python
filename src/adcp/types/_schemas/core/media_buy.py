@@ -45,16 +45,6 @@ class ObjCanceledAtCanceledByReason(AdCPBaseModel):
     reason: Annotated[StrMaxLen500 | None, Field(description='Reason provided when the media buy was canceled.'), OmittedNotNull] = None
 
 
-class Bidding(BiddingPolicy):
-    """
-    Media-buy-authored bidding policy. This is the complete default inherited by packages that omit package.bidding; `{automatic:true}` is an explicit authored automatic policy. In seller-optimized mode, cost_per/roas bind to the primary budget_allocation optimization goal. In fixed mode, inherited cost_per requires compatible package primary-goal result units and inherited roas requires value-bearing primary goals. Monetary fields use media_buy.currency; every affected pricing option MUST declare the same currency. Package overrides are permitted only where advertised; conflicts MUST be rejected atomically with BIDDING_PLACEMENT_CONFLICT.
-    """
-    model_config = ConfigDict(
-        extra='forbid',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/media-buy.json', pointer='#/properties/bidding')
-
-
 class MediaBuy(AdCPBaseModel):
     """
     Represents a purchased advertising campaign
@@ -88,7 +78,7 @@ class MediaBuy(AdCPBaseModel):
     currency: Annotated[CurrencyCode | None, Field(description="Single ISO 4217 denomination for total_budget, every package budget/minimum, and every canonical BiddingPolicy monetary field. Every package's selected pricing option MUST declare this currency; packages requiring another currency belong in a separate media buy."), OmittedNotNull] = None
     budget_allocation: Annotated[BudgetAllocation | None, Field(description='Accepted cross-package budget allocation configuration. Omitted means fixed allocation for legacy buys.'), OmittedNotNull] = None
     pacing: Annotated[Pacing | None, Field(description='Aggregate pacing strategy for total_budget across the media-buy flight.'), OmittedNotNull] = None
-    bidding: Annotated[Bidding | None, Field(description='Media-buy-authored bidding policy. This is the complete default inherited by packages that omit package.bidding; `{automatic:true}` is an explicit authored automatic policy. In seller-optimized mode, cost_per/roas bind to the primary budget_allocation optimization goal. In fixed mode, inherited cost_per requires compatible package primary-goal result units and inherited roas requires value-bearing primary goals. Monetary fields use media_buy.currency; every affected pricing option MUST declare the same currency. Package overrides are permitted only where advertised; conflicts MUST be rejected atomically with BIDDING_PLACEMENT_CONFLICT.'), OmittedNotNull] = None
+    bidding: Annotated[BiddingPolicy | None, Field(description='Media-buy-authored bidding policy. This is the complete default inherited by packages that omit package.bidding; `{automatic:true}` is an explicit authored automatic policy. In seller-optimized mode, cost_per/roas bind to the primary budget_allocation optimization goal. In fixed mode, inherited cost_per requires compatible package primary-goal result units and inherited roas requires value-bearing primary goals. Monetary fields use media_buy.currency; every affected pricing option MUST declare the same currency. Package overrides are permitted only where advertised; conflicts MUST be rejected atomically with BIDDING_PLACEMENT_CONFLICT.'), OmittedNotNull] = None
     packages: Annotated[list[Package], Field(description='Array of packages within this media buy')]
     context: Annotated[ContextObject | None, Field(description='Opaque media-buy-level correlation data echoed unchanged from the create_media_buy request. Sellers MUST include persisted context on read surfaces such as get_media_buys when the media buy was created through AdCP with context, so buyers can reconcile seller-assigned media_buy_id values with their own tracking state. Sellers MAY omit context for media buys created outside AdCP or created without context. Sellers MUST NOT parse this object for business logic.'), OmittedNotNull] = None
     invoice_recipient: Annotated[BusinessEntity | None, Field(description="Per-buy override for who receives the invoice. When provided, the seller invoices this entity instead of the account's default billing_entity. The seller MUST validate the invoice recipient is authorized for this account. When governance_agents are configured, the seller MUST include invoice_recipient in the check_governance request."), OmittedNotNull] = None
