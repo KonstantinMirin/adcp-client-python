@@ -453,6 +453,56 @@ def _underdetermined(base: type) -> bool:
     )
 
 
+def _owes_no_declaration(base: type) -> bool:
+    """Does §4 leave this base with NOTHING to declare, so no declaration can be read?
+
+    §4 decides what each combinator declares, and both statements of it say the same
+    sentence -- ``docs/plan/rebuild-plan.md``'s union section, *"a union matching none of
+    the three emits a plain ``A | B`` over its branches and declares a WIDENED
+    approximation at the union's pointer where the combinator is ``oneOf``, and nothing
+    at all where it is ``anyOf``"*, and ``docs/plan/architecture.md``'s IR section,
+    *"Where it is ``anyOf`` it declares nothing: the model admits exactly what the
+    document admits, and the only loss -- which branch an overlapping payload becomes --
+    is observable by no witness and no dump."*  ``A | B`` admits the union of the
+    branches, which is exactly what "at least one branch matches" admits, so **nothing
+    widens and nothing narrows** and there is no dropped fact for an annotation to carry.
+    ``codegen/lower/union.py`` implements that at BOTH of its minting sites, each guarded
+    on the keyword (corrected 2026-11-16, when the sites declared ``UNDERDETERMINED`` for
+    both combinators and 13 ``anyOf`` pointers carried a declaration §4 forbids).
+
+    **SO AN INSEPARABLE ``anyOf`` CAN TAKE NEITHER OF THE TWO EXITS THIS CLAUSE OFFERED**,
+    which is the third case and not a loosening of the other two.  It cannot dispatch to
+    the branch its payload was drawn from, because there is no such branch to reach: the
+    branches of ``core/async-response-data.json`` are 42 titled ``$ref``\\ s to operation
+    response documents that all share ``{status, task_id}``, so ``{'status':
+    'submitted', 'task_id': 'a'}`` satisfies many at once and which one pydantic answers
+    with is declaration order.  And it cannot carry the declaration :func:`_underdetermined`
+    reads, because §4 forbids minting one here -- a base that declares nothing is not,
+    at an ``anyOf``, a base that failed to declare something.
+
+    **WHAT IS ASKED INSTEAD IS NOT WEAKER, AND THE TWO REMAINING CONDITIONS ARE WHERE THE
+    CHECK'S VALUE IS.**  The honest question at an inseparable ``anyOf`` is whether the
+    branch it dispatched to ALSO admits the payload -- which the caller below asks of the
+    DOCUMENT at the answering branch's own pointer, exactly as it does under a declared
+    widening.  "A branch the document admits" is a long way from "any branch at all": a
+    landing the document REFUSES stays in ``wrong`` whatever the combinator is, and so
+    does a landing outside the base's own branch list.  Measured on this tree, 0 of the
+    42 land on a branch the document refuses and 0 land outside the branch list, so the
+    exemption is spent entirely on the case §4 describes.
+
+    **Read off the CLASS and not off a compile**, for :func:`_underdetermined`'s reason:
+    ``_branch_combinator`` is the document's own keyword as the emitter wrote it onto the
+    base (``adcp.types._base.BranchDispatchMixin``), so this is the tree's own statement
+    of which combinator it lowered, not this file's second reading of the bundle.
+
+    **This exempts NOTHING about ``oneOf``.**  "Exactly one" refuses the instance that
+    matches two branches and ``A | B`` admits it, so an inseparable ``oneOf`` DOES drop a
+    fact, does owe a declaration, and keeps both of the original exits -- dispatch
+    exactly, or declare.  That is the stricter case and it is untouched.
+    """
+    return base._branch_combinator() == "anyOf"  # type: ignore[attr-defined,no-any-return]
+
+
 def _answering_pointer(base: type, got: type) -> str:
     """The pointer the class that ANSWERED a dispatch carries, as a document pointer.
 
@@ -530,6 +580,27 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     nothing gets no exemption, and a base that declares one must still land INSIDE its own
     branch list.
 
+    **AND THERE IS A THIRD CASE THIS CLAUSE HAD NO EXIT FOR, WHICH IS §4's OWN ``anyOf``
+    SENTENCE AND NOT A LOOSENING** (:func:`_owes_no_declaration`, 2026-11-17).  §4 decides
+    what each combinator declares -- "a WIDENED approximation at the union's pointer where
+    the combinator is ``oneOf``, and **nothing at all where it is ``anyOf``**" -- because
+    ``A | B`` admits exactly what "at least one" admits, so an ``anyOf`` drops no fact and
+    owes no declaration.  Both the exits above are then shut at an inseparable ``anyOf``:
+    the payload satisfies many branches at once so "the branch it was drawn from" is not
+    reachable, and the declaration the other exit reads is one §4 forbids this emission
+    to mint.  Asking for it anyway reported the EMISSION as a defect for obeying its own
+    decision -- which is ``CLAUDE.md``'s opening rule arriving from the check's side: the
+    defect a decision gets rediscovered as.
+
+    **THE THIRD EXIT IS NOT "ANY BRANCH", AND THE DIFFERENCE IS THE WHOLE OF THE CLAUSE'S
+    VALUE.**  What is asked at an ``anyOf`` is the same last question asked under a
+    declared widening -- does the DOCUMENT admit the payload at the ANSWERING branch's own
+    pointer -- and the two conditions before it are unchanged: a landing outside the base's
+    own branch list is ``wrong``, and a landing the document REFUSES is ``wrong``, whatever
+    the combinator.  ``oneOf`` keeps both original exits and is untouched: "exactly one"
+    refuses the instance that matches two branches, ``A | B`` admits it, so an inseparable
+    ``oneOf`` DOES drop a fact and must dispatch exactly or declare.
+
     **AND THE EXEMPTION A DECLARED WIDENING USED TO BUY IS GONE, which is
     ``adcp-client-python-84a9`` answered by the owner's ruling of 2026-11-06** -- *"if the
     discriminator is empty, I believe that's a schema error"*, and a dispatch must not
@@ -543,20 +614,34 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
     or more admissible branches there is no such answer and the refusal is the only thing
     that is not a guess.
 
-    **Measured on this bundle at this commit, the first reading of this census since the
-    corpus was deleted**: 151 bases declaring 609 branch models over 552 distinct branch
-    positions, of which 539 name exactly one branch class and 13 carry several
-    (:func:`_branch_sites`).  The construction builds a witness at **all 539** -- 0
-    approximated, 0 unreachable, which is what ``without_a_witness`` below would report.
-    Of the 539, 472 the document admits at its ROOT, and the 67 it refuses are not what
-    this reading is about -- ``trusted-match/provider-registration.json`` is the
-    instructive one, where the root's ``if``/``then`` requires ``countries``, the value
-    built at ``#/anyOf/1`` is admitted by that branch node and refused by the document, and
-    the base refuses it correctly.  Of the 472: **430 reach the branch they were drawn from
-    or a branch of it, 42 land on a branch the document ALSO admits under a base declaring
-    UNDERDETERMINED, and 0 are refused by the base.**
+    **Measured on this bundle at this commit** (``NODESET_CENSUS``, 2026-11-17): 149 bases
+    declaring 605 branch models over 550 distinct branch positions, of which 539 name
+    exactly one branch class and 11 carry several (:func:`_branch_sites`).  The
+    construction builds a witness at **all 539** -- 0 approximated, 0 unreachable, which is
+    what ``without_a_witness`` below would report.  Of the 539, 472 the document admits at
+    its ROOT, and the 67 it refuses are not what this reading is about --
+    ``trusted-match/provider-registration.json`` is the instructive one, where the root's
+    ``if``/``then`` requires ``countries``, the value built at ``#/anyOf/1`` is admitted by
+    that branch node and refused by the document, and the base refuses it correctly.  Of
+    the 472: **430 reach the branch they were drawn from or a branch of it, 42 land on a
+    branch the document ALSO admits, and 0 are refused by the base.**
 
-    That last figure is the one worth reading beside ``adcp-client-python-84a9``.  The four
+    **THE 42 ARE ALL ``anyOf`` AND NOT ONE OF THEM IS A DECLARED WIDENING**, which is the
+    measurement :func:`_owes_no_declaration` was written for and the reason the exemption
+    had to be read off the COMBINATOR rather than off a declaration.  They sit in two
+    documents -- 31 at ``core/async-response-data.json``'s 42-branch ``anyOf``, whose
+    branches are titled ``$ref``\\ s to operation response documents that all share
+    ``{status, task_id}``, and 11 at ``core/requirements/asset-requirements.json``'s
+    12-branch ``anyOf`` -- and **0 of the 42 declare UNDERDETERMINED**, because
+    ``codegen/lower/union.py`` mints nothing at an ``anyOf`` and §4 is what tells it not
+    to.  The two figures this clause's value rests on are both **0**: 0 of the 42 land
+    outside the base's own branch list, and **0 of the 42 land on a branch the DOCUMENT
+    refuses**.  Of the 149 bases, 131 are ``oneOf`` and 18 ``anyOf``, and no ``oneOf``
+    base lands elsewhere at all -- so the stricter clause is not merely preserved here,
+    it is the one nothing currently needs.
+
+    **"0 are refused by the base"** is the figure worth reading beside
+    ``adcp-client-python-84a9``.  The four
     payloads of that row were refused by the base, each drawn at a branch of
     ``core/async-response-data.json``'s 42-branch ``anyOf``, because the corpus's draw at a
     branch satisfied the branch node alone and the document then refused it at ``#`` on
@@ -655,7 +740,7 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
                 reached_its_branch.add(site)
                 continue
             where = f"{name} <- {branch.__name__} -> {got.__name__}"
-            if not _underdetermined(base):
+            if not (_underdetermined(base) or _owes_no_declaration(base)):
                 wrong[where] = (
                     ref.document,
                     ref.pointer,
@@ -672,9 +757,13 @@ def test_a_payload_the_document_admits_dispatches_to_the_branch_it_was_drawn_fro
                     repr(payload)[:200],
                 )
             elif not _admits(root, _answering_pointer(base, got), payload):
-                # The branches OVERLAP in the document, which is the case the
-                # UNDERDETERMINED declaration at the combinator describes in its own words:
-                # "WHICH branch an overlapping payload becomes is the fact dropped".
+                # The branches OVERLAP in the document, and the answering branch is one the
+                # DOCUMENT admits -- which is the one question an inseparable union can be
+                # asked.  Under a ``oneOf`` the base's own UNDERDETERMINED declaration says
+                # it in its own words, "WHICH branch an overlapping payload becomes is the
+                # fact dropped"; under an ``anyOf`` §4 says there is no fact to drop and so
+                # nothing to declare (:func:`_owes_no_declaration`).  Both reach here only
+                # after the document has admitted the branch that answered.
                 elsewhere_the_document_also_admits.add(site)
             else:
                 # **A LANDING THE DOCUMENT REFUSES IS A WRONG OBJECT IN A CALLER'S HANDS,
