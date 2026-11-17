@@ -610,51 +610,64 @@ def test_pricing_option_union_import():
     assert PricingOption is AliasPricingOption
 
 
-def test_pricing_option_union_is_union_type():
-    """Test that PricingOption is a union type, not a RootModel."""
-    import types
+def test_pricing_option_union_is_a_dispatching_base():
+    """Test that PricingOption is the union's base, not a RootModel.
+
+    Section 4 emits a `oneOf` of object types as a BASE plus one class per
+    BRANCH: the base is a class a payload is handed to, each branch subclasses
+    it, and `isinstance` holds against the base. So the union's parts are
+    `__subclasses__()` and `get_args` answers nothing -- there is no
+    `types.UnionType` to read.
+    """
+    from pydantic import RootModel
 
     from adcp import PricingOption
 
-    # Should be a Union type, not a class
-    # In Python 3.10+, unions created with | are types.UnionType
-    assert isinstance(PricingOption, types.UnionType)
+    assert isinstance(PricingOption, type)
+    assert not issubclass(PricingOption, RootModel)
 
 
 def test_pricing_option_union_contains_all_variants():
-    """Test that PricingOption union contains all pricing variants."""
-    from typing import get_args
+    """Test that PricingOption contains all ten pricing branches.
 
-    from adcp import (
-        CpaPricingOption,
-        CpcPricingOption,
-        CpcvPricingOption,
-        CpmPricingOption,
-        CppPricingOption,
-        CpvPricingOption,
-        FlatRatePricingOption,
-        PricingOption,
-        TimeBasedPricingOption,
-        VcpmPricingOption,
+    Each branch of `core/pricing-option.json` is a bare `$ref`, so section 4
+    names it for its target's distinguishing remainder -- `PricingOptionCpm`
+    for `pricing-options/cpm-option.json` -- and the target's own root class
+    (`CPMPricingOption`, bound publicly as `CpmPricingOption`) is that
+    branch's second base rather than the branch itself. The list that stood
+    here named nine of the document's TEN branches, omitting revenue share.
+    """
+    from adcp.types.domains.core.pricing_option import (
+        PricingOptionCpa,
+        PricingOptionCpc,
+        PricingOptionCpcv,
+        PricingOptionCpm,
+        PricingOptionCpp,
+        PricingOptionCpv,
+        PricingOptionFlatRate,
+        PricingOptionRevenueShare,
+        PricingOptionTime,
+        PricingOptionVcpm,
     )
 
-    # Get all types in the union
-    union_args = set(get_args(PricingOption))
+    from adcp import PricingOption
 
-    # Verify all pricing option variants are in the union
-    expected_variants = {
-        CpmPricingOption,
-        VcpmPricingOption,
-        CpcPricingOption,
-        CpcvPricingOption,
-        CpvPricingOption,
-        CppPricingOption,
-        CpaPricingOption,
-        FlatRatePricingOption,
-        TimeBasedPricingOption,
+    # Verify all pricing option branches are branches of the base
+    expected_branches = {
+        PricingOptionCpm,
+        PricingOptionVcpm,
+        PricingOptionCpc,
+        PricingOptionCpcv,
+        PricingOptionCpv,
+        PricingOptionCpp,
+        PricingOptionCpa,
+        PricingOptionRevenueShare,
+        PricingOptionFlatRate,
+        PricingOptionTime,
     }
 
-    assert union_args == expected_variants
+    assert set(PricingOption.__subclasses__()) == expected_branches
+    assert all(issubclass(branch, PricingOption) for branch in expected_branches)
 
 
 def test_pricing_option_union_exported():
@@ -768,32 +781,28 @@ def test_deployment_union_import():
     assert Deployment is AliasDeployment
 
 
-def test_deployment_union_is_union_type():
-    """Test that Deployment is a union type, not a RootModel."""
-    import types
+def test_deployment_union_is_a_dispatching_base():
+    """Test that Deployment is the union's base, not a RootModel."""
+    from pydantic import RootModel
 
     from adcp import Deployment
 
-    # Should be a Union type, not a class
-    assert isinstance(Deployment, types.UnionType)
+    assert isinstance(Deployment, type)
+    assert not issubclass(Deployment, RootModel)
 
 
 def test_deployment_union_contains_all_variants():
-    """Test that Deployment union contains all deployment variants."""
-    from typing import get_args
-
+    """Test that Deployment contains both deployment branches."""
     from adcp import AgentDeployment, Deployment, PlatformDeployment
 
-    # Get all types in the union
-    union_args = set(get_args(Deployment))
-
-    # Verify all deployment variants are in the union
-    expected_variants = {
+    # Verify both deployment branches are branches of the base
+    expected_branches = {
         PlatformDeployment,
         AgentDeployment,
     }
 
-    assert union_args == expected_variants
+    assert set(Deployment.__subclasses__()) == expected_branches
+    assert all(issubclass(branch, Deployment) for branch in expected_branches)
 
 
 def test_destination_union_import():
@@ -805,32 +814,28 @@ def test_destination_union_import():
     assert Destination is AliasDestination
 
 
-def test_destination_union_is_union_type():
-    """Test that Destination is a union type, not a RootModel."""
-    import types
+def test_destination_union_is_a_dispatching_base():
+    """Test that Destination is the union's base, not a RootModel."""
+    from pydantic import RootModel
 
     from adcp import Destination
 
-    # Should be a Union type, not a class
-    assert isinstance(Destination, types.UnionType)
+    assert isinstance(Destination, type)
+    assert not issubclass(Destination, RootModel)
 
 
 def test_destination_union_contains_all_variants():
-    """Test that Destination union contains all destination variants."""
-    from typing import get_args
-
+    """Test that Destination contains both destination branches."""
     from adcp import AgentDestination, Destination, PlatformDestination
 
-    # Get all types in the union
-    union_args = set(get_args(Destination))
-
-    # Verify all destination variants are in the union
-    expected_variants = {
+    # Verify both destination branches are branches of the base
+    expected_branches = {
         PlatformDestination,
         AgentDestination,
     }
 
-    assert union_args == expected_variants
+    assert set(Destination.__subclasses__()) == expected_branches
+    assert all(issubclass(branch, Destination) for branch in expected_branches)
 
 
 def test_get_signals_request_is_base_model_not_root_model():
