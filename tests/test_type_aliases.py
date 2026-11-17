@@ -95,10 +95,12 @@ def test_aliases_have_docstrings():
     """
     import adcp.types.aliases as aliases_module
 
-    # Module should have documentation
+    # Module should have documentation, and it should say what an alias IS --
+    # the module is generated and its own docstring states the rule rather than
+    # using the word "semantic", which nothing in this surface is named for.
     assert aliases_module.__doc__ is not None
-    assert "semantic" in aliases_module.__doc__.lower()
     assert "alias" in aliases_module.__doc__.lower()
+    assert "an alias is a name and never a second type" in aliases_module.__doc__.lower()
 
 
 def test_semantic_names_are_meaningful():
@@ -441,35 +443,41 @@ def test_property_id_and_tag_are_constrained_strings():
     with different structures. The core PropertyId is a scalar string schema while the artifact
     PropertyId is an object type. This test verifies the core types from their original modules.
 
-    Both scalar schemas are ``str`` subclasses rather than ``RootModel`` wrappers, so they
-    compare and hash as their wire value — see #1277.
+    Both scalar schemas are ANNOTATED ALIASES over ``str`` rather than ``RootModel``
+    wrappers, so a value compares and hashes as its wire text — see #1277. An alias
+    is not a class, so calling it is calling ``str`` and enforces nothing; the
+    module's own ``strict_validate`` is what applies the document, and it is the
+    entry point for a type that has no class to carry the method.
     """
     import pytest
 
     # Import directly from the core modules to avoid collision
-    from adcp.types.domains.core.property_id import PropertyId as CorePropertyId
-    from adcp.types.domains.core.property_tag import PropertyTag
-    from pydantic import RootModel, ValidationError
+    from adcp.types.domains.core import property_id as property_id_module
+    from adcp.types.domains.core import property_tag as property_tag_module
+    from pydantic import ValidationError
 
-    # Create valid PropertyId and PropertyTag
-    prop_id = CorePropertyId("my_property_id")
-    prop_tag = PropertyTag("premium")
+    # Create valid PropertyId and PropertyTag through each document's own half
+    prop_id = property_id_module.strict_validate("my_property_id")
+    prop_tag = property_tag_module.strict_validate("premium")
 
-    # Each is its wire value, with the schema's pattern enforced at construction
+    # Each is its wire value
     assert prop_id == "my_property_id"
     assert prop_tag == "premium"
     assert isinstance(prop_id, str)
     assert isinstance(prop_tag, str)
-    with pytest.raises(ValidationError):
-        PropertyTag("Not A Tag")
 
-    # Neither is a RootModel wrapper any more
-    assert not issubclass(CorePropertyId, RootModel)
-    assert not issubclass(PropertyTag, RootModel)
+    # And the pattern is applied there
+    with pytest.raises(ValidationError) as excinfo:
+        property_tag_module.strict_validate("Not A Tag")
+    assert excinfo.value.errors()[0]["type"] == "pattern"
 
-    # They are separate types, not in an inheritance relationship
-    assert CorePropertyId is not PropertyTag
-    assert not issubclass(PropertyTag, CorePropertyId)
+    # Neither is a class at all, so neither is a RootModel wrapper
+    assert not isinstance(property_id_module.PropertyId, type)
+    assert not isinstance(property_tag_module.PropertyTag, type)
+
+    # They are separate aliases over two separate documents
+    assert property_id_module.PropertyId is not property_tag_module.PropertyTag
+    assert property_id_module.__adcp_schema__ != property_tag_module.__adcp_schema__
 
 
 def test_deployment_aliases_imports():
