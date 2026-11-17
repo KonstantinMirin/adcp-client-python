@@ -369,9 +369,27 @@ async def maybe_apply_property_list_filter(
             ext = ext.model_dump(mode="json")
         update["ext"] = {**ext, "property_list_applied": applied}
         if not isinstance(response, dict):
+            # ``core/ext.json`` is a MAPPING document, so this emission binds
+            # ``ExtensionObject`` to a TYPE and not to a model --
+            # ``Annotated[dict[str, Any], Field(description=...)]``.  So
+            # ``ExtensionObject.model_validate`` reached ``typing.__getattr__`` and
+            # raised ``AttributeError: type object 'dict' has no attribute
+            # 'model_validate'`` for EVERY model-returning seller, which is the
+            # documented adopter path (found by
+            # ``tests/test_property_list_integration.py``'s ``model_response=True``
+            # parametrization, 11 pairs).
+            #
+            # ``TypeAdapter`` is how a non-model annotation is validated, and this
+            # module already uses it that way a few lines below for
+            # ``RequestProposalsResponse``.  The validation is kept rather than
+            # dropped even though ``model_copy(update=...)`` does not validate: the
+            # intent at this line is to check the shape BEFORE it is assigned, and
+            # the annotation is what states the shape.
+            from pydantic import TypeAdapter
+
             from adcp.types.domains.core.ext import ExtensionObject
 
-            update["ext"] = ExtensionObject.model_validate(update["ext"])
+            update["ext"] = TypeAdapter(ExtensionObject).validate_python(update["ext"])
     else:
         update["property_list_applied"] = applied
 
