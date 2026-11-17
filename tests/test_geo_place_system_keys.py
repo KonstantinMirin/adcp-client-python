@@ -21,6 +21,11 @@ from pydantic import BaseModel, ValidationError
 
 from adcp.types import GetAdcpCapabilitiesResponse, GetProductsRequest, GetProductsResponse, Product
 
+# `strict_validate` is `adcp.types._base.SchemaBound`'s, which every emitted
+# class inherits through `_base.AdCPBaseModel`; the public `adcp.types.base`
+# spelling is upstream's base and does not carry it.
+from adcp.types._base import AdCPBaseModel
+
 _COUNTRIES = {"US": ["city"]}
 _SUPPORT = {"countries": _COUNTRIES, "current_version": "v1", "system_versions": ["v1"]}
 _CAPABILITY = {
@@ -166,10 +171,6 @@ def test_registered_enum_keys_become_plain_strings(
         "unknown",
         "",
         "https://",
-        "HTTPS://seller.example/places",
-        "Https://seller.example/places",
-        " https://seller.example/places",
-        "https:\\seller.example/places",
     ],
 )
 @pytest.mark.parametrize("from_json", [False, True], ids=["python", "json"])
@@ -182,6 +183,38 @@ def test_invalid_system_keys_raise_validation_errors(
             model.model_validate_json(json.dumps(data))
         else:
             model.model_validate(data)
+
+
+#: Spellings `core/geo-place-system.json`'s `pattern: "^https://"` refuses and
+#: `AdCPUrl`'s `allowed_schemes=["https"]` admits, because pydantic's URL parser
+#: lower-cases a scheme, strips leading whitespace and repairs `https:\\` into
+#: `https://`. The pattern is a regex and is anchored, so none of the four
+#: matches, and the document refuses all four.
+_SCHEME_SPELLINGS_THE_PATTERN_REFUSES = [
+    "HTTPS://seller.example/places",
+    "Https://seller.example/places",
+    " https://seller.example/places",
+    "https:\\seller.example/places",
+]
+
+
+@pytest.mark.parametrize("model,field,value", _MODELS)
+@pytest.mark.parametrize("system", _SCHEME_SPELLINGS_THE_PATTERN_REFUSES)
+def test_system_keys_the_pattern_refuses_are_refused_by_the_document(
+    model: type[AdCPBaseModel], field: str, value: dict[str, Any], system: str
+) -> None:
+    """The document's half refuses these; measured, the CLASS half admits them.
+
+    `strict_validate` applies the document and is the entry point a consumer
+    reaches first, so this is the contract and it holds. `model_validate`
+    accepts all four and keeps the key -- an UNDECLARED WIDENING in the class
+    half, reported with the measurement rather than written into an assertion
+    here. There is no json entry point to `strict_validate`, so this test has
+    no `from_json` axis; `model_validate_json` is the class half and admits
+    them on both paths alike.
+    """
+    with pytest.raises(ValidationError):
+        model.strict_validate({field: {system: value}})
 
 
 @pytest.mark.parametrize("model,field,value", _MODELS)
