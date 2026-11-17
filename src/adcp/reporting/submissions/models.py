@@ -560,7 +560,19 @@ def _restore_confirmation(
             results.append(
                 {"result": item["result"], kinds[item["reporting_receipt_id"]]: item["receipt"]}
             )
-    response = SyncReportingReceiptsResponse.model_validate({"results": results})
+    # ``status`` is not the restore path's to choose: the document pins it with a
+    # ``const`` at ``media-buy/sync-reporting-receipts-response.json``
+    # ``#/properties/status`` -- ``{"const": "completed"}``, "Receipt batches
+    # complete synchronously with one result per submitted receipt" -- and lists it
+    # in its own root ``required: ["status","results"]``, so the value is fixed
+    # before the retained evidence is consulted and `"failed"` is refused outright.
+    # Re-supplying it is therefore faithful to the evidence rather than convenient:
+    # a per-item ``result`` of ``failed`` is a task-body outcome from
+    # ``#/properties/results/items/anyOf/4``, not an envelope state, and the batch
+    # it was retained from did complete.
+    response = SyncReportingReceiptsResponse.model_validate(
+        {"status": "completed", "results": results}
+    )
     return _confirmation(submission, ordinal, response)
 
 
