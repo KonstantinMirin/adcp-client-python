@@ -155,7 +155,12 @@ def project_declaration_to_v1(
         advisories the resolution order emitted.
     """
     kind = declaration.format_kind
-    refs = list(declaration.legacy_format_refs)
+    # ``v1_format_ref`` is OPTIONAL on the declaration -- absent is the seller
+    # asserting no v1 mapping, which is this function's own step 1, so it is the
+    # EMPTY list and never an error.  (Before 2026-11-17 this read
+    # ``declaration.legacy_format_refs``, a name no class carries, so the line
+    # raised AttributeError and the None case was never reachable to get wrong.)
+    refs = list(declaration.v1_format_ref or ())
 
     # Step 1: seller has explicitly opted out of v1 projection.
     # ``Format`` enforces this is mutually exclusive

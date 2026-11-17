@@ -182,7 +182,7 @@ def find_declaration_by_v1_format_id(
     target_url = canonicalize_agent_url(format_id.agent_url)
     target_id = format_id.id
     for decl in format_options:
-        refs = decl.legacy_format_refs
+        refs = decl.v1_format_ref or ()
         for ref in refs:
             ref_url = canonicalize_agent_url(ref.agent_url)
             if ref_url == target_url and ref.id == target_id:

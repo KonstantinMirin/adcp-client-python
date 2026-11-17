@@ -492,7 +492,7 @@ def group_declarations_by_product(
 
     out: dict[str, list[Format]] = {}
     for declaration in declarations:
-        refs = declaration.legacy_format_refs
+        refs = declaration.v1_format_ref
         if not refs:
             continue
         # A declaration may carry multiple v1 refs (multi-size fan-out

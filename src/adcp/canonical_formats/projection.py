@@ -784,8 +784,8 @@ def resolve_legacy_format_refs(
     provide a durable resolver backed by adopter storage or catalog snapshots.
     """
 
-    if declaration.legacy_format_refs:
-        return list(declaration.legacy_format_refs)
+    if declaration.v1_format_ref:
+        return list(declaration.v1_format_ref)
     if resolver is None:
         raise CanonicalFormatLegacyResolutionError(
             "canonical creative crossed a process boundary without a durable "
@@ -833,7 +833,7 @@ def project_canonical_response_to_legacy(
                 sort_keys=True,
                 separators=(",", ":"),
             )
-            for ref in declaration.legacy_format_refs
+            for ref in declaration.v1_format_ref or ()
         )
         return canonical, legacy
 
