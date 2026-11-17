@@ -12,11 +12,11 @@ import pytest
 
 from adcp.types import (
     AssetContentType,
+    Format,
     GetProductsRequest,
     ListCreativesRequest,
     PackageRequest,
 )
-from adcp.types.canonical_creative import Format
 from adcp.types.domains.core.context import ContextObject
 from adcp.types.domains.core.ext import ExtensionObject
 from adcp.types.domains.creative.list_creative_formats_request import (
