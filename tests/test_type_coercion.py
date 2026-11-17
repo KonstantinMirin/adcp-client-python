@@ -9,6 +9,13 @@ Reference: https://github.com/adcontextprotocol/adcp-client-python/issues/102
 from __future__ import annotations
 
 import pytest
+from adcp.types.domains.creative.list_creative_formats_request import (
+    ListCreativeFormatsRequestCreativeAgent,
+)
+from adcp.types.domains.creative.list_creatives_request import Field1 as FieldModel
+from adcp.types.domains.creative.list_creatives_request import Sort
+from adcp.types.domains.enums.creative_sort_field import CreativeSortField
+from adcp.types.domains.enums.sort_direction import SortDirection
 
 from adcp.types import (
     AssetContentType,
@@ -17,15 +24,6 @@ from adcp.types import (
     ListCreativesRequest,
     PackageRequest,
 )
-from adcp.types.domains.core.context import ContextObject
-from adcp.types.domains.core.ext import ExtensionObject
-from adcp.types.domains.creative.list_creative_formats_request import (
-    ListCreativeFormatsRequestCreativeAgent,
-)
-from adcp.types.domains.creative.list_creatives_request import Field1 as FieldModel
-from adcp.types.domains.creative.list_creatives_request import Sort
-from adcp.types.domains.enums.creative_sort_field import CreativeSortField
-from adcp.types.domains.enums.sort_direction import SortDirection
 from adcp.types.legacy import LegacyListCreativeFormatsRequest as ListCreativeFormatsRequest
 from tests.conftest import validate_union
 
@@ -87,20 +85,27 @@ class TestEnumListCoercion:
 
 
 class TestDictToModelCoercion:
-    """Test that model fields accept dict values."""
+    """Test that mapping fields accept dict values.
+
+    `core/context.json` and `core/ext.json` are objects stating NO `properties`
+    and `additionalProperties: true`, so section 4's row gives each a
+    `dict[str, Any]`: `ContextObject` and `ExtensionObject` are annotated
+    mapping aliases, not classes. A dict is therefore the value type rather
+    than something coerced into a model -- there is no attribute to read and no
+    class to `isinstance` against, and identity is not preserved because
+    pydantic copies a validated mapping.
+    """
 
     def test_context_accepts_dict(self):
         """ListCreativeFormatsRequest.context accepts dict."""
         req = ListCreativeFormatsRequest(context={"user_id": "123", "session": "abc"})
-        assert isinstance(req.context, ContextObject)
-        assert req.context.user_id == "123"
-        assert req.context.session == "abc"
+        assert req.context == {"user_id": "123", "session": "abc"}
 
     def test_context_accepts_model(self):
-        """ListCreativeFormatsRequest.context still accepts ContextObject."""
-        ctx = ContextObject(user_id="456")
+        """ListCreativeFormatsRequest.context keeps the mapping it was given."""
+        ctx = {"user_id": "456"}
         req = ListCreativeFormatsRequest(context=ctx)
-        assert req.context is ctx
+        assert req.context == ctx
 
     def test_context_accepts_none(self):
         """ListCreativeFormatsRequest.context accepts None."""
@@ -110,16 +115,14 @@ class TestDictToModelCoercion:
     def test_ext_accepts_dict(self):
         """ListCreativeFormatsRequest.ext accepts dict."""
         req = ListCreativeFormatsRequest(ext={"custom_field": "value"})
-        assert isinstance(req.ext, ExtensionObject)
-        assert req.ext.custom_field == "value"
+        assert req.ext == {"custom_field": "value"}
 
     def test_get_products_request_context_accepts_dict(self):
         """GetProductsRequest.context accepts dict."""
         req = validate_union(
             GetProductsRequest, {"buying_mode": "wholesale", "context": {"key": "value"}}
         )
-        assert isinstance(req.context, ContextObject)
-        assert req.context.key == "value"
+        assert req.context == {"key": "value"}
 
 
 class TestFieldModelStringCoercion:
@@ -196,8 +199,7 @@ class TestPackageRequestCoercion:
             product_id="prod1",
             ext={"custom": "data"},
         )
-        assert isinstance(req.ext, ExtensionObject)
-        assert req.ext.custom == "data"
+        assert req.ext == {"custom": "data"}
 
 
 class TestBackwardCompatibility:
@@ -211,12 +213,12 @@ class TestBackwardCompatibility:
         assert req.asset_types == [AssetContentType.image, AssetContentType.video]
 
     def test_explicit_model_values_work(self):
-        """Existing code using explicit model construction still works."""
-        ctx = ContextObject(user_id="123")
-        ext = ExtensionObject(custom="value")
+        """Mappings built ahead of the request still reach it by value."""
+        ctx = {"user_id": "123"}
+        ext = {"custom": "value"}
         req = ListCreativeFormatsRequest(context=ctx, ext=ext)
-        assert req.context is ctx
-        assert req.ext is ext
+        assert req.context == ctx
+        assert req.ext == ext
 
     def test_explicit_field_model_values_work(self):
         """Existing code using FieldModel enums still works."""
@@ -380,7 +382,7 @@ class TestSerializationRoundtrip:
         json_str = req.model_dump_json()
         restored = ListCreativeFormatsRequest.model_validate_json(json_str)
         assert restored.asset_types == [AssetContentType.image, AssetContentType.html]
-        assert restored.context.key == "value"
+        assert restored.context == {"key": "value"}
         assert restored.name_search == "test"
 
 
@@ -413,8 +415,7 @@ class TestResponseTypeCoercion:
             formats=[format_obj],
             context={"request_id": "456"},
         )
-        assert isinstance(response.context, ContextObject)
-        assert response.context.request_id == "456"
+        assert response.context == {"request_id": "456"}
 
     def test_list_creative_formats_response_accepts_format_subclass(self):
         """ListCreativeFormatsResponse.formats accepts Format subclass instances."""
@@ -574,8 +575,7 @@ class TestResponseTypeCoercion:
             media_buy_deliveries=[delivery],
             context={"request_id": "789"},
         )
-        assert isinstance(response.context, ContextObject)
-        assert response.context.request_id == "789"
+        assert response.context == {"request_id": "789"}
 
     def test_response_serialization_roundtrip(self):
         """Response types with coerced values can roundtrip through JSON."""
@@ -607,14 +607,14 @@ class TestResponseTypeCoercion:
 
         assert len(restored.formats) == 1
         assert restored.formats[0].name == "Banner 300x250"
-        assert restored.context.key == "value"
+        assert restored.context == {"key": "value"}
 
     def test_get_products_response_accepts_product_subclass(self):
         """GetProductsResponse.products accepts Product subclass instances."""
+        from adcp.types.domains.core.product import DeliveryMeasurement
         from pydantic import Field
 
         from adcp.types import CpmPricingOption, DeliveryType, GetProductsResponse, Product
-        from adcp.types.domains.core.product import DeliveryMeasurement
 
         class ExtendedProduct(Product):
             """Extended with internal tracking fields."""
@@ -664,13 +664,12 @@ class TestResponseTypeCoercion:
 
     def test_response_errors_accepts_error_subclass(self):
         """Response types with errors field accept Error subclass instances."""
-        from pydantic import Field
-
-        from adcp.types import GetProductsResponse
-
         # Import Error from core.error - the type used in ergonomic coercion
         # (adcp.types.Error exports a different Error from content_standards)
         from adcp.types.domains.core.error import Error as CoreError
+        from pydantic import Field
+
+        from adcp.types import GetProductsResponse
 
         class ExtendedError(CoreError):
             """Extended with internal tracking fields."""
