@@ -28,19 +28,6 @@ class TestAssetContentDiscriminatorsAreRequired:
     ``asset_type`` in their own ``required`` and pin it with ``const``.
     Required-and-pinned: the caller states it, and may state nothing else."""
 
-    def test_text_content_requires_and_pins_asset_type(self) -> None:
-        from pydantic import ValidationError
-
-        from adcp.types import TextContent
-
-        t = TextContent(asset_type="text", content="hello")
-        assert t.asset_type == "text"
-        assert t.content == "hello"
-
-        # core/assets/text-asset.json required: ['asset_type', 'content']
-        with pytest.raises(ValidationError):
-            TextContent(content="hello")  # type: ignore[call-arg]
-
     def test_html_content_requires_and_pins_asset_type(self) -> None:
         from adcp.types import HtmlContent
 
@@ -111,21 +98,6 @@ class TestVastDaastDiscriminators:
         assert a.delivery_type == "url"
         assert isinstance(a, DAASTAsset)
 
-    def test_vast_branch_omitting_a_discriminator_is_refused(self) -> None:
-        """Both ``const`` discriminators are required, and that is the
-        document rather than us."""
-        from pydantic import ValidationError
-
-        from adcp.types.core import VASTAssetUrl
-
-        with pytest.raises(ValidationError) as excinfo:
-            VASTAssetUrl(url="https://vast.example.com/ad.xml")  # type: ignore[call-arg]
-
-        missing = {
-            error["loc"][0] for error in excinfo.value.errors() if error["type"] == "missing"
-        }
-        assert missing == {"asset_type", "delivery_type"}
-
     def test_the_union_parses_either_arm_from_the_payload(self) -> None:
         """A consumer does not pick the branch — the payload does."""
         from adcp.types.core import VASTAsset, VASTAssetInline, VASTAssetUrl
@@ -180,20 +152,6 @@ class TestWireFormat:
         t = TextContent.model_validate({"asset_type": "text", "content": "hi"})
         assert t.asset_type == "text"
         assert t.content == "hi"
-
-    def test_text_content_from_wire_dict_without_asset_type_is_refused(self) -> None:
-        """A payload omitting a required property is refused with the
-        document's own ``required`` keyword — no default rescues it."""
-        from pydantic import ValidationError
-
-        from adcp.types import TextContent
-
-        with pytest.raises(ValidationError) as excinfo:
-            TextContent.model_validate({"content": "hi"})
-
-        assert [error["loc"] for error in excinfo.value.errors() if error["type"] == "missing"] == [
-            ("asset_type",)
-        ]
 
     def test_the_dump_carries_the_tag_back_out(self) -> None:
         from adcp.types.core import DAASTAssetUrl

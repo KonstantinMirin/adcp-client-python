@@ -130,6 +130,51 @@ depends on the order the layers are consulted in is undone by the next layer tha
 ``adcp.types.registry.<word>`` still resolves, which is what makes the screen a loss of a
 SPELLING and never of a type.
 
+**AND THE SDK'S OWN 21 WORDS ARE ON THIS SURFACE AND ADVERTISED, WHICH IS THE OTHER HALF OF
+THAT RULING** (the owner, 2026-11-18, on ``Protocol``): *"it just doesn't belong to types as
+that is not a type.  It kinda is, but... not from the emitted surface... or should we just
+blend it in?  It kinda belongs there, it is being used, and the fact that the schema doesn't
+say it doesn't mean that we shouldn't use the enum in the SDK."*  **Blend it in.**  The line
+this turns on is not "does a document state it" but WHOSE OUTPUT it is: ``adcp.types`` may
+hold a hand-written type the SDK needs, and what it may not hold is **another generator's
+output** -- which is the whole of why ``adcp.types.registry``'s words lose a contested
+spelling above and these 21 do not.
+
+:func:`_sdk_words` is the set, DERIVED from ``adcp/types/core.py``'s ``X as X`` block and
+never listed: a word is one of these where ``adcp.types.core`` re-exports the very object
+``adcp.core`` binds.  Two consequences, and the second is what was open:
+
+* ``Protocol`` resolves flat.  It is ``Enum('Protocol', ['a2a', 'mcp'])``, the TRANSPORT
+  selector ``adcp/server/translate.py`` and ``adcp/testing/test_helpers.py`` import, and it
+  is neither ``enums/adcp-protocol.json``'s domain enumeration nor ``typing.Protocol``.
+  Measured before: 19 of the 21 resolved flat through the generated ``legacy_names`` rows
+  and ``Protocol`` -- which that generator does not carry -- raised ``AttributeError`` at
+  ``adcp.types.Protocol`` while resolving at ``adcp.core.Protocol`` and
+  ``adcp.types.core.Protocol``.  One surface answering two ways.
+* they are in ``__all__`` and in ``__dir__``.  They were advertised by NOBODY before, which
+  is what made a word served here folklore -- a consumer reading ``__all__``, running
+  ``from adcp.types import *`` or pressing tab found no trace of a name the namespace
+  answers.  ``FINDINGS-sixwords.md`` recorded the union as open rather than doing it,
+  because a blanket union would have advertised ``Protocol``, which then resolved to
+  nothing, and ``tests/test_public_words_resolve.py`` grades an advertised word that does
+  not resolve as an outage.  Binding it is what makes the advertisement true.
+
+**AND THE 21 WERE ONE SLICE OF IT.  ``__all__`` SAYS WHAT THIS NAMESPACE BINDS, WHICH IS
+148 WORDS OVER TWO LATE LAYERS AND WAS SHORT BY 108** (:func:`_advertised_layers`, which
+carries the measurement).  ``adcp.types.aliases`` is the bigger half: 127 words, all 127
+resolving here, and only 39 advertised.  ``VerifyBrandClaimsPayload`` is the case a test
+already named -- that module's short word for
+``adcp.types.brand.VerifyBrandClaimsResponseBulkSignedResponsePayload``.  Every word of
+both layers is screened by ``getattr`` on this package before it is advertised, so what
+``__all__`` offers is what RESOLVES and the two cannot drift apart.
+
+**CONSULTED LAST, so a late layer can only ADD a spelling and never change one.**
+``TaskStatus`` is the word that proves it: upstream's has five members and ours, from
+``enums/task-status.json``, has nine, and ``_flat`` is reached first, so the flat word stays
+the DOCUMENT's enumeration and upstream's stays at ``adcp.types.core.TaskStatus``.
+Advertising a word changes nothing about which subject it names -- ``__all__`` is a
+statement that the spelling resolves.
+
 ``adcp.types.envelopes`` carries a base for a repeated envelope the bundle spells
 more than one way (``codegen/lower/envelope.py``).  A base there is a type to
 PROGRAM AGAINST and not an authority on acceptance: it carries no
@@ -183,6 +228,12 @@ def __getattr__(name: str) -> object:
                 *adapter.__all__,
                 *_restored_module().__all__,
                 *_flat_module().__all__,
+                # **AND WHAT THIS NAMESPACE BINDS AND USED NOT TO ADVERTISE** (the owner's
+                # ruling of 2026-11-18, this module's own docstring).  Two layers, 148
+                # words, of which 108 were served silently.  The advertisement is of the
+                # WORD and never of a subject: ``TaskStatus`` is in here and resolves to the
+                # DOCUMENT's enumeration, because the consult that binds it is reached last.
+                *_advertised_layers(),
             }
         )
     # **AND UPSTREAM'S OWN STATEMENT IS ASKED BEFORE THE TABLE, WHICH IS THE ONE PLACE THE
@@ -325,6 +376,27 @@ def __getattr__(name: str) -> object:
         pass
     else:
         return _decided(name, found)
+    # **AND THE SDK'S OWN HAND-WRITTEN WORDS, WHICH NO GENERATOR CAN REACH AND WHICH THE
+    # ONE THAT DID REACHED BY ACCIDENT** (the owner's ruling of 2026-11-18, this module's
+    # own docstring).  ``adcp.core`` is upstream's 444 lines of SDK types, re-exported at
+    # the ``core`` domain path in the ``X as X`` form and deliberately out of that module's
+    # ``__all__`` -- which is the COMPILER's export set and no place for a name with no
+    # document.  So nothing above was asking this namespace's own question, and the 19 that
+    # resolved did so because ``survey/emit_legacy_names.py`` happened to emit a row for
+    # each: ``Protocol``, which it does not carry, resolved at ``adcp.core`` and at
+    # ``adcp.types.core`` and raised here.
+    #
+    # CONSULTED LAST, after every layer above, for the reason the aliases consult is: it can
+    # only ADD a spelling, so ``TaskStatus`` keeps the DOCUMENT's nine-member enumeration
+    # that ``_flat`` answered with and upstream's five-member one stays at
+    # ``adcp.types.core.TaskStatus``.  A word changing subject is what §4 calls the worst
+    # available outcome, and a layer reached last cannot cause one.
+    # Membership and not ``.get() is not None``: one of the 21 is DATA
+    # (``DEFAULT_MAX_RESPONSE_BYTES``, an ``int``), and a lookup that reads a value to decide
+    # whether a word is bound answers wrongly for whichever datum is falsy next.
+    sdk = _sdk_words()
+    if name in sdk:
+        return _decided(name, sdk[name])
 
     # **AND A SUBMODULE OF OURS IS THE IMPORT SYSTEM'S OWN THIRD STEP, which a lazy facade
     # is the one kind of package that has to perform for itself.**  ``from M import N``
@@ -470,6 +542,111 @@ def _domain_subjects(names: tuple[str, ...]) -> dict[str, object]:
     for name in contested:
         del owned[name]
     return owned
+
+
+def _advertised_layers() -> tuple[str, ...]:
+    """The words two LATE layers bind that the four advertisements above do not carry.
+
+    **``__all__`` SHOULD SAY WHAT THIS NAMESPACE BINDS, AND IT WAS SHORT BY 108 WORDS.**
+    The union above is four layers -- ``compat``, its ``__adcp_flat_only__``, ``_adapter``
+    and ``_restored``, plus the compiler's own ``_flat`` -- and :func:`__getattr__` consults
+    three more after them.  Every word those three bind resolved at
+    ``from adcp.types import X`` and NONE of them reached ``from adcp.types import *``,
+    ``dir()``, tab completion or a doc generator.  Measured before this change:
+
+    | layer | words | resolve | advertised |
+    |---|---|---|---|
+    | ``adcp.types.aliases`` | 127 | 127 | 39 |
+    | ``adcp.core``, via :func:`_sdk_words` | 21 | 20 | 1 |
+
+    -- so 108 words of the 148 were bound and undiscoverable, which is what makes a public
+    surface folklore: the one spelling a consumer can find is the one they already knew to
+    type.  ``VerifyBrandClaimsPayload`` is the measured case, ``aliases``' short word for
+    ``adcp.types.brand.VerifyBrandClaimsResponseBulkSignedResponsePayload``, which
+    ``tests/test_adcp_31_rc4_surface.py::test_rc4_symbols_are_publicly_exported`` asserts
+    is advertised and which reddened on exactly that.
+
+    **AND A BLANKET UNION WAS REFUSED ONCE FOR A REASON THAT HAD TO BE RE-MEASURED, NOT
+    ASSUMED.**  ``FINDINGS-sixwords.md`` left this open because unioning would advertise
+    ``Protocol``, which resolved to nothing, and ``tests/test_public_words_resolve.py``
+    grades an advertised word that does not resolve as an outage -- a name in ``__all__``
+    that raises is worse than one that is merely undiscoverable.  So every word of both
+    layers was offered to ``getattr`` before being advertised: of the 148, **147 resolved
+    and exactly one did not, ``Protocol``**, which this same change binds
+    (:func:`_sdk_words`).  There is no second such name.  ``aliases.__adcp_refused__`` is
+    ``{}``, so that module declines nothing today, and a word it starts declining leaves
+    this union by the same ``getattr`` below rather than by an edit here.
+
+    **``legacy_names`` IS A THIRD SLICE AND IS DELIBERATELY NOT HERE.**  It binds 3,520
+    words of which 1,726 are unadvertised -- 16 times this change -- and it is
+    ``survey/emit_legacy_names.py``'s GENERATED output, whose rows
+    ``FINDINGS-sixwords.md`` open question 3 already records as decided by a rule the
+    owner's ruling overrode.  Advertising 1,726 generated spellings is a surface decision
+    of its own size and is not this job's to take.  Measured and named so it is not
+    rediscovered.
+
+    Each word is screened by ``getattr`` on this package, so what is advertised is what
+    RESOLVES -- the two can no longer disagree, whichever layer answers.  Through
+    ``sys.modules`` and never ``globals()``: the screen has to go through
+    :func:`__getattr__`, which is the chain that decides whether a word resolves, and a
+    lookup in this module's own namespace would answer for the handful of names bound here
+    and ``AttributeError`` for every word a layer serves.
+    """
+    import importlib
+    import sys
+
+    offered = list(_sdk_words())
+    try:
+        aliases = importlib.import_module(f"{__name__}.aliases")
+    except ModuleNotFoundError:  # pragma: no cover -- a tree without the alias layer
+        pass
+    else:
+        offered.extend(getattr(aliases, "__all__", ()))
+    here = sys.modules[__name__]
+    out: list[str] = []
+    for name in dict.fromkeys(offered):
+        try:
+            getattr(here, name)
+        except AttributeError:
+            continue
+        out.append(name)
+    return tuple(out)
+
+
+def _sdk_words() -> dict[str, object]:
+    """The SDK's OWN hand-written words this namespace serves, by word.
+
+    **DERIVED FROM ``adcp/types/core.py``'s ``X as X`` BLOCK AND NEVER LISTED.**  A word is
+    one of these where ``adcp.types.core`` re-exports the very object ``adcp.core`` binds --
+    identity and not spelling, which is what makes the set exactly the re-export block and
+    what makes a word that moves out of ``adcp.core`` leave this surface with nothing edited
+    here.  Measured on this tree: **21** words, of ``adcp.core``'s 36 public names.  The 15
+    it leaves are not SDK surface and the predicate says so without naming them -- ``Enum``,
+    ``BaseModel``, ``Field`` and the rest are imports the module needs, ``T`` is its
+    ``TypeVar``, and ``validate_max_response_bytes`` is ``adcp._response_limit``'s and is not
+    re-exported at the domain path.
+
+    **IDENTITY ALSO DECIDES THE ONE CONTESTED WORD WITHOUT A CLAUSE FOR IT.**  ``adcp/types/
+    core.py`` ends with ``from ._surface.core import *``, so a word the compiler emits into
+    the ``core`` domain SHADOWS the re-export above it, the identity against ``adcp.core``
+    fails, and the word is not offered here.  None does today; the reading is why no list of
+    exclusions is needed when one does.
+
+    Reached only on a miss, and it costs no import the chain has not already paid:
+    :func:`_alias_module` imports all 23 domain aggregators at the top of
+    :func:`__getattr__`, and :func:`_domain_subjects` imports each public domain module
+    including this one.
+    """
+    import importlib
+
+    core = importlib.import_module(f"{__name__}.core")
+    sdk = importlib.import_module("adcp.core")
+    held = vars(sdk)
+    return {
+        name: value
+        for name, value in vars(core).items()
+        if not name.startswith("_") and name in held and held[name] is value
+    }
 
 
 def _alias_module():
@@ -618,4 +795,5 @@ def __dir__() -> list[str]:
         | set(_adapter_module().__all__)
         | set(_restored_module().__all__)
         | set(_flat_module().__all__)
+        | set(_advertised_layers())
     )
