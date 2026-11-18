@@ -113,6 +113,23 @@ bind -- so neither has a domain a surface could give it, and neither waits on on
 ``adcp.types.constraints`` names a constrained type once (D5): a type derived from a
 CONSTRAINT belongs to no document.
 
+**AND ONE WORD NAMES ONE SUBJECT, WHICH IS THE CLAUSE §1 LEAVES UNSAID** (the owner's
+ruling of 2026-11-18, ``FINDINGS-sixwords.md``).  ``docs/plan/rebuild-plan.md`` §1 forbids
+one CLASS reached at two paths and says nothing about one WORD standing for two subjects --
+so the rule this namespace needs is its converse: **where two subjects answer to one word,
+the SCHEMA subject owns the short flat name and the OpenAPI-derived one is reachable only at
+its own module path.**  ``adcp.types.registry`` is that module and the only one behind this
+namespace whose classes no bundle document states: it is generated from an OpenAPI spec by
+``make regenerate-registry``, so it is VENDORED rather than compiled, and it does not
+compete for a word a document's class or the SDK's own ``adcp.core`` already carries.
+Measured on bundle 3.2, ten words had two subjects and this facade bound the vendored one at
+all ten -- ``adcp.types.Policy`` was a different class from the ``adcp.types.core.Policy``
+the protocol documentation names, so ``isinstance`` against the documented class was False.
+:func:`_decided` is the screen, and it is said at EVERY layer rather than at one: a fix that
+depends on the order the layers are consulted in is undone by the next layer that is added.
+``adcp.types.registry.<word>`` still resolves, which is what makes the screen a loss of a
+SPELLING and never of a type.
+
 ``adcp.types.envelopes`` carries a base for a repeated envelope the bundle spells
 more than one way (``codegen/lower/envelope.py``).  A base there is a type to
 PROGRAM AGAINST and not an authority on acceptance: it carries no
@@ -194,16 +211,18 @@ def __getattr__(name: str) -> object:
     # on to the table exactly as before.
     restored = _restored_module()
     if name in restored.STATED:
-        return getattr(restored, name)
+        return _decided(name, getattr(restored, name))
     try:
-        return getattr(compat, name)
+        found = getattr(compat, name)
     except AttributeError:
         pass
+    else:
+        return _decided(name, found)
     where = compat.__adcp_flat_only__.get(name)
     if where is not None:
         import importlib
 
-        return getattr(importlib.import_module(where), name)
+        return _decided(name, getattr(importlib.import_module(where), name))
     # **AND THE FLAT SURFACE OWES WHAT UPSTREAM'S OWN MACHINERY IMPORTS FROM IT, which the
     # alias table could not see**: `survey/alias_surface.py` ranges over upstream's public
     # type surface, and 171 of the pairs upstream's kept code writes at module scope are
@@ -213,9 +232,11 @@ def __getattr__(name: str) -> object:
     # document gives, and it is consulted after the table so no name the table decided can
     # be overridden here.
     try:
-        return getattr(adapter, name)
+        found = getattr(adapter, name)
     except AttributeError:
         pass
+    else:
+        return _decided(name, found)
     # **AND THE FLAT SURFACE OWES WHAT UPSTREAM'S RESTORED MACHINERY DECLARES, which no
     # table over the bundle could reach**: ``adcp.types._restored`` is the flat spelling of
     # the names upstream's own hand-written files declare -- ``MEDIA_BUY_LEGACY_STATUS_VALUES``
@@ -228,9 +249,11 @@ def __getattr__(name: str) -> object:
     # overridden -- and ABOVE, before the table, for the words upstream's own ``_eager``
     # binds to one of these files.  Two questions, asked in the order the ruling gives them.
     try:
-        return getattr(restored, name)
+        found = getattr(restored, name)
     except AttributeError:
         pass
+    else:
+        return _decided(name, found)
     # **AND THE FLAT SURFACE OWES EVERY WORD THIS COMPILER ITSELF EMITTED, which is the
     # layer that was deleted and not replaced** (``adcp-client-python-qpo4``, 2026-11-09).
     # ``adcp.types._surface._flat`` is ``codegen/emit.py``'s CROSS-DOMAIN consolidation --
@@ -250,9 +273,11 @@ def __getattr__(name: str) -> object:
     # the error below -- which says the generated surface is ``adcp.types.<domain>`` -- is
     # the true answer for a word whose document the caller has not named.
     try:
-        return getattr(_flat_module(), name)
+        found = getattr(_flat_module(), name)
     except AttributeError:
         pass
+    else:
+        return _decided(name, found)
     # **AND LAST, UPSTREAM'S PUBLISHED WORD FOR A CLASS OUR WALK NAMES DIFFERENTLY.**
     # ``adcp.types.legacy_names`` is ``survey/emit_legacy_names.py``'s output: upstream's
     # 9.6.1 wheel published a word, our compiler names the same subject from its document and
@@ -264,9 +289,11 @@ def __getattr__(name: str) -> object:
     # It declares no class and changes no accepted set: an alias is a second spelling of one
     # object, which is why it can be reached last and still be correct.
     try:
-        return getattr(_legacy_names_module(), name)
+        found = getattr(_legacy_names_module(), name)
     except AttributeError:
         pass
+    else:
+        return _decided(name, found)
     # **AND AFTER ALL OF THEM, UPSTREAM'S OWN MODULE PATH, BECAUSE A WORD BOUND THERE AND
     # NOT HERE IS THE SAME SURFACE ANSWERING TWO WAYS.**  ``adcp.types.aliases`` exists at
     # upstream's path so their kept machinery's module-scope ``from adcp.types.aliases
@@ -293,9 +320,11 @@ def __getattr__(name: str) -> object:
     # finds no ``aliases`` attribute ON the aliases module, and falls through to the
     # submodule import below, which is where that name has always been answered.
     try:
-        return getattr(_alias_path_module(), name)
+        found = getattr(_alias_path_module(), name)
     except AttributeError:
         pass
+    else:
+        return _decided(name, found)
 
     # **AND A SUBMODULE OF OURS IS THE IMPORT SYSTEM'S OWN THIRD STEP, which a lazy facade
     # is the one kind of package that has to perform for itself.**  ``from M import N``
@@ -324,6 +353,123 @@ def __getattr__(name: str) -> object:
         f"adcp.types.<domain> and the upstream spellings are this namespace's -- see "
         f"docs/migration-from-upstream.md for a name with no document behind it"
     )
+
+
+#: The one module behind this namespace whose classes no bundle document states:
+#: ``adcp.types.registry`` is generated from an OPENAPI spec by ``make regenerate-registry``,
+#: which is why it is VENDORED rather than compiled and why the owner's ruling of 2026-11-18
+#: keeps it out of the competition for a short word.  Written as the module a class was
+#: DEFINED in and never as the layer that handed the class over: ``registry`` itself imports
+#: ``RegistryBaseModel`` from ``adcp.types.base``, so the word that reaches this namespace
+#: through ``registry`` is not thereby the vendored module's subject.
+_VENDORED = f"{__name__}.registry"
+
+
+def _decided(name: str, value: object) -> object:
+    """``value``, unless it is the VENDORED module's class for a word a DOMAIN path owns.
+
+    **ONE WORD, ONE SUBJECT, AND THE SCHEMA'S OWNS IT** -- the owner's ruling of 2026-11-18,
+    stated in full in this module's own docstring and measured in ``FINDINGS-sixwords.md``.
+    Where ``adcp.types.registry`` and a document's class (or the SDK's own ``adcp.core``,
+    re-exported at the ``core`` domain path) answer to one word, the flat spelling is the
+    schema subject's and the vendored class keeps ``adcp.types.registry.<word>``.
+
+    **SAID AT EVERY LAYER AND NOT AT ONE, WHICH IS WHY IT IS NOT AN ORDERING.**  The ten
+    contested words entered this namespace at TWO layers -- ``adcp.types._restored`` offers
+    150 of ``registry``'s words, and the generated ``adcp.types.legacy_names`` binds 148 of
+    them -- so moving one consult ahead of another fixed three words and left seven, and a
+    later layer would have re-opened whichever three it fixed.  Screening what a layer
+    ANSWERS covers every layer that exists and every one that is added.
+
+    It costs nothing for a word nothing vendored answers: the first line is a ``__module__``
+    comparison, and :func:`_domain_subjects` is reached only for a word this module is about
+    to answer with the vendored module's own class.
+    """
+    if getattr(value, "__module__", None) != _VENDORED:
+        return value
+    owned = _domain_subjects((name,)).get(name)
+    return value if owned is None else owned
+
+
+def _domain_paths() -> tuple[str, ...]:
+    """The DOMAIN names, read off the compiler's own ``_surface`` package.
+
+    Derived and never listed: a domain added upstream is a directory the compiler writes, and
+    the public path for it is ``adcp.types.<domain>`` (this module's own docstring).  The
+    private children of that package -- ``_flat`` above all -- are excluded by their leading
+    underscore.
+
+    **ITS ABSENCE IS NOT AN ERROR ON THIS PACKAGE**, for :func:`_flat_module`'s reason: a tree
+    that has not run the compiler must still import, and the degradation that is correct is
+    "no word has a domain owner", which leaves every flat answer exactly as it was.
+    """
+    import importlib
+    import pkgutil
+
+    try:
+        surface = importlib.import_module(f"{__name__}._surface")
+    except ModuleNotFoundError:
+        return ()
+    return tuple(
+        sorted(
+            found.name
+            for found in pkgutil.iter_modules(surface.__path__)
+            if not found.name.startswith("_")
+        )
+    )
+
+
+def _domain_subjects(names: tuple[str, ...]) -> dict[str, object]:
+    """The subject a DOMAIN path gives each of ``names``, by word, where one does.
+
+    §1's one import path for a document's class is its domain module, so that is where the
+    question "does another subject already carry this word" is asked.  Two readings, because
+    a domain module publishes in two ways:
+
+    * ``adcp.types._surface._flat.__all__`` is the compiler's own cross-domain consolidation
+      of what the 23 domains ADVERTISE -- the fast and total answer for an emitted word, and
+      the one that already declines a word two domains publish (``__adcp_ambiguous__``);
+    * a domain module's own namespace, for a word it re-exports WITHOUT advertising.  The one
+      measured case is the ``core`` domain: upstream's 444 lines of hand-written SDK types are
+      restored at ``adcp.core`` and re-exported at ``adcp.types.core`` in the ``X as X`` form,
+      and deliberately not in its ``__all__`` -- which is the compiler's export set and no
+      place for a name with no document (``adcp/types/core.py``).  Seven of the ten contested
+      words are that case, so a reading of ``_flat`` alone would have answered three.
+
+    **AND IT NEVER RE-DECIDES AN AMBIGUITY.**  A word two domain paths bind to DIFFERENT
+    objects is dropped rather than resolved by scan order -- ``_flat.__adcp_ambiguous__``
+    declines such a word on purpose and "the first domain this loop reached" is not a subject.
+    The vendored answer then stands, which is the only outcome that adds no new binding.
+    """
+    import importlib
+
+    owned: dict[str, object] = {}
+    flat = _flat_module()
+    advertised = set(flat.__all__)
+    for name in names:
+        if name not in advertised:
+            continue
+        value = getattr(flat, name, None)
+        if value is not None and getattr(value, "__module__", None) != _VENDORED:
+            owned[name] = value
+    wanted = tuple(name for name in names if name not in owned)
+    if not wanted:
+        return owned
+    contested: set[str] = set()
+    for domain in _domain_paths():
+        try:
+            held = importlib.import_module(f"{__name__}.{domain}")
+        except ImportError:
+            continue
+        for name in wanted:
+            value = getattr(held, name, None)
+            if value is None or getattr(value, "__module__", None) == _VENDORED:
+                continue
+            if owned.setdefault(name, value) is not value:
+                contested.add(name)
+    for name in contested:
+        del owned[name]
+    return owned
 
 
 def _alias_module():
