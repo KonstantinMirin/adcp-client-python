@@ -129,14 +129,22 @@ import types
 #: the same byte-identity reading as the other twelve, because provenance is the only question
 #: this tuple answers.
 #:
-#: **AND 150 OF ITS NAMES ARE OFFERED FLAT HERE WHERE UPSTREAM OFFERS THEM ONLY AT THE
-#: MODULE PATH, which is an open question and not a decision.**  Upstream's own machinery
-#: writes ``from adcp.types.registry import BrandActivity``, which works either way;
-#: whether ``adcp.types.BrandActivity`` should ALSO answer is a surface question nobody has
-#: ruled on.  The survey's recorded flat surface cannot settle it -- measured, that
+#: **AND 141 OF ITS NAMES ARE OFFERED FLAT HERE WHERE UPSTREAM OFFERS THEM ONLY AT THE
+#: MODULE PATH, which is still an open question and not a decision.**  Upstream's own
+#: machinery writes ``from adcp.types.registry import BrandActivity``, which works either
+#: way; whether ``adcp.types.BrandActivity`` should ALSO answer is a surface question nobody
+#: has ruled on.  The survey's recorded flat surface cannot settle it -- measured, that
 #: 939-name reading omits ``MEDIA_BUY_LEGACY_STATUS_VALUES``, which 95 of upstream's own
 #: test files import flat and which this module exists for, so it is a filtered population
 #: and not upstream's whole flat surface.
+#:
+#: **WHAT HAS BEEN RULED ON IS THE SUBSET WHERE THE WORD HAS TWO SUBJECTS, and it is 10 of
+#: the 151 rather than all of them** (:data:`VENDORED`, the owner's ruling of 2026-11-18).
+#: A word this module shares with a document's class or with the SDK's own ``adcp.core`` is
+#: the schema subject's flat, and is subtracted from this offer by :func:`_surface`; the 141
+#: nothing else claims are untouched, because "which subject owns a contested word" and
+#: "should an uncontested vendored word be flat at all" are two questions and only the first
+#: has an answer.
 #:
 #: ``projections`` and ``variants`` joined on `adcp-client-python-knnw`, and they are the
 #: first pair where one restore is the OTHER's only blocker.  ``projections`` is the file
@@ -209,6 +217,21 @@ STATED = {
     "to_account_response": "projections",
     "unwrap_enum_value": "media_buy_status_helpers",
 }
+
+
+#: The one entry of :data:`MODULES` whose classes are generated from an OPENAPI spec rather
+#: than hand-written by upstream: ``make regenerate-registry``'s output, VENDORED here because
+#: the spec it is generated from is not a document of the bundle this compiler compiles.
+#:
+#: **THE OWNER'S RULING OF 2026-11-18 IS ABOUT THIS WORD AND NOT ABOUT THIS FILE**
+#: (``FINDINGS-sixwords.md``): where this module and a document's class -- or the SDK's own
+#: ``adcp.core``, re-exported at the ``core`` domain path -- answer to ONE word, the SCHEMA
+#: subject owns the short flat spelling and the vendored class keeps
+#: ``adcp.types.registry.<word>``.  So this surface offers a word of this module's only where
+#: no domain path carries it, which is the subtraction :func:`_surface` ends with, and the
+#: 141 words nothing else claims are offered exactly as before.  The module is not shrunk,
+#: nothing is deleted, and the ruling costs a SPELLING rather than a type.
+VENDORED = "registry"
 
 
 def offered(module: types.ModuleType) -> dict[str, object]:
@@ -296,6 +319,29 @@ def _surface() -> dict[str, object]:
         for name in (*getattr(held, "__all__", ()), *getattr(held, "__adcp_flat_only__", {})):
             if name not in STATED:
                 found.pop(name, None)
+    # **AND A WORD THE VENDORED MODULE SHARES WITH A DOMAIN PATH IS NOT OFFERED HERE EITHER**
+    # -- :data:`VENDORED`'s ruling, said in the ``__all__`` and not only in the lookup, which
+    # is the arrangement the two clauses above already have.  The screen asks
+    # ``adcp.types._domain_subjects``, so this surface and ``adcp.types.__getattr__``'s own
+    # :func:`adcp.types._decided` answer ONE question in one place: a word this surface stops
+    # advertising is the same word that namespace stops answering from here, and the gate
+    # ``tests_emit/test_the_restored_flat_surface.py`` holds -- every name offered resolves
+    # flat to the object the restored module declared -- cannot split from the behaviour.
+    #
+    # ``STATED`` is excluded for its own reason and not for this one: upstream's own flat word
+    # is upstream's statement to make, and of the eight only ``BrandSource`` is this module's
+    # at all -- measured, no domain path carries that word, so the clause decides nothing
+    # today and is written for the word that moves into one of these files later.
+    vendored = f"{__package__}.{VENDORED}"
+    contested = tuple(
+        name
+        for name, value in found.items()
+        if name not in STATED and getattr(value, "__module__", None) == vendored
+    )
+    if contested:
+        facade = importlib.import_module(__package__)
+        for name in facade._domain_subjects(contested):
+            found.pop(name, None)
     return found
 
 
