@@ -17,6 +17,16 @@ stability.
 * :func:`create_mcp_webhook_payload` / :func:`create_a2a_webhook_payload`
   plus :func:`get_adcp_signed_headers_for_webhook` — low-level path for
   callers who need full control over serialization, headers, or retry logic.
+
+**Reading a received ``result``**
+
+* :func:`resolve_result` — the typed branch the envelope's
+  ``(task_type, status)`` pair names, from :mod:`adcp.webhook_result`.
+  ``core/async-response-data.json`` is a 42-branch untagged union, 15 of whose
+  branches the empty object satisfies, and its own description says *"callers
+  MUST also validate a terminal result against that task or event's specific
+  schema"*. This is that MUST. Prefer it over
+  :func:`extract_webhook_result_data`, which returns the raw dict.
 """
 
 from __future__ import annotations
@@ -78,6 +88,13 @@ from adcp.webhook_receiver import (
     WebhookPayload,
     WebhookReceiver,
     WebhookReceiverConfig,
+)
+from adcp.webhook_result import (
+    Resolution,
+    WebhookResultUnresolvedError,
+    resolution_table,
+    resolve_result,
+    result_model,
 )
 from adcp.webhook_transport_hooks import TransportHook, apply_hooks
 
@@ -2201,6 +2218,12 @@ __all__ = [
     "WebhookReceiverConfig",
     # Receiver — payload extraction (legacy helper)
     "extract_webhook_result_data",
+    # Receiver — the typed `result` the envelope's (task_type, status) names
+    "Resolution",
+    "WebhookResultUnresolvedError",
+    "resolution_table",
+    "resolve_result",
+    "result_model",
     # Dedup / idempotency backends (re-exported so one import root suffices)
     "MemoryBackend",
     "WebhookDedupStore",
