@@ -54,7 +54,7 @@ from pathlib import Path
 from typing import Any
 
 from adcp.types._base import KINDS, NARROWED, SchemaRef, schema_at
-from codegen import bundle, catalogue, harness, keywords, patch, refusal
+from codegen import bundle, catalogue, facade, harness, keywords, patch, refusal
 from codegen.emit import PACKAGE, TREE, emit, write
 from codegen.verify import witness
 
@@ -128,9 +128,7 @@ def graded_rows(
         #: never computed anything.  In a per-pair table, a check that computed nothing is
         #: a BLANK COLUMN."
         try:
-            holder = (
-                p.model if isinstance(p.model, type) else importlib.import_module(p.module)
-            )
+            holder = p.model if isinstance(p.model, type) else importlib.import_module(p.module)
             #: **``module=`` IS WHICH TREE, and without it this run graded the tree it
             #: wrote against the records that were INSTALLED** (``adcp-client-python-ir3l``).
             #: ``schemas.__path__`` is bound to ``tree`` above so the MODULES come from
@@ -275,9 +273,7 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
     #: this reading moves 0 of 1,054.  ``harness.stated_instances`` is handed in because
     #: ``examples`` is a SOURCE OF INSTANCES and an admitted key alone would drop it; §9
     #: forbids the catalogue to the verifier, so the screen travels as an argument.
-    identities = catalogue.admitted_identities(
-        bundle_dir, stated=harness.stated_instances
-    )
+    identities = catalogue.admitted_identities(bundle_dir, stated=harness.stated_instances)
     formats = harness.FORMAT_STRATEGIES
 
     def identity_of(document: str, pointer: str) -> dict:
@@ -339,9 +335,7 @@ def grade(tree: Path, package: Path | None, bundle_dir: Path) -> tuple[str, int]
         harness.verdict_row(None, None, name=name, model="-", error=f"unimportable module {why}")
         for name, why in sorted(unimportable.items())
     ]
-    rows += graded_rows(
-        found, identity_of=identity_of, construction=construction, formats=formats
-    )
+    rows += graded_rows(found, identity_of=identity_of, construction=construction, formats=formats)
     return harness.verdict_table(rows), len(rows)
 
 
@@ -404,9 +398,32 @@ def main(argv: list[str] | None = None) -> int:
     write(out, ns.tree, ns.package)
     if ns.package is None:
         print(
-            f"not written: {', '.join(sorted(out.beside))} "
+            f"not written: {', '.join(sorted(out.beside))}, {facade.MODULE} "
             f"(D5's alias module is a whole-run artifact; pass --package to write it)"
         )
+    else:
+        # **THE LAZY FACADE'S ``__all__``, WRITTEN RATHER THAN DERIVED ON ACCESS** (the
+        # owner's ruling of 2026-11-19; ``codegen.facade``).  Here and not in ``write``
+        # because of what the text is a function of: five of the six layers the list unions
+        # are ``survey/``'s output and not the compiler's, so the facade is a function of
+        # the committed PACKAGE and not of the bundle -- and ``write``'s output is the one
+        # thing ``test_the_committed_tree_is_what_a_fresh_run_emits`` compares byte for
+        # byte as ``f(bundle, emitter, compiler)``.  Putting it there would put a committed
+        # artifact on the emission's input side.
+        #
+        # **AFTER ``write`` AND NOT BEFORE, which is the whole of the ordering contract.**
+        # ``facade.words`` reads ``_surface/_flat.py`` through an import, and that file is
+        # this run's output -- written one line up.  Reading it first would carry the
+        # PREVIOUS run's 3,942 words into this run's facade, and nothing downstream would
+        # say so.
+        #
+        # Gated on ``--package`` for ``write``'s own reason, said again because the failure
+        # is the same shape: ``_flat`` is rewritten from whatever documents a run named, so
+        # a one-document run leaves a short one behind and this list would be short with it.
+        advertised = facade.words()
+        path = ns.package / facade.MODULE
+        path.write_text(facade.module(advertised))
+        print(f"facade: {path} advertises {len(advertised)} words as a literal __all__")
     # Section 5's ``default`` row says "dropped and REPORTED", and this line is the
     # report.  Printed BEFORE the refusals, because a drop is a fact about a document
     # this run EMITTED: a reader scanning the refusals for a document's name would not
