@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, ParamSpec, TypedDict, TypeVar, cast
 from uuid import uuid4
 
 from a2a.types import Task, TaskStatusUpdateEvent
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel, RootModel, TypeAdapter, ValidationError
 
 if TYPE_CHECKING:
     import httpx
@@ -449,6 +449,11 @@ from adcp.types.legacy import (
 from adcp.utils.operation_id import create_operation_id
 from adcp.validation.client_hooks import ValidationHookConfig
 from adcp.validation.version import resolve_bundle_key
+from adcp.webhook_result import (
+    UNION_DOCUMENT,
+    WebhookResultUnresolvedError,
+    resolve_result,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -725,6 +730,149 @@ def _resolve_server_version(pin: str | None) -> str | None:
             stacklevel=3,
         )
     return normalized
+
+
+#: The two spellings of a v1 format identity. ``core/format-id.json`` addresses a
+#: format as a structured ``{agent_url, id}``; ``format_id`` carries one of those
+#: and ``format_ids`` an array of them.
+_LEGACY_IDENTITY_KEYS = frozenset({"format_id", "format_ids"})
+
+#: Application-owned bags that a document states as opaque, and that
+#: :mod:`adcp.canonical_formats.dialect` already refuses to read creative identity
+#: out of: *"echoed context and vendor extensions must not influence
+#: creative-dialect negotiation merely because they happen to contain
+#: format-shaped data."* The same reading applies to sanitization — what an
+#: adopter echoes through ``context``/``ext`` is not this SDK's protocol surface,
+#: so it is neither evidence nor something to edit.
+_OPAQUE_CALLBACK_KEYS = frozenset({"context", "ext"})
+
+
+def _states_legacy_identity(value: Any) -> bool:
+    """Whether ``value`` carries a v1 format identity anywhere outside an opaque bag.
+
+    The gate on the sanitization below, and deliberately cheap: resolving a
+    callback to its branch is only worth doing — and only *safe* to do, because
+    a pair naming no branch is a refusal — when there is a legacy identity to
+    resolve the shape for. Measured on the 3.2 bundle, 66 of the 153 named
+    ``(task_type, status)`` pairs name a schema the webhook union does not
+    contain and ``canceled``/``auth-required``/``unknown`` name nothing for any
+    of the 38 task types, so an unconditional resolution would turn every such
+    callback into an error for no gain.
+
+    **The KEY is the identity and its value is not consulted**, which is where
+    this parts company with ``dialect._schema_evidence``'s truthiness test. That
+    function asks which dialect a payload is written in, and an empty
+    ``format_ids`` is no evidence of one. This asks whether a v1 addressing field
+    is present on a surface that does not address formats that way, and
+    ``format_ids: []`` is present.
+    """
+    if isinstance(value, Mapping):
+        for key, item in value.items():
+            if key in _OPAQUE_CALLBACK_KEYS:
+                continue
+            if key in _LEGACY_IDENTITY_KEYS:
+                return True
+            if _states_legacy_identity(item):
+                return True
+        return False
+    if isinstance(value, (list, tuple)):
+        return any(_states_legacy_identity(item) for item in value)
+    return False
+
+
+def _without_unstated_legacy_identity(model: BaseModel, dropped: list[str], path: str = "") -> Any:
+    """``model`` dumped, less every legacy identity its branch does not STATE.
+
+    **THE BRANCH IS WHAT SAYS WHICH KEYS ARE THE DOCUMENT'S.** A resolved branch
+    separates its payload into properties the document declares and extras it
+    admitted under ``additionalProperties: true``, and the two are not the same
+    subject:
+
+    * a **stated** property is the document's own field — seven documents state
+      ``format_id``/``format_ids`` as ``deprecated: true``, and ``deprecated`` is
+      metadata and not absence, so what the document states stays. Projecting it
+      to ``format_kind`` is the completed path's job, through the projector this
+      walk deliberately does not duplicate;
+    * an **unstated** extra is not a property of the branch at all. Dropping it
+      suppresses nothing, because there is no declaration to suppress, and the
+      canonical-only surface does not address a format by a v1 id.
+
+    Measured on the 3.2 bundle, **none of the 87 resolvable branch classes states
+    either key at its top level**, which is exactly why the leak this repairs is
+    a top-level one: the union hands back a vacuous branch with
+    ``extra='allow'``, so a ``format_id`` sits beside the progress fields rather
+    than inside the named collection the projector iterates.
+
+    ``dropped`` collects the paths removed, so the result can say what it did
+    rather than quietly shrinking the payload.
+
+    **No ``exclude_none`` here**, deliberately:
+    :meth:`adcp.types.base.AdCPBaseModel.model_dump` records that excluding by
+    MODEL left a property the document REQUIRES with no way to keep a ``null``,
+    and dumped eight payloads their own documents refuse on ``required``. The
+    omission is the FIELD's — ``OmittedNotNull``/``OmittedWhenNone`` where the
+    document admits it — so the plain dump is already the right shape and a
+    second rule applied over the top of it would be the measured mistake again.
+    """
+    if isinstance(model, RootModel):
+        return _pruned_stated_value(model.root, model.model_dump(mode="json"), dropped, path)
+    body = model.model_dump(mode="json")
+    stated = type(model).model_fields
+    for key, value in list(body.items()):
+        where = f"{path}.{key}" if path else key
+        if key in stated:
+            body[key] = _pruned_stated_value(getattr(model, key, None), value, dropped, where)
+        elif key in _LEGACY_IDENTITY_KEYS:
+            del body[key]
+            dropped.append(where)
+        else:
+            body[key] = _pruned_unstated_value(value, dropped, where)
+    return body
+
+
+def _pruned_unstated_value(value: Any, dropped: list[str], path: str) -> Any:
+    """``value`` from inside an unstated extra, less every legacy identity in it.
+
+    The whole subtree arrived under ``additionalProperties: true``, so no
+    document declares anything in it at any depth.
+    """
+    if isinstance(value, dict):
+        out: dict[str, Any] = {}
+        for key, item in value.items():
+            where = f"{path}.{key}"
+            if key in _LEGACY_IDENTITY_KEYS:
+                dropped.append(where)
+                continue
+            out[key] = _pruned_unstated_value(item, dropped, where)
+        return out
+    if isinstance(value, list):
+        return [
+            _pruned_unstated_value(item, dropped, f"{path}[{index}]")
+            for index, item in enumerate(value)
+        ]
+    return value
+
+
+def _pruned_stated_value(child: Any, dumped: Any, dropped: list[str], path: str) -> Any:
+    """``dumped`` with the stated/unstated split applied to any nested model.
+
+    Descends only where there is a model to read stated-ness off. A stated field
+    holding plain data — ``context``, ``ext``, anything the document types as
+    opaque — is the document's own field and is returned untouched.
+    """
+    if isinstance(child, BaseModel):
+        return _without_unstated_legacy_identity(child, dropped, path)
+    if isinstance(child, (list, tuple)) and isinstance(dumped, list) and len(child) == len(dumped):
+        return [
+            _pruned_stated_value(item, dumped[index], dropped, f"{path}[{index}]")
+            for index, item in enumerate(child)
+        ]
+    if isinstance(child, Mapping) and isinstance(dumped, dict):
+        return {
+            key: _pruned_stated_value(child.get(key), item, dropped, f"{path}.{key}")
+            for key, item in dumped.items()
+        }
+    return dumped
 
 
 class ADCPClient:
@@ -6274,6 +6422,108 @@ class ADCPClient:
 
         return hmac.compare_digest(signature, expected_signature)
 
+    def _sanitized_callback_result(
+        self,
+        result: Any,
+        *,
+        task_type: str,
+        status: GeneratedTaskStatus,
+        preserve_legacy_identity: bool,
+    ) -> tuple[Any, list[str], str | None]:
+        """``result`` with its legacy identity read against the branch it belongs to.
+
+        **THE SANITIZER IS NOT BROKEN; IT WAS BEING HANDED THE WRONG SHAPE.**
+        :meth:`_canonicalize_format_read_result` pops ``format_id`` and projects
+        it to ``format_kind`` correctly, but it iterates items INSIDE a named
+        collection. ``core/async-response-data.json`` is a 42-branch untagged
+        ``anyOf`` whose empty object satisfies 15 of those branches, so a bare
+        ``TaskResult[AdcpAsyncResponseData]`` validation hands back whichever
+        vacuous branch comes first — ``GetProductsAsyncWorking``, which requires
+        nothing and declares ``extra='allow'``. The payload's ``format_id`` lands
+        at the top level of ``data`` as an admitted extra and the projector's loop
+        never reaches it. The emission is faithful to a document that cannot
+        discriminate (``adcontextprotocol/adcp#8964``); the fix is on this side of
+        the wire, and the document itself states it:
+
+            Because this shared webhook union is not tagged with the originating
+            task type, callers MUST also validate a terminal result against that
+            task or event's specific schema.
+
+        :func:`adcp.webhook_result.resolve_result` is that second validation, and
+        it reads ``task_type`` and ``status`` — both REQUIRED members of
+        ``core/mcp-webhook-payload.json``. This is the boundary where the pair is
+        still in hand: :meth:`_parse_webhook_result` carries both as parameters,
+        for MCP off the authenticated envelope and for A2A off the routed task
+        type and the mapped ``status.state``. It cannot move into
+        :meth:`_canonicalize_format_read_result`, because two of that method's
+        four callers are the synchronous ``list_creatives`` and
+        ``get_creative_delivery`` paths, which have no envelope and no business
+        carrying one — their response type is named by the call site instead.
+
+        Returns ``(body, dropped, refusal)``:
+
+        * ``(result, [], None)`` — nothing to sanitize, and nothing resolved
+          either. The legacy surface preserves identity on purpose, and a
+          canonical payload has no v1 identity to place;
+        * ``(body, dropped, None)`` — resolved, and ``dropped`` names every
+          unstated legacy identity removed;
+        * ``(None, [], refusal)`` — **the pair named no branch, or the payload
+          does not satisfy the one it named.** Both are reachable and neither may
+          become a silent unsanitized passthrough, so the caller reports the
+          refusal instead of returning data it could not read:
+
+          - ``WebhookResultUnresolvedError`` covers 66 of the 153 named pairs
+            (a schema the union does not contain) plus every pair the table does
+            not name at all — ``canceled``, ``auth-required`` and ``unknown`` for
+            all 38 task types;
+          - ``ValidationError`` is a payload disagreeing with its own envelope,
+            which is what ``(get_products, failed)`` carrying only a ``format_id``
+            is: ``media-buy/get-products-response.json`` requires ``status``
+            through ``core/protocol-envelope.json``.
+
+          Guessing instead would mean picking one of the 15 vacuous branches,
+          which is the behaviour being replaced, and walking the payload to delete
+          every ``format_id`` blind is the suppression this repository removed on
+          purpose — seven documents STATE those fields.
+
+        ``resolve_result`` also returns ``None`` where the envelope carries no
+        ``result`` at all (*"canceled tasks may omit it"*). That cannot be reached
+        from here, because the gate above requires a legacy identity and so a
+        ``result`` to carry it, but it is handled as a refusal rather than trusted
+        not to happen: the one thing it must not do is fall through to the
+        unresolved payload.
+        """
+        if preserve_legacy_identity or not _states_legacy_identity(result):
+            return result, [], None
+        try:
+            branch = resolve_result({"task_type": task_type, "status": status, "result": result})
+        except WebhookResultUnresolvedError as exc:
+            return None, [], f"Cannot sanitize {task_type} callback: {exc}"
+        except ValidationError as exc:
+            return (
+                None,
+                [],
+                f"{task_type} callback with status={getattr(status, 'value', status)!r} carries "
+                f"legacy creative identity and does not satisfy the branch of {UNION_DOCUMENT} "
+                f"its envelope names, so it cannot be projected onto the canonical surface: "
+                f"{exc}",
+            )
+        if branch is None:
+            return (
+                None,
+                [],
+                f"{task_type} callback with status={getattr(status, 'value', status)!r} carries "
+                "legacy creative identity but states no result to resolve it against",
+            )
+        dropped: list[str] = []
+        body = _without_unstated_legacy_identity(branch, dropped)
+        # Handed back as a mapping and not as ``branch``: the union's branch
+        # classes SUBCLASS the document root ``resolve_result`` validates
+        # against, so ``TaskResult[AdcpAsyncResponseData]`` refuses the root
+        # instance and accepts the mapping, re-validating it into the same
+        # document's branch position.
+        return body, dropped, None
+
     def _parse_webhook_result(
         self,
         task_id: str,
@@ -6625,9 +6875,31 @@ class ADCPClient:
         }
         if task_type == "refine_proposals" and isinstance(result, Mapping):
             fallback_metadata[WIRE_RESPONSE_METADATA_KEY] = wire_result
+
+        # Every canonicalizer above is gated on ``status == completed``, so this
+        # is the only return a ``working``, ``submitted``, ``input-required`` or
+        # ``failed`` callback reaches -- and the one an unparseable ``completed``
+        # one falls through to. Resolve the result to its branch before it is
+        # placed, so the shape is read off the document the envelope names rather
+        # than off whichever vacuous branch the untagged union accepts.
+        sanitized, dropped, refusal = self._sanitized_callback_result(
+            result,
+            task_type=task_type,
+            status=status,
+            preserve_legacy_identity=preserve_legacy_identity,
+        )
+        if refusal is not None:
+            return TaskResult[AdcpAsyncResponseData](
+                status=task_status,
+                success=False,
+                error=refusal,
+                metadata=fallback_metadata,
+            )
+        if dropped:
+            fallback_metadata["legacy_identity"] = {"dropped": dropped}
         return TaskResult[AdcpAsyncResponseData](
             status=task_status,
-            data=result,
+            data=sanitized,
             success=status == GeneratedTaskStatus.completed,
             error=error_message,
             metadata=fallback_metadata,
