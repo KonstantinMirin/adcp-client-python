@@ -159,11 +159,74 @@ The two shapes available to the owner, neither taken here:
    document saying the caller may not omit it. That is an argument the owner has not been
    shown, and it reverses part of a ruling, so it is not one to take in a lane.
 
-## 3. The numbers
+## 3. `tests_emit/test_refuses_check.py`'s 10: a DIFFERENT cause, and left alone
+
+**One fix does not close all twelve. It closes one of them.** Asked whether the 10 are the
+mechanism this lane is on, the answer is no, and it is measured rather than argued:
+
+**THE 10 FAIL IDENTICALLY WITH BOTH OF THE PINNED DEFAULT'S `codegen/` HALVES REVERTED.**
+`git diff 27192ec6d..HEAD -- codegen/` is exactly two functions — `harness.the_marker_declares`
+(plus its `pins_default` import) and `render._field`'s `pins` flag. With both files checked
+out at `27192ec6d`, the commit where `test_union_dispatch.py` is 15 passed,
+`tests_emit/test_refuses_check.py` is **10 failed, 23 passed** — the same ten node ids. The
+test side cannot have moved either: `git diff --stat 27192ec6d..HEAD` is EMPTY for
+`tests_emit/test_refuses_check.py`, `tests_emit/test_emit.py` and `codegen/verify/witness.py`.
+So all ten were red at the green commit, and the pinned default is not in their history.
+
+They are two causes, neither of them a refusal losing its position:
+
+**(1) Nine of the ten: a fixture naming apparatus that was deleted on 2026-11-11.**
+`AttributeError: module 'codegen.harness' has no attribute 'Fixtures'`, raised at
+`tests_emit/test_emit.py:557` before any class is built or any payload offered.
+`21c371d37` *"delete(apparatus): the construction grades 2,608 of 2,608, and there is no
+budget"* took 2,194 lines out of `harness.py` including that class — *"The corpus branch, the
+examples branch and the draw branch are gone with their parameters"* — and
+`tests_emit/test_emit.py`'s `fixtures()` still calls it. Measured, it is the ONLY name in that
+call that is missing: `fixtured`, `FORMAT_STRATEGIES`, `conforms` all still resolve. This is a
+stale test-side fixture in another lane's file and it is not mine to repoint.
+
+**(2) One of the ten: `check_refuses`'s `entered` filter asks a different question than the
+reason it deletes.** `test_a_conditional_no_value_was_offered_for_is_not_a_pass` fails at
+`assert result.unreached == unreached`, with `()` where
+`harness.unreached_conditionals` — asked directly, two lines earlier in the same test, and
+passing — answers
+`('the instance is outside the region {"required": ["authentication"]} selects and the node
+states no else, so no arm is in force and no value was offered',)`. The reason is built and
+then dropped by `codegen/harness.py::check_refuses`:
+
+```python
+entered = _entered_conditionals(schema, instance, validator_cls=cls)
+res.unreached = tuple(r for r in res.unreached if not any(k in r for k in entered))
+```
+
+The two functions ask different things. `unreached_conditionals(schema, instance)` asks
+whether **the drawn instance** sits outside the conditional's region — a fact about the draw,
+which is what the `absent` verdict is about. `_entered_conditionals(schema, instance)` asks
+whether **a purpose-built value** can put the conditional in force — a fact about the
+builder's reach over the node, and it ignores its own `instance` argument when it answers.
+Measured on `WVOD_SHAPE` with `{"subscriber_id": "s", "event_types": ["capabilities.changed"]}`:
+`unreached_conditionals` names the `authentication` boundary, `_entered_conditionals` returns
+BOTH conditions, the filter erases the reason, and `_undeclared_verdict` reads `pass` where
+the row exists to make it read `absent:1_of_2_conditionals_unreached`.
+
+**And it is class-independent, which is what rules the pinned default out on its own.**
+Both functions take `(schema, instance)` and read no class; and the class this row grades is
+`CarriesWhatWasOffered`, a plain `pydantic.BaseModel` declared in the test body, so
+`AdCPBaseModel._supply_the_pins_the_document_states` — where the pin is folded in — is not
+even in its MRO.
+
+So (2) is a real defect, in a file this lane may write, and it is NOT widened into: a filter
+conflating the builder's reach with the draw's position is one fix, the row selection inside
+one refusal's error list is another, and the only thing they share is that an empty tuple was
+reported. Shape is not cause. It wants its own row, its own measurement of how many of the
+326 `absent` pairs it moves, and a lane that is not holding a ruling open.
+
+## 4. The numbers
 
 | | before | after |
 |---|---|---|
 | `tests_emit/test_union_dispatch.py` | 2 failed, 13 passed | **1 failed, 14 passed** |
+| `tests_emit/test_refuses_check.py` | 10 failed, 23 passed | **10 failed, 23 passed** — §3, a different cause, untouched |
 | `make gate` | 7 failed / 2563 passed of 2570 | **7 failed / 2563 passed of 2570** — unmoved |
 | `./check` | emitted 1059 / refused 0; approximated 805 facts in 239 documents | **identical** |
 | `make test` | 71 failed / 16125 passed / 2809 skipped / 0 errors | **71 / 16125 / 2809 / 0 — identical** |
