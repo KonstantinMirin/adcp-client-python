@@ -801,7 +801,7 @@ class ADCPClient:
                 required features before making task calls (e.g., sync_audiences requires
                 audience_targeting). Requires capabilities to have been fetched first.
             strict_idempotency: When True, verify the seller declared
-                ``adcp.idempotency.replay_ttl_seconds`` in capabilities before any
+                ``capabilities["adcp"]["idempotency"]["replay_ttl_seconds"]`` before any
                 mutating call. Fetches capabilities lazily on first use. Raises
                 ``IdempotencyUnsupportedError`` if the declaration is missing —
                 sellers that don't declare it provide no retry-safety guarantee
@@ -1580,7 +1580,8 @@ class ADCPClient:
         Called before every mutating request when ``strict_idempotency=True``.
         Fetches capabilities on first invocation; subsequent calls are no-ops
         once the declaration has been observed. Raises
-        ``IdempotencyUnsupportedError`` when ``adcp.idempotency`` is missing,
+        ``IdempotencyUnsupportedError`` when the capabilities response
+        carries no ``capabilities["adcp"]["idempotency"]`` block,
         declares ``supported=False`` (seller does not dedupe — naive retry
         would double-process), or declares ``supported=True`` without a
         ``replay_ttl_seconds`` window.
@@ -2291,7 +2292,8 @@ class ADCPClient:
         # ``format_options``, or BOTH during the 3.x window.  ``deprecated`` is metadata and
         # not absence, so a client that refuses a field its documents state is narrower than
         # them, and the screen's whole subject -- a primary/legacy split of the model layer
-        # -- is gone with ``adcp.types.canonical_creative``.
+        # -- is gone with the hand-written canonical-creative module, which this
+        # release deletes (see :mod:`adcp.canonical_formats.dialect`).
         if self._creative_dialect(request) is CreativeDialect.CANONICAL:
             return params
         for collection in ("packages", "new_packages"):
@@ -6138,8 +6140,8 @@ class ADCPClient:
         Returns agent card information including:
         - Agent name, description, version
         - Protocol type (mcp or a2a)
-        - AdCP version (from extensions.adcp.adcp_version)
-        - Supported protocols (from extensions.adcp.protocols_supported)
+        - AdCP version (from ``extensions["adcp"]["adcp_version"]``)
+        - Supported protocols (from ``extensions["adcp"]["protocols_supported"]``)
         - Available tools/skills
 
         Returns:

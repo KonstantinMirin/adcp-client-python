@@ -631,8 +631,9 @@ def _log_advertised_tools(
 BUYER_RESPONSE_BYTE_BUDGET: int = 4 * 1024 * 1024
 
 #: The default JSON member bound an SDK 10 buyer applies to one agent
-#: response after the byte budget (``adcp._json_bounds.MAX_JSON_MEMBERS``
-#: there: the 4 MiB budget at eight bytes per member; 10.0.0b0 and b1
+#: response after the byte budget (the SDK 10 line's own member bound,
+#: which this line does not carry: the 4 MiB budget at eight bytes per
+#: member; 10.0.0b0 and b1
 #: enforced 100,000). A ``tools/list`` is read through the same bound as a
 #: tool result, and the MCP client lists tools before it calls one, so a
 #: listing over this bound fails *every* tool call, not just discovery
@@ -1278,7 +1279,7 @@ def serve(
             applied to MCP, A2A, and ``transport="both"`` legs from the
             same source of truth. Drives MCP's
             :class:`~adcp.server.auth.BearerTokenAuthMiddleware` and
-            A2A's :class:`~adcp.server.auth.BearerTokenContextBuilder`.
+            A2A's :class:`~adcp.server.auth.A2ABearerAuthMiddleware`.
             On A2A, ``/.well-known/agent-card.json`` stays publicly
             accessible per A2A spec §4.1 — the agent-card route is
             registered separately and never invokes the builder. On

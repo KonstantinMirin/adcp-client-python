@@ -54,8 +54,8 @@ class RefinementOutcome:
     NOT echo ``scope``, ``product_id``, or ``proposal_id`` manually.
 
     :param status: ``'applied'``, ``'partial'``, or ``'unable'`` per the
-        wire enum (see :class:`adcp.types.domains.bundled.media_buy`'s
-        ``RefinementApplied.status``).
+        wire enum (see :class:`~adcp.types.RefinementApplied1`'s ``status``,
+        and its ``RefinementApplied2``/``RefinementApplied3`` siblings).
     :param notes: Adopter's explanation; recommended when status is
         ``'partial'`` or ``'unable'``.
     """

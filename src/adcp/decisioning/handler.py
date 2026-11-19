@@ -1936,7 +1936,7 @@ class PlatformHandler(ADCPHandler[ToolContext]):
 
         Auto-derives:
 
-        * ``adcp.idempotency`` from
+        * ``capabilities["adcp"]["idempotency"]`` from
           :attr:`DecisioningCapabilities.adcp` (when set) or defaults
           to ``{"supported": False}`` so the response stays spec-valid.
         * ``supported_protocols`` from

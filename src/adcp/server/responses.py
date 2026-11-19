@@ -218,8 +218,8 @@ def _value(value: Any) -> Any:
     """One item, serialized the way :func:`_serialize` does a list of them.
 
     This was ``_canonical_value``, and the word it has lost was the legacy-identity
-    screen: it compared the payload against
-    ``adcp.types.canonical_creative.strip_legacy_creative_identity`` of itself and refused
+    screen: it compared the payload against a legacy-identity strip of itself -- the
+    hand-written canonical-creative module's, deleted in this release -- and refused
     a response builder whose own document STATES ``format_id``/``format_ids`` as
     deprecated-but-present.  ``_serialize_canonical`` was that screen and nothing else on
     top of :func:`_serialize`, so it is gone rather than renamed.
@@ -307,7 +307,8 @@ def capabilities_response(
         sandbox: Whether this is a sandbox agent. Defaults to True.
         features: Additional feature flags.
         idempotency: Optional idempotency declaration, nested under
-            ``adcp.idempotency`` per AdCP #2315. Pass the output of
+            ``capabilities["adcp"]["idempotency"]`` per AdCP #2315. Pass the
+            output of
             :meth:`adcp.server.idempotency.IdempotencyStore.capability` here
             to declare the seller's ``replay_ttl_seconds``.
         compliance_testing: Optional top-level ``compliance_testing`` block
@@ -782,8 +783,8 @@ def build_creative_response(
     Single manifest matches BuildCreativeResponse1.
     List matches BuildCreativeResponse3 (multi-format).
     """
-    # ``core/creative-manifest.json``'s own class.  It was
-    # ``adcp.types.canonical_creative.CreativeManifest``, which subclassed this one and
+    # ``core/creative-manifest.json``'s own class.  It was the hand-written
+    # canonical-creative module's ``CreativeManifest``, which subclassed this one and
     # suppressed its ``format_id`` -- a field the document STATES, typed here as
     # ``FormatReferenceStructuredObject | None``.
     from adcp.types.core import CreativeManifest

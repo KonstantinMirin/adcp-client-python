@@ -1,7 +1,7 @@
 """Webhook creation, signing, and reception for AdCP agents.
 
-Single front door for both senders and receivers. Underlying modules in
-``adcp.signing.webhook_*`` and ``adcp.webhook_receiver`` are implementation
+Single front door for both senders and receivers. The ``webhook_*`` modules of
+:mod:`adcp.signing` and :mod:`adcp.webhook_receiver` are implementation
 details kept for internal organization — prefer the re-exports here for
 stability.
 

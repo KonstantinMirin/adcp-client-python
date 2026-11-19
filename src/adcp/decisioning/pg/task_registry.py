@@ -660,7 +660,7 @@ class PgTaskRegistry(_TaskLifecycleObservers):
 #: Backwards-compat alias. Renamed to :class:`PgTaskRegistry` in
 #: 4.4.0 to match the framework's ``Pg*`` convention shared with
 #: :class:`adcp.signing.PgReplayStore` and
-#: :class:`adcp.decisioning.PgBuyerAgentRegistry`. The old name keeps
+#: :class:`adcp.decisioning.pg.PgBuyerAgentRegistry`. The old name keeps
 #: working for one minor (4.4.x) and is removed in 4.5.0.
 PostgresTaskRegistry = PgTaskRegistry
 

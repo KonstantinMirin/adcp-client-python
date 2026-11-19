@@ -21,9 +21,9 @@ def _realize_lazy_exports() -> None:
     # same advertised surfaces before it patches datetime. Imports can introduce
     # additional lazy facades, so take fresh snapshots until the walk stabilizes.
     #
-    # A module can sit in sys.modules under more than one name: the deprecated
-    # ``adcp.types.generated_poc.*`` alias registers the canonical
-    # ``adcp.types.domains.*`` object under its old name, so the KEY is not the
+    # A module can sit in sys.modules under more than one name: the compatibility
+    # mirror :mod:`adcp.types.domains` registers the already-built
+    # ``adcp.types._schemas.*`` object under a second name, so the KEY is not the
     # object's ``__name__``. Mark the key the snapshot filtered on (so every pass
     # retires what it found) and walk each module object once.
     importlib.import_module("adcp.types")

@@ -34,7 +34,7 @@ class ProtocolAdapter(ABC):
         self.agent_config = agent_config
         # Optional hook; ADCPClient sets this when strict_idempotency is enabled.
         # Invoked before each mutating tool call to verify the seller declared
-        # adcp.idempotency.replay_ttl_seconds in capabilities. None = no check.
+        # capabilities["adcp"]["idempotency"]["replay_ttl_seconds"]. None = no check.
         self.idempotency_capability_check: Callable[[], Awaitable[None]] | None = None
         # Unique token for this adapter's owning client — used to scope
         # ``use_idempotency_key`` so a key pinned on one client does not bleed
@@ -406,8 +406,8 @@ class ProtocolAdapter(ABC):
 
         Returns agent card information including:
         - Agent name, description, version
-        - AdCP version (from extensions.adcp.adcp_version)
-        - Supported protocols (from extensions.adcp.protocols_supported)
+        - AdCP version (from ``extensions["adcp"]["adcp_version"]``)
+        - Supported protocols (from ``extensions["adcp"]["protocols_supported"]``)
         - Available tools/skills
 
         Returns:

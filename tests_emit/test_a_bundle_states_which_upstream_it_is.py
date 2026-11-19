@@ -59,31 +59,99 @@ the neighbouring one -- *a BUNDLE edit does not pass unnoticed* -- and it is key
 for the reason ``tests/provenance.py`` states: an acceptance-preserving rewrite is exactly
 the event that invalidates a measurement taken over these bytes, so the two keys must
 disagree about it and do.
+
+**AND THE SUBJECT IS THE BUNDLE A RUN GROUNDS ON, WHICH IS ONE DIRECTORY AND NOT EVERY
+DIRECTORY UNDER ``schemas/cache/``** (2026-11-19).  It was ``provenance.bundles()`` -- every
+directory in the cache -- and this checkout holds **31** of them, from ``2.5`` to
+``3.2.0-rc.7``, so the file reported **158 failures over 187 nodes**: 5 tests x 31 archives
+with no record, plus an assertion that bundle ``3.3`` exists, which it does not here.  Every
+one of those 155 was about a snapshot NOTHING COMPILES FROM.  Re-read the sentence this file
+is the instrument of: *a bundle grounds us only while its upstream state is recorded beside
+it*.  A bundle grounds us when an emission is derived from it, and exactly one is --
+``tests/fresh.py``'s ``PUBLISHED``, which ``./check``, ``./verify`` and
+``codegen/__main__.py`` each name as ``schemas/cache/3.2`` and hand to ``patch.for_build``.
+An archived rc nobody reads grounds nothing, so there is nothing for a record beside it to
+make true, and 155 reds were asking 31 directories to carry provenance for a claim none of
+them is party to.
+
+**WHY THIS IS A NARROWING OF THE SUBJECT AND NOT A WEAKENING OF THE CHECK.**  Every
+assertion below is unchanged, and the one that can fail on a day nobody edits a record --
+:func:`test_the_digest_states_the_bundle_it_stands_beside` -- still compares bytes against
+the record for the bundle the 805 approximated facts were measured over.  What moved is the
+POPULATION, and it is still DERIVED rather than listed: it comes from ``fresh.PUBLISHED``,
+which is the one declaration of that bundle (``tests/test_the_bundle_a_module_reads.py``:
+"take the bundle from ``tests/fresh.py``, or add it to ``BY_DESIGN`` with the reason").  So
+a run that grounds on a different bundle moves this gate with it, which a list of names
+would not do -- and a 32nd archive copied into the cache now costs nothing, because it
+grounds nothing.
+
+**THE ONE RECORD THAT IS OWED, MEASURED, AND IT IS NOT WRITTEN HERE.**  There is no
+``schemas/cache/3.2.provenance.json`` on this branch at all: the gate and
+``tests/provenance.py`` arrived through the ``graft(types)`` commit and the records did not
+-- they sit on a non-ancestor branch (``0e1df5925``, "the record beside each bundle").  That
+branch's record is NOT transplantable and the measurement says why: it states 3.2.4,
+``documents: 1625`` and digest ``sha256:0b1e0178...``; this checkout's
+``schemas/cache/3.2`` is **3.2.7**, also 1,625 documents, and digests to
+``sha256:ac0f6b5d...``.  Copying the record over would be precisely what
+:func:`test_the_digest_states_the_bundle_it_stands_beside`'s own message forbids -- *"do not
+just paste the new digest"* -- and the fields that cannot be re-derived from this checkout
+are the ones that matter: the upstream commit the 3.2.7 artifact is read at, and the vendor
+command's input.  Both need the upstream clone.  So **6 of the 7 nodes below are RED and
+owed to whoever vendors the bundle**, and that is the whole of what this gate reports now.
 """
 
 from __future__ import annotations
 
 import re
 
+import fresh
 import provenance
 import pytest
 
-#: Parametrised over the bundles DISCOVERED beside the records, so a third bundle copied in
-#: with no record is a red in :func:`test_a_bundle_has_a_record_beside_it` rather than a
-#: directory no test mentions.
-BUNDLES = provenance.bundles()
+from codegen import patch
+
+#: **The bundle an emission is GROUNDED on, taken from the one declaration of it.**
+#:
+#: A list of one and not a walk of ``schemas/cache/``, for the reason in the module
+#: docstring: the walk's subject was every directory, and 31 of this checkout's 31 are
+#: archives that ground nothing.  ``provenance.bundles()``'s own argument against a listing
+#: -- "a gate that iterates a hard-coded pair of names is green the day a third bundle is
+#: copied in" -- was an argument about the discovered population being the subject.  It is
+#: not the subject; the run's own bundle is, and a third bundle copied in is not one.
+#:
+#: ``fresh.PUBLISHED`` and not ``fresh.BUNDLE``: the patched materialisation
+#: ``patch.for_build`` writes carries a record of this same form, written by ``patch`` and
+#: carrying this one's upstream state forward, and it is not under ``schemas/cache/`` --
+#: ``tests/test_a_patched_bundle_says_it_is_patched.py`` is its gate.  The fields a record
+#: here states -- an upstream commit, a vendor command -- are facts about the VENDORED copy,
+#: which is the only directory there is anything upstream to record about.
+BUNDLES = [fresh.PUBLISHED]
 NAMES = [b.name for b in BUNDLES]
 
 
-def test_the_cache_holds_at_least_the_two_bundles_the_goal_compares() -> None:
-    """The parametrisation has a non-empty subject, asserted and not assumed.
+def test_the_population_is_the_bundle_the_run_grounds_on() -> None:
+    """The parametrisation has a non-empty subject, asserted and not assumed, and it is
+    the right one.
 
     Every other test here is parametrised over :data:`BUNDLES`, and an empty parametrisation
     collects zero tests and reports success -- the failure mode that makes a gate over a
-    discovered population worthless.  The goal's own acceptance test is "verify that the
-    same is true for 3.3 schemas as it is for 3.2", so both names are required here by name.
+    derived population worthless.  So the population is required to be non-empty AND to be
+    the directory the run reads, which is the whole of what this file's subject now is.
+
+    It asserted ``{"3.2", "3.3"} <= set(NAMES)`` until 2026-11-19, against a walk of
+    ``schemas/cache/``.  ``3.3`` is not in this checkout, and the goal's "verify that the
+    same is true for 3.3 schemas as it is for 3.2" is graded where the second bundle is
+    declared -- ``fresh.SECOND`` -- by ``tests/test_the_second_bundle.py``, which is red on
+    that directory's absence and says so there.  Naming it here too put one missing bundle
+    into two files' failure counts and gave neither of them the fix.
     """
-    assert {"3.2", "3.3"} <= set(NAMES), NAMES
+    assert BUNDLES, "the population is empty, so every test below collects nothing"
+    assert BUNDLES == [fresh.PUBLISHED], BUNDLES
+    assert fresh.PUBLISHED.is_dir(), fresh.PUBLISHED
+    # The run really does ground on it: ``fresh.BUNDLE`` is this directory with the BUILD's
+    # patch sets applied, so a population that drifted off the run's bundle is a red here
+    # rather than a gate over a directory the emission has nothing to do with.
+    assert fresh.BUNDLE == patch.for_build(fresh.PUBLISHED), (fresh.BUNDLE, fresh.PUBLISHED)
 
 
 @pytest.mark.parametrize("bundle", BUNDLES, ids=NAMES)
@@ -183,4 +251,7 @@ def test_a_document_excepted_from_the_reproduction_claim_is_in_the_bundle(bundle
         assert exception["document"] in held, exception["document"]
         assert exception["reason"].strip()
     assert reproduction["of"] == record["documents"]
-    assert reproduction["documents_byte_identical"] + len(reproduction["exceptions"]) == reproduction["of"]
+    assert (
+        reproduction["documents_byte_identical"] + len(reproduction["exceptions"])
+        == reproduction["of"]
+    )

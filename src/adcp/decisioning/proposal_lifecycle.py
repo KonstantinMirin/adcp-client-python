@@ -176,7 +176,7 @@ def validate_capability_overlap(
 
     * ``pricing_models`` — checked against
       ``package.pricing_option_id`` resolved against the matching
-      :class:`~adcp.types.PricingOption.pricing_model`. (Adopter
+      :class:`~adcp.types.PricingOption`'s ``pricing_model``. (Adopter
       passes pre-resolved pricing models via the
       ``_resolved_pricing_model`` per-package extra; the validation
       reads it.)

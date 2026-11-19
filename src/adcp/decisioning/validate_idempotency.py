@@ -1,7 +1,7 @@
 """Boot-time validator: declared idempotency capability vs. wired decorator.
 
 Catches the silent-lie configuration: a platform that advertises
-``capabilities.adcp.idempotency.supported=True`` on the AdCP
+``capabilities["adcp"]["idempotency"]["supported"]=True`` on the AdCP
 ``get_adcp_capabilities`` response while never applying
 :meth:`adcp.server.idempotency.IdempotencyStore.wrap` to any handler
 method. Buyers reading the capabilities envelope assume retries are
@@ -35,7 +35,7 @@ from adcp.server.idempotency import is_wrapped
 
 
 def _idempotency_capability_supported(capabilities: Any) -> bool:
-    """Return True if ``capabilities.adcp.idempotency.supported`` is True."""
+    """Return True if ``capabilities["adcp"]["idempotency"]["supported"]`` is True."""
     if capabilities is None:
         return False
     adcp = getattr(capabilities, "adcp", None)
@@ -48,7 +48,8 @@ def _idempotency_capability_supported(capabilities: Any) -> bool:
 
 
 def idempotency_capability_supported(platform: Any) -> bool:
-    """Return True if ``platform.capabilities.adcp.idempotency.supported`` is True.
+    """Return True if the platform's
+    ``capabilities["adcp"]["idempotency"]["supported"]`` is True.
 
     Walks the three-level attribute chain defensively — adopters may set
     capabilities to ``None`` or omit nested fields entirely.

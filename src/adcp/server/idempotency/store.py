@@ -209,11 +209,11 @@ class IdempotencyStore:
     def capability(self) -> dict[str, Any]:
         """Return the capabilities fragment declaring this store's replay window.
 
-        Embed under ``capabilities.adcp.idempotency`` on the seller's
+        Embed under ``capabilities["adcp"]["idempotency"]`` on the seller's
         ``get_adcp_capabilities`` response. Buyers read this to reason about
         retry-safe windows (AdCP #2315)::
 
-            caps.adcp.idempotency = idempotency.capability()
+            caps["adcp"]["idempotency"] = idempotency.capability()
             # → {"supported": True, "replay_ttl_seconds": 86400}
 
         ``supported`` became REQUIRED in AdCP 3.0 GA — agents emitting only
