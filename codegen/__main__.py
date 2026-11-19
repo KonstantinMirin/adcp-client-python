@@ -420,10 +420,30 @@ def main(argv: list[str] | None = None) -> int:
         # Gated on ``--package`` for ``write``'s own reason, said again because the failure
         # is the same shape: ``_flat`` is rewritten from whatever documents a run named, so
         # a one-document run leaves a short one behind and this list would be short with it.
+        #
+        # **AND THE OWNER TABLE IS WRITTEN IN THE SAME BREATH, FOR THE SAME REASON ONE
+        # LEVEL DOWN** (the owner's ruling of 2026-11-19, ``adcp-client-python-690v``).
+        # ``__all__`` is the advertisement; ``facade.owners`` is where each word LIVES, so
+        # that resolving one name imports one module instead of the 1,327 ``compat`` pulls.
+        # It reads the same committed package this list does and is ordered after ``write``
+        # for the same reason: the rows name the modules of the tree written one line up.
         advertised = facade.words()
+        routing = facade.owners()
         path = ns.package / facade.MODULE
-        path.write_text(facade.module(advertised))
+        path.write_text(facade.module(advertised, routing))
         print(f"facade: {path} advertises {len(advertised)} words as a literal __all__")
+        print(
+            f"facade: {sum(len(w) for w in routing.owned.values())} words routed to "
+            f"{len(routing.owned)} owning modules, {len(routing.names_a_module)} naming a "
+            f"module of ours, {len(routing.spelled)} spelled otherwise there"
+        )
+        # **A WORD WITH NO OWNING MODULE IS A FINDING AND IS PRINTED AS ONE.**  The owner's
+        # ruling is "generate, don't derive", and a generator that guessed a module for a
+        # word two subjects answer to would be deriving in the worst place -- so
+        # ``facade.owners`` refuses it, the word keeps the chain's own answer, and the
+        # refusal is said here where the run's reader is.
+        for word, why in routing.refused.items():
+            print(f"unrouted {word}: {why}")
     # Section 5's ``default`` row says "dropped and REPORTED", and this line is the
     # report.  Printed BEFORE the refusals, because a drop is a fact about a document
     # this run EMITTED: a reader scanning the refusals for a document's name would not
