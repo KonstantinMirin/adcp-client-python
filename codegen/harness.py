@@ -1725,7 +1725,13 @@ class LivenessResult:
     #: more than it aimed at.
     violated: tuple[str, ...] = ()
     detail: str = ""
-    #: pass | schema_half_not_connected | model_error | no_payload
+    #: pass | schema_half_not_connected | model_error | no_payload | no_counterexample
+    #:
+    #: ``no_payload`` and ``no_counterexample`` are the two halves ONE outcome used to
+    #: hold, and they ask for opposite work: the first is this instrument failing to reach
+    #: a payload the document does refuse, the second is the document refusing NONE, so
+    #: there is nothing to reach.  :func:`asserts_nothing` is what tells them apart and
+    #: :func:`_refuses_verdict` renders the second as its own state.
     outcome: str = "unrun"
 
 
@@ -3199,6 +3205,206 @@ def the_marker_declares(instance: Any, candidate: Any, built: Any) -> bool:
     return candidate[key] is None and omits_null(field)
 
 
+def asserts_nothing(schema: Any) -> bool:
+    """Does this node state NOTHING about an instance, so that it REFUSES NOTHING.
+
+    **The question that separates an instrument defect from a property of the document**,
+    which ``refuses=absent:no_payload`` conflated: that cell said "the derivation found no
+    payload to offer" without saying whether one EXISTS, so a drawer that failed and a
+    document with no counterexample to find read identically.  Four documents of this
+    bundle are the second -- ``core/asset-group-vocabulary.json``,
+    ``core/format-shape-vocabulary.json``, ``creative/asset-types/index.json`` and
+    ``extensions/index.json`` -- and ``docs/plan/final-state.md`` reading 1's second clause
+    is **vacuously satisfied** at each: there is no value for the class to refuse, so the
+    class refusing none of them is the obligation met rather than unmeasured.
+
+    **DERIVED FROM THE EFFECT TABLE AND NOT FROM A LIST HERE** (``adcp-client-python-8cz3``).
+    :func:`codegen.keywords.declares` is the reading, and it is already the question this
+    one is: "does this key STATE something about an instance at this position", answered
+    by the keyword's own cell -- ``Effect.TYPE`` or ``Effect.RULE`` narrows an instance
+    (:data:`codegen.keywords.LOWERED`) and a ``NAME``, an ``ANNOTATION``, a ``FIELD`` fact
+    or ``NOTHING`` cannot (:data:`codegen.keywords.CARRIED`, whose own words are "the
+    EFFECTS a keyword can have without changing what a node ADMITS").  A key with NO ROW
+    declares, which is the direction that costs nothing: a keyword the bundle did not use
+    before could constrain anything, so a document carrying one is not vacuous here.
+
+    A hand-written keyword list beside this would be a second copy of that table and would
+    drift at the first keyword to join it -- which is measured and not hypothetical:
+    ``URL_FORMATS`` was such a list, ``email`` joined the bundle, and three shipped fields
+    accepted ``'!!NOT-VALID!!'`` for as long as the list was out of step.
+
+    **IT IS ``LOWERED`` AND NOT ``Effect.NOTHING``, which is the reading that looks
+    right and answers ZERO.**  ``effect is Effect.NOTHING`` over the root's keys calls
+    none of the 1,059 documents vacuous, and the four this function names are why:
+    ``core/asset-group-vocabulary.json``'s keys are ``$schema``, ``governance``,
+    ``lastUpdated``, ``version`` and ``vocabulary`` at ``NOTHING``, and then ``title`` at
+    ``NAME`` and ``description`` at ``ANNOTATION``.  A ``NAME`` is a symbol and an
+    ``ANNOTATION`` is a description; neither asserts anything about an instance, and a
+    test for ``NOTHING`` counts them as if they did.  The complement of :data:`LOWERED` is
+    the predicate -- which is :data:`CARRIED`, which is :func:`declares` -- so the reading
+    is the table's own and no second spelling of draft-07's vocabulary is needed here.
+
+    Asked at ``Position.ROOT`` because the node is being read as a whole instance's
+    document: the payload the refuses check offers is the WHOLE instance, so the position
+    the keywords are screened at is the one the instance occupies.
+
+    **AND ``$ref`` ASSERTS, WHICH IS THE WHOLE OF 4 AGAINST 5.**  An explicit restatement
+    of draft-07's assertion keywords answers FIVE over this bundle, and the fifth is
+    ``core/signal-pricing-option.json`` -- ``$schema``, ``title``, ``deprecated``,
+    ``description`` and a ``$ref`` to ``core/vendor-pricing-option.json``, a deliberate
+    alias document.  A list of draft-07's own assertion words does not contain ``$ref``,
+    so it reads that document as silent; the table does contain it, at
+    ``Effect.TYPE``/``Rung.TOP``, and the cell's own sentence is the argument -- "the
+    document's accepted set is the target's alone".  A node that refers refuses whatever
+    its target refuses, which is not nothing, and the measurement agrees: that pair reads
+    ``refuses=pass`` on a payload derived from the target and is not in the failing set
+    this work is about.  So the table's answer and the gate's agree at 4, and the omission
+    of ``$ref`` is the drift a restatement starts with rather than acquires.
+
+    ``True`` for ``{}``, which is correct and is the general case this is an instance of:
+    draft-07 admits every instance of the empty schema, so the empty conjunction over its
+    keys is vacuously "nothing asserted".  ``False`` for anything that is not a mapping --
+    a bare ``False`` schema refuses every instance and a bare ``True`` one is not the
+    shape any caller here holds -- which is the conservative direction: a node this
+    cannot read stays reported as the drawer's failure rather than claimed as the
+    document's silence.
+    """
+    if not isinstance(schema, Mapping):
+        return False
+    return not any(keywords.declares(key, Position.ROOT) for key in schema)
+
+
+def _outside_the_arm(arm: Any, instance: Any) -> Iterator[tuple[Any, str, str]]:
+    """Values that break ``arm``, BUILDING the path it speaks about where there is none.
+
+    :func:`_violating` with its one restriction lifted, and the restriction is the whole
+    difference: that function descends an arm's ``properties`` only "for the keys the
+    instance ALREADY CARRIES", because it is §8's REDUCTION and its cost argument is that
+    it draws nothing.  A consequent whose statements all sit under keys the instance does
+    not carry therefore yields nothing from it -- and
+    ``core/targeting-unknown-age-eligibility-constraint.json`` is exactly that shape: the
+    whole of its ``then`` is
+    ``properties/demographics/properties/age/properties/include_unknown: {const: false}``
+    and every one of those three keys is optional, so the least instance satisfying its
+    ``if`` is ``{"demographics": {}, "age_restriction": null}`` and there is no
+    ``include_unknown`` to perturb.
+
+    So the missing objects are created on the way down, and the leaf's own far side is
+    :func:`_far_side`'s as before.  That makes this a BUILD, which is sound here for the
+    one reason it is sound everywhere in this module: the claim is not made by the
+    derivation, it is made by ``conforms`` at the caller -- a candidate the document
+    ADMITS is dropped, so a path invented wrongly costs a screen and never an assertion
+    the document does not make.
+
+    Only the ARM's own declared keys are created, never a key of its own invention, so the
+    tree walked is the consequent's ``properties`` tree.  It terminates on that: each hop
+    hands on a strict sub-mapping of a finite record node, which is :func:`_violating`'s
+    second terminator and the total one here -- the instance is no longer a terminator,
+    because this walk no longer needs the instance to have a key to descend through.
+    """
+    if not isinstance(arm, Mapping):
+        return
+    facts = own_facts(arm)
+    yield from _far_side(facts, instance)
+    declared = facts.get("properties")
+    if not isinstance(declared, Mapping):
+        return
+    #: The object this level REBUILDS: the instance's own where it has one, and a fresh
+    #: one where it has none.  Rebuilding from ``{}`` rather than skipping is what reaches
+    #: an optional key, and the sibling keys the instance DID carry are kept at every
+    #: level above, so the candidate stays the admitted instance with one path changed.
+    here = instance if isinstance(instance, dict) else {}
+    for key, declaration in declared.items():
+        for candidate, keyword, how in _outside_the_arm(declaration, here.get(key)):
+            yield {**here, key: candidate}, keyword, f"at {key!r}, {how}"
+
+
+def _conditionally_refused(
+    schema: dict, *, validator_cls: Any = None
+) -> tuple[Any, str] | None:
+    """One payload a CONDITIONAL of this node refuses: inside the ``if``, outside the ``then``.
+
+    **The instrument gap this closes, stated as the gap it was** (``adcp-client-python-8cz3``).
+    ``core/targeting-unknown-age-eligibility-constraint.json`` and
+    ``core/targeting-verified-age-basis-constraint.json`` state ``if``/``then`` and nothing
+    else, so they REFUSE real payloads -- and :func:`refusing_payload`'s three
+    perturbations answered ``None`` at both, which the table then reported as
+    ``refuses=absent:no_payload``.  That cell was honest about the instrument and said
+    nothing about the documents; a ``vacuous`` cell here would have been the instrument
+    LYING about two documents that genuinely refuse something, which is why
+    :func:`asserts_nothing` is false at both (their ``if`` and ``then`` are RULE cells) and
+    this derivation is the repair rather than that one.
+
+    **A CONDITIONAL'S COUNTEREXAMPLE CANNOT BE A PERTURBATION OF AN ADMITTED INSTANCE,
+    which is why this builds.**  ``{"if": C, "then": T}`` refuses exactly the instances
+    that satisfy ``C`` and violate ``T``, so the witness has to be INSIDE ``C``'s region
+    -- and the instance the accepts check holds is typically outside it: measured on the
+    first of those two documents, the constructed instance is ``{}``-shaped, satisfies
+    neither ``required`` key of the ``if``, and puts no arm in force at all.  So the
+    region is entered on purpose, exactly as ``check_refuses`` already enters it
+    (:func:`_entered_conditionals`): ``least_instance([schema, condition])`` is the node
+    AND the ``if``, and a value it holds satisfies both by construction.
+
+    Two candidates come out of that, in this order:
+
+    1. **the entered value ITSELF**, where the document refuses it.  The builder satisfies
+       the node's unconditional keywords and the ``if``; it does not promise the
+       consequent, and where it cannot meet one the value it returns is already a
+       counterexample.  ``core/targeting-verified-age-basis-constraint.json`` is this
+       case: the ``then`` wants ``accepted_bases`` to ``contain`` ``"verified"``, the
+       builder's least array is ``[]``, and the document refuses the result as written.
+    2. **the entered value with the consequent broken at one of its own pointers**
+       (:func:`_outside_the_arm`).
+       ``core/targeting-unknown-age-eligibility-constraint.json`` is this case: the
+       entered value is ``{"demographics": {}, "age_restriction": null}``, which the
+       document ADMITS, and the candidate is it with
+       ``demographics.age.include_unknown`` set to a value its ``const: false`` is not.
+
+    **THE SCREEN IS THE WHOLE CLAIM, as everywhere else here**: ``conforms(schema, ...)``
+    has to answer ``False``, against the node as written and never against a mutation of
+    it.  An ``if`` the node's own keywords contradict names a region the document admits
+    nothing in, the builder declines, and this yields nothing -- which is a fact about the
+    document and leaves the cell reporting the instrument's reach rather than claiming a
+    refusal.
+
+    **IT TAKES NO INSTANCE**, unlike every other derivation in this family, and that is
+    the signature saying so: the accepted instance is what a reduction perturbs, and this
+    is the one derivation whose starting value is built rather than given.  Reached only
+    where the three reductions found nothing, so it costs one ``least_instance`` per
+    conditional at the pairs that had no payload at all and nothing at any other pair.
+    """
+    from codegen.verify import witness as _witness
+
+    cls = validator_cls or validator_for(schema)
+
+    def refused(candidate: Any) -> bool:
+        return conforms(schema, candidate, validator_cls=cls) is False
+
+    for triple in conditionals(schema):
+        condition = triple.get("if")
+        if not isinstance(condition, Mapping):
+            continue
+        entered = _witness.least_instance([schema, condition])
+        #: The builder's own answer is not taken on trust: it is asked to satisfy the
+        #: node AND the ``if``, and a value outside the ``if`` would make every candidate
+        #: below a statement about a region the conditional says nothing in.
+        if not entered.held:
+            continue
+        if conforms(condition, entered.value, validator_cls=None) is not True:
+            continue
+        shown = json.dumps(condition, sort_keys=True, default=str)[:120]
+        if refused(entered.value):
+            return entered.value, f"satisfies the if {shown} and the node refuses it as built"
+        which, arm = _arm_of(triple, entered.value, validator_cls=cls)
+        for candidate, keyword, how in _outside_the_arm(arm, entered.value):
+            if refused(candidate):
+                return candidate, (
+                    f"satisfies the if {shown}, and the {which} refuses it "
+                    f"on {keyword}: {how}"
+                )
+    return None
+
+
 def refusing_payload(
     schema: dict, instance: Any, *, validator_cls: Any = None
 ) -> tuple[Any, str] | None:
@@ -3210,21 +3416,38 @@ def refusing_payload(
     costs ``from_schema`` another canonicalisation of the whole document, and the
     27,791 of those is what this rebuild removes.
 
-    Three perturbations, tried in this order, and the order is the point:
+    Three perturbations and then one CONSTRUCTION, tried in this order, and the order
+    is the point:
 
     1. **drop a key the root ``required`` names.**  A missing required key is the
        plainest thing a document refuses, so it is the cheapest proof that the
        schema half ran at all.
     2. **replace the whole instance with a value of another JSON type.**  Reaches a
        root that demands no key, and a scalar root, which the first cannot.
-    3. **add a property no document declares.**  Last, so it is reached only by a
-       root that admits every scalar -- an open object.
+    3. **add a property no document declares.**  Last among the perturbations, so it
+       is reached only by a root that admits every scalar -- an open object.
+    4. **a value inside a conditional's ``if`` that its consequent refuses**
+       (:func:`_conditionally_refused`), reached only where the three above found
+       nothing.  This one is a BUILD and not a reduction, for the reason that function
+       gives: a conditional refuses an instance that satisfies its ``if`` and violates
+       its ``then``, and perturbing an ADMITTED instance cannot construct one -- the
+       admitted instance is typically outside the ``if``'s region altogether.
+
+    **FOURTH AND LAST, so no pair that already had a payload changes which one it gets.**
+    This function returns the FIRST refused candidate, so a derivation placed earlier
+    would re-point the payload offered at pairs nobody asked about -- which is the rule
+    :func:`refused_witnesses` states for its own conditional derivation ("it is LAST so no
+    existing witness changes its label").  Only a pair that answered ``None`` can move.
 
     **Every candidate is screened by the DOCUMENT**, which is what keeps this from
     asserting a refusal the document does not make: ``conforms`` has to answer
     ``False`` before a payload is offered to anything.  Where no candidate is
-    refused the document admits all three shapes, there is no invalid payload to
-    find, and ``None`` says so rather than a perturbation being forced through.
+    refused the document admits all four shapes, there is no invalid payload this
+    derivation finds, and ``None`` says so rather than a perturbation being forced
+    through.  Whether ``None`` means the document refuses NOTHING or means this
+    derivation did not reach what it refuses is :func:`asserts_nothing`'s question and
+    :func:`check_liveness` asks it; it is not answered here, because this function knows
+    only what it tried.
     """
     cls = validator_cls or validator_for(schema)
 
@@ -3244,7 +3467,7 @@ def refusing_payload(
         candidate = {**instance, _ALIEN_KEY: 1}
         if refused(candidate):
             return candidate, f"adds the property {_ALIEN_KEY!r}"
-    return None
+    return _conditionally_refused(schema, validator_cls=cls)
 
 
 def check_liveness(
@@ -3296,7 +3519,21 @@ def check_liveness(
     cls = validator_cls or validator_for(schema)
     found = refusing_payload(schema, instance, validator_cls=cls)
     if found is None:
-        res.outcome = "no_payload"
+        #: **THE TWO REASONS THERE IS NO PAYLOAD, TOLD APART HERE AND NOWHERE ELSE**
+        #: (``adcp-client-python-8cz3``).  ``refusing_payload`` knows only what it tried,
+        #: so it answers ``None`` for both; the question "does a counterexample EXIST" is
+        #: a question about the document and :func:`asserts_nothing` is the reading.  A
+        #: node that states nothing about an instance refuses nothing, so reading 1's
+        #: second clause is vacuously satisfied at it and the derivation finding nothing
+        #: is the right answer rather than a gap -- while a node that DOES state something
+        #: and yielded no payload is this instrument's reach falling short, which is work
+        #: to do and stays reported as such.
+        res.outcome = "no_counterexample" if asserts_nothing(schema) else "no_payload"
+        res.detail = (
+            "the node states nothing about an instance, so there is no value it refuses"
+            if res.outcome == "no_counterexample"
+            else "the derivation reached no payload the document refuses"
+        )
         return res
     payload, how = found
     res.how = how
@@ -6723,7 +6960,12 @@ class PairReport:
             return "admits:" + self.admits.outcome
         if self.liveness is None:
             return "liveness:unrun"
-        if self.liveness.outcome not in ("pass", "no_payload"):
+        #: ``no_counterexample`` is exempt beside ``no_payload`` and for a STRONGER
+        #: reason than it: ``no_payload`` says the class was never asked, which is a fact
+        #: about the instrument, and ``no_counterexample`` says there was nothing to ask,
+        #: which is reading 1's second clause holding vacuously (:data:`VACUOUS`).  The
+        #: cell beside this says which.
+        if self.liveness.outcome not in ("pass", "no_payload", "no_counterexample"):
             return "liveness:" + self.liveness.outcome
         # Section 8's accepts obligation, ranked with the accepts check it is part of and
         # BELOW it: a model that refuses a drawn instance outright is a verdict about the
@@ -7971,9 +8213,21 @@ def _check_pair(
     #: only WHICH value is perturbed: the constructed one, so the refusal is read against a
     #: witness the document's own keywords produced.
     refuted = accepted or sampled
+    #: **AND THE NO-INSTANCE BRANCH ASKS THE SAME QUESTION** (``adcp-client-python-8cz3``).
+    #: Whether a counterexample EXISTS is a property of the node and not of the draw, so a
+    #: node that states nothing about an instance refuses nothing whether or not an
+    #: instance was drawn from it -- and reporting ``no_payload`` here at such a node would
+    #: be the conflation :data:`VACUOUS` exists to remove, arriving by the one door the
+    #: repair in ``check_liveness`` does not cover.  The draw's own failure is the
+    #: ``accepts`` cell's to report and it does.
     rep.liveness = (
         check_liveness(drawn_from, pair.accept, refuted[0])
         if refuted
+        else LivenessResult(
+            outcome="no_counterexample",
+            detail="the accepts check drew no instance, and the node states nothing to refuse",
+        )
+        if asserts_nothing(drawn_from)
         else LivenessResult(outcome="no_payload", detail="the accepts check drew no instance")
     )
     #: **READING 1's FIRST CHECK OVER THE CONSTRUCTED WITNESS SET**
@@ -8178,6 +8432,60 @@ PASS = "pass"
 FAIL = "fail"
 ABSENT = "absent"
 
+#: **THE FOURTH STATE, AND IT IS A FOURTH BECAUSE ``absent`` HELD TWO FACTS**
+#: (``adcp-client-python-8cz3``).  ``refuses=absent:no_payload`` meant both "the derivation
+#: found no payload the document refuses" and "the document refuses nothing, so there is
+#: none to find", and those are the same two things :data:`ABSENT` exists to keep apart
+#: one level up: the first is a fact about the INSTRUMENT and is work to do, the second is
+#: a fact about the DOCUMENT and is the obligation met.  Four documents of this bundle are
+#: the second (:func:`asserts_nothing` names them), and reporting them as ``absent`` put
+#: four green pairs in the gate's failing set while saying nothing a reader could act on.
+#:
+#: **It is SATISFIED and it is not ``pass``.**  ``docs/plan/final-state.md`` reading 1's
+#: second clause -- "refuses every value its document refuses" -- is a universal over an
+#: EMPTY set here, so it holds; :data:`SATISFYING` is where that is declared and the
+#: contract gate reads it.  Folding it into ``pass`` would have been the cheaper change and
+#: is the wrong one: a pass means the class was offered a payload its document refuses and
+#: refused it, and 2,563 pairs of this table mean that.  A cell that means "there was
+#: nothing to offer" has to be greppable apart from them or the census of ``pass`` stops
+#: being a census of anything -- which is this table's founding defect, counting checks
+#: that never ran as successes, arriving by the one door that was left.
+#:
+#: **``vacuous`` is NOT a softer ``fail`` and not a ranked state at all**, for
+#: :data:`ABSENT`'s own reason: a reader who wants one state greps for the word, and a
+#: reader who wants "everything the contract does not satisfy" greps against
+#: :data:`SATISFYING`.
+VACUOUS = "vacuous"
+
+#: The verdict STATES that SATISFY the obligation a check grades, as the one declaration
+#: both the artifact and the gate read.
+#:
+#: ``docs/plan/final-state.md`` reading 1 is three clauses and each is a universal over the
+#: values its document admits or refuses, so a clause whose set is EMPTY holds -- which is
+#: what puts :data:`VACUOUS` here beside :data:`PASS`.  :data:`ABSENT` is not here and that
+#: is the whole of ``verdicts.tsv``'s own header: "absent is NOT a pass -- it is the check
+#: that was never put to this pair".
+#:
+#: **DECLARED HERE BECAUSE THE GATE IS A SECOND READER.**
+#: ``tests_emit/test_the_grade_is_green.py`` compares each contract cell against this set
+#: through :func:`satisfies`; written as a literal there it would be a second copy of this
+#: module's verdict vocabulary, and a state added here would reach that gate as a failure
+#: of the pair rather than as the state it is.
+SATISFYING: frozenset[str] = frozenset({PASS, VACUOUS})
+
+
+def satisfies(verdict: str) -> bool:
+    """Does this cell's STATE satisfy the obligation its check grades.
+
+    The cell is ``pass``, ``fail:<cause>``, ``absent:<cause>`` or
+    ``vacuous:<cause>`` (:class:`Verdict`), so the state is everything before the first
+    colon and the cause is never read here -- a cause is for a human and a state is for a
+    gate.  Takes the VERDICT and not the whole ``<check>=<verdict>`` cell, because the
+    column a cell belongs to is the caller's own reading (``COLUMNS``) and this function
+    answers about one verdict.
+    """
+    return str(verdict).split(":", 1)[0] in SATISFYING
+
 #: The checks a row carries, in the order the table's columns are written, and the
 #: order is the order a defect is read in: the class took the value, the class refused what
 #: the document refuses, what the class BUILT came back out, every declaration it makes
@@ -8224,10 +8532,15 @@ CHECKS: tuple[str, ...] = ("accepts", "refuses", "dump", "widening", "undeclared
 class Verdict:
     """One check's answer about one pair: a state and the cause that produced it.
 
-    Rendered ``pass``, ``fail:<cause>`` or ``absent:<cause>``.  A ``pass`` carries no
-    cause, and that asymmetry is deliberate: the two states a reader acts on are the two
-    that say WHY, and a pass that carried a cause would invite a grep for the cause rather
-    than for the state.
+    Rendered ``pass``, ``fail:<cause>``, ``absent:<cause>`` or ``vacuous:<cause>``.  A
+    ``pass`` carries no cause, and that asymmetry is deliberate: the states a reader acts
+    on are the ones that say WHY, and a pass that carried a cause would invite a grep for
+    the cause rather than for the state.
+
+    **:data:`VACUOUS` carries one even though it is satisfied**, which is the one
+    exception to that sentence and is the reason the state exists: the cause is the claim
+    -- *the document refuses nothing* -- and a reader meeting a satisfied cell that is not
+    a pass is entitled to be told on sight why it is not one.
     """
 
     state: str
@@ -8304,14 +8617,28 @@ def _refuses_verdict(live: LivenessResult | None) -> Verdict:
     """Did the class refuse a payload the document refuses.
 
     ``no_payload`` is ABSENT and not a pass: it says the derivation found no payload to
-    offer -- either because the draw produced no instance to perturb or because the
-    document refuses nothing -- so the entry point was never asked.  Both causes are
-    facts about the document and the draw, and neither is evidence about the class.
+    offer though the document does refuse something, so the entry point was never asked.
+    That is a fact about the draw and about this instrument's reach, and it is not
+    evidence about the class.
+
+    **``no_counterexample`` IS NEITHER, AND THAT IS THE WHOLE OF THIS FUNCTION'S CHANGE**
+    (``adcp-client-python-8cz3``).  What stood here read "*either* because the draw
+    produced no instance to perturb *or* because the document refuses nothing" -- one cell
+    for two facts, named in its own docstring and reported as one.  A document that
+    asserts nothing refuses nothing, so reading 1's second clause is a universal over an
+    empty set and HOLDS: there is no value for the class to refuse and nothing for the
+    instrument to reach.  :data:`VACUOUS` is that state, it satisfies the contract
+    (:data:`SATISFYING`) and it is still its own token, so the count of pairs standing on
+    it is one grep -- which is what stops a satisfied-but-unexercised cell from being
+    counted as an exercised one.  :func:`asserts_nothing` decides it, at
+    :func:`check_liveness`, from the node the screen was made against.
     """
     if live is None:
         return Verdict(ABSENT, "unrun")
     if live.outcome == "pass":
         return Verdict(PASS)
+    if live.outcome == "no_counterexample":
+        return Verdict(VACUOUS, "the_document_refuses_nothing")
     if live.outcome in ("no_payload", "unrun"):
         return Verdict(ABSENT, live.outcome)
     return Verdict(FAIL, live.outcome)
@@ -8754,8 +9081,34 @@ def verdict_table(rows: Sequence[str]) -> str:
             for check in CHECKS
         )
         + "   (pass/fail/absent)",
+        #: **:data:`VACUOUS` IS COUNTED ON ITS OWN LINE AND NOT AS A FOURTH FIGURE ABOVE**
+        #: (``adcp-client-python-8cz3``).  The three figures are §10's three states and
+        #: ``test_the_table_counts_absent_cells_apart_from_passing_ones`` reads both the
+        #: label and the triples; a fourth figure would renumber a reader's eye on every
+        #: check at once to say something about one.  So the count travels beside them and
+        #: says, in the file, that it is apart from them -- which is what keeps the three
+        #: figures summing to something a reader can check.
+        #:
+        #: Written only where there is one, so a run with no vacuous cell has the preamble
+        #: it had before this line existed.
+        *(
+            [
+                "# "
+                + "  ".join(
+                    f"{check} {per_check[check][VACUOUS]} vacuous"
+                    for check in CHECKS
+                    if per_check[check][VACUOUS]
+                )
+                + "   (apart from the three figures above: the document asserts nothing, "
+                "so it refuses nothing and the check is satisfied over an empty set)"
+            ]
+            if any(per_check[check][VACUOUS] for check in CHECKS)
+            else []
+        ),
         "# a cell is pass, fail:<cause> or absent:<cause>; absent is NOT a pass -- it is "
         "the check that was never put to this pair",
+        "# a cell may also read vacuous:<cause>, which IS a pass of the obligation and is "
+        "not a pass of the check: there was no value to put to this pair",
         "\t".join(COLUMNS),
     ]
     return "\n".join([*head, *body]) + "\n"

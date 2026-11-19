@@ -41,6 +41,18 @@ A row whose check never ran is reported here as a failure of coverage, not skipp
 verdict table's own header says *"absent is NOT a pass -- it is the check that was never
 put to this pair"*, and five separate repairs in this project's history lowered the
 not-pass count by moving pairs into ``absent``.
+
+**AND ``vacuous`` IS NOT ``absent``, WHICH IS THE OTHER THING** (``adcp-client-python-8cz3``).
+A fourth state joined :data:`codegen.harness.VACUOUS` because ``absent:no_payload`` held
+two facts at once -- *this instrument found no payload the document refuses* and *the
+document refuses nothing, so there is none* -- and the sentence above is about the first
+only.  The second is reading 1's second clause as a universal over an EMPTY set, so it
+holds, and a gate that reddened on it was asking four documents a question none of them
+poses.  The test below therefore compares each contract cell against
+:func:`codegen.harness.satisfies` rather than against the literal ``pass``, and the set
+that function reads is declared in the harness beside the states themselves -- a literal
+here would be a second copy of that module's verdict vocabulary, and the state that
+joined it next would arrive as a failure of the pair instead of as the state it is.
 """
 
 from __future__ import annotations
@@ -174,6 +186,11 @@ def pytest_generate_tests(metafunc: Any) -> None:
 #: below, which is deliberately NOT this gate: a pair can satisfy the contract above
 #: while its declaration is mislabelled, and conflating the two is how 19 bookkeeping
 #: rows came to be quoted as emission defects.
+#:
+#: **A CELL SATISFIES ONE OF THESE WHEN ITS STATE IS IN :data:`codegen.harness.SATISFYING`,
+#: WHICH IS TWO STATES AND NOT ONE** -- `pass`, and `vacuous` for the clause whose set of
+#: values is empty (this module's docstring carries the reason). `absent` is in neither,
+#: which is the whole of the sentence above it.
 CONTRACT = ("accepts", "refuses", "dump")
 
 #: The approximation bookkeeping, graded apart from the contract.
@@ -207,10 +224,13 @@ def test_this_pair_meets_the_contract(pair_index: int, setup: Any) -> None:
 
     :data:`CONTRACT`'s three checks, and **absent is not a pass** -- a check never put to
     this pair is a fact about the draw and not evidence about the class, which is what
-    `verdicts.tsv`'s own header says.
+    `verdicts.tsv`'s own header says.  **A ``vacuous`` cell IS satisfied** and is not a
+    pass either: this module's docstring carries the two facts ``absent:no_payload`` used
+    to hold and why only one of them is a gap.
 
     One test per PAIR, so ``pytest -n auto`` may place any pair on any worker.
     """
+    from codegen import harness
     from codegen.__main__ import graded_rows
 
     found, identity_of, construction, formats = setup
@@ -224,11 +244,17 @@ def test_this_pair_meets_the_contract(pair_index: int, setup: Any) -> None:
     for row in rows:
         cells = _cells(row)
         for check in CONTRACT:
-            #: The cell's VALUE, which is `pass`, `fail:<cause>` or `absent:<cause>`.
-            #: Comparing it to the check's NAME is the mistake that made every one of
-            #: 2,609 pairs fail on this gate's first run -- a hand-rolled reader being
-            #: wrong in the commit that exists to stop hand-rolling readers.
-            if cells.get(check, "") != f"{check}=pass":
+            #: The cell is `<check>=<verdict>` and the VERDICT is what is graded, so the
+            #: prefix is stripped before the state is read.  Comparing the whole cell to
+            #: the check's NAME is the mistake that made every one of 2,609 pairs fail on
+            #: this gate's first run -- a hand-rolled reader being wrong in the commit
+            #: that exists to stop hand-rolling readers -- and reading the state with a
+            #: `split` HERE would be the same defect once more: `harness.satisfies` is
+            #: the module's own reading of its own vocabulary, so a state added there
+            #: cannot reach this gate as a verdict this file never heard of.
+            cell = cells.get(check, "")
+            verdict = cell.split("=", 1)[1] if cell.startswith(f"{check}=") else ""
+            if not harness.satisfies(verdict):
                 where = f"{cells.get('document', '?')}{cells.get('pointer', '')}"
                 note = (cells.get("note") or "").strip()
                 bad.append(f"{where} [{cells.get(check)}] {note}")
