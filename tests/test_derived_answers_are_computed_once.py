@@ -106,9 +106,25 @@ _ACCESSES = (*_OFFERED_WORDS, *_ABSENT_WORDS)
 
 
 def _ask(name: str) -> None:
-    """One flat-name access, the spelling a consumer writes, miss or hit."""
+    """One access through ``_restored``'s OWN entry, which is what ``_surface`` serves.
+
+    **IT WAS ``getattr(types, name)`` AND THAT ROUTE NO LONGER REACHES THIS WORK FOR 40 OF
+    THE 50 WORDS.** The facade used to answer every flat name by walking its layers, so a
+    consumer's access and this derivation were the same event; since ``adcp.types`` reads a
+    generated word -> module table, a word the table binds is answered with one
+    ``import_module`` and never consults ``_restored``. Measured here: with the hold dropped
+    between all 50 accesses the facade route derived the surface **10** times -- once per
+    word nothing binds, which is the only shape that still falls through to the chain.
+
+    That is the facade's saving and not a loss of coverage, but it makes the facade the
+    wrong instrument for THIS count: a measurement of ``_surface`` taken through a caller
+    that has stopped calling it reads ``0`` and passes. So the asks are driven through
+    :func:`adcp.types._restored.__getattr__`, the function the hold exists for, and
+    :func:`test_the_facade_does_not_consult_restored_for_a_word_its_table_binds` is where
+    the facade's own behaviour is pinned instead of assumed.
+    """
     try:
-        getattr(types, name)
+        _restored.__getattr__(name)
     except AttributeError:
         pass
 
@@ -167,6 +183,37 @@ def test_dropping_the_hold_puts_the_derivation_back_on_every_access(
         f"{len(_ACCESSES)} accesses with the hold dropped between them derived the surface "
         f"{surface_derivations.calls} times; the counter does not observe the derivation, "
         "so the work-count assertion beside it cannot fail and is not a measurement"
+    )
+
+
+def test_the_facade_does_not_consult_restored_for_a_word_its_table_binds(
+    surface_derivations: _Counter,
+) -> None:
+    """The facade's own half of :func:`_ask`'s change, measured and not assumed.
+
+    ``adcp.types.__getattr__`` reads a generated word -> module table, so a word the table
+    binds costs one ``import_module`` and one ``getattr`` -- it does not walk the layers and
+    therefore never derives the restored surface. **With the hold dropped before every
+    access**, so that a consult could not be hidden by a hold formed earlier.
+
+    This is the assertion that would have caught the interaction the other way round: were
+    the facade to start consulting ``_restored`` per access again, this goes red rather than
+    the saving quietly coming back as 40 derivations nobody counts.
+    """
+    bound_by_the_table = [word for word in _OFFERED_WORDS if hasattr(types, word)]
+    assert len(bound_by_the_table) == len(_OFFERED_WORDS), (
+        "a word adcp.types._restored offers is not bound on the flat surface, so this "
+        "check is measuring absence rather than the table"
+    )
+
+    for word in bound_by_the_table:
+        _drop_what_it_holds(_restored, "_forget_surface")
+        getattr(types, word)
+
+    assert surface_derivations.calls == 0, (
+        f"{len(bound_by_the_table)} flat-name accesses the generated table binds derived "
+        f"the restored surface {surface_derivations.calls} times; a word the table answers "
+        "must not reach the layer walk at all"
     )
 
 

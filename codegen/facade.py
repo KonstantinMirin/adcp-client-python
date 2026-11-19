@@ -66,20 +66,46 @@ documents a run named, so a one-document run leaves a SHORT ``_flat`` behind and
 and the prune on, so it is gated the same way and by the same flag -- a whole-population run
 passes ``--package`` and nothing else may.
 
-**THE TEMPLATE IS THE FILE, with one line replaced.**  :data:`TEMPLATE` is
-``adcp/types/__init__.py`` verbatim except for :data:`SENTINEL`, which the rendered list
-takes the place of.  The facade's prose and its lookup chain are the SUBJECT of that file
-rather than a rendering of anything, so there is nothing for a renderer to derive them from
-and no reading that would make them shorter -- the same arrangement ``render.flat_surface``
-has for the 8,800 lines it writes.  What is derived is the one list, and the one thing a
-reader has to be able to trust is that the committed file is this template's output, which
-a re-emission answers.
+**AND THE SAME RULING ONE LEVEL UP: THE TABLE THAT SAYS WHERE A WORD LIVES** (the owner,
+2026-11-19, ``adcp-client-python-690v``).  ``__all__`` was the advertisement and it is
+written; the LOOKUP was still derived, and that is what an adopter pays for.  Measured at
+``8b1d8ceee``:
+
+    python -c "pass"                                0.02 s    11.5 MB
+    python -c "import adcp"                         0.02 s    13.1 MB   the facade works
+    python -c "import adcp; adcp.Product"           4.43 s     145 MB   the first word
+
+The chain's first consult is ``adcp.types.compat``, which is a FLAT NAMESPACE OVER
+EVERYTHING -- 1,700 ``from adcp.types.<domain> import X as Y`` statements, so it imports all
+23 aggregators and through them the 1,051 modules of ``_schemas``.  **Resolving ONE name
+required every module to exist first**, and the lazy facade therefore did not remove that
+cost; it deferred it and then paid it in full at the first attribute.
+
+:func:`owners` is the answer in the same shape as :func:`words`: the generator asks the
+chain, once per build, WHICH MODULE OWNS each word, and the facade is written with that
+table as a literal.  A word is then one ``import_module`` and one ``getattr`` -- ``Product``
+imports the 547 modules its own annotations reach and not the 1,437 the namespace has.  The
+chain stays, as the fallback and as the authority the table is derived FROM, so a word the
+table does not carry resolves exactly as it did.
+
+**THE TEMPLATE IS THE FILE, with two lines replaced.**  :data:`TEMPLATE` is
+``adcp/types/__init__.py`` verbatim except for :data:`SENTINEL` and :data:`WHERE_SENTINEL`,
+which the rendered list and the rendered table take the place of.  The facade's prose and
+its lookup chain are the SUBJECT of that file rather than a rendering of anything, so there
+is nothing for a renderer to derive them from and no reading that would make them shorter --
+the same arrangement ``render.flat_surface`` has for the 8,800 lines it writes.  What is
+derived is the list and the table, and the one thing a reader has to be able to trust is
+that the committed file is this template's output, which a re-emission answers.
 """
 
 from __future__ import annotations
 
 import importlib
+import pkgutil
+import sys
 from collections.abc import Iterable
+from types import ModuleType
+from typing import NamedTuple
 
 #: The package the facade IS.  Its own ``__init__`` is the file this module writes, so the
 #: name is the package's and never the file's -- ``adcp.types.__init__`` imports a SECOND
@@ -100,6 +126,60 @@ MODULE = "__init__.py"
 #: would otherwise emit a facade with no ``__all__`` at all, which is the whole of what this
 #: generator exists to put there.
 SENTINEL = "__ALL__"
+
+#: The other line :func:`module` replaces, with the three statements :func:`literal_owners`
+#: renders.  Spelled in CAPITALS and asserted to appear exactly once for :data:`SENTINEL`'s
+#: reason: a template that stopped carrying it would emit a facade whose ``__getattr__``
+#: names a table that is not there, and the package would not import at all.
+WHERE_SENTINEL = "__WHERE__"
+
+#: The LAYERS the facade's chain consults, each with the attributes by which it ADVERTISES
+#: the words it binds.  This is the candidate set :func:`owners` ranges over, and it is read
+#: off each layer's own declaration rather than off its namespace: ``vars(compat)`` also
+#: carries ``annotations`` (its ``__future__`` import) and ``vars(projections)`` carries
+#: ``re``, so a namespace reading would freeze six import accidents into a generated table
+#: and make them look decided.  Those words resolve today and go on resolving through the
+#: chain -- the table is a router and not an advertisement, so leaving a word out of it
+#: costs the first access and changes no answer.
+LAYERS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (f"{PACKAGE}.compat", ("__all__", "__adcp_flat_only__")),
+    (f"{PACKAGE}._adapter", ("__all__",)),
+    (f"{PACKAGE}._restored", ("__all__", "STATED")),
+    (f"{PACKAGE}._surface._flat", ("__all__",)),
+    (f"{PACKAGE}.legacy_names", ("__all__",)),
+    (f"{PACKAGE}.aliases", ("__all__",)),
+)
+
+#: The flat layers, which are the modules a word must NOT be routed to where anything else
+#: binds the same object: each one imports every domain aggregator, so a table entry naming
+#: one of them is the 4.4 s this generator exists to remove.  They are still RANKED rather
+#: than refused -- a type alias declared nowhere else is genuinely theirs, and a slow answer
+#: is better than no answer -- and :func:`owners` reports every word that lands here.
+FLAT_LAYERS = frozenset(module for module, _ in LAYERS)
+
+#: Returned by ``getattr`` where an attribute is absent, so a binding whose value is
+#: ``None`` is distinguished from no binding at all.
+MISS = object()
+
+
+class Table(NamedTuple):
+    """Where each word of the flat surface is owned, and what could not be decided.
+
+    ``owned`` and ``names_a_module`` are keyed on the MODULE and carry the words, which is
+    ``adcp/__init__.py``'s own ``_LAZY_MODULES`` shape: one module per line with its words
+    under it, so a reader sees the ownership rather than 6,000 unrelated pairs, and no line
+    is long enough for black to reflow or ruff to refuse.  The facade inverts both at import
+    exactly as that module does -- "cheap, strings only".
+    """
+
+    #: module -> the words it owns, for a word that names an object the module binds
+    owned: dict[str, tuple[str, ...]]
+    #: word -> the attribute its owning module binds it under, where that is not the word
+    spelled: dict[str, str]
+    #: word -> the MODULE of ours the word itself names, for the 885 upstream published
+    names_a_module: dict[str, str]
+    #: word -> why no module could be named for it, which is a FINDING and not a drop
+    refused: dict[str, str]
 
 
 def words() -> list[str]:
@@ -149,6 +229,256 @@ def words() -> list[str]:
     )
 
 
+def owners() -> Table:
+    """Every word the facade resolves, with the ONE module that owns what it names.
+
+    **THE CHAIN IS ASKED AND NEVER RE-IMPLEMENTED, which is :func:`words`' arrangement and
+    matters more here.**  ``adcp.types._searched`` is the nine-consult lookup
+    :func:`adcp.types.__getattr__` falls back to, and it is what this function resolves
+    every word through -- not ``getattr`` on the package, which would consult the COMMITTED
+    table first.  A table that confirmed itself is the one failure this generator must not
+    have: a wrong row would survive every regeneration and nothing downstream would say so.
+
+    **AND ITS ABSENCE IS A REFUSAL AND NOT A FALLBACK TO ``getattr``, WHICH IS MEASURED.**
+    A facade that predates the table has no ``_searched``, and ``getattr`` on such a file
+    looks like the chain and is not: the IMPORT SYSTEM binds a submodule as an attribute of
+    its package, so ``getattr`` answers for a word the package has already imported and
+    ``__getattr__`` is never reached.  :func:`_realised` imports the whole tree one line
+    above, which is precisely what makes every public submodule's word answer that way.
+    Measured on the bootstrap run of 2026-11-19: **13 words took the import system's answer
+    instead of the chain's** -- ``account`` became ``adcp.types.account`` where the chain
+    says ``adcp.types._schemas.core.account``, because ``legacy_names`` binds that word to
+    the document module -- and the 13 rows would have been a cold-process behaviour change
+    with nothing to say so.  So the generator refuses to write a table it cannot derive from
+    the chain, and the repair is to emit the facade from a template that carries
+    :func:`adcp.types._searched`.
+
+    **THE OWNING MODULE IS WHERE THE OBJECT WAS DEFINED, read off the object itself.**  For
+    4,946 of the 6,007 words that is ``value.__module__`` and ``value.__name__`` -- the
+    emitted class in its own document module, ``core/product.json`` ->
+    ``adcp.types._schemas.core.product.Product`` -- and the round-trip is CHECKED rather
+    than trusted: the module is imported and the attribute compared by identity, so a class
+    whose ``__module__`` lies is not written as a row.
+
+    Three kinds of word cannot answer that way, and each is read differently:
+
+    * **a word that names a MODULE of ours.**  ``legacy_names`` binds 885 of upstream's
+      snake_case module spellings -- ``adcp.types.accept_proposal_request`` IS the module
+      ``adcp.types._schemas.media_buy.accept_proposal_request`` -- so the row is the dotted
+      path and the lookup is the import, with no attribute at all.  Twenty-four of them
+      name a module whose leaf is spelled otherwise (``get_principal_request`` resolves to
+      ``...protocol.get_adcp_capabilities_response``), which is why the path is written out
+      and not composed from the word.
+    * **a type ALIAS, which has no module of its own.**  ``Annotated[...]`` reports
+      ``typing`` and ``X | Y`` reports ``types``, and neither module binds the object.  What
+      declares it is the module whose body holds the assignment, and that is found by a
+      REVERSE INDEX over every module of the package: the object's ``id`` against the
+      ``(module, attribute)`` pairs that bind it.
+    * **DATA**, where the reverse index would be unsound.  ``False``, ``0``, ``()`` and a
+      short string are shared objects, so an ``id`` match says nothing about declaration --
+      it would route ``TYPE_CHECKING`` to whichever emitted module happens to bind some
+      other flag to ``False``, and a later edit to THAT module would silently change this
+      word.  So a non-type value is matched only where the attribute is spelled the SAME as
+      the word, which is a declaration and not a coincidence.
+
+    **A WORD WITH NO ANSWER IS REFUSED AND REPORTED, never guessed.**  ``refused`` is the
+    finding the task asks for; the word stays out of the table and the chain answers it as
+    before, so a refusal costs the first access and loses nothing.
+    """
+    facade = importlib.import_module(PACKAGE)
+    resolve = getattr(facade, "_searched", None)
+    if resolve is None:
+        raise ValueError(
+            f"{PACKAGE} carries no _searched, so the lookup chain cannot be asked where a "
+            "word lives and `getattr` would answer for 13 of them with the import system's "
+            "own binding instead; emit the facade from a template that carries it"
+        )
+    realised = _realised()
+    index, by_name, size = _reverse(realised)
+
+    owned: dict[str, list[str]] = {}
+    spelled: dict[str, str] = {}
+    names_a_module: dict[str, str] = {}
+    refused: dict[str, str] = {}
+    for name in _candidates(facade):
+        try:
+            value = resolve(name)
+        except AttributeError:
+            # Not a word of this surface at all: a layer advertises it and no consult
+            # answers.  ``tests/test_public_api_accountability.py`` is where an advertised
+            # word that does not resolve is graded; a router has nothing to say about it.
+            continue
+        if isinstance(value, ModuleType):
+            names_a_module[name] = value.__name__
+            continue
+        where = _defined(value)
+        if where is None:
+            offers = index.get(id(value)) or by_name.get((name, id(value)))
+            if not offers:
+                kind = type(value).__name__
+                refused[name] = (
+                    f"a {kind} that no module of {PACKAGE} binds under a name of its own; "
+                    f"its __module__ is {getattr(value, '__module__', None)!r}"
+                )
+                continue
+            rank, module, attr = min(offers, key=lambda o: (o[0], o[2] != name, size[o[1]], o))
+            where = (module, attr)
+        module, attr = where
+        owned.setdefault(module, []).append(name)
+        if attr != name:
+            spelled[name] = attr
+    return Table(
+        owned={module: tuple(sorted(found)) for module, found in sorted(owned.items())},
+        spelled=dict(sorted(spelled.items())),
+        names_a_module=dict(sorted(names_a_module.items())),
+        refused=dict(sorted(refused.items())),
+    )
+
+
+def _candidates(facade: ModuleType) -> list[str]:
+    """Every word any layer of the chain DECLARES, which is what the table may carry.
+
+    The union of :data:`LAYERS`' own advertisements, the restored modules' declarations, the
+    SDK's words and the package's public submodules -- the nine things
+    :func:`adcp.types._searched` consults, asked in the terms each one states.
+
+    ``_NOT_ROUTED`` and the dunders are excluded because the facade's own screen runs BEFORE
+    the table: those four names must stay an ``AttributeError`` so the import system goes on
+    to import the submodule, and a row for one of them would be unreachable weight.
+    """
+    offered: list[str] = []
+    for module, attrs in LAYERS:
+        try:
+            held = importlib.import_module(module)
+        except ImportError:
+            continue
+        for attr in attrs:
+            offered.extend(getattr(held, attr, ()) or ())
+    restored = importlib.import_module(f"{PACKAGE}._restored")
+    for module in getattr(restored, "MODULES", ()) or ():
+        held = importlib.import_module(f"{PACKAGE}.{module}")
+        offered.extend(
+            getattr(held, "__all__", None) or [n for n in vars(held) if not n.startswith("_")]
+        )
+    offered.extend(facade._sdk_words())
+    offered.extend(
+        found.name
+        for found in pkgutil.iter_modules(facade.__path__)
+        if not found.name.startswith("_")
+    )
+    refused = set(facade._NOT_ROUTED)
+    return sorted({name for name in offered if name not in refused and not name.startswith("__")})
+
+
+def _defined(value: object) -> tuple[str, str] | None:
+    """The module ``value`` says it was defined in and the name it is bound to there.
+
+    ``None`` where the object does not say, or says something the module does not confirm:
+    the attribute is compared by IDENTITY, so a re-export, a renamed alias and a lying
+    ``__module__`` all fall through to the reverse index rather than becoming a row that
+    resolves to another object.
+    """
+    module = getattr(value, "__module__", None)
+    attr = getattr(value, "__name__", None)
+    if not isinstance(module, str) or not isinstance(attr, str):
+        return None
+    held = sys.modules.get(module)
+    if held is None:
+        try:
+            held = importlib.import_module(module)
+        except ImportError:
+            return None
+    return (module, attr) if getattr(held, attr, MISS) is value else None
+
+
+def _realised() -> dict[str, ModuleType]:
+    """Every module of the package, imported, so the reverse index is over all of them.
+
+    **WALKED AND NOT TAKEN OFF ``sys.modules``, which is what makes the table
+    deterministic.**  A reading of ``sys.modules`` would carry whatever the resolution order
+    happened to import, so two runs over the same tree could write different rows for a
+    word two modules bind.  The walk imports the package's own tree and nothing else:
+    ``adcp.core`` is added because the SDK's 21 hand-written words are served from it, and
+    no other module of ``adcp`` is a consult of the chain.
+    """
+    package = importlib.import_module(PACKAGE)
+    for found in pkgutil.walk_packages(package.__path__, prefix=f"{PACKAGE}."):
+        try:
+            importlib.import_module(found.name)
+        except ImportError:
+            # A module of the tree that does not import is a defect of the EMISSION and is
+            # graded there (``tests_emit/``).  Here it is a module the index cannot read,
+            # and the words it would have owned are refused by name below -- which is a
+            # finding a reader can act on, where a raise would lose every other row.
+            continue
+    return {
+        name: held
+        for name, held in sorted(sys.modules.items())
+        # ``isinstance`` and not ``is not None``: a sentinel entry under a module's name is
+        # not a module and has no namespace to index, and the check that says so is the one
+        # the type checker can read.
+        if isinstance(held, ModuleType) and (name == "adcp.core" or name.startswith(f"{PACKAGE}."))
+    }
+
+
+def _reverse(
+    realised: dict[str, ModuleType],
+) -> tuple[
+    dict[int, list[tuple[int, str, str]]],
+    dict[tuple[str, int], list[tuple[int, str, str]]],
+    dict[str, int],
+]:
+    """The two indexes a word with no ``__module__`` is looked up in, and each module's size.
+
+    ``index`` is keyed on the object's ``id`` alone and is restricted to TYPE-LIKE values --
+    a class, or something ``typing``/``types`` built, which is what a type alias is.  A
+    shared immutable (``False``, ``0``, ``()``) is kept out of it on purpose:
+    :func:`owners` says why, and ``by_name`` -- keyed on the attribute AND the object -- is
+    where such a value is answered, because an attribute spelled like the word is a
+    declaration while an ``id`` match is not.
+
+    ``size`` is how many names each module binds, which is the tie-break between two modules
+    that both declare one alias: the smaller namespace is the cheaper import, and it is a
+    measurement rather than a preference about paths.
+    """
+    index: dict[int, list[tuple[int, str, str]]] = {}
+    by_name: dict[tuple[str, int], list[tuple[int, str, str]]] = {}
+    size: dict[str, int] = {}
+    shared = (bool, int, float, str, bytes, tuple, frozenset, type(None))
+    for module, held in realised.items():
+        bound = vars(held)
+        size[module] = len(bound)
+        where = _rank(module, held)
+        for attr, value in sorted(bound.items()):
+            by_name.setdefault((attr, id(value)), []).append((where, module, attr))
+            typelike = isinstance(value, type) or type(value).__module__ in (
+                "typing",
+                "types",
+                "typing_extensions",
+            )
+            if typelike and not isinstance(value, shared):
+                index.setdefault(id(value), []).append((where, module, attr))
+    return index, by_name, size
+
+
+def _rank(module: str, held: ModuleType) -> int:
+    """How good an owner ``module`` is for a word, lowest first.
+
+    The order is §1's own architecture read as a cost: a DOCUMENT module is one document's
+    classes and imports what their annotations name (rank 1); a hand-written leaf is itself
+    (rank 2); a PACKAGE or a domain aggregator is every document under it (rank 3); and a
+    flat layer is the whole surface, which is the cost this table exists to remove (rank 4).
+    """
+    if module in FLAT_LAYERS:
+        return 4
+    package = hasattr(held, "__path__")
+    if module.startswith(f"{PACKAGE}._schemas.") and not package:
+        return 1
+    if package or module.startswith(f"{PACKAGE}._surface"):
+        return 3
+    return 2
+
+
 def literal(names: Iterable[str]) -> str:
     """``names`` as the ``__all__`` statement, one string per line.
 
@@ -179,15 +509,107 @@ def literal(names: Iterable[str]) -> str:
     return "\n".join(["__all__ = [", *(f'    "{name}",' for name in out), "]"])
 
 
-def module(names: Iterable[str]) -> str:
-    """The text of ``adcp/types/__init__.py``: :data:`TEMPLATE` with the list written in."""
-    if TEMPLATE.count(SENTINEL) != 1:
+#: Black's line length for this repository (``[tool.black]``) and ruff's ``E501``.  The
+#: facade is NOT excluded from either -- generated or not, it is a hand-readable module at a
+#: public path -- so every line this generator writes has to be one black would leave alone
+#: and ruff would accept.  A line that cannot be short says so with a ``noqa``, which is
+#: what ``legacy_names.py`` does at 1,368 of its own lines and for the same reason: black
+#: cannot split ``"word": "value",`` any further, so the only remaining reading is that the
+#: length is accepted.
+WIDTH = 100
+
+
+def _row(indent: str, text: str) -> str:
+    """``text`` at ``indent``, with the ``noqa`` a line black cannot shorten needs."""
+    line = f"{indent}{text}"
+    return line if len(line) <= WIDTH else f"{line}  # noqa: E501"
+
+
+def literal_owners(table: Table) -> str:
+    """:class:`Table` as the three statements the facade's lookup reads.
+
+    One module per line with its words under it, each tuple EXPLODED by its own trailing
+    comma -- black's magic trailing comma, so the shape it is written in is the shape black
+    leaves, and a word added or removed is one line of a diff.  The same reading
+    :func:`literal` has for ``__all__``, at one more level of nesting.
+
+    **EVERY WORD IS CHECKED TO BE AN IDENTIFIER AND EVERY MODULE A DOTTED PATH**, for
+    :func:`literal`'s reason: these are names ``getattr`` and ``import_module`` resolved, so
+    a value carrying a quote or a newline is a layer having gone wrong upstream, and
+    refusing it names the layer while the answer is still recoverable.
+    """
+    for module, found in table.owned.items():
+        _nameable(module, *found)
+    _nameable(*table.spelled)
+    _nameable(*table.spelled.values())
+    _nameable(*table.names_a_module)
+    for module in table.names_a_module.values():
+        _nameable(module)
+
+    out = ["_OWNED: dict[str, tuple[str, ...]] = {"]
+    for module, found in table.owned.items():
+        # **A ONE-WORD MODULE IS WRITTEN ON ONE LINE, BECAUSE BLACK WOULD PUT IT THERE.**
+        # The trailing comma of a single-element tuple is Python's own syntax and not
+        # black's magic trailing comma, so black COLLAPSES ``("Word",)`` where it fits and
+        # explodes it where it does not.  Writing the other shape would make ``make format``
+        # rewrite 318 of these rows the moment anyone ran it, and the committed facade would
+        # then not be this generator's output -- which is the one thing a re-emission check
+        # has to be able to say.
+        one_line = f'"{module}": ("{found[0]}",),' if len(found) == 1 else ""
+        if one_line and len(one_line) + 4 <= WIDTH:
+            out.append(f"    {one_line}")
+            continue
+        out.append(_row("    ", f'"{module}": ('))
+        out.extend(_row("        ", f'"{name}",') for name in found)
+        out.append("    ),")
+    out.append("}")
+    out.append("")
+    out.append("#: A word whose owning module binds it under ANOTHER name, by word.  Upstream's")
+    out.append("#: spelling and ours are two words for one object -- `A2UiBoundValue` is")
+    out.append("#: `adcp.types._schemas.a2ui.a2ui_bound_value.A2UIBoundValue` -- and this is the")
+    out.append("#: half of that pair the owning module answers to.  Absent means the two agree.")
+    out.append("_SPELLED: dict[str, str] = {")
+    out.extend(_row("    ", f'"{name}": "{attr}",') for name, attr in table.spelled.items())
+    out.append("}")
+    out.append("")
+    out.append("#: A word that names a MODULE of ours rather than something inside one, by word.")
+    out.append("#: `adcp.types.accept_proposal_request` IS a module; upstream published the")
+    out.append("#: spelling and `legacy_names` binds it, so the lookup is the import and there is")
+    out.append("#: no attribute to take.  Written out and never composed from the word: 24 of")
+    out.append("#: these name a module whose own leaf segment is spelled otherwise.")
+    out.append("_NAMES_A_MODULE: dict[str, str] = {")
+    out.extend(
+        _row("    ", f'"{name}": "{module}",') for name, module in table.names_a_module.items()
+    )
+    out.append("}")
+    return "\n".join(out)
+
+
+def _nameable(*words: str) -> None:
+    """Refuse a word or a module path that is not a Python name, naming the ones that are not."""
+    unnameable = [
+        word for word in words if not all(part.isidentifier() for part in word.split("."))
+    ]
+    if unnameable:
         raise ValueError(
-            f"the facade template names {SENTINEL} {TEMPLATE.count(SENTINEL)} times and the "
-            "list is written at exactly one place; a template carrying none would emit a "
-            "surface with no __all__ at all, which is what this generator is for"
+            f"{len(unnameable)} of {len(words)} rows of the owner table are not Python "
+            f"names and cannot be a word this surface routes: {unnameable[:5]}"
         )
-    return TEMPLATE.replace(SENTINEL, literal(names))
+
+
+def module(names: Iterable[str], table: Table) -> str:
+    """The text of ``adcp/types/__init__.py``: :data:`TEMPLATE` with both written in."""
+    for sentinel, what in ((SENTINEL, "list"), (WHERE_SENTINEL, "table")):
+        if TEMPLATE.count(sentinel) != 1:
+            raise ValueError(
+                f"the facade template names {sentinel} {TEMPLATE.count(sentinel)} times and "
+                f"the {what} is written at exactly one place; a template carrying none would "
+                "emit a surface the lookup below cannot read, which is what this generator is "
+                "for"
+            )
+    return TEMPLATE.replace(SENTINEL, literal(names)).replace(
+        WHERE_SENTINEL, literal_owners(table)
+    )
 
 
 #: ``adcp/types/__init__.py``, verbatim but for :data:`SENTINEL`.  The facade's prose and its
@@ -403,6 +825,24 @@ nowhere else.  Measured over five runs each: ``import adcp.types`` goes from **0
 and the ``__all__`` access it replaces goes from **4.88 s to 0.000002 s**, which is an
 attribute that is simply bound.
 
+**AND THE SAME RULING DECIDES THE LOOKUP, WHICH IS WHERE THE COST ACTUALLY WAS** (the
+owner, 2026-11-19, ``adcp-client-python-690v``; :data:`_OWNED`).  ``__all__`` was the
+advertisement and the VALUE lookup was still derived -- and a derived lookup here means
+``adcp.types.compat``, a flat namespace over everything, whose 1,700 re-exports import all
+23 aggregators and through them every module of ``_schemas``.  **So resolving ONE name
+required every module to exist first**: ``python -c "import adcp; adcp.Product"`` cost
+**4.43 s and 145 MB** while ``import adcp`` cost 0.02 s and 13.1 MB.  The facade had not
+removed that cost, it had deferred it and then paid it in full at the first attribute, and
+an adopter's first class is where they meet it.
+
+:data:`_OWNED` is the table the generator writes for it: the module that OWNS each word,
+asked of the chain once per build.  A word is now one ``import_module`` and one ``getattr``
+-- ``Product`` imports the 547 modules its own annotations reach and not the 1,437 the
+namespace has -- and :func:`_searched` stays exactly as it was, both as the authority the
+table is derived FROM and as the fallback for a word no row carries.  Measured on this
+tree: **4.93 s and 148 MB to 0.57 s and 46 MB** for ``adcp.Product``, with ``import adcp``
+and ``import adcp.types`` unmoved.
+
 **CONSULTED LAST, so a late layer can only ADD a spelling and never change one.**
 ``TaskStatus`` is the word that proves it: upstream's has five members and ours, from
 ``enums/task-status.json``, has nine, and ``_flat`` is reached first, so the flat word stays
@@ -430,7 +870,79 @@ reference could stand for all of them.
 __ALL__
 
 
+#: **WHERE EACH WORD LIVES, AS A LITERAL -- so resolving one name imports ONE module**
+#: (the owner's ruling of 2026-11-19, this module's own docstring; ``codegen/facade.py``
+#: for the generator).  Keyed on the MODULE and carrying its words, which is
+#: ``adcp/__init__.py``'s own ``_LAZY_MODULES`` shape: a reader sees the ownership rather
+#: than 6,000 unrelated pairs, and the inversion below is the same one that module does.
+#:
+#: The rows are the CHAIN's own answers, read once per build by
+#: ``codegen.facade.owners`` through :func:`_searched`.  So the table decides nothing: it
+#: is a faster route to the object that function already returns, and a word it does not
+#: carry takes the slow route and gets the same answer.
+__WHERE__
+
+#: The table inverted, which is how a word is looked up.  Built at import for
+#: ``adcp/__init__.py``'s reason -- "cheap, strings only" -- and measured: the three
+#: literals and both inversions cost ``import adcp.types`` about 1.7 MiB and no time that
+#: can be told from noise, against the 4.4 s and 130 MiB they take off the first access.
+_WHERE: dict[str, str] = {word: module for module, words in _OWNED.items() for word in words}
+
+
 def __getattr__(name: str) -> object:
+    """A word of the flat surface, routed to the one module that owns it.
+
+    **THE TABLE FIRST AND THE CHAIN BEHIND IT**, which is the whole of the 2026-11-19 cold
+    path ruling: :data:`_OWNED` says which module owns ``name``, so this function imports
+    that module and takes that attribute -- one module and not 1,327.  :func:`_searched` is
+    the nine-consult chain it used to be and is still the authority: the table is generated
+    FROM it, a word with no row goes to it, and a row that cannot be honoured on this tree
+    goes to it too.
+
+    Three things cannot be reached through a row and are not meant to be.  A ``_NOT_ROUTED``
+    submodule and a dunder are refused above the table, for the reason they always were.  A
+    word whose owning module is genuinely undecidable is refused by the GENERATOR, which
+    reports it rather than guessing -- and then resolves here exactly as it did before.
+    """
+    if name in _NOT_ROUTED or name.startswith("__"):
+        # Not routed through the alias module.  A dunder probe (``__path__`` during a
+        # partial import, ``__wrapped__``, ``__bases__``) must stay an ``AttributeError``
+        # and must not import a thousand names to answer one -- and ``compat`` itself must
+        # stay one so that the import system goes on to import the SUBMODULE.
+        #
+        # **AND ``__all__`` IS NO LONGER THE EXCEPTION TO THIS LINE**, which is the ruling
+        # of 2026-11-19 arriving here: it is a literal above, so the attribute is BOUND and
+        # this function is never asked for it.  What stood here was a branch that rebuilt
+        # the union of six layers per access -- 4.88 s cold, 0.065 s warm -- and what the
+        # ruling turns on is that no static analyser can evaluate a branch at all.  The
+        # union is ``codegen/facade.py``'s now, read once per build.
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+    import importlib
+
+    owner = _WHERE.get(name)
+    if owner is not None:
+        try:
+            return getattr(importlib.import_module(owner), _SPELLED.get(name, name))
+        except (ImportError, AttributeError):
+            # **A ROW THAT CANNOT BE HONOURED FALLS THROUGH AND DOES NOT RAISE.**  The table
+            # is written against the tree beside it, and a tree whose compiler has not been
+            # re-run -- or a module edited by hand -- can have a row whose module or
+            # attribute is gone.  The chain is what decides whether the word resolves at
+            # all, so the degradation that is correct is "the slow route", never "a word
+            # that used to resolve now raises".  A stale row is graded as staleness by the
+            # re-emission check (``tests/test_one_name_one_module.py``), which is where a
+            # reader can act on it.
+            pass
+    owner = _NAMES_A_MODULE.get(name)
+    if owner is not None:
+        try:
+            return importlib.import_module(owner)
+        except ImportError:
+            pass
+    return _searched(name)
+
+
+def _searched(name: str) -> object:
     """Reading 10's flat compatibility surface, resolved through the alias module.
 
     A name this package does not itself bind is looked for in ``adcp.types.compat``, the
@@ -451,20 +963,16 @@ def __getattr__(name: str) -> object:
     ``from adcp.types import X`` must raise for a name with no subject: reading 10's "a
     name with no schema subject gets a migration note and never a class", and an
     ``ImportError`` a reader can act on rather than a class that silently is not theirs.
+
+    **THIS IS THE CHAIN AND IT IS UNCHANGED, which is what makes the table above safe**
+    (the owner's ruling of 2026-11-19).  It was :func:`__getattr__`'s own body; what moved
+    is the NAME, so that the generator can ask the nine consults the same question an access
+    used to ask and write the answer down.  ``codegen.facade.owners`` calls THIS function
+    and never ``getattr`` on the package, because a table built through the table it is
+    replacing would confirm its own rows -- a wrong one would survive every regeneration.
+    The ``_NOT_ROUTED`` and dunder screen is not repeated here: :func:`__getattr__` runs it
+    before the table, and the generator's candidate set excludes the same four words.
     """
-    if name in _NOT_ROUTED or name.startswith("__"):
-        # Not routed through the alias module.  A dunder probe (``__path__`` during a
-        # partial import, ``__wrapped__``, ``__bases__``) must stay an ``AttributeError``
-        # and must not import a thousand names to answer one -- and ``compat`` itself must
-        # stay one so that the import system goes on to import the SUBMODULE.
-        #
-        # **AND ``__all__`` IS NO LONGER THE EXCEPTION TO THIS LINE**, which is the ruling
-        # of 2026-11-19 arriving here: it is a literal above, so the attribute is BOUND and
-        # this function is never asked for it.  What stood here was a branch that rebuilt
-        # the union of six layers per access -- 4.88 s cold, 0.065 s warm -- and what the
-        # ruling turns on is that no static analyser can evaluate a branch at all.  The
-        # union is ``codegen/facade.py``'s now, read once per build.
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
     compat = _alias_module()
     adapter = _adapter_module()
     # **AND UPSTREAM'S OWN STATEMENT IS ASKED BEFORE THE TABLE, WHICH IS THE ONE PLACE THE
