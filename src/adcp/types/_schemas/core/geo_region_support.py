@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import GeoForecastDimensionCode, IntMin1, StrCountryCode, StrMinLen1
 
@@ -18,7 +18,7 @@ class ObjAllValues(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/geo-region-support.json', pointer='#/properties/countries/additionalProperties/anyOf/0')
-    all_values: Annotated[Literal[True], Field(description="Every protocol-valid ISO 3166-2 subdivision active in this declaration's support snapshot is selectable. Values introduced by a later catalog revision are not included automatically.")]
+    all_values: Annotated[Literal[True], Field(description="Every protocol-valid ISO 3166-2 subdivision active in this declaration's support snapshot is selectable. Values introduced by a later catalog revision are not included automatically."), PinnedDefault]
 
 
 class ObjValues(AdCPBaseModel):

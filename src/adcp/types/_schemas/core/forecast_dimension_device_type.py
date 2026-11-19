@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, PinnedDefault, SchemaRef
 
 from ..enums.device_type import DeviceType
 
@@ -18,7 +18,7 @@ class DeviceTypeForecastDimension(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-dimension-device-type.json', pointer='#')
-    kind: Annotated[Literal['device_type'], Field(description='Dimension family discriminator.')]
+    kind: Annotated[Literal['device_type'], Field(description='Dimension family discriminator.'), PinnedDefault]
     device_type: Annotated[DeviceType, Field(description='Device form factor for this forecast row.')]
 
 

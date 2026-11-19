@@ -5,7 +5,14 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, OmittedWhenNone, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    BranchDispatchMixin,
+    OmittedNotNull,
+    OmittedWhenNone,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, StrMaxLen2000, StrMinLen1
@@ -40,7 +47,7 @@ class WarningsItem(Warning):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/control-media-buy-response.json', pointer='#/oneOf/0/properties/warnings/items')
-    code: Annotated[Literal['inventory_shortfall_forecast'], Field(description='Closed warning vocabulary for the negotiated AdCP release. A non-blocking condition observed while an operation still succeeded. New values are added through normal protocol releases; buyers validate against the negotiated release.')]
+    code: Annotated[Literal['inventory_shortfall_forecast'], Field(description='Closed warning vocabulary for the negotiated AdCP release. A non-blocking condition observed while an operation still succeeded. New values are added through normal protocol releases; buyers validate against the negotiated release.'), PinnedDefault]
 
 
 class ControlApplied(ControlMediaBuyResponse):
@@ -53,7 +60,7 @@ class ControlApplied(ControlMediaBuyResponse):
         UniqueItems('affected_package_ids'),
         UniqueItems('available_actions'),
     )
-    status: Literal['completed']
+    status: Annotated[Literal['completed'], PinnedDefault]
     media_buy_id: StrMinLen1
     revision: IntMin1
     media_buy_status: Annotated[MediaBuyStatus | None, OmittedNotNull] = None
@@ -74,7 +81,7 @@ class ControlError(ControlMediaBuyResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('media_buy_id',),)),
     )
-    status: Literal['failed']
+    status: Annotated[Literal['failed'], PinnedDefault]
     errors: Annotated[list[Error], Field(min_length=1)]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -89,7 +96,7 @@ class ControlSubmitted(ControlMediaBuyResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('media_buy_id',),)),
     )
-    status: Literal['submitted']
+    status: Annotated[Literal['submitted'], PinnedDefault]
     task_id: StrMinLen1
     message: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
     errors: Annotated[list[Error] | None, OmittedNotNull] = None

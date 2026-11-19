@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import (
     DecimalReportingControlTotalValue,
     IntegerReportingControlTotalName,
@@ -34,7 +34,7 @@ class IntegerReportingControlTotal(ReportingControlTotal):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-control-total.json', pointer='#/oneOf/0')
     name: IntegerReportingControlTotalName
     value: Annotated[IntegerReportingControlTotalValue, Field(description='Canonical base-10 integer with no exponent, grouping separator, decimal point, or insignificant leading zeroes.')]
-    value_type: Literal['integer']
+    value_type: Annotated[Literal['integer'], PinnedDefault]
     unit: Annotated[StrMinLen1MaxLen32 | None, Field(description='Profile-defined unit such as impressions or an ISO 4217 currency code.'), OmittedNotNull] = None
 
 
@@ -45,7 +45,7 @@ class DecimalReportingControlTotal(ReportingControlTotal):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-control-total.json', pointer='#/oneOf/1')
     name: IntegerReportingControlTotalName
     value: Annotated[DecimalReportingControlTotalValue, Field(description='Canonical base-10 decimal with no exponent, grouping separator, or insignificant leading zeroes.')]
-    value_type: Literal['decimal']
+    value_type: Annotated[Literal['decimal'], PinnedDefault]
     unit: Annotated[StrMinLen1MaxLen32 | None, Field(description='Profile-defined unit such as impressions or an ISO 4217 currency code.'), OmittedNotNull] = None
 
 

@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import (
     ReportingAdjustmentReceiptObservedAdjustmentSha256,
@@ -23,10 +23,10 @@ class EmptyReport(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-canonicalization-contract.json', pointer='#/properties/golden_vectors/properties/empty_report')
     name: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
-    purpose: Literal['empty_report']
+    purpose: Annotated[Literal['empty_report'], PinnedDefault]
     input_rows: Annotated[list[Any], Field(max_length=0)]
-    canonical_utf8_base64: Annotated[Literal['W10='], Field(description='Base64 of the exact UTF-8 bytes for [].')]
-    sha256: Literal['4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945']
+    canonical_utf8_base64: Annotated[Literal['W10='], Field(description='Base64 of the exact UTF-8 bytes for [].'), PinnedDefault]
+    sha256: Annotated[Literal['4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'], PinnedDefault]
 
 
 class OrderingEncoding(AdCPBaseModel):
@@ -35,7 +35,7 @@ class OrderingEncoding(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-canonicalization-contract.json', pointer='#/properties/golden_vectors/properties/ordering_encoding')
     name: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
-    purpose: Literal['ordering_encoding']
+    purpose: Annotated[Literal['ordering_encoding'], PinnedDefault]
     input_rows: Annotated[list[dict[str, Any]], Field(min_length=2)]
     canonical_utf8_base64: Annotated[StrMinLen1, Field(description='Base64 of the exact expected canonical UTF-8 bytes.')]
     sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256
@@ -47,7 +47,7 @@ class AdditionalItem(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-canonicalization-contract.json', pointer='#/properties/golden_vectors/properties/additional/items')
     name: ReportingCanonicalizationContractGoldenVectorsAdditionalItemName
-    purpose: Literal['additional']
+    purpose: Annotated[Literal['additional'], PinnedDefault]
     input_rows: list[dict[str, Any]]
     canonical_utf8_base64: Annotated[StrMinLen1, Field(description='Base64 of the exact expected canonical UTF-8 bytes.')]
     sha256: ReportingAdjustmentReceiptObservedAdjustmentSha256
@@ -77,9 +77,9 @@ class ReportingCanonicalizationContract(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('primary_keys'),
     )
-    contract_version: Literal['1.0']
-    media_type: Literal['application/vnd.adcp.reporting-canonicalization+json']
-    algorithm: Literal['adcp_jcs_rows_v1']
+    contract_version: Annotated[Literal['1.0'], PinnedDefault]
+    media_type: Annotated[Literal['application/vnd.adcp.reporting-canonicalization+json'], PinnedDefault]
+    algorithm: Annotated[Literal['adcp_jcs_rows_v1'], PinnedDefault]
     schema_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest of the exact row schema to which this contract applies.')]
     primary_keys: Annotated[list[ReportingPrimaryKey], Field(description="Ordered scalar fields used to sort rows and reject duplicate logical rows. This MUST equal the offering's primary_keys.", json_schema_extra={'uniqueItems': True}, min_length=1)]
     golden_vectors: Annotated[GoldenVectors, Field(description='Named cross-language conformance cases: exactly one empty_report vector, exactly one ordering_encoding vector, and an optional list of additional vectors.')]

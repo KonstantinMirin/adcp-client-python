@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import FloatGt0, FloatMin0Max1, HostedUrl, IntMin1
 
 from ..provenance import Provenance
@@ -23,7 +23,7 @@ class ImageAsset(AdCPBaseModel):
         Approximation(document='core/assets/image-asset.json', pointer='#/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/assets/image-asset.json', pointer='#/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    asset_type: Annotated[Literal['image'], Field(description='Discriminator identifying this as an image asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['image'], Field(description='Discriminator identifying this as an image asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     url: Annotated[HostedUrl, Field(description='URL to the image asset')]
     width: Annotated[IntMin1, Field(description='Width in pixels')]
     height: Annotated[IntMin1, Field(description='Height in pixels')]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from .collection_selector import CollectionSelector
@@ -44,7 +44,7 @@ class SelectedCollections(CollectionSelection):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('collections'),
     )
-    mode: Literal['selected']
+    mode: Annotated[Literal['selected'], PinnedDefault]
     collections: Annotated[list[CollectionsItem], Field(description="Complete required collection set as domain-qualified selectors with explicit collection_ids; the domain-only bulk-grant form is authorization scoping, not selection. publisher_domain may be an external channel owner's domain.", json_schema_extra={'uniqueItems': True}, min_length=1)]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -54,7 +54,7 @@ class ProductDefaultCollections(CollectionSelection):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/collection-selection.json', pointer='#/oneOf/1')
-    mode: Literal['default']
+    mode: Annotated[Literal['default'], PinnedDefault]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

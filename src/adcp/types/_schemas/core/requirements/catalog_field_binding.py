@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 
 from ..ext import ExtensionObject
 
@@ -18,7 +18,7 @@ class ScalarBinding(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/definitions/ScalarBinding')
-    kind: Literal['scalar']
+    kind: Annotated[Literal['scalar'], PinnedDefault]
     asset_id: Annotated[str, Field(description="The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.")]
     catalog_field: Annotated[str, Field(description="Dot-notation path to the field on the catalog item (e.g., 'name', 'price.amount', 'location.city').")]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -32,7 +32,7 @@ class AssetPoolBinding(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/definitions/AssetPoolBinding')
-    kind: Literal['asset_pool']
+    kind: Annotated[Literal['asset_pool'], PinnedDefault]
     asset_id: Annotated[str, Field(description="The asset_id from the format's assets array. Identifies which individual template slot this binding applies to.")]
     asset_group_id: Annotated[str, Field(description="The asset_group_id on the catalog item's assets array to pull from (e.g., 'images_landscape', 'images_vertical', 'logo').")]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -79,9 +79,9 @@ class CatalogFieldBindingCatalogGroup(CatalogFieldBinding):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/requirements/catalog-field-binding.json', pointer='#/oneOf/2')
-    kind: Literal['catalog_group']
+    kind: Annotated[Literal['catalog_group'], PinnedDefault]
     format_group_id: Annotated[str, Field(description="The asset_group_id of a repeatable_group in the format's assets array.")]
-    catalog_item: Annotated[Literal[True], Field(description="Each repetition of the format's repeatable_group maps to one item from the catalog.")]
+    catalog_item: Annotated[Literal[True], Field(description="Each repetition of the format's repeatable_group maps to one item from the catalog."), PinnedDefault]
     per_item_bindings: Annotated[list[ScalarBinding | AssetPoolBinding] | None, Field(description='Scalar and asset pool bindings that apply within each repetition of the group. Nested catalog_group bindings are not permitted.', min_length=1), OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 
 from ..platform_extension_ref import PlatformExtensionReference
 from ..provenance import Provenance
@@ -26,7 +26,7 @@ class CardAsset(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/card-asset.json', pointer='#')
-    asset_type: Annotated[Literal['card'], Field(description='Discriminator identifying this as a card asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['card'], Field(description='Discriminator identifying this as a card asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     media: Annotated[ImageAsset | VideoAsset, Field(description="The card's primary visual asset. Either an `image` or `video` asset, matching the parent format's `allowed_card_media_asset_types` parameter.")]
     headline: Annotated[str | None, Field(description='Optional per-card short text label (typically 25-40 chars). Length governed by `card_headline_max_chars` on the format declaration. Meta carousel headline, Pinterest pin title, Snap Collection sticker text, TikTok caption-short.'), OmittedNotNull] = None
     description: Annotated[str | None, Field(description='Optional per-card longer text (typically 100-500 chars). Distinct from `headline`: `description` is body copy, `headline` is the label. Length governed by `card_description_max_chars` on the format declaration. Meta carousel description, Pinterest pin description, AI-surface result body text, TikTok long caption.'), OmittedNotNull] = None

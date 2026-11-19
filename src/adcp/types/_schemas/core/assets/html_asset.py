@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 
 from ..provenance import Provenance
 
@@ -29,7 +29,7 @@ class HTMLAsset(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/html-asset.json', pointer='#')
-    asset_type: Annotated[Literal['html'], Field(description='Discriminator identifying this as an HTML asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['html'], Field(description='Discriminator identifying this as an HTML asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     content: Annotated[str, Field(description='HTML content')]
     version: Annotated[str | None, Field(description="HTML version (e.g., 'HTML5')"), OmittedNotNull] = None
     accessibility: Annotated[Accessibility | None, Field(description='Self-declared accessibility properties for this opaque creative'), OmittedNotNull] = None

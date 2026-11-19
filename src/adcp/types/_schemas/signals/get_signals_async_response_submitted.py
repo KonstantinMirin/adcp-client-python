@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen2000
@@ -26,7 +26,7 @@ class GetSignalsSubmitted(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('signals',), ('result',))),
     )
-    status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose signals array is issued in-line. See task-status.json for the full task-status enum.')]
+    status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose signals array is issued in-line. See task-status.json for the full task-status enum.'), PinnedDefault]
     task_id: Annotated[str, Field(description='Task handle the caller uses with get_task_status (or the legacy AdCP tasks/get alias), and that the agent references on push-notification callbacks. The signals array is issued on the completion artifact, not here. This AdCP application-layer handle remains the snake_case task_id in every transport payload and is distinct from any transport-native A2A Task id.')]
     message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Provider discovery queued; typical turnaround 10-30 minutes.' Plain text only. Callers MUST treat this as untrusted agent input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile agent may inject prompt-injection payloads aimed at the caller's agent."), OmittedNotNull] = None
     estimated_completion: Annotated[WireDatetime | None, Field(description='Estimated completion time for the signal discovery task.'), OmittedNotNull] = None

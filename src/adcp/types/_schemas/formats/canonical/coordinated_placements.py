@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
@@ -100,7 +100,7 @@ class ComponentsItemFormatKindParamsImage(ComponentsItemFormatKindParams):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/0')
-    format_kind: Literal['image']
+    format_kind: Annotated[Literal['image'], PinnedDefault]
     params: CanonicalFormatImage
 
 
@@ -109,7 +109,7 @@ class ComponentsItemFormatKindParamsHtml5(ComponentsItemFormatKindParams):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/1')
-    format_kind: Literal['html5']
+    format_kind: Annotated[Literal['html5'], PinnedDefault]
     params: CanonicalFormatHTML5Banner
 
 
@@ -118,7 +118,7 @@ class ComponentsItemFormatKindParamsDisplayTag(ComponentsItemFormatKindParams):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/2')
-    format_kind: Literal['display_tag']
+    format_kind: Annotated[Literal['display_tag'], PinnedDefault]
     params: CanonicalFormatDisplayTag
 
 
@@ -127,7 +127,7 @@ class ComponentsItemFormatKindParamsImageCarousel(ComponentsItemFormatKindParams
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/3')
-    format_kind: Literal['image_carousel']
+    format_kind: Annotated[Literal['image_carousel'], PinnedDefault]
     params: CanonicalFormatImageCarousel
 
 
@@ -136,7 +136,7 @@ class ComponentsItemFormatKindParamsVideoHosted(ComponentsItemFormatKindParams):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/4')
-    format_kind: Literal['video_hosted']
+    format_kind: Annotated[Literal['video_hosted'], PinnedDefault]
     params: CanonicalFormatHostedVideo
 
 
@@ -145,7 +145,7 @@ class ComponentsItemFormatKindParamsVideoVast(ComponentsItemFormatKindParams):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/5')
-    format_kind: Literal['video_vast']
+    format_kind: Annotated[Literal['video_vast'], PinnedDefault]
     params: CanonicalFormatVASTVideo
 
 
@@ -154,7 +154,7 @@ class ComponentsItemFormatKindParamsAudioHosted(ComponentsItemFormatKindParams):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/6')
-    format_kind: Literal['audio_hosted']
+    format_kind: Annotated[Literal['audio_hosted'], PinnedDefault]
     params: CanonicalFormatHostedAudio
 
 
@@ -163,7 +163,7 @@ class ComponentsItemFormatKindParamsAudioDaast(ComponentsItemFormatKindParams):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/7')
-    format_kind: Literal['audio_daast']
+    format_kind: Annotated[Literal['audio_daast'], PinnedDefault]
     params: CanonicalFormatDAASTAudio
 
 
@@ -172,7 +172,7 @@ class ComponentsItemFormatKindParamsSponsoredPlacement(ComponentsItemFormatKindP
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/8')
-    format_kind: Literal['sponsored_placement']
+    format_kind: Annotated[Literal['sponsored_placement'], PinnedDefault]
     params: CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven
 
 
@@ -181,7 +181,7 @@ class ComponentsItemFormatKindParamsNativeInFeed(ComponentsItemFormatKindParams)
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/9')
-    format_kind: Literal['native_in_feed']
+    format_kind: Annotated[Literal['native_in_feed'], PinnedDefault]
     params: CanonicalFormatNativeInFeed
 
 
@@ -190,7 +190,7 @@ class ComponentsItemFormatKindParamsResponsiveCreative(ComponentsItemFormatKindP
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/10')
-    format_kind: Literal['responsive_creative']
+    format_kind: Annotated[Literal['responsive_creative'], PinnedDefault]
     params: CanonicalFormatResponsiveCreative
 
 
@@ -199,7 +199,7 @@ class ComponentsItemFormatKindParamsAgentPlacement(ComponentsItemFormatKindParam
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/11')
-    format_kind: Literal['agent_placement']
+    format_kind: Annotated[Literal['agent_placement'], PinnedDefault]
     params: CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement
 
 
@@ -208,7 +208,7 @@ class ComponentsItemFormatKindParamsSellerRenderedStatefulDisplay(ComponentsItem
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='formats/canonical/coordinated_placements.json', pointer='#/properties/components/items/anyOf/1/oneOf/12')
-    format_kind: Literal['seller_rendered_stateful_display']
+    format_kind: Annotated[Literal['seller_rendered_stateful_display'], PinnedDefault]
     params: CanonicalFormatSellerRenderedStatefulDisplay
 
 

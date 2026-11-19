@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationFormatsItemFormatRevision,
     Integrity,
@@ -34,7 +34,7 @@ class ReferenceRenderer(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reference-renderer.json', pointer='#')
-    runtime: Annotated[Literal['browser-esm'], Field(description='Execution contract for the referenced package. browser-esm means a browser-safe ECMAScript module that accepts canonical manifest data and returns an inert presentation without Node.js APIs, ambient credentials, delivery tracking, or undeclared network access. Non-JavaScript clients use a hosted preview_creative provider or display the manifest.')]
+    runtime: Annotated[Literal['browser-esm'], Field(description='Execution contract for the referenced package. browser-esm means a browser-safe ECMAScript module that accepts canonical manifest data and returns an inert presentation without Node.js APIs, ambient credentials, delivery tracking, or undeclared network access. Non-JavaScript clients use a hosted preview_creative provider or display the manifest.'), PinnedDefault]
     package: Annotated[Package, Field(description='npm package name, scoped or unscoped. The package is resolved from the npm registry; the AdCP registry does not proxy its executable contents.')]
     version: Annotated[Version, Field(description='Exact semantic version. Ranges and tags such as latest are forbidden so the registry entry is reproducible. Package semantic versioning identifies the pinned distribution artifact; it is independent of any one format revision because one package may expose renderers for multiple formats.')]
     export: Annotated[StrMinLen1, Field(description="Named package export that implements the renderer contract for this enclosing format entry. Compatibility is bound at the export-to-entry edge, not to matching version labels: registry review and contract fixtures verify that the export implements the entry's input contract. When that input contract changes, the registry MUST rerun those fixtures and MAY retain the existing export and package pin when they still pass. One package version MAY expose different named exports for different formats or input contracts.")]

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemCredentialOriginsItem,
     AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
@@ -33,7 +33,7 @@ class AttestationBrandIssuer(AttestationIssuer):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-issuer.json', pointer='#/oneOf/0')
-    type: Annotated[Literal['brand'], Field(description='The issuer is identified by an AdCP BrandRef.')]
+    type: Annotated[Literal['brand'], Field(description='The issuer is identified by an AdCP BrandRef.'), PinnedDefault]
     brand: BrandReference
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -43,7 +43,7 @@ class AttestationAgentIssuer(AttestationIssuer):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-issuer.json', pointer='#/oneOf/1')
-    type: Annotated[Literal['agent'], Field(description='The issuer is an AdCP agent identified by its canonical HTTPS endpoint.')]
+    type: Annotated[Literal['agent'], Field(description='The issuer is an AdCP agent identified by its canonical HTTPS endpoint.'), PinnedDefault]
     agent_url: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='Canonical HTTPS endpoint of the issuing agent. Evaluators compare it using AdCP URL canonicalization rules.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -53,7 +53,7 @@ class AttestationOriginIssuer(AttestationIssuer):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-issuer.json', pointer='#/oneOf/2')
-    type: Annotated[Literal['origin'], Field(description='The issuer is identified by a canonical HTTPS origin because no AdCP brand or agent identity applies.')]
+    type: Annotated[Literal['origin'], Field(description='The issuer is identified by a canonical HTTPS origin because no AdCP brand or agent identity applies.'), PinnedDefault]
     origin: Annotated[AttestationCapabilitiesAcceptedIssuersItemCredentialOriginsItem, Field(description='Canonical HTTPS origin with no path, query, fragment, or userinfo. This identifies the issuer; it does not authorize a fetch.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

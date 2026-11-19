@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import ComplyTestControllerRequestParamsReceivedReportingRevisionId
@@ -28,8 +28,8 @@ class ReportingFileManifest(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('control_totals'),
     )
-    manifest_version: Literal['1.0']
-    complete: Literal[True]
+    manifest_version: Annotated[Literal['1.0'], PinnedDefault]
+    complete: Annotated[Literal[True], PinnedDefault]
     reporting_revision_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_obligation_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_materialization_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId

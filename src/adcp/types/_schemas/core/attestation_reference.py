@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, RequiredGroups, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -28,7 +28,7 @@ class AttestationCredentialUriLocator(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/locator/oneOf/0')
-    type: Literal['credential_uri']
+    type: Annotated[Literal['credential_uri'], PinnedDefault]
     credential_uri: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='HTTPS URI of the credential. Before any fetch, evaluators MUST match its canonical origin to credential_origins on the accepted issuer capability and then apply the attestation fetch contract.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -38,7 +38,7 @@ class AttestationIssuerCredentialIdLocator(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-reference.json', pointer='#/properties/locator/oneOf/1')
-    type: Literal['issuer_credential_id']
+    type: Annotated[Literal['issuer_credential_id'], PinnedDefault]
     credential_id: Annotated[StrMinLen1MaxLen1024, Field(description="Stable credential identifier in the issuer's namespace. It is meaningful only together with issuer and resolver_id.")]
     resolver_id: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemResolverId, Field(description='Identifier of a resolver already published in the matched accepted_issuers[].resolvers[] capability. A presenter cannot supply or override its URL.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

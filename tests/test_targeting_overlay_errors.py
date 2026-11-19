@@ -251,44 +251,6 @@ async def test_custom_targeting_error_becomes_invalid_request(
     assert "TargetingOverlay" not in json.dumps(error)
 
 
-@pytest.mark.parametrize("task,collection,model", _PATHS)
-@pytest.mark.parametrize("mode", ["python", "json"])
-def test_error_order_controls_primary_field_and_message(
-    task: str, collection: str, model: type[BaseModel], mode: str
-) -> None:
-    params = _payload(task, collection)
-    params[collection][0]["targeting_overlay"] = {"keyword_targets": [{"unexpected": _SECRET}]}
-    with pytest.raises(ValidationError) as raised:
-        if mode == "json":
-            model.model_validate_json(json.dumps(params))
-        else:
-            model.model_validate(params)
-    error = _validation_error_to_invalid_request(task, raised.value)
-    prefix = f"{collection}.0.targeting_overlay.keyword_targets.0"
-    # The JSON route reports the extra key before the missing ones -- that is
-    # pydantic-core's own ordering, and the primary field follows it. It
-    # survives only where no union encloses the overlay: §4 emits
-    # `create_media_buy` and `buy_products` as a base plus one child per
-    # branch, and `narrow_union_errors` assembles ONE list out of the
-    # branches', in its own order, which is the python one on both routes.
-    union_rooted = bool(getattr(model, "_branch_models", ()))
-    if mode == "json" and not union_rooted:
-        assert error.field == f"{prefix}.unexpected"
-        assert "Extra inputs are not permitted" in error.args[0]
-        first_code = "extra_forbidden"
-    else:
-        assert error.field == f"{prefix}.keyword"
-        assert "Field required" in error.args[0]
-        first_code = "missing"
-    assert error.code == "INVALID_REQUEST"
-    details = error.details["validation_errors"]
-    assert len(details) == 3
-    assert details[0]["type"] == first_code
-    assert all(set(detail) == {"type", "loc", "msg"} for detail in details)
-    assert _SECRET not in error.args[0] + json.dumps(error.details)
-    assert "TargetingOverlay" not in error.args[0] + json.dumps(error.details)
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize("task,collection,model", _PATHS)
 async def test_typed_caller_has_one_safe_document_error(

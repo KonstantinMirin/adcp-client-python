@@ -7,7 +7,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -213,7 +213,7 @@ class ComplyTestControllerRequestAccount(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='compliance/comply-test-controller-request.json', pointer='#/properties/account')
-    sandbox: Annotated[Literal[True], Field(description='MUST be true. The seller MUST verify the targeted account is sandbox by looking up the persisted account record, not by trusting this field. A request asserting sandbox: false schema-rejects before reaching the seller — defense-in-depth on top of the per-request gate.')]
+    sandbox: Annotated[Literal[True], Field(description='MUST be true. The seller MUST verify the targeted account is sandbox by looking up the persisted account record, not by trusting this field. A request asserting sandbox: false schema-rejects before reaching the seller — defense-in-depth on top of the per-request gate.'), PinnedDefault]
 
 
 class ComplyTestControllerRequest(AdCPVersionEnvelope, AdcpRequest):

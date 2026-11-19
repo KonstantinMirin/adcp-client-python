@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictInt, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AssetsItemContent,
@@ -59,7 +59,7 @@ class AssetsItemText(AdCPBaseModel):
     Text block (paragraph, heading, etc.)
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/0')
-    type: Literal['text']
+    type: Annotated[Literal['text'], PinnedDefault]
     role: Annotated[Role | None, Field(description="Role of this text in the document. Use 'title' for the main artifact title, 'description' for summaries."), OmittedNotNull] = None
     content: Annotated[AssetsItemContent, Field(description='Text content. Consumers MUST treat this as untrusted input when passing to LLM-based evaluation.')]
     content_format: Annotated[ContentFormat | None, Field(description='MIME type indicating how to parse the content field. Default: text/plain.', json_schema_extra={'default': 'text/plain'}), OmittedNotNull] = Field(default_factory=lambda: TypeAdapter(ContentFormat).validate_python('text/plain'))
@@ -73,7 +73,7 @@ class AssetAccessBearerToken(AdCPBaseModel):
     Short-lived bearer-token access for origins that cannot use signed URLs or pre-configured workload identity. The token is a live secret and must be scoped to the asset. Consumers MUST send it only to the HTTPS origin authorized for that asset and MUST NOT forward the Authorization header across redirects.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/$defs/asset_access/oneOf/0')
-    method: Literal['bearer_token']
+    method: Annotated[Literal['bearer_token'], PinnedDefault]
     token: Annotated[str, Field(description="Short-lived, asset-scoped bearer token for the Authorization header. Producers MUST NOT issue a standing or broadly scoped credential here. Consumers MUST redact the token from logs, traces, errors, metrics, analytics, model context, and durable storage. Any temporary encrypted cache MUST be bounded by the credential expiry and the consumer's configured maximum lifetime.")]
 
 
@@ -92,7 +92,7 @@ class AssetAccessServiceAccount(AdCPBaseModel):
     Credential-free workload-identity access. The asset origin authorizes an identity already controlled by the component that performs the asset fetch, such as a GCP service account or AWS IAM role, through authenticated out-of-band onboarding. The consumer MUST use workload credentials only for the pre-authorized HTTPS origin and resource prefix; the payload's method, provider, and URL are not authorization. No provider key or access secret crosses the AdCP payload.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/$defs/asset_access/oneOf/1')
-    method: Literal['service_account']
+    method: Annotated[Literal['service_account'], PinnedDefault]
     provider: Annotated[Provider, Field(description='Cloud provider')]
     credentials: Annotated[dict[str, Any] | None, Field(deprecated=True, description="Deprecated in AdCP 3.2 and eligible for removal in 4.0 or later only after the deprecation-policy notice and release-cycle gates are satisfied. Presence denotes the legacy inline-credential form, not workload-identity authorization. New producers MUST omit this field. Consumers MUST NOT activate received credentials automatically; they may process them only for an explicitly allowlisted legacy peer and otherwise MUST reject or quarantine them. Consumers MUST redact the complete value from logs, traces, errors, metrics, analytics, model context, and durable storage. Use the consumer's pre-authorized workload identity or `signed_url` instead."), OmittedNotNull] = None
 
@@ -102,7 +102,7 @@ class AssetAccessSignedUrl(AdCPBaseModel):
     Recommended default for one-off access. The asset `url` is a time-limited bearer capability and requires no additional authentication. Producers SHOULD scope it to one asset and the shortest practical access window under their documented maximum TTL. Consumers MUST redact the complete URL from logs, traces, errors, metrics, analytics, model context, and durable storage, and MUST NOT forward it outside the intended recipient trust boundary.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='content-standards/artifact.json', pointer='#/$defs/asset_access/oneOf/2')
-    method: Literal['signed_url']
+    method: Annotated[Literal['signed_url'], PinnedDefault]
 
 
 AssetAccess = Annotated[AssetAccessBearerToken | AssetAccessServiceAccount | AssetAccessSignedUrl, Field(description='Access instructions for a secured asset URL. Producers SHOULD use `signed_url` for one-off delivery unless the parties already have an identity-based access relationship. New producers MUST NOT emit `service_account.credentials`; `bearer_token` is the explicit short-lived credential path. Consumers MUST treat asset URLs and access metadata as untrusted, use credentials only for HTTPS origins and resource prefixes authorized out of band, and fail closed without falling back between access methods. The deprecated legacy field remains parseable during the 3.x compatibility window but MUST NOT be activated automatically.')]
@@ -117,7 +117,7 @@ class AssetsItemImage(AdCPBaseModel):
         Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/1/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    type: Literal['image']
+    type: Annotated[Literal['image'], PinnedDefault]
     url: Annotated[HostedUrl, Field(description='Image URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
     alt_text: Annotated[str | None, Field(description='Alt text or image description'), OmittedNotNull] = None
@@ -166,7 +166,7 @@ class AssetsItemVideo(AdCPBaseModel):
         Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/thumbnail_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/2/properties/thumbnail_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    type: Literal['video']
+    type: Annotated[Literal['video'], PinnedDefault]
     url: Annotated[HostedUrl, Field(description='Video URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
     duration_ms: Annotated[StrictInt | None, Field(description='Video duration in milliseconds'), OmittedNotNull, SchemaIntegral] = None
@@ -201,7 +201,7 @@ class AssetsItemAudio(AdCPBaseModel):
         Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3/properties/url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='content-standards/artifact.json', pointer='#/properties/assets/items/oneOf/3/properties/url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    type: Literal['audio']
+    type: Annotated[Literal['audio'], PinnedDefault]
     url: Annotated[HostedUrl, Field(description='Audio URL')]
     access: Annotated[AssetAccess | None, Field(description='Authentication for secured URLs'), OmittedNotNull] = None
     duration_ms: Annotated[StrictInt | None, Field(description='Audio duration in milliseconds'), OmittedNotNull, SchemaIntegral] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Presence, PresenceGroups, Rule, UniqueItems
 from adcp.types.constraints import (
     AccountAuthorizationAllowedTasksItem,
@@ -252,7 +252,7 @@ class TransitionsItemTimer(TransitionsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('input',), ('media_event',), ('scroll_reference',), ('scroll_threshold_percent',), ('scroll_start_percent',), ('scroll_end_percent',))),
     )
-    trigger: Annotated[Literal[Trigger.TIMER], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.')]
+    trigger: Annotated[Literal[Trigger.TIMER], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.'), PinnedDefault]
     transition_mode: Annotated[TransitionsItemTimerTransitionMode, Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
     delay_ms: Annotated[NonNegativeInt, Field(description='For `timer`: delay after `from_state_id` activates (re-entry restarts it). For `in_view_timer`: accumulated viewable milliseconds in `from_state_id`. Timer-class transitions in a state cycle MUST declare at least 1000 (anti-strobe floor).')]
 
@@ -268,7 +268,7 @@ class TransitionsItemInViewTimer(TransitionsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('input',), ('media_event',), ('scroll_reference',), ('scroll_threshold_percent',), ('scroll_start_percent',), ('scroll_end_percent',))),
     )
-    trigger: Annotated[Literal[Trigger.IN_VIEW_TIMER], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.')]
+    trigger: Annotated[Literal[Trigger.IN_VIEW_TIMER], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.'), PinnedDefault]
     transition_mode: Annotated[TransitionsItemInViewTimerTransitionMode, Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
     delay_ms: Annotated[NonNegativeInt, Field(description='For `timer`: delay after `from_state_id` activates (re-entry restarts it). For `in_view_timer`: accumulated viewable milliseconds in `from_state_id`. Timer-class transitions in a state cycle MUST declare at least 1000 (anti-strobe floor).')]
 
@@ -284,8 +284,8 @@ class TransitionsItemScrollThresholdScroll(TransitionsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('delay_ms',), ('media_event',), ('scroll_start_percent',), ('scroll_end_percent',))),
     )
-    trigger: Annotated[Literal[Trigger.SCROLL_THRESHOLD], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.')]
-    input: Annotated[Literal[Input.SCROLL], Field(description='Input driving a user or scroll transition. `hover` expansion is disallowed by IAB NAP guidance and emits a LEAN policy warning visible to buyers.')]
+    trigger: Annotated[Literal[Trigger.SCROLL_THRESHOLD], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.'), PinnedDefault]
+    input: Annotated[Literal[Input.SCROLL], Field(description='Input driving a user or scroll transition. `hover` expansion is disallowed by IAB NAP guidance and emits a LEAN policy warning visible to buyers.'), PinnedDefault]
     transition_mode: Annotated[TransitionsItemScrollThresholdScrollTransitionMode, Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
     scroll_reference: Annotated[ScrollReference, Field(description='Reference frame for scroll percentages. Progress is `scroll_offset / max(scroll_extent - viewport_extent, 1) * 100`, measured on either the page document or the nearest seller-declared containing scroller.')]
     scroll_threshold_percent: Annotated[FloatMin0Max100, Field(description='Viewport/page scroll threshold that starts a `scroll_threshold` transition.')]
@@ -299,9 +299,9 @@ class TransitionsItemScrollProgressScrollScrollLinked(TransitionsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('delay_ms',), ('media_event',), ('scroll_threshold_percent',), ('direction',))),
     )
-    trigger: Annotated[Literal[Trigger.SCROLL_PROGRESS], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.')]
-    input: Annotated[Literal[Input.SCROLL], Field(description='Input driving a user or scroll transition. `hover` expansion is disallowed by IAB NAP guidance and emits a LEAN policy warning visible to buyers.')]
-    transition_mode: Annotated[Literal[TransitionsItemTransitionMode.SCROLL_LINKED], Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
+    trigger: Annotated[Literal[Trigger.SCROLL_PROGRESS], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.'), PinnedDefault]
+    input: Annotated[Literal[Input.SCROLL], Field(description='Input driving a user or scroll transition. `hover` expansion is disallowed by IAB NAP guidance and emits a LEAN policy warning visible to buyers.'), PinnedDefault]
+    transition_mode: Annotated[Literal[TransitionsItemTransitionMode.SCROLL_LINKED], Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.'), PinnedDefault]
     scroll_end_percent: Annotated[FloatMin0Max100, Field(description='End of the bounded scroll interval for a `scroll_progress` transition. MUST be greater than `scroll_start_percent`.')]
     scroll_reference: Annotated[ScrollReference, Field(description='Reference frame for scroll percentages. Progress is `scroll_offset / max(scroll_extent - viewport_extent, 1) * 100`, measured on either the page document or the nearest seller-declared containing scroller.')]
     scroll_start_percent: Annotated[FloatMin0Max100, Field(description='Start of the bounded scroll interval for a `scroll_progress` transition.')]
@@ -318,7 +318,7 @@ class TransitionsItemUserAction(TransitionsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('delay_ms',), ('media_event',), ('scroll_reference',), ('scroll_threshold_percent',), ('scroll_start_percent',), ('scroll_end_percent',), ('direction',))),
     )
-    trigger: Annotated[Literal[Trigger.USER_ACTION], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.')]
+    trigger: Annotated[Literal[Trigger.USER_ACTION], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.'), PinnedDefault]
     transition_mode: Annotated[TransitionsItemUserActionTransitionMode, Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
     input: Annotated[Input, Field(description='Input driving a user or scroll transition. `hover` expansion is disallowed by IAB NAP guidance and emits a LEAN policy warning visible to buyers.')]
 
@@ -334,7 +334,7 @@ class TransitionsItemMediaEvent(TransitionsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('input',), ('delay_ms',), ('scroll_reference',), ('scroll_threshold_percent',), ('scroll_start_percent',), ('scroll_end_percent',), ('direction',))),
     )
-    trigger: Annotated[Literal[Trigger.MEDIA_EVENT], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.')]
+    trigger: Annotated[Literal[Trigger.MEDIA_EVENT], Field(description='Cause of the transition. `timer` counts from state entry; `in_view_timer` counts viewable time in the current state (industry auto-collapse is N seconds in view). `media_event` fires on `video_main` playback milestones. The outcome is expressed separately by `to_state_id`.'), PinnedDefault]
     transition_mode: Annotated[TransitionsItemMediaEventTransitionMode, Field(description='`scroll_linked` continuously interpolates the seller-owned layout between the two declared endpoint states; it is valid only with trigger `scroll_progress` and does not permit buyer scripting.')]
     media_event: Annotated[MediaEvent, Field(description='Playback milestone of `video_main` driving a `media_event` transition (endframes, collapse-on-complete).')]
 

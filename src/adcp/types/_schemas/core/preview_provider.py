@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, StrMinLen1
 
 from .https_url import HTTPSURL
@@ -30,7 +30,7 @@ class PublisherDesignatedPreviewProvider(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/preview-provider.json', pointer='#')
     agent_url: Annotated[HTTPSURL, Field(description='HTTPS URL of the delegated creative-agent endpoint. Buyers call get_adcp_capabilities and preview_creative on this endpoint. They MUST allow only public IPs, pin DNS resolution through connection, refuse redirects, cap time and response size, and attach provider credentials only after exact normalized-origin binding.')]
-    authority: Annotated[Literal['publisher_designated'], Field(description="Explicitly states that authority comes from the publisher-hosted placement declaration. The provider's rendering_origin metadata is informational and remains non-authoritative elsewhere.")]
+    authority: Annotated[Literal['publisher_designated'], Field(description="Explicitly states that authority comes from the publisher-hosted placement declaration. The provider's rendering_origin metadata is informational and remains non-authoritative elsewhere."), PinnedDefault]
     routes: Annotated[list[RoutesItem], Field(min_length=1)]
 
 

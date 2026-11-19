@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -37,7 +37,7 @@ class ReportingDeliveryReadyWebhook(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-delivery-ready-webhook.json', pointer='#')
     idempotency_key: Annotated[IdempotencyKey, Field(description='Stable across transport retries of this fire; new for a later re-emission.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable for this logical materialization-ready event across re-emissions.')]
-    notification_type: Literal['reporting.delivery_ready']
+    notification_type: Annotated[Literal['reporting.delivery_ready'], PinnedDefault]
     fired_at: WireDatetime
     subscriber_id: AccountChangeRecordedWebhookSubscriberId
     account_id: StrMinLen1

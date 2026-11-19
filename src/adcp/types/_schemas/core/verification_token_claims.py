@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import AdcpVersion, HostedUrl, StrMinLen1
@@ -57,9 +57,9 @@ class AgenticAdvertisingOrgVerificationTokenClaims(AdCPBaseModel):
         Approximation(document='core/verification-token-claims.json', pointer='#/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/verification-token-claims.json', pointer='#/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    iss: Literal['https://aao.org']
+    iss: Annotated[Literal['https://aao.org'], PinnedDefault]
     sub: HostedUrl
-    aud: Literal['aao-verification']
+    aud: Annotated[Literal['aao-verification'], PinnedDefault]
     jti: StrMinLen1
     iat: NonNegativeInt
     exp: NonNegativeInt

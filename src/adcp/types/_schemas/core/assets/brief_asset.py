@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import SchemaRef
+from adcp.types._base import PinnedDefault, SchemaRef
 
 from ..creative_brief import CreativeBrief
 
@@ -18,7 +18,7 @@ class BriefAsset(CreativeBrief):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/brief-asset.json', pointer='#')
-    asset_type: Annotated[Literal['brief'], Field(description='Discriminator identifying this as a brief asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['brief'], Field(description='Discriminator identifying this as a brief asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
 
 
 __all__ = ["BriefAsset"]

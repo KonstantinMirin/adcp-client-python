@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, StrMinLen1
 
@@ -22,7 +22,7 @@ class GoalMetric(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/outcome-target.json', pointer='#/properties/goal/oneOf/0')
-    kind: Literal['metric']
+    kind: Annotated[Literal['metric'], PinnedDefault]
     metric: Annotated[ForecastableMetric, Field(description='Delivery metric to plan for, in the same vocabulary forecast points report.')]
 
 
@@ -37,7 +37,7 @@ class GoalEvent(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('event_type', True, ('custom',)),), require=('custom_event_name',), forbid=()),
     )
-    kind: Literal['event']
+    kind: Annotated[Literal['event'], PinnedDefault]
     event_type: Annotated[EventType, Field(description='Conversion event to plan for, in the same vocabulary forecast points report.')]
     custom_event_name: Annotated[StrMinLen1 | None, Field(description="Required when event_type is 'custom'. Platform-specific name for the custom event."), OmittedNotNull] = None
 

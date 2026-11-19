@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
 
@@ -23,7 +23,7 @@ class CurrentPrincipalConfiguration(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-principal-response.json', pointer='#/properties/result/oneOf/0')
-    kind: Literal['current']
+    kind: Annotated[Literal['current'], PinnedDefault]
     principal_id: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued opaque identifier for this authenticated principal record. It is response-only, not a credential, not caller identity, and not advertiser-account authority.')]
     principal_kind: Annotated[PrincipalKind, Field(description="Seller-resolved party kind of the authenticated principal: a buyer-agent workload, or an operator-side identity such as a person at the operator. Resolved solely from the seller's authorization system, never from request content, so per-party policy such as billing gates can rely on it.")]
     configuration_version: Annotated[StrMinLen1MaxLen255, Field(description='Opaque version of the persisted configuration. Compare only for equality and pass it as expected_configuration_version on a later guarded sync_principal replacement.')]
@@ -35,7 +35,7 @@ class RecognizedPrincipalWithoutStandingConfiguration(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-principal-response.json', pointer='#/properties/result/oneOf/1')
-    kind: Literal['recognized']
+    kind: Annotated[Literal['recognized'], PinnedDefault]
     principal_id: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued opaque identifier for the existing durable principal record. The read returns the same identifier after credential renewal or rotation when the new credential maps to this principal. It is not a credential and does not grant authority over an advertiser account.')]
     principal_kind: Annotated[PrincipalKind, Field(description='Seller-resolved party kind of the authenticated principal. This is resolved from authenticated transport and authorization state, never request content.')]
 
@@ -45,7 +45,7 @@ class UnconfiguredPrincipal(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-principal-response.json', pointer='#/properties/result/oneOf/2')
-    kind: Literal['unconfigured']
+    kind: Annotated[Literal['unconfigured'], PinnedDefault]
 
 
 class FailedPrincipalRead(AdCPBaseModel):
@@ -53,7 +53,7 @@ class FailedPrincipalRead(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-principal-response.json', pointer='#/properties/result/oneOf/3')
-    kind: Literal['failed']
+    kind: Annotated[Literal['failed'], PinnedDefault]
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
 

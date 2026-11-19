@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import HostedUrl, ZipAssetDigest
 from adcp.types.envelopes import AdcpResponse, FailedResponse
@@ -81,7 +81,7 @@ class AcquireRightsAcquired(AcquireRightsResponse):
         Approximation(document='brand/acquire-rights-response.json', pointer='#/oneOf/0/properties/usage_reporting_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
     rights_id: Annotated[str, Field(description='Rights grant identifier')]
-    rights_status: Annotated[Literal['acquired'], Field(description='Rights have been cleared and credentials issued. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization (#4878).')]
+    rights_status: Annotated[Literal['acquired'], Field(description='Rights have been cleared and credentials issued. Renamed from `status` in 3.1 to free the top-level `status` key for the envelope task-status (TaskStatus) under MCP flat-on-the-wire serialization (#4878).'), PinnedDefault]
     brand_id: Annotated[str, Field(description='Brand identifier of the rights subject')]
     terms: Annotated[RightsTerms, Field(description='Agreed contractual terms')]
     generation_credentials: Annotated[list[GenerationCredential], Field(description='Scoped credentials for generating rights-cleared content')]
@@ -103,7 +103,7 @@ class AcquireRightsPendingApproval(AcquireRightsResponse):
         ForbiddenGroups((('errors',),)),
     )
     rights_id: str
-    rights_status: Annotated[Literal['pending_approval'], Field(description='Rights require approval from the rights holder')]
+    rights_status: Annotated[Literal['pending_approval'], Field(description='Rights require approval from the rights holder'), PinnedDefault]
     brand_id: str
     detail: Annotated[str | None, Field(description='Explanation of what requires approval'), OmittedNotNull] = None
     estimated_response_time: Annotated[str | None, Field(description="Expected time for approval decision (e.g., '48h', '3 business days')"), OmittedNotNull] = None
@@ -120,7 +120,7 @@ class AcquireRightsRejected(AcquireRightsResponse):
         ForbiddenGroups((('errors',),)),
     )
     rights_id: str
-    rights_status: Annotated[Literal['rejected'], Field(description='Rights request was rejected')]
+    rights_status: Annotated[Literal['rejected'], Field(description='Rights request was rejected'), PinnedDefault]
     brand_id: str
     reason: Annotated[str, Field(description="Why the rights request was rejected. May be sanitized to protect confidential brand rules — e.g., 'This violates our public figures brand guidelines' rather than naming the specific rule.")]
     suggestions: Annotated[list[str] | None, Field(description='Actionable alternatives the buyer can try. If present, the rejection is fixable — the buyer can adjust their request. If absent, the rejection is final for this talent/rights combination.'), OmittedNotNull] = None

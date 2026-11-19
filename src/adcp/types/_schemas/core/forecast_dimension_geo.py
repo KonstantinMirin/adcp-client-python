@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule
 
 from ..enums.geo_level import GeographicTargetingLevel
@@ -31,7 +31,7 @@ class GeoForecastDimension(AdCPBaseModel):
         Approximation(document='core/forecast-dimension-geo.json', pointer='#/allOf/2', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'metro'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/forecast-dimension-geo.json', pointer='#/allOf/3', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'geo_level': {'const': 'postal_area'}}, 'required': ['geo_level']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    kind: Annotated[Literal['geo'], Field(description='Dimension family discriminator.')]
+    kind: Annotated[Literal['geo'], Field(description='Dimension family discriminator.'), PinnedDefault]
     geo_level: Annotated[GeographicTargetingLevel, Field(description='Geographic level for this forecast point.')]
     system: Annotated[str | None, Field(description="Classification system for metro or postal_area levels. Required when geo_level is 'metro' or 'postal_area'. Metro rows use metro-system enum values such as 'nielsen_dma'; native postal rows use country-local postal-system enum values such as 'zip' with country 'US'; deprecated legacy postal rows may use legacy-postal-system enum values such as 'us_zip'. Omit for country and region rows."), OmittedNotNull] = None
     country: Annotated[CountryCode | None, Field(description='ISO 3166-1 alpha-2 country code. Required for native postal_area rows and omitted for legacy postal rows, metro rows, country rows, and region rows.'), OmittedNotNull] = None

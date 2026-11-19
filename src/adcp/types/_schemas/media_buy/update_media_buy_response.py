@@ -5,7 +5,14 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, OmittedWhenNone, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    BranchDispatchMixin,
+    OmittedNotNull,
+    OmittedWhenNone,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000
@@ -108,7 +115,7 @@ class UpdateMediaBuyResponseSubmitted(UpdateMediaBuyResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('media_buy_id',), ('warnings',))),
     )
-    status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose media_buy_id is issued in-line. See task-status.json for the full task-status enum.')]
+    status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose media_buy_id is issued in-line. See task-status.json for the full task-status enum.'), PinnedDefault]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
     message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Awaiting operator re-approval; typical turnaround 2–4 hours.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent."), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.'), OmittedNotNull] = None

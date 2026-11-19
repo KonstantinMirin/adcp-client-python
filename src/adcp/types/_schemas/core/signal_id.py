@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, PinnedDefault, SchemaRef
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HostedUrl
 
 from .domain_name import DomainName
@@ -36,7 +36,7 @@ class SignalIDCatalog(SignalID):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-id.json', pointer='#/oneOf/0')
-    source: Annotated[Literal['catalog'], Field(description="Discriminator indicating this signal is from a data provider's published adagents.json signals[]")]
+    source: Annotated[Literal['catalog'], Field(description="Discriminator indicating this signal is from a data provider's published adagents.json signals[]"), PinnedDefault]
     data_provider_domain: Annotated[DomainName, Field(description="Domain of the data provider that owns this signal (e.g., 'pinnacle-data.example'). The signal definition is published at this domain's /.well-known/adagents.json")]
     id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the data provider's catalog (e.g., 'likely_ev_buyers', 'income_100k_plus')")]
 
@@ -53,7 +53,7 @@ class SignalIDAgent(SignalID):
         Approximation(document='core/signal-id.json', pointer='#/oneOf/1/properties/agent_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/signal-id.json', pointer='#/oneOf/1/properties/agent_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    source: Annotated[Literal['agent'], Field(description="Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions.")]
+    source: Annotated[Literal['agent'], Field(description="Discriminator indicating this signal is native to the signal source identified by agent_url, not from a data provider's published signal definitions."), PinnedDefault]
     agent_url: Annotated[HostedUrl, Field(description="URL of the signal source that provides this signal (e.g., 'https://signals.example/.well-known/adcp/signals')")]
     id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description="Signal identifier within the agent's signal set (e.g., 'custom_auto_intenders')")]
 

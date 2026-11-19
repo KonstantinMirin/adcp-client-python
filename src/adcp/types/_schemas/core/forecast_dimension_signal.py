@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    MemberAlias,
+    OmittedNotNull,
+    OmittedWhenNone,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Match, RequiredGroups, Rule
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem
 
@@ -39,7 +47,7 @@ class SignalForecastDimension(AdCPBaseModel):
         Approximation(document='core/forecast-dimension-signal.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'presence': {'const': 'absent'}}, 'required': ['presence']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/forecast-dimension-signal.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'presence': {'const': 'present'}}, 'required': ['presence']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    kind: Annotated[Literal['signal'], Field(description='Dimension family discriminator.')]
+    kind: Annotated[Literal['signal'], Field(description='Dimension family discriminator.'), PinnedDefault]
     signal_ref: Annotated[SignalRef | None, Field(description='Canonical signal reference for this forecast row. Required when the row needs to disambiguate product-local, data-provider, or signal-source identity. Product-relative forecasts SHOULD use signal_ref.'), OmittedNotNull] = None
     signal_id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem | None, Field(description='Signal identifier shorthand for this forecast row. Use only when the enclosing context already identifies the signal unambiguously, such as a coverage_forecast nested directly under one get_signals signal item. Otherwise use signal_ref.'), OmittedNotNull] = None
     signal_value: Annotated[str | StrictFloat | StrictBool | None, Field(description="Signal value bucket represented by this point. Use null with presence 'absent' to represent inventory where the signal is not present. Omit when the row describes any present value rather than one specific value."), OmittedWhenNone] = None

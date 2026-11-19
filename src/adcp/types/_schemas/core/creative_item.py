@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, PinnedDefault, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 
@@ -35,7 +35,7 @@ class CreativeItemMedia(CreativeItem):
         Approximation(document='core/creative-item.json', pointer='#/oneOf/0/properties/content_uri', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/creative-item.json', pointer='#/oneOf/0/properties/content_uri', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    asset_kind: Annotated[Literal['media'], Field(description='Discriminator indicating this is a media asset with content_uri')]
+    asset_kind: Annotated[Literal['media'], Field(description='Discriminator indicating this is a media asset with content_uri'), PinnedDefault]
     asset_type: Annotated[str, Field(description='Type of asset. Common types: thumbnail_image, product_image, featured_image, logo')]
     asset_id: Annotated[str, Field(description='Unique identifier for the asset within the creative')]
     content_uri: Annotated[HostedUrl, Field(description='URL for media assets (images, videos, etc.)')]
@@ -46,7 +46,7 @@ class CreativeItemText(CreativeItem):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-item.json', pointer='#/oneOf/1')
-    asset_kind: Annotated[Literal['text'], Field(description='Discriminator indicating this is a text asset with content')]
+    asset_kind: Annotated[Literal['text'], Field(description='Discriminator indicating this is a text asset with content'), PinnedDefault]
     asset_type: Annotated[str, Field(description='Type of asset. Common types: headline, body_text, cta_text, price_text, sponsor_name, author_name, click_url')]
     asset_id: Annotated[str, Field(description='Unique identifier for the asset within the creative')]
     content: Annotated[str | list[str], Field(description='Text content for text-based assets like headlines, body text, CTA text, etc.')]

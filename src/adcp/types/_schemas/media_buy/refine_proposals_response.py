@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen1MaxLen255
@@ -72,7 +80,7 @@ class ResultsItemRevisedProposalsItem(CanonicalProposal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-response.json', pointer='#/properties/results/items/oneOf/0/properties/proposals/items')
-    proposal_status: Annotated[Literal['draft'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
+    proposal_status: Annotated[Literal['draft'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.'), PinnedDefault]
     parent_proposal_id: Annotated[StrMinLen1MaxLen255, Field(description="Immediate predecessor this snapshot was forked from. Every proposal produced by refine_proposals carries it, equal to the request's source proposal_id, so negotiation lineage is reconstructible from proposals alone.")]
 
 
@@ -84,7 +92,7 @@ class ResultsItemRevised(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposal',), ('reason_code',), ('reason',), ('unsatisfied_constraints',), ('unsatisfied_product_changes',))),
     )
-    outcome: Literal[Outcome.REVISED]
+    outcome: Annotated[Literal[Outcome.REVISED], PinnedDefault]
     proposals: Annotated[list[ResultsItemRevisedProposalsItem], Field(description='Draft successors produced for a revision. Without alternatives this contains one proposal. With alternatives.count, revised contains exactly that many proposals with unique terms_digest values; fewer or commercially duplicate proposals require partial.', min_length=1)]
 
 
@@ -99,7 +107,7 @@ class ResultsItemPartial(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposal',),)),
     )
-    outcome: Literal[Outcome.PARTIAL]
+    outcome: Annotated[Literal[Outcome.PARTIAL], PinnedDefault]
     proposals: Annotated[list[ResultsItemPartialProposalsItem], Field(description='Draft successors produced for a revision. Without alternatives this contains one proposal. With alternatives.count, revised contains exactly that many proposals with unique terms_digest values; fewer or commercially duplicate proposals require partial.', min_length=1)]
     reason: StrMinLen1
     reason_code: Annotated[ProposalRefinementReason, Field(description='Single most-significant code for this result. constraint_unsatisfiable takes precedence over every other code; an alternatives shortfall alongside an unsatisfied constraint remains visible through proposals.length.')]
@@ -113,7 +121,7 @@ class ResultsItemFinalizedProposal(CanonicalProposal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-response.json', pointer='#/properties/results/items/oneOf/2/properties/proposal')
-    proposal_status: Annotated[Literal['committed'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
+    proposal_status: Annotated[Literal['committed'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.'), PinnedDefault]
     expires_at: Annotated[WireDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
     parent_proposal_id: Annotated[StrMinLen1MaxLen255, Field(description="Immediate predecessor this snapshot was forked from. Every proposal produced by refine_proposals carries it, equal to the request's source proposal_id, so negotiation lineage is reconstructible from proposals alone.")]
 
@@ -126,7 +134,7 @@ class ResultsItemFinalized(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposals',), ('reason_code',), ('reason',), ('unsatisfied_constraints',), ('unsatisfied_product_changes',))),
     )
-    outcome: Literal[Outcome.FINALIZED]
+    outcome: Annotated[Literal[Outcome.FINALIZED], PinnedDefault]
     proposal: ResultsItemFinalizedProposal
 
 
@@ -138,7 +146,7 @@ class RefineProposalsResponseResultsItemUnable(ResultsItem):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposal',), ('proposals',))),
     )
-    outcome: Literal[Outcome.UNABLE]
+    outcome: Annotated[Literal[Outcome.UNABLE], PinnedDefault]
     reason: StrMinLen1
     reason_code: Annotated[ProposalRefinementReason, Field(description='Single most-significant code for this result. constraint_unsatisfiable takes precedence over every other code; an alternatives shortfall alongside an unsatisfied constraint remains visible through proposals.length.')]
 
@@ -208,7 +216,7 @@ class RefineProposalsResponseSubmitted(RefineProposalsResponse, CompactTaskSubmi
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/refine-proposals-response.json', pointer='#/anyOf/1')
     task_id: Annotated[StrMinLen1, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
-    status: Annotated[Literal['submitted'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
+    status: Annotated[Literal['submitted'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.'), PinnedDefault]
 
 
 RefineProposalsResponse._branch_models = (RefineProposalsResponseCompleted, RefineProposalsResponseSubmitted,)

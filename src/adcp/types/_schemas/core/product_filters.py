@@ -7,7 +7,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Presence, RequiredGroups, Rule, UniqueItems
 from adcp.types.constraints import FloatMinNeg90Max90, FloatMinNeg180Max180, HostedUrl, IntMin1, RegionsItem, StrMinLen1
 
@@ -92,7 +100,7 @@ class AudienceActivationMethodsItemTmpIdentityMatch(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/1')
-    pattern: Literal['tmp_identity_match']
+    pattern: Annotated[Literal['tmp_identity_match'], PinnedDefault]
     buyer_agent: Annotated[ObjAgentUrl | None, Field(description='Require this buyer agent on tmp_identity_match entries. Buyers typically filter on their own agent_url.'), OmittedNotNull] = None
 
 
@@ -107,7 +115,7 @@ class AudienceActivationMethodsItemFileTransfer(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('directions'),
     )
-    pattern: Literal['file_transfer']
+    pattern: Annotated[Literal['file_transfer'], PinnedDefault]
     transport: Annotated[CloudStorageProtocol | None, Field(description='Require this storage protocol (file_transfer only).'), OmittedNotNull] = None
     directions: Annotated[list[DirectionsItem] | None, Field(description="Require a non-empty intersection with the method's declared directions (file_transfer only).", json_schema_extra={'uniqueItems': True}, min_length=1), OmittedNotNull] = None
     vendor: Annotated[BrandReference | None, Field(description="Require the method's vendor to match this reference."), OmittedNotNull] = None
@@ -121,7 +129,7 @@ class AudienceActivationMethodsItemDatasetQuery(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/3')
-    pattern: Literal['dataset_query']
+    pattern: Annotated[Literal['dataset_query'], PinnedDefault]
     vendor: Annotated[BrandReference | None, Field(description="Require the method's vendor to match this reference."), OmittedNotNull] = None
 
 
@@ -133,7 +141,7 @@ class AudienceActivationMethodsItemCleanRoom(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/4')
-    pattern: Literal['clean_room']
+    pattern: Annotated[Literal['clean_room'], PinnedDefault]
     vendor: Annotated[BrandReference | None, Field(description="Require the method's vendor to match this reference."), OmittedNotNull] = None
 
 
@@ -145,7 +153,7 @@ class AudienceActivationMethodsItemPlatformDistribution(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-filters.json', pointer='#/properties/audience_activation_methods/items/oneOf/5')
-    pattern: Literal['platform_distribution']
+    pattern: Annotated[Literal['platform_distribution'], PinnedDefault]
     vendor: Annotated[BrandReference | None, Field(description="Require the method's vendor to match this reference."), OmittedNotNull] = None
 
 

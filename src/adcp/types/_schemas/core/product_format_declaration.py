@@ -6,7 +6,15 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule, UniqueItems
 
 from ..enums.channels import MediaChannel
@@ -98,91 +106,91 @@ class ProductFormatDeclaration(BranchDispatchMixin, AdCPBaseModel):
 
 class ImageFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/0')
-    format_kind: Literal['image']
+    format_kind: Annotated[Literal['image'], PinnedDefault]
     params: CanonicalFormatImage
 
 
 class HTML5FormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/1')
-    format_kind: Literal['html5']
+    format_kind: Annotated[Literal['html5'], PinnedDefault]
     params: CanonicalFormatHTML5Banner
 
 
 class DisplayTagFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/2')
-    format_kind: Literal['display_tag']
+    format_kind: Annotated[Literal['display_tag'], PinnedDefault]
     params: CanonicalFormatDisplayTag
 
 
 class ImageCarouselFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/3')
-    format_kind: Literal['image_carousel']
+    format_kind: Annotated[Literal['image_carousel'], PinnedDefault]
     params: CanonicalFormatImageCarousel
 
 
 class HostedVideoFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/4')
-    format_kind: Literal['video_hosted']
+    format_kind: Annotated[Literal['video_hosted'], PinnedDefault]
     params: CanonicalFormatHostedVideo
 
 
 class VASTVideoFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/5')
-    format_kind: Literal['video_vast']
+    format_kind: Annotated[Literal['video_vast'], PinnedDefault]
     params: CanonicalFormatVASTVideo
 
 
 class HostedAudioFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/6')
-    format_kind: Literal['audio_hosted']
+    format_kind: Annotated[Literal['audio_hosted'], PinnedDefault]
     params: CanonicalFormatHostedAudio
 
 
 class VASTAudioFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/7')
-    format_kind: Literal['audio_vast']
+    format_kind: Annotated[Literal['audio_vast'], PinnedDefault]
     params: CanonicalFormatVASTAudio
 
 
 class DAASTAudioFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/8')
-    format_kind: Literal['audio_daast']
+    format_kind: Annotated[Literal['audio_daast'], PinnedDefault]
     params: CanonicalFormatDAASTAudio
 
 
 class SponsoredPlacementFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/9')
-    format_kind: Literal['sponsored_placement']
+    format_kind: Annotated[Literal['sponsored_placement'], PinnedDefault]
     params: CanonicalFormatSponsoredPlacementRetailMediaCatalogDriven
 
 
 class NativeInFeedFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/10')
-    format_kind: Literal['native_in_feed']
+    format_kind: Annotated[Literal['native_in_feed'], PinnedDefault]
     params: CanonicalFormatNativeInFeed
 
 
 class ResponsiveCreativeFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/11')
-    format_kind: Literal['responsive_creative']
+    format_kind: Annotated[Literal['responsive_creative'], PinnedDefault]
     params: CanonicalFormatResponsiveCreative
 
 
 class AgentPlacementFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/12')
-    format_kind: Literal['agent_placement']
+    format_kind: Annotated[Literal['agent_placement'], PinnedDefault]
     params: CanonicalFormatAgentPlacementAISurfaceSponsoredPlacement
 
 
 class SellerRenderedStatefulDisplayFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/13')
-    format_kind: Literal['seller_rendered_stateful_display']
+    format_kind: Annotated[Literal['seller_rendered_stateful_display'], PinnedDefault]
     params: CanonicalFormatSellerRenderedStatefulDisplay
 
 
 class CoordinatedPlacementsFormatDeclaration(ProductFormatDeclaration):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/14')
-    format_kind: Literal['coordinated_placements']
+    format_kind: Annotated[Literal['coordinated_placements'], PinnedDefault]
     params: CanonicalFormatCoordinatedPlacements
 
 
@@ -191,7 +199,7 @@ class CustomFormatDeclaration(ProductFormatDeclaration):
     Adopter-defined shape that doesn't fit the 15 canonicals. Requires `format_shape` (vocabulary-registered global pattern) and `format_schema` (URI+digest reference to a fetchable schema describing the actual params/slots). `params` shape is governed by the fetched schema rather than baked into AdCP — kept as `type: object` here with `additionalProperties: true` because the canonical schema validates dynamically post-fetch.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-format-declaration.json', pointer='#/oneOf/15')
-    format_kind: Literal['custom']
+    format_kind: Annotated[Literal['custom'], PinnedDefault]
     params: Annotated[dict[str, Any], Field(description="Custom shape's params. Validated against the schema fetched from `format_schema.uri` at the cached `format_schema.digest`.")]
 
 

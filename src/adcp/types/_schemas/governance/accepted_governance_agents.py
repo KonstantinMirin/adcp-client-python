@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, SchemaRef
+from adcp.types._base import AdCPBaseModel, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import AcceptedGovernanceAgentsAnyOfItemAgentUrl, AnyOfItemAdcpVersion, AnyOfItemRole
 
@@ -17,7 +17,7 @@ class AnyOfItemAgentUrl(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='governance/accepted-governance-agents.json', pointer='#/properties/any_of/items/oneOf/0')
-    kind: Literal['agent_url']
+    kind: Annotated[Literal['agent_url'], PinnedDefault]
     agent_url: Annotated[AcceptedGovernanceAgentsAnyOfItemAgentUrl, Field(description='Exact canonical agent endpoint without userinfo, query, or fragment. Redirect targets, DNS aliases, and URLs asserted by the candidate do not satisfy this matcher.')]
 
 
@@ -29,7 +29,7 @@ class AnyOfItemVerification(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('verification_modes'),
     )
-    kind: Literal['verification']
+    kind: Annotated[Literal['verification'], PinnedDefault]
     registry: Annotated[AcceptedGovernanceAgentsAnyOfItemAgentUrl, Field(description='Seller-configured trusted verification registry without userinfo, query, or fragment. The candidate cannot supply or override this URL; fetches use the registry-resolution security contract.')]
     role: Annotated[AnyOfItemRole, Field(description="Role asserted by the trusted registry's verified record, never by candidate self-description.")]
     adcp_version: Annotated[AnyOfItemAdcpVersion, Field(description='Registry protocol version in canonical MAJOR.MINOR form.')]

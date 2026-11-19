@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, PropertyCount, Rule, UniqueItems
 from adcp.types.constraints import EmailAddress, IntMin1, OperationsContactUrl
 
@@ -52,12 +52,12 @@ class ReportingDeliveryCapabilities(AdCPBaseModel):
         Approximation(document='core/reporting-delivery-capabilities.json', pointer='#/allOf/6', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'offerings': {'contains': {'properties': {'reconciliation_mode': {'const': 'consumer_receipt'}}, 'required': ['reconciliation_mode']}}}, 'required': ['offerings']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
         Approximation(document='core/reporting-delivery-capabilities.json', pointer='#/allOf/7', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'required': ['readiness_notification']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    supported: Literal[True]
+    supported: Annotated[Literal[True], PinnedDefault]
     reliable_reporting_version: Annotated[Literal['1.0'] | None, Field(description='Explicit adoption declaration for the proper-name AdCP 3.2 Reliable Reporting contract. Presence, together with supported: true and the media_buy.reporting_delivery experimental feature gate, is the affirmative machine-readable answer. Absence denotes the earlier experimental managed-reporting shape.'), OmittedNotNull] = None
     managed_delivery: Annotated[StrictBool | None, Field(description='Tier flag: this seller supports managed file, dataset-share, or warehouse delivery. Offerings whose method names a delivery pattern require this tier. When false or absent, every offering is API-delivered and Core-only.'), OmittedNotNull] = False
     reconciled_billing: Annotated[StrictBool | None, Field(description='Tier flag: this seller supports canonical-digest verification and authenticated consumer receipts for both report materializations and post-official adjustments through receipt_task. Offerings with reconciliation_mode consumer_receipt and billing-grade canonicalization require this tier.'), OmittedNotNull] = False
-    configuration_task: Literal['sync_accounts']
-    status_task: Literal['get_reporting_status']
+    configuration_task: Annotated[Literal['sync_accounts'], PinnedDefault]
+    status_task: Annotated[Literal['get_reporting_status'], PinnedDefault]
     consumer_status_task: Annotated[Literal['sync_reporting_status'] | None, Field(description='Opt-in consumer-status loop during the published migration window, becoming required Core in the next eligible minor after that window. Buyers call this seller-hosted task to record whether each expected reporting period was received, missing, or unreadable. Buyers expose no reverse endpoint, and the status is not a billing receipt.'), OmittedNotNull] = None
     revision_content_task: Annotated[Literal['get_media_buy_delivery'] | None, Field(description='Reliable Reporting exact-content read: callers select reporting_revision_id and receive immutable revision metadata plus authoritative canonical reporting_rows.'), OmittedNotNull] = None
     receipt_task: Annotated[Literal['sync_reporting_receipts'] | None, Field(description='Required when reconciled_billing is true: the task consumers call to submit and read back authenticated revision and adjustment receipts.'), OmittedNotNull] = None

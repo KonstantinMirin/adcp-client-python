@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import HostedUrl, ZipAssetDigest
 
 from ..provenance import Provenance
@@ -26,7 +26,7 @@ class ZipAsset(AdCPBaseModel):
         Approximation(document='core/assets/zip-asset.json', pointer='#/properties/backup_image_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/assets/zip-asset.json', pointer='#/properties/backup_image_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    asset_type: Annotated[Literal['zip'], Field(description='Discriminator identifying this as a zip-bundled asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['zip'], Field(description='Discriminator identifying this as a zip-bundled asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     url: Annotated[HostedUrl, Field(description='URL where the zip archive is hosted. Must be HTTPS.')]
     max_file_size_kb: Annotated[NonNegativeInt | None, Field(description='Maximum file size in kilobytes. Receivers should reject zips exceeding this.'), OmittedNotNull] = None
     entry_point: Annotated[str | None, Field(description="Relative path to the entry file within the zip (typically 'index.html'). Receivers default to 'index.html' if absent."), OmittedNotNull] = None

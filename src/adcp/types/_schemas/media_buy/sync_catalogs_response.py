@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1MaxLen255
@@ -87,7 +87,7 @@ class SyncCatalogsSuccess(SyncCatalogsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('errors',),)),
     )
-    status: Annotated[Literal['completed'], Field(description='Availability and synchronous catalog results are terminal and complete.')]
+    status: Annotated[Literal['completed'], Field(description='Availability and synchronous catalog results are terminal and complete.'), PinnedDefault]
     dry_run: Annotated[StrictBool | None, Field(description='Whether this was a dry run (no actual changes made)'), OmittedNotNull] = None
     catalogs: Annotated[list[CatalogsItem], Field(description="Results for each catalog processed. Items with action='failed' indicate per-catalog validation/processing failures, not operation-level failures.")]
     item_availability_updates: Annotated[list[CatalogItemAvailabilityUpdateResult] | None, Field(description='Acknowledgements for item_availability_updates. The array length MUST equal the request array length; entry N MUST have request_index N, occupy position N, and exactly echo catalog_id, catalog_generation, item_id, and action from request entry N. Buyers MUST reject the response as non-conformant if count, ordering, request_index, or echoed identity differs. Lenient-mode failures stay in their request positions. In strict mode, any per-entry failure instead produces the operation-level error branch before mutation and this array is absent.', max_length=1000, min_length=1), OmittedNotNull] = None
@@ -141,7 +141,7 @@ class SyncCatalogsResponseSubmitted(SyncCatalogsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('catalogs',), ('item_availability_updates',), ('item_availability_states',))),
     )
-    status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose catalogs array is issued in-line. See task-status.json for the full task-status enum.')]
+    status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shape, whose catalogs array is issued in-line. See task-status.json for the full task-status enum.'), PinnedDefault]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
     message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Catalog ingestion queued; typical turnaround 5–15 minutes.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent."), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.'), OmittedNotNull] = None

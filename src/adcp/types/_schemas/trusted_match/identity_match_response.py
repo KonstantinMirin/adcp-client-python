@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import ContextMatchResponseRouterPublisherSignalsByProvider, ServeWindowSec
 
@@ -33,7 +33,7 @@ class IdentityMatchResponseRouterPublisher(AdCPVersionEnvelope, ProtocolEnvelope
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('tmpx_chunks',), ('tmpx_values',), ('tmpx_macros',), ('context',), ('ext',))),
     )
-    type: Annotated[Literal['identity_match_response'], Field(description='Message type discriminator for deserialization.')]
+    type: Annotated[Literal['identity_match_response'], Field(description='Message type discriminator for deserialization.'), PinnedDefault]
     request_id: Annotated[str, Field(description='Echoed request identifier from the identity match request')]
     eligible_package_ids: Annotated[list[str], Field(description='Package IDs the user is eligible for. Packages not listed are ineligible.')]
     serve_window_sec: Annotated[ServeWindowSec, Field(description="Per-package single-shot fcap window, in seconds. After serving the user one impression on each eligible package within this window, the publisher MUST re-query Identity Match before serving from those packages again. This is NOT a router response cache TTL — it is a buyer-asserted serve throttle. Multi-impression frequency caps are handled separately by the buyer's impression tracker, which writes cap-fire events to the IdentityMatch cap-state store at the boundary regardless of this window. Maximum 300 — longer windows reduce IdentityMatch load but coarsen fcap granularity below what most campaigns require.")]

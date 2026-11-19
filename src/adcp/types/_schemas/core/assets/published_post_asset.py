@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import RequiredGroups, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl
@@ -87,7 +87,7 @@ class PublishedPostAsset(AdCPBaseModel):
         Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization/properties/authorization_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/assets/published-post-asset.json', pointer='#/properties/reference_authorization/properties/authorization_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    asset_type: Annotated[Literal['published_post'], Field(description='Discriminator identifying this as a published-post reference asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['published_post'], Field(description='Discriminator identifying this as a published-post reference asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     post_url: Annotated[HostedUrl | None, Field(description='Canonical URL for the published post. Preferred when the platform exposes a stable public or authenticated URL.'), OmittedNotNull] = None
     platform: Annotated[str | None, Field(description="Optional platform or publisher namespace for the referenced post. Informational unless the seller's product declaration or platform extension narrows the accepted values."), OmittedNotNull] = None
     platform_post_id: Annotated[str | None, Field(description='Optional platform-native post identifier when a URL alone is not stable or not available. Buyers SHOULD include `platform` when using `platform_post_id` without `post_url`, unless the product or format declaration already narrows the platform. Platform-specific identifier semantics belong in platform_extensions; this field is only an opaque reference.'), OmittedNotNull] = None

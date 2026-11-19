@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import AtLeastOne, ForbiddenGroups, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen2000, StrMinLen1, StrMinLen16
@@ -42,7 +50,7 @@ class ProposalsItem(CanonicalProposal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/properties/proposals/items')
-    proposal_status: Annotated[Literal['draft'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
+    proposal_status: Annotated[Literal['draft'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.'), PinnedDefault]
     expires_at: Annotated[WireDatetime, Field(description='For a draft, the indicative-terms freshness deadline. For a committed proposal, the inventory-hold deadline.')]
 
 
@@ -64,9 +72,9 @@ class PurchaseContinuationListedPurchaseAccount(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('product_ids'),
     )
-    kind: Literal['listed_purchase']
+    kind: Annotated[Literal['listed_purchase'], PinnedDefault]
     product_ids: Annotated[list[StrMinLen1], Field(description='Exact products the coordinator promoted and re-read through account-scoped list_products before returning this result. The set MUST match products[].product_id.', json_schema_extra={'uniqueItems': True}, min_length=1)]
-    cache_scope: Literal['account']
+    cache_scope: Annotated[Literal['account'], PinnedDefault]
     feed_version: Annotated[StrMinLen1, Field(description='Real seller-issued account-scoped feed fence obtained by re-reading the promoted products through list_products.')]
     pricing_version: Annotated[StrMinLen1 | None, Field(description='Real seller-issued pricing fence from the same account-scoped list_products response, when the seller versions pricing independently.'), OmittedNotNull] = None
 
@@ -104,13 +112,13 @@ class PurchaseContinuationLegacyCreate(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/request-proposals-response.json', pointer='#/properties/purchase_continuation/oneOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'source_adcp_version': {'const': '2.5'}}, 'required': ['source_adcp_version']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    kind: Literal['legacy_create']
+    kind: Annotated[Literal['legacy_create'], PinnedDefault]
     continuation_token: Annotated[StrMinLen16, Field(description='Opaque, short-lived coordinator token bound to the caller principal, account, and complete observed product/pricing payload. It is not a seller-issued feed fence.')]
     continuation_expires_at: Annotated[WireDatetime, Field(description='Absolute expiry of the single-use compatibility continuation.')]
     source_adcp_version: Annotated[SourceAdcpVersion, Field(description='Established AdCP version actually negotiated with the peer. This provenance is required; the coordinator MUST NOT infer stronger guarantees from the label.')]
     product_ids: Annotated[list[StrMinLen1], Field(description='Exact products bound to this continuation. A follow-up MUST select a non-empty subset and MUST NOT substitute an ID from another discovery result.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     losses: Annotated[Annotated[list[LossesItem], AfterValidator(AtLeastOne(values=('feed_version_not_atomic',), pinned=())), AfterValidator(AtLeastOne(values=('pricing_version_not_atomic',), pinned=()))], Field(description='Guarantees that the established create_media_buy continuation cannot provide. The coordinator MUST fail before mutation unless the caller explicitly accepts every listed loss.', json_schema_extra={'uniqueItems': True}, min_length=2)]
-    requires_explicit_acceptance: Literal[True]
+    requires_explicit_acceptance: Annotated[Literal[True], PinnedDefault]
 
 
 class RequestProposalsResponse(BranchDispatchMixin, AdCPBaseModel, AdcpResponse):
@@ -160,7 +168,7 @@ class RequestProposalsResponseProposedCompleted(RequestProposalsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reason',), ('suggestions',), ('purchase_continuation',), ('task_id',))),
     )
-    outcome: Literal[Outcome.PROPOSED]
+    outcome: Annotated[Literal[Outcome.PROPOSED], PinnedDefault]
     status: Annotated[Literal['completed'] | None, OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
     proposals: Annotated[list[ProposalsItem], Field(min_length=1)]
@@ -177,7 +185,7 @@ class RequestProposalsResponseProductsAvailableCompleted(RequestProposalsRespons
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/request-proposals-response.json', pointer='#/anyOf/1/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'purchase_continuation': {'properties': {'kind': {'const': 'listed_purchase'}}, 'required': ['kind']}}, 'required': ['purchase_continuation']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    outcome: Literal[Outcome.PRODUCTS_AVAILABLE]
+    outcome: Annotated[Literal[Outcome.PRODUCTS_AVAILABLE], PinnedDefault]
     status: Annotated[Literal['completed'] | None, OmittedNotNull] = None
     products: Annotated[list[CanonicalProduct], Field(min_length=1)]
     purchase_continuation: Annotated[PurchaseContinuationListedPurchaseAccount | PurchaseContinuationLegacyCreate, Field(deprecated=True, description='Deprecated AdCP 3.x projection instruction for purchasing products returned without a proposal. This is coordinator state, not a claim that the established seller implements a compact task. A native 3.2 seller MUST NOT emit it.')]
@@ -191,7 +199,7 @@ class RequestProposalsResponseRejectedCompleted(RequestProposalsResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('proposals',), ('products',), ('incomplete',), ('purchase_continuation',), ('task_id',))),
     )
-    outcome: Literal[Outcome.REJECTED]
+    outcome: Annotated[Literal[Outcome.REJECTED], PinnedDefault]
     status: Annotated[Literal['completed'] | None, OmittedNotNull] = None
     reason: StrMinLen1
 
@@ -205,7 +213,7 @@ class RequestProposalsResponseSubmitted(RequestProposalsResponse, CompactTaskSub
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/request-proposals-response.json', pointer='#/anyOf/3')
     task_id: Annotated[StrMinLen1, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
-    status: Annotated[Literal['submitted'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
+    status: Annotated[Literal['submitted'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.'), PinnedDefault]
 
 
 RequestProposalsResponse._branch_models = (RequestProposalsResponseProposedCompleted, RequestProposalsResponseProductsAvailableCompleted, RequestProposalsResponseRejectedCompleted, RequestProposalsResponseSubmitted,)

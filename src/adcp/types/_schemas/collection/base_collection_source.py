@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, PinnedDefault, SchemaRef
 
 from ..core.domain_name import DomainName
 from ..enums.distribution_identifier_type import DistributionIdentifierType
@@ -42,7 +42,7 @@ class DistributionIDsSource(BaseCollectionSource):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/base-collection-source.json', pointer='#/oneOf/0')
-    selection_type: Annotated[Literal['distribution_ids'], Field(description='Discriminator indicating selection by platform-independent distribution identifiers')]
+    selection_type: Annotated[Literal['distribution_ids'], Field(description='Discriminator indicating selection by platform-independent distribution identifiers'), PinnedDefault]
     identifiers: Annotated[list[IdentifiersItem], Field(description='Platform-independent identifiers (imdb_id, gracenote_id, eidr_id, etc.). Each identifier uniquely identifies a collection across all publishers. platform_channel_id is not allowed here: its identity is the tuple (publisher_domain, value), which this bare {type, value} shape cannot carry.', min_length=1)]
 
 
@@ -54,7 +54,7 @@ class PublisherCollectionsSource(BaseCollectionSource):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/base-collection-source.json', pointer='#/oneOf/1')
-    selection_type: Annotated[Literal['publisher_collections'], Field(description='Discriminator indicating selection by specific collection IDs within a publisher')]
+    selection_type: Annotated[Literal['publisher_collections'], Field(description='Discriminator indicating selection by specific collection IDs within a publisher'), PinnedDefault]
     publisher_domain: Annotated[DomainName, Field(description="Domain where publisher's adagents.json is hosted")]
     collection_ids: Annotated[list[str], Field(description="Specific collection IDs from the publisher's adagents.json", min_length=1)]
 
@@ -67,7 +67,7 @@ class PublisherGenresSource(BaseCollectionSource):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='collection/base-collection-source.json', pointer='#/oneOf/2')
-    selection_type: Annotated[Literal['publisher_genres'], Field(description='Discriminator indicating selection by genre within a publisher')]
+    selection_type: Annotated[Literal['publisher_genres'], Field(description='Discriminator indicating selection by genre within a publisher'), PinnedDefault]
     publisher_domain: Annotated[DomainName, Field(description="Domain where publisher's adagents.json is hosted")]
     genres: Annotated[list[str], Field(description="Genre values to match against the publisher's collections", min_length=1)]
     genre_taxonomy: Annotated[GenreTaxonomy, Field(description="Taxonomy for the genre values. Required so sellers can interpret genre strings unambiguously. Use 'custom' for free-form values negotiated out of band.")]

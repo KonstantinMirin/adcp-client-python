@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, ForbiddenGroups, Match, NegatedConditional, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen500, StrMinLen1
@@ -61,7 +61,7 @@ class ProvidePerformanceFeedbackSuccess(ProvidePerformanceFeedbackResponse):
         NegatedConditional((Match('application_status', True, ('applied',)),), require=(), forbid=('applied_at',)),
         ConditionalRequired((Match('application_status', True, ('not_applied',)),), require=('status_reason',), forbid=()),
     )
-    success: Annotated[Literal[True], Field(description='Whether the performance feedback was successfully received')]
+    success: Annotated[Literal[True], Field(description='Whether the performance feedback was successfully received'), PinnedDefault]
     feedback_id: Annotated[StrMinLen1 | None, Field(description="Receiver-issued identifier for this immutable assertion. Orchestrator gateways and sellers declaring media_buy.performance_feedback MUST return it; legacy sellers may omit it. The identifier is local to the receiving hop. Use it in supersedes_feedback_id when revising that hop's assertion."), OmittedNotNull] = None
     application_status: Annotated[ApplicationStatus | None, Field(description="Optimizer disposition at response time, distinct from the protocol envelope's task status. accepted means stored and eligible for evaluation, not that optimizer use is guaranteed. applied means incorporated into the seller's optimization inputs. not_applied means evaluated but not incorporated. Sellers declaring reports_application_status MUST return this field."), OmittedNotNull] = None
     status_reason: Annotated[StrMaxLen500 | None, Field(description='Human-readable explanation when application_status is not_applied. May also explain material qualifications on accepted feedback.'), OmittedNotNull] = None

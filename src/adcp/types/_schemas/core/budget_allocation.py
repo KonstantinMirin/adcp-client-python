@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, PinnedDefault, SchemaRef
 
 from .optimization_goal import OptimizationGoal
 
@@ -28,7 +28,7 @@ class BudgetAllocationFixed(BudgetAllocation):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/budget-allocation.json', pointer='#/oneOf/0')
-    mode: Annotated[Literal['fixed'], Field(description='Packages have independent budgets. The seller does not automatically move budget between packages.')]
+    mode: Annotated[Literal['fixed'], Field(description='Packages have independent budgets. The seller does not automatically move budget between packages.'), PinnedDefault]
 
 
 class BudgetAllocationSellerOptimized(BudgetAllocation):
@@ -36,7 +36,7 @@ class BudgetAllocationSellerOptimized(BudgetAllocation):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/budget-allocation.json', pointer='#/oneOf/1')
-    mode: Annotated[Literal['seller_optimized'], Field(description='Packages draw from a shared media-buy budget. The seller continuously allocates spend across packages to optimize the declared goals.')]
+    mode: Annotated[Literal['seller_optimized'], Field(description='Packages draw from a shared media-buy budget. The seller continuously allocates spend across packages to optimize the declared goals.'), PinnedDefault]
     optimization_goals: Annotated[list[OptimizationGoal], Field(description='Goals the seller uses to allocate the shared budget across packages. These are distinct from packages[].optimization_goals, which optimize delivery within an individual package. The primary goal is the earliest array entry among goals with the lowest explicit numeric priority; goals without priority follow all explicitly prioritized goals; when all priorities are omitted, the first entry is primary. It supplies the result unit/value source for media-buy bidding.cost_per or bidding.roas. Legacy monetary target kinds are prohibited at allocation scope because canonical controls belong in media-buy bidding. Every participating product MUST support the primary cross-package goal; otherwise the seller MUST reject the request with TERMS_REJECTED or UNSUPPORTED_FEATURE and identify the incompatible package.', min_length=1)]
 
 

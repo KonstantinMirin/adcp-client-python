@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NotValue, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
@@ -40,7 +40,7 @@ class VASTTrackerAsset(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('vast_event', True, ('progress',)),), require=('offset',), forbid=()),
     )
-    asset_type: Annotated[Literal['vast_tracker'], Field(description='Discriminator identifying this as a VAST tracker asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['vast_tracker'], Field(description='Discriminator identifying this as a VAST tracker asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     vast_event: Annotated[Annotated[VASTTrackingEvent, AfterValidator(NotValue(('impression', 'clickTracking', 'customClick', 'error', 'viewable', 'notViewable', 'viewUndetermined', 'measurableImpression', 'viewableImpression')))], Field(description='The VAST tracking event this URL fires on. Maps 1:1 to the VAST `Tracking event="..."` attribute inside `TrackingEvents`. MUST NOT be `impression` (belongs in the VAST `Impression` element — model as a `url` asset with `url_type: "tracker_pixel"`), `clickTracking` / `customClick` (belong in `VideoClicks`), `error` (VAST `Error` element), or any of `viewable` / `notViewable` / `viewUndetermined` / `measurableImpression` / `viewableImpression` (children of the VAST `ViewableImpression` element, not `TrackingEvents`).')]
     url: Annotated[MacroBearingURL, Field(description='Tracker URL fired for the VAST event. Attached declarations identify each macro occurrence, registry revision, processing actor, and exact encoding profile.')]
     macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='Exact tokens in `url` and their resolver/encoding contracts.', min_length=1), OmittedNotNull] = None

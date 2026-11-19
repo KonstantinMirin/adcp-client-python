@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 
 from .ext import ExtensionObject
@@ -34,7 +34,7 @@ class SelectedPlacements(PlacementSelection):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('placement_refs'),
     )
-    mode: Literal['selected']
+    mode: Annotated[Literal['selected'], PinnedDefault]
     placement_refs: Annotated[list[PlacementRefsItem | PlacementIdentity], Field(description="Complete required placement set. A reference normally identifies a mode targetable placement. It MAY identify a mode included placement only when the set exactly equals the product's complete fixed included set, which is an inherent match rather than independent selection. Legacy publisher refs use {publisher_domain, placement_id}; authority-discriminated 3.2 identities use placement-identity.json so seller-inline inventory is selected by {seller_agent, placement_id}. An item that exactly matches placement-identity uses that canonical identity; otherwise a released-compatible item with publisher_domain and placement_id uses legacy product-context matching, and tolerated product metadata such as kind, name, or mode has no selection effect.", json_schema_extra={'uniqueItems': True}, min_length=1)]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -44,7 +44,7 @@ class ProductDefaultPlacements(PlacementSelection):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/placement-selection.json', pointer='#/oneOf/1')
-    mode: Literal['default']
+    mode: Annotated[Literal['default'], PinnedDefault]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
 

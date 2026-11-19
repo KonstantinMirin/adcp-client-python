@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 
 from .domain_name import DomainName
@@ -35,7 +35,7 @@ class PublisherCatalogFormatOptionReference(FormatOptionReference):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/format-option-ref.json', pointer='#/oneOf/0')
-    scope: Annotated[Literal['publisher'], Field(description="Reference resolves against the named publisher's adagents.json top-level `formats[]` catalog.")]
+    scope: Annotated[Literal['publisher'], Field(description="Reference resolves against the named publisher's adagents.json top-level `formats[]` catalog."), PinnedDefault]
     publisher_domain: Annotated[DomainName, Field(description='Publisher domain where the adagents.json declaring this format option is hosted.')]
     format_option_id: Annotated[str, Field(description="Stable format option ID from the publisher's adagents.json top-level `formats[]`, matching a publisher-catalog-backed entry in the target product's `format_options[]`.")]
 
@@ -51,7 +51,7 @@ class ProductLocalFormatOptionReference(FormatOptionReference):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('publisher_domain',),)),
     )
-    scope: Annotated[Literal['product'], Field(description="Reference resolves only against the target product's inline `format_options[]`.")]
+    scope: Annotated[Literal['product'], Field(description="Reference resolves only against the target product's inline `format_options[]`."), PinnedDefault]
     format_option_id: Annotated[str, Field(description="Stable format option ID from the target product's inline `format_options[]`.")]
 
 

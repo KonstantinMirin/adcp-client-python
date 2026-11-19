@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMinLen1MaxLen1000
 
@@ -30,7 +30,7 @@ class AccountIdentityChangePending(AccountIdentityChange):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change.json', pointer='#/oneOf/0')
-    status: Annotated[Literal['pending_approval'], Field(description='The seller is reviewing the requested transition.')]
+    status: Annotated[Literal['pending_approval'], Field(description='The seller is reviewing the requested transition.'), PinnedDefault]
     requested_operator_identity: Annotated[OperatorIdentity, Field(description='Complete desired operator identity submitted by the buyer.')]
     requested_at: Annotated[WireDatetime | None, Field(description='When the seller recorded the request.'), OmittedNotNull] = None
 
@@ -40,7 +40,7 @@ class AccountIdentityChangeRejected(AccountIdentityChange):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-identity-change.json', pointer='#/oneOf/1')
-    status: Annotated[Literal['rejected'], Field(description='The seller rejected the transition and retained the current canonical identity.')]
+    status: Annotated[Literal['rejected'], Field(description='The seller rejected the transition and retained the current canonical identity.'), PinnedDefault]
     requested_operator_identity: Annotated[OperatorIdentity, Field(description='Complete desired operator identity submitted by the buyer.')]
     requested_at: Annotated[WireDatetime | None, Field(description='When the seller recorded the request.'), OmittedNotNull] = None
     reason: Annotated[StrMinLen1MaxLen1000, Field(description='Human-readable rejection reason.')]

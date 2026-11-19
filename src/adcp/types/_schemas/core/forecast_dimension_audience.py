@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 
 from ..enums.audience_source import AudienceSource
 
@@ -18,7 +18,7 @@ class AudienceForecastDimension(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/forecast-dimension-audience.json', pointer='#')
-    kind: Annotated[Literal['audience'], Field(description='Dimension family discriminator.')]
+    kind: Annotated[Literal['audience'], Field(description='Dimension family discriminator.'), PinnedDefault]
     audience_id: Annotated[str, Field(description='Audience segment identifier for this forecast row.')]
     audience_source: Annotated[AudienceSource, Field(description='Origin of the audience segment.')]
     audience_name: Annotated[str | None, Field(description='Human-readable audience segment name.'), OmittedNotNull] = None

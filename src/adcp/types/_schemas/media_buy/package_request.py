@@ -5,7 +5,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeFloat, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Dependencies, ForbiddenGroups, NotValue, Rule
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMaxLen100
@@ -38,7 +38,7 @@ class CommittedMetricsItemVendor(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/package-request.json', pointer='#/properties/committed_metrics/items/oneOf/1')
-    scope: Annotated[Literal['vendor'], Field(description='Vendor-defined metric, identified by the tuple `(vendor, metric_id)`.')]
+    scope: Annotated[Literal['vendor'], Field(description='Vendor-defined metric, identified by the tuple `(vendor, metric_id)`.'), PinnedDefault]
     vendor: Annotated[BrandReference, Field(description="Vendor that defines and computes this metric. The vendor's `brand.json` `agents[type='measurement']` is the canonical anchor.")]
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary. MUST be present in the product's `reporting_capabilities.vendor_metrics` for the same vendor.")]
     methodology_version: Annotated[str | None, Field(description="Optional buyer-proposed pin of the vendor's `measurement.metrics[].methodology_version`. The seller accepts by echoing it on the confirmed package's `committed_metrics` entry, normalizes to the version it can actually deliver, or rejects with `TERMS_REJECTED`. Opaque string — equality comparison only."), OmittedNotNull] = None

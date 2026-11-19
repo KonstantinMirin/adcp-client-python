@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, PinnedDefault, SchemaRef
 from adcp.types.constraints import (
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem,
     AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem,
@@ -36,7 +36,7 @@ class DataProviderSignalSelectorAll(DataProviderSignalSelector):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/data-provider-signal-selector.json', pointer='#/oneOf/0')
     data_provider_domain: Annotated[DomainName, Field(description="Domain where data provider's adagents.json is hosted (e.g., 'polk.com')")]
-    selection_type: Annotated[Literal['all'], Field(description='Discriminator indicating all signals from this data provider are included')]
+    selection_type: Annotated[Literal['all'], Field(description='Discriminator indicating all signals from this data provider are included'), PinnedDefault]
 
 
 class DataProviderSignalSelectorById(DataProviderSignalSelector):
@@ -48,7 +48,7 @@ class DataProviderSignalSelectorById(DataProviderSignalSelector):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/data-provider-signal-selector.json', pointer='#/oneOf/1')
     data_provider_domain: Annotated[DomainName, Field(description="Domain where data provider's adagents.json is hosted (e.g., 'polk.com')")]
-    selection_type: Annotated[Literal['by_id'], Field(description='Discriminator indicating selection by specific signal IDs')]
+    selection_type: Annotated[Literal['by_id'], Field(description='Discriminator indicating selection by specific signal IDs'), PinnedDefault]
     signal_ids: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem], Field(description="Specific signal IDs from the data provider's published signal definitions", min_length=1)]
 
 
@@ -61,7 +61,7 @@ class DataProviderSignalSelectorByTag(DataProviderSignalSelector):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/data-provider-signal-selector.json', pointer='#/oneOf/2')
     data_provider_domain: Annotated[DomainName, Field(description="Domain where data provider's adagents.json is hosted (e.g., 'polk.com')")]
-    selection_type: Annotated[Literal['by_tag'], Field(description='Discriminator indicating selection by signal tags')]
+    selection_type: Annotated[Literal['by_tag'], Field(description='Discriminator indicating selection by signal tags'), PinnedDefault]
     signal_tags: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem], Field(description="Signal tags from the data provider's published signal definitions. Selector covers all signals with these tags", min_length=1)]
 
 

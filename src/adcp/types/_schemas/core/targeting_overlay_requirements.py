@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, PropertyCount, RequiredGroups, Rule, UniqueItems
 
 from ..enums.browser_family import BrowserFamily
@@ -20,7 +20,7 @@ from .geo_region_requirement import GeographicRegionRequirement
 from .iana_timezone import IANATimezoneIdentifier
 from .positive_postal_area_support import PositivePostalAreaSupport
 
-TargetingOverlayRequirementsRequired = Literal[True]
+TargetingOverlayRequirementsRequired = Annotated[Literal[True], PinnedDefault]
 
 
 class MetroRequirementSystems(AdCPBaseModel):

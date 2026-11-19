@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types.constraints import (
     ComplyTestControllerRequestParamsReceivedReportingRevisionId,
@@ -95,7 +95,7 @@ class RestatementPolicy(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/restatement_policy')
     source_requery_duration: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
-    emit_only_on_content_change: Literal[True]
+    emit_only_on_content_change: Annotated[Literal[True], PinnedDefault]
     official_correction_mode: Annotated[Literal['adjustments_only'] | None, Field(description='Once an official revision is published it is immutable and cannot be superseded. Later source corrections are separate reporting-adjustment records applied to a later accounting period.'), OmittedNotNull] = None
 
 
@@ -105,7 +105,7 @@ class FinalityPoliciesItemSourceFinal(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/finality_policies/items/oneOf/0')
     finality_policy_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    basis: Literal['source_final']
+    basis: Annotated[Literal['source_final'], PinnedDefault]
     source_signal: StrMinLen1MaxLen512
 
 
@@ -115,7 +115,7 @@ class FinalityPoliciesItemContractualCutoff(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/finality_policies/items/oneOf/1')
     finality_policy_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    basis: Literal['contractual_cutoff']
+    basis: Annotated[Literal['contractual_cutoff'], PinnedDefault]
     duration_after_period_end: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
 
 
@@ -125,7 +125,7 @@ class FinalityPoliciesItemStabilized(AdCPBaseModel):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/reporting-report-definition.json', pointer='#/properties/finality_policies/items/oneOf/2')
     finality_policy_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
-    basis: Literal['stabilized']
+    basis: Annotated[Literal['stabilized'], PinnedDefault]
     minimum_age: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
     unchanged_for: ReportingReportDefinitionFinalityPoliciesItemDurationAfterPeriodEnd
 
@@ -145,7 +145,7 @@ class ReportingReportDefinition(AdCPBaseModel):
         Approximation(document='core/reporting-report-definition.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'contract_version': {'const': '1.1'}}, 'required': ['contract_version']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     contract_version: Annotated[DAASTVersion, Field(description='1.1 adds immutable official closes with adjustments_only correction semantics for Reliable Reporting 1.0. Version 1.0 remains accepted for compatibility with the preceding experimental managed-reporting contract.')]
-    media_type: Literal['application/vnd.adcp.reporting-definition+json']
+    media_type: Annotated[Literal['application/vnd.adcp.reporting-definition+json'], PinnedDefault]
     report_definition_id: ComplyTestControllerRequestParamsReceivedReportingRevisionId
     reporting_profile: StrMinLen1MaxLen128
     grain: StrMinLen1MaxLen128

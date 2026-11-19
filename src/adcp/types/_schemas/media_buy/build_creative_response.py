@@ -13,6 +13,7 @@ from adcp.types._base import (
     MemberAlias,
     OmittedNotNull,
     OmittedWhenNone,
+    PinnedDefault,
     SchemaRef,
 )
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, RequiredGroups, Rule
@@ -362,7 +363,7 @@ class BuildCreativeEstimate(BuildCreativeResponse):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/build-creative-response.json', pointer='#/oneOf/3')
-    mode: Annotated[Literal['estimate'], Field(description='Echoes the request mode; discriminates this dry-run envelope from the producing shapes.')]
+    mode: Annotated[Literal['estimate'], Field(description='Echoes the request mode; discriminates this dry-run envelope from the producing shapes.'), PinnedDefault]
     estimate: Annotated[Estimate, Field(description='Projected cost for what mode:"execute" would have produced.')]
     expires_at: Annotated[WireDatetime | None, Field(description="ISO 8601 timestamp after which this estimate's inputs/prices may no longer hold."), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None
@@ -396,7 +397,7 @@ class BuildCreativeResponseSubmitted(BuildCreativeResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('creative_manifest',), ('creative_manifests',), ('creatives',), ('estimate',))),
     )
-    status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shapes, whose creative_manifest or creative_manifests are issued in-line. See task-status.json for the full task-status enum.')]
+    status: Annotated[Literal['submitted'], Field(description='Task-level status literal. Discriminates this async envelope from the synchronous success shapes, whose creative_manifest or creative_manifests are issued in-line. See task-status.json for the full task-status enum.'), PinnedDefault]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
     message: Annotated[StrMaxLen2000 | None, Field(description="Optional human-readable explanation of why the task is submitted — e.g., 'Generative build queued; typical turnaround 3–5 minutes.' Plain text only. Buyers MUST treat this as untrusted seller input: escape before rendering to HTML UIs, and sanitize or isolate before passing to an LLM prompt context — a hostile seller may inject prompt-injection payloads aimed at the buyer's agent."), OmittedNotNull] = None
     errors: Annotated[list[Error] | None, Field(description='Optional advisory errors accompanying the submitted envelope. Use only for non-blocking warnings (e.g., throttled_severity advisories, governance observations). Terminal failures belong in the error branch, not here.'), OmittedNotNull] = None

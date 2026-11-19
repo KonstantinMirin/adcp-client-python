@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import StrMinLen1MaxLen255
 from adcp.types.envelopes import AdcpResponse
 
@@ -36,9 +36,9 @@ class AppliedPrincipalConfiguration(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-response.json', pointer='#/properties/result/oneOf/0')
-    kind: Literal['applied']
+    kind: Annotated[Literal['applied'], PinnedDefault]
     action: Annotated[AppliedPrincipalConfigurationAction, Field(description="Persisted outcome for the submitted sections, computed solely against the caller's own prior state. cleared applies only when every submitted section was []; any other change is updated; unchanged means no submitted section differed.")]
-    dry_run: Literal[False]
+    dry_run: Annotated[Literal[False], PinnedDefault]
     principal_id: Annotated[StrMinLen1MaxLen255, Field(description='Seller-issued opaque identifier for this authenticated principal record. It is response-only, not a credential, not caller identity, and not advertiser-account authority.')]
     principal_kind: Annotated[PrincipalKind, Field(description="Seller-resolved party kind of the authenticated principal: a buyer-agent workload, or an operator-side identity such as a person at the operator. Resolved solely from the seller's authorization system, never from request content, so per-party policy such as billing gates can rely on it.")]
     configuration_version: Annotated[StrMinLen1MaxLen255, Field(description='Opaque version of the persisted configuration. Compare only for equality and return it as expected_configuration_version on a later guarded replacement.')]
@@ -60,9 +60,9 @@ class ValidatedPrincipalDryRun(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-response.json', pointer='#/properties/result/oneOf/1')
-    kind: Literal['validated']
+    kind: Annotated[Literal['validated'], PinnedDefault]
     action: ValidatedPrincipalDryRunAction
-    dry_run: Literal[True]
+    dry_run: Annotated[Literal[True], PinnedDefault]
     warnings: Annotated[list[Error] | None, Field(max_length=16), OmittedNotNull] = None
 
 
@@ -71,7 +71,7 @@ class FailedPrincipalSync(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/sync-principal-response.json', pointer='#/properties/result/oneOf/2')
-    kind: Literal['failed']
+    kind: Annotated[Literal['failed'], PinnedDefault]
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
 

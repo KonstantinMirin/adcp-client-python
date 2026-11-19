@@ -11,6 +11,7 @@ from adcp.types._base import (
     BranchDispatchMixin,
     OmittedNotNull,
     OmittedWhenNone,
+    PinnedDefault,
     SchemaRef,
 )
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
@@ -161,7 +162,7 @@ class SuccessfulLookup(GetReportingStatusResponse):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'complete'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    status: Annotated[Literal['completed'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
+    status: Annotated[Literal['completed'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.'), PinnedDefault]
 
 
 class SummaryView(SuccessfulLookup):
@@ -169,7 +170,7 @@ class SummaryView(SuccessfulLookup):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/0')
-    view: Annotated[Literal[ReportingStatusView.SUMMARY], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
+    view: Annotated[Literal[ReportingStatusView.SUMMARY], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.'), PinnedDefault]
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
     coverage: Annotated[ReportingCoverage, Field(description='Aggregated effective coverage for the exact selected scope. This remains independent of reporting health and finality so a fresh covered subset cannot look like complete campaign reporting.')]
     data_through: Annotated[WireDatetime | None, Field(description='Conservative latest included event time across satisfied obligations in scope, or null when unavailable/unknown.')]
@@ -200,7 +201,7 @@ class PeriodsView(SuccessfulLookup):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'health': {'const': 'complete'}}, 'required': ['health']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    view: Annotated[Literal[ReportingStatusView.PERIODS], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
+    view: Annotated[Literal[ReportingStatusView.PERIODS], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.'), PinnedDefault]
     pagination: PeriodsViewPagination
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
     ledger_as_of: Annotated[WireDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
@@ -220,7 +221,7 @@ class RevisionView(SuccessfulLookup):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/0/oneOf/2')
-    view: Annotated[Literal[ReportingStatusView.REVISION], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
+    view: Annotated[Literal[ReportingStatusView.REVISION], Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.'), PinnedDefault]
     pagination: RevisionViewPagination
     account_id: Annotated[StrMinLen1, Field(description='Resolved seller/storefront account identifier.')]
     ledger_as_of: Annotated[WireDatetime, Field(description='Exclusive observation boundary for ledger_snapshot_id. Revisions committed later appear only in a later reconciliation.')]
@@ -245,7 +246,7 @@ class FailedLookup(GetReportingStatusResponse):
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
-    status: Annotated[Literal['failed'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.')]
+    status: Annotated[Literal['failed'], Field(description='Current AdCP task state or structured outcome. Indicates whether the task completed, is in progress, was submitted for async processing, failed, requires user input, or returned a typed business rejection. REQUIRED on every task response envelope. Synchronous tasks (including read-only metadata calls like `get_adcp_capabilities`) normally emit `status: "completed"`; a task-specific rejection arm emits `status: "rejected"` without turning the transport into a failure. Async tasks emit `submitted`, `working`, `input-required`, etc. per their lifecycle. Agents MUST NOT emit the legacy task_status or response_status fields alongside this field — the status field is the single authoritative AdCP response state.'), PinnedDefault]
 
 
 class AdcpError(Error):
@@ -256,8 +257,8 @@ class AdcpError(Error):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/1/oneOf/0/properties/adcp_error')
-    code: Annotated[Literal['NOT_FOUND'], Field(description='Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes — treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract — this rule is what lets future maintenance lines ship new codes additively.')]
-    message: Annotated[Literal['Reporting status resource is unavailable.'], Field(description='Human-readable error message')]
+    code: Annotated[Literal['NOT_FOUND'], Field(description='Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes — treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract — this rule is what lets future maintenance lines ship new codes additively.'), PinnedDefault]
+    message: Annotated[Literal['Reporting status resource is unavailable.'], Field(description='Human-readable error message'), PinnedDefault]
 
 
 class ErrorsItem(Error):
@@ -268,8 +269,8 @@ class ErrorsItem(Error):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/1/oneOf/0/properties/errors/items')
-    code: Annotated[Literal['NOT_FOUND'], Field(description='Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes — treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract — this rule is what lets future maintenance lines ship new codes additively.')]
-    message: Annotated[Literal['Reporting status resource is unavailable.'], Field(description='Human-readable error message')]
+    code: Annotated[Literal['NOT_FOUND'], Field(description='Error code for programmatic handling. The error-code vocabulary is open: `error.code` is wire-typed `string` (not a closed enum), the standard codes published in `enums/error-code.json` are documentary, and senders MAY emit codes outside that set (platform-specific codes, or codes introduced in a later AdCP version). Receivers MUST decode unknown codes — treat the response as well-formed, read `error.recovery` for the recovery classification, and fall back to `transient` when `recovery` is absent. See `error-handling.mdx#forward-compatible-decoding-normative` for the full forward-compat contract — this rule is what lets future maintenance lines ship new codes additively.'), PinnedDefault]
+    message: Annotated[Literal['Reporting status resource is unavailable.'], Field(description='Human-readable error message'), PinnedDefault]
 
 
 class UnavailableLookup(FailedLookup):
@@ -278,7 +279,7 @@ class UnavailableLookup(FailedLookup):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/1/oneOf/0')
     view: Annotated[ReportingStatusView, Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
-    failure_kind: Literal['lookup_unavailable']
+    failure_kind: Annotated[Literal['lookup_unavailable'], PinnedDefault]
     message: Annotated[Literal['Reporting status resource is unavailable.'] | None, Field(description='Human-readable summary of the task result. Provides natural language explanation of what happened, suitable for display to end users or for AI agent comprehension. Generated by the protocol layer based on the task response.'), OmittedNotNull] = None
     adcp_error: Annotated[AdcpError | None, Field(description="Transport-envelope error signal for fatal task failures. Per the two-layer model in `error-handling.mdx#envelope-vs-payload-errors-the-two-layer-model`, a fatal task failure SHOULD populate both this envelope-level field AND the payload's `errors[]` array — the envelope carries a typed, extractable error so MCP/A2A clients can dispatch without re-parsing the payload, while the payload's structured `errors[]` remains the canonical normative shape. Non-fatal warnings populate ONLY `payload.errors[]` with `severity: warning` — the envelope MUST NOT carry `adcp_error` for non-failures."), OmittedNotNull] = None
     errors: Annotated[list[ErrorsItem], Field(max_length=1, min_length=1)]
@@ -290,7 +291,7 @@ class OperationalFailure(FailedLookup):
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-reporting-status-response.json', pointer='#/oneOf/1/oneOf/1')
     view: Annotated[ReportingStatusView, Field(description='Stable response-shape discriminator. SDK convenience methods may default this to summary, but the wire request is explicit.')]
-    failure_kind: Literal['operational']
+    failure_kind: Annotated[Literal['operational'], PinnedDefault]
     adcp_error: Annotated[Error | None, OmittedNotNull] = None
     errors: Annotated[list[Error], Field(min_length=1)]
 

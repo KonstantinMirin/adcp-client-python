@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, HostedUrl
 from adcp.types.envelopes import AdcpRequest
 
@@ -30,13 +30,13 @@ class TargetsItem(BranchDispatchMixin, AdCPBaseModel):
 
 class CanonicalFormatTarget(TargetsItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/0')
-    kind: Literal['canonical']
+    kind: Annotated[Literal['canonical'], PinnedDefault]
     id: Annotated[str, Field(description="Canonical format name from `canonical-format-kind.json` (e.g., `image`, `video_hosted`, `audio_daast`). Validators check the manifest against the canonical's parameter schema.")]
 
 
 class ProductTarget(TargetsItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/1')
-    kind: Literal['product']
+    kind: Annotated[Literal['product'], PinnedDefault]
     id: Annotated[str, Field(description="Product ID. Validators check the manifest against the product's inline `ProductFormatDeclaration` narrowing of the canonical (parameter constraints, slot requirements, platform extensions).")]
 
 
@@ -46,13 +46,13 @@ class ThirdPartyFormatTarget(TargetsItem):
         Approximation(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2/properties/id', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/2/properties/id', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    kind: Literal['third_party_format']
+    kind: Annotated[Literal['third_party_format'], PinnedDefault]
     id: Annotated[HostedUrl, Field(description='URI-form format identifier referencing a third-party format definition (e.g., `https://creativevendor.example/formats/image_300x250@sha256:...`). Validators fetch the definition (digest-pinned, cached) and validate the manifest against it.')]
 
 
 class CreativeCapabilityTarget(TargetsItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/validate-input-request.json', pointer='#/properties/targets/items/oneOf/3')
-    kind: Literal['capability']
+    kind: Annotated[Literal['capability'], PinnedDefault]
     id: Annotated[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem, Field(description='Agent-local capability_id from get_adcp_capabilities creative.supported_formats. The selected entry MUST include validate in operations; unknown IDs or entries without validate are rejected with FORMAT_NOT_SUPPORTED.')]
 
 

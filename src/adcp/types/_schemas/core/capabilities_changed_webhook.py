@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -58,7 +58,7 @@ class CapabilitiesChangedWebhook(AdCPBaseModel):
     )
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identifier for this logical capability-change event. Re-emissions of the same logical change reuse this value under a new idempotency_key; a later material capability revision receives a new id.')]
-    notification_type: Annotated[Literal['capabilities.changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`.")]
+    notification_type: Annotated[Literal['capabilities.changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's `event_types`."), PinnedDefault]
     fired_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Distinct from `changed_at`, which is when the seller recorded the material capability change.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description="Identifies which caller-scoped notification_configs[] entry is receiving this fire. Echoed verbatim from the entry's subscriber_id.")]
     agent_url: Annotated[HostedUrl, Field(description='Canonical seller agent URL whose capabilities changed. Receivers that subscribe to multiple agents use this to select the cache entry to invalidate.')]

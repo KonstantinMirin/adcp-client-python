@@ -510,6 +510,12 @@ OMITTED_NOT_NULL = (ir.BASE_MODULE, adcp_base.OMITTED_NOT_NULL)
 #: same reason as :data:`OMITTED_NOT_NULL`.
 OMITTED_WHEN_NONE = (ir.BASE_MODULE, adcp_base.OMITTED_WHEN_NONE)
 
+#: :data:`adcp.types._base.PinnedDefault`, for a REQUIRED property the document pins to
+#: ONE value.  Held the same way and for the same reason as :data:`OMITTED_NOT_NULL`, and
+#: it is that marker's sibling: the two are the whole of where the Python spelling of a
+#: value is not the JSON one (``verdicts/a-pinned-default-is-the-documents-own.md``).
+PINNED_DEFAULT = (ir.BASE_MODULE, adcp_base.PINNED_DEFAULT)
+
 
 class _OptionalMember(DataModelField):
     """A field whose ``Annotated`` carries one more item than the model layer puts there.
@@ -538,6 +544,12 @@ class _OptionalMember(DataModelField):
     #: nullability, so the two flags are exclusive by construction and :func:`_field` is the
     #: one place either is decided.
     omits_none: bool = False
+
+    #: **Whether this property is REQUIRED and its node admits exactly ONE value**, decided
+    #: at :func:`_field` for ``omits_null``'s reason -- one place decides.  Exclusive with
+    #: both flags above by construction: those two partition the OPTIONAL fields and this
+    #: one is required.
+    pins: bool = False
 
     #: **Whether this position's own type is a bare ``integer``**, read at :func:`_field`
     #: off the decided type for ``omits_null``'s reason -- one place decides.
@@ -571,6 +583,7 @@ class _OptionalMember(DataModelField):
                 (field_call, bool(field_call)),
                 (OMITTED_NOT_NULL[1], self.omits_null),
                 (OMITTED_WHEN_NONE[1], self.omits_none),
+                (PINNED_DEFAULT[1], self.pins),
                 (ir.SCHEMA_INTEGRAL, self.integral),
             )
             if carried
@@ -584,7 +597,7 @@ class _OptionalMember(DataModelField):
     @property
     def _marks(self) -> bool:
         return (
-            (self.omits_null or self.omits_none or self.integral)
+            (self.omits_null or self.omits_none or self.pins or self.integral)
             and not self.is_class_var
             and self.use_annotated
         )
@@ -646,6 +659,11 @@ class _OptionalMember(DataModelField):
             *(
                 (Import(from_=OMITTED_WHEN_NONE[0], import_=OMITTED_WHEN_NONE[1]),)
                 if self.omits_none
+                else ()
+            ),
+            *(
+                (Import(from_=PINNED_DEFAULT[0], import_=PINNED_DEFAULT[1]),)
+                if self.pins
                 else ()
             ),
             # The narrowing marker is ours and lives beside the carriers it belongs to
@@ -780,6 +798,25 @@ def _field(decided: ir.Field) -> DataModelField:
         # and this is that position.  Exclusive with ``omits_null`` by construction: the two
         # partition the optional fields on ``ir.admits_null``.
         omits_none=not decided.required and ir.admits_null(decided.type),
+        # **A REQUIRED property whose node admits EXACTLY ONE value may default to it, and
+        # the Python route does** (``verdicts/a-pinned-default-is-the-documents-own.md``;
+        # :class:`adcp.types._base._ThePinIsSupplied` is the whole of the reading).  The
+        # question is asked of the DECIDED TYPE and of nothing else, which is the same
+        # discipline ``omits_null`` is held to: ``asset_type`` is pinned on
+        # ``core/assets/image-asset.json`` and ``status`` is pinned on
+        # ``media-buy/sync-reporting-receipts-response.json`` and NOT on
+        # ``media-buy/get-products-response.json``, so a reading off the property's NAME
+        # answers differently in one bundle and a reading off the node does not.
+        #
+        # **COUNTED AND NOT PATTERN-MATCHED, because "admits one value" is a cardinality.**
+        # ``literals`` is D2's ``const`` row -- and a one-member ``enum`` arrives in it too,
+        # by ``lower.enum.literal``, which is ``intersect.as_enum``'s equivalence ("a
+        # ``const`` is a one-member vocabulary") already spent; ``members`` is §5's
+        # ``enum`` row at CONJ, where a conjunct narrows the target's vocabulary, and a
+        # narrowing to one member is a node admitting one value by the same arithmetic.
+        # The two slots are never both populated, so the sum is the cardinality and no
+        # clause has to say which of them answered.
+        pins=decided.required and len(decided.type.literals) + len(decided.type.members) == 1,
         # **§5's ``type`` row for ``integer``, asked of the position's OWN type.**  A node
         # whose type is the bare builtin takes the narrowing here; a node whose type is a
         # constrained ALIAS takes it on the alias's own line instead -- `alias()` renders

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import (
     AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl,
     HostedUrl,
@@ -41,7 +41,7 @@ class AttestationBrandSubject(AttestationSubject):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-subject.json', pointer='#/oneOf/0')
-    type: Literal['brand']
+    type: Annotated[Literal['brand'], PinnedDefault]
     brand: BrandReference
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -51,7 +51,7 @@ class AttestationAgentSubject(AttestationSubject):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/attestation-subject.json', pointer='#/oneOf/1')
-    type: Literal['agent']
+    type: Annotated[Literal['agent'], PinnedDefault]
     agent_url: Annotated[AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, Field(description='Canonical HTTPS endpoint of the agent the claim concerns.')]
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -67,7 +67,7 @@ class AttestationResourceSubject(AttestationSubject):
         Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/namespace', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/attestation-subject.json', pointer='#/oneOf/2/properties/namespace', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    type: Literal['resource']
+    type: Annotated[Literal['resource'], PinnedDefault]
     resource_type: Annotated[HostedUrl, Field(description='Open, absolute URI naming the subject vocabulary, such as https://adcontextprotocol.org/claims/subjects/signal. AdCP does not maintain an exhaustive enum.')]
     namespace: Annotated[HostedUrl, Field(description='Absolute URI identifying the namespace in which id is unique. This may be an AdCP agent endpoint, a catalog origin, or a domain-specific namespace URI.')]
     id: Annotated[StrMinLen1MaxLen1024, Field(description='Stable identifier for the subject within namespace. It MUST NOT be compared without resource_type and namespace.')]

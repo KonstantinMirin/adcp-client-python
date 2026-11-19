@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types.constraints import AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl, FloatMin0Max1, HostedUrl
 
@@ -64,7 +64,7 @@ class AcceptedAttestationIssuersItemBrand(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/0')
-    type: Literal['brand']
+    type: Annotated[Literal['brand'], PinnedDefault]
     brand: BrandKey
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 
@@ -74,7 +74,7 @@ class AcceptedAttestationIssuersItemAgent(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/product-audience-evidence-requirements.json', pointer='#/properties/accepted_attestation_issuers/items/oneOf/1')
-    type: Literal['agent']
+    type: Annotated[Literal['agent'], PinnedDefault]
     agent_url: AttestationCapabilitiesAcceptedIssuersItemResolversItemUrl
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
 

@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict
 
-from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule
 from adcp.types.constraints import HostedUrl, StrMinLen1
 
@@ -46,7 +46,7 @@ class MacroTranslationTarget(AdCPBaseModel):
     dialect_semantic: StrMinLen1
     mapping_status: MacroMappingStatus
     universal_semantic: Annotated[UniversalMacro | None, OmittedNotNull] = None
-    next_operation: Literal['resolve_value']
+    next_operation: Annotated[Literal['resolve_value'], PinnedDefault]
     performed_by: MacroProcessingActor
     encoding: MacroEncoding
 

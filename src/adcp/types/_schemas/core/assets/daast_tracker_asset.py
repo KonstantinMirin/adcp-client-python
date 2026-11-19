@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NotValue, Rule
 from adcp.types.constraints import DAASTTrackerAssetOffset
 
@@ -27,7 +27,7 @@ class DAASTTrackerAsset(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ConditionalRequired((Match('daast_event', True, ('progress',)),), require=('offset',), forbid=()),
     )
-    asset_type: Annotated[Literal['daast_tracker'], Field(description='Discriminator identifying this as a DAAST tracker asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['daast_tracker'], Field(description='Discriminator identifying this as a DAAST tracker asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     daast_event: Annotated[Annotated[DAASTTrackingEvent, AfterValidator(NotValue(('impression', 'clickTracking', 'customClick', 'error', 'viewable', 'notViewable', 'viewUndetermined', 'measurableImpression', 'viewableImpression')))], Field(description='The DAAST tracking event this URL fires on. MUST NOT be `impression` (model as `url` asset with `url_type: "tracker_pixel"`), `clickTracking` / `customClick` (click-tracking trackers go on their own URL asset), `error`, or any of the `ViewableImpression`-element children (`viewable`, `notViewable`, `viewUndetermined`, `measurableImpression`, `viewableImpression`).')]
     url: Annotated[MacroBearingURL, Field(description='Tracker URL fired for the DAAST event. Attached declarations identify each macro occurrence, processing actor, and exact encoding profile.')]
     macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='Exact tokens in `url` and their resolver/encoding contracts.', min_length=1), OmittedNotNull] = None

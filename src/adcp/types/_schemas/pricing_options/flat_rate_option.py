@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types.constraints import FloatMin0Max100, IntMin1, StrMinLen1
 
@@ -23,7 +23,7 @@ class Parameters(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='pricing-options/flat-rate-option.json', pointer='#/properties/parameters')
-    type: Annotated[Literal['dooh'], Field(description='Discriminator identifying this as DOOH parameters')]
+    type: Annotated[Literal['dooh'], Field(description='Discriminator identifying this as DOOH parameters'), PinnedDefault]
     sov_percentage: Annotated[FloatMin0Max100 | None, Field(description='Guaranteed share of voice on a 0-100 percentage scale. To compare this contracted value with delivery dooh_metrics.sov_achieved, divide sov_percentage by 100. Share is time-weighted: the sum of the reserved segment durations divided by the full loop duration. On equal-duration loops this equals the slot-count ratio.'), OmittedNotNull] = None
     slot_span: Annotated[IntMin1 | None, Field(description='Number of consecutive loop slots reserved by this seller-declared pre-packaged offer. Contiguity is guaranteed; position is not guaranteed unless loop_position is also present. This field does not carry a buyer-requested custom span for an offer the seller has not pre-packaged.'), OmittedNotNull] = None
     loop_position: Annotated[StrMinLen1 | None, Field(description='Seller-defined position label for the reserved span within the loop, such as any, first, last, or adjacent_to_content_break. This is deliberately an open string because network vocabularies differ. Consumers MUST accept unrecognized values as opaque and treat them as conveying no position guarantee the consumer understands; an unrecognized value is not a protocol error.'), OmittedNotNull] = None
@@ -47,7 +47,7 @@ class FlatRatePricingOption(AdCPBaseModel):
         UniqueItems('eligible_adjustments'),
     )
     pricing_option_id: Annotated[str, Field(description='Unique identifier for this pricing option within the product')]
-    pricing_model: Annotated[Literal['flat_rate'], Field(description='Fixed cost regardless of delivery volume')]
+    pricing_model: Annotated[Literal['flat_rate'], Field(description='Fixed cost regardless of delivery volume'), PinnedDefault]
     currency: Annotated[CurrencyCode, Field(description='ISO 4217 currency code')]
     fixed_price: Annotated[NonNegativeFloat | None, Field(description='Flat rate cost. If present, this is fixed pricing. If absent, auction-based.'), OmittedNotNull] = None
     floor_price: Annotated[NonNegativeFloat | None, Field(description='Minimum acceptable bid for auction pricing (mutually exclusive with fixed_price). Bids below this value will be rejected.'), OmittedNotNull] = None

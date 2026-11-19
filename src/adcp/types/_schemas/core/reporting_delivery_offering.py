@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Dependencies, Match, Rule, UniqueItems
 from adcp.types.constraints import (
     AgentReportingDestinationFileTransferDestinationTransport,
@@ -55,8 +55,8 @@ class ReportingProfile(AdCPBaseModel):
     version: StrMinLen1MaxLen64
     schema_uri: Annotated[ReportingCanonicalContentDigestCanonicalizationUri, Field(description='Authenticated seller/provider or AdCP-registry HTTPS origin only; never an IP literal, userinfo URL, redirect target, or mutable validation authority.')]
     schema_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest of the exact schema bytes. SDKs verify this before parsing and cache by digest.')]
-    schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description="Closed SDK-bundled dialect. The SDK never resolves a metaschema over the network, and the fetched document's $schema MUST equal this value.")]
-    schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is a self-contained bundle. Every $ref is a local # fragment; remote and relative-document dependencies are forbidden.')]
+    schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description="Closed SDK-bundled dialect. The SDK never resolves a metaschema over the network, and the fetched document's $schema MUST equal this value."), PinnedDefault]
+    schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is a self-contained bundle. Every $ref is a local # fragment; remote and relative-document dependencies are forbidden.'), PinnedDefault]
     grain: Annotated[StrMinLen1MaxLen128, Field(description='Stable description of what one logical row represents.')]
     primary_keys: Annotated[list[ReportingPrimaryKey], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
     canonicalization_id: Annotated[StrMinLen1MaxLen128 | None, Field(description='Rules for stable logical row ordering, value encoding, nulls, and schema used by canonical_content_digest.'), OmittedNotNull] = None

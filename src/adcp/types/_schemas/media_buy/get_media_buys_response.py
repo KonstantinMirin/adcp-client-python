@@ -6,7 +6,15 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeFloat, NonNegativeInt, StrictBool, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    MemberAlias,
+    OmittedNotNull,
+    OmittedWhenNone,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Dependencies, ForbiddenGroups, Match, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -66,7 +74,7 @@ class AcceptedProposal(CanonicalProposal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buys-response.json', pointer='#/properties/media_buys/items/properties/accepted_proposal')
-    proposal_status: Annotated[Literal['accepted'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
+    proposal_status: Annotated[Literal['accepted'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.'), PinnedDefault]
     media_buy_id: StrMinLen1
     accepted_at: WireDatetime
 

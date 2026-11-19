@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types.constraints import HostedUrl
 
 from ...enums.daast_tracking_event import DAASTTrackingEvent
@@ -35,7 +35,7 @@ class DAASTAsset(BranchDispatchMixin, AdCPBaseModel):
         Approximation(document='core/assets/daast-asset.json', pointer='#/properties/transcript_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='core/assets/daast-asset.json', pointer='#/properties/transcript_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    asset_type: Annotated[Literal['daast'], Field(description='Discriminator identifying this as a DAAST asset. See /schemas/creative/asset-types for the registry.')]
+    asset_type: Annotated[Literal['daast'], Field(description='Discriminator identifying this as a DAAST asset. See /schemas/creative/asset-types for the registry.'), PinnedDefault]
     daast_version: Annotated[DAASTVersion | None, Field(description='DAAST specification version'), OmittedNotNull] = None
     duration_ms: Annotated[NonNegativeInt | None, Field(description='Expected audio duration in milliseconds (if known)'), OmittedNotNull] = None
     tracking_events: Annotated[list[DAASTTrackingEvent] | None, Field(description='Tracking events supported by this DAAST tag'), OmittedNotNull] = None
@@ -50,7 +50,7 @@ class DAASTAssetUrl(DAASTAsset):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/0')
-    delivery_type: Annotated[Literal['url'], Field(description='Discriminator indicating DAAST is delivered via URL endpoint')]
+    delivery_type: Annotated[Literal['url'], Field(description='Discriminator indicating DAAST is delivered via URL endpoint'), PinnedDefault]
     url: Annotated[MacroBearingURL, Field(description='URL endpoint returning DAAST XML. Macro delimiters remain byte-preserved and are processed only under attached occurrence declarations.')]
     macro_declarations: Annotated[list[MacroDeclarationsItem] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1), OmittedNotNull] = None
 
@@ -60,7 +60,7 @@ class Location(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/1/properties/macro_declarations/items/properties/location')
-    field: Annotated[Literal['content'], Field(description='Asset field containing this occurrence.')]
+    field: Annotated[Literal['content'], Field(description='Asset field containing this occurrence.'), PinnedDefault]
     occurrence: Annotated[NonNegativeInt, Field(description='Zero-based occurrence of this exact token within the named field.')]
     context: MacroValueContext
 
@@ -81,7 +81,7 @@ class DAASTAssetInline(DAASTAsset):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/assets/daast-asset.json', pointer='#/oneOf/1')
-    delivery_type: Annotated[Literal['inline'], Field(description='Discriminator indicating DAAST is delivered as inline XML content')]
+    delivery_type: Annotated[Literal['inline'], Field(description='Discriminator indicating DAAST is delivered as inline XML content'), PinnedDefault]
     content: Annotated[str, Field(description='Inline DAAST XML content')]
     macro_declarations: Annotated[list[ObjLocation] | None, Field(description='One declaration per occurrence in a field carried by this asset. URL-delivered assets declare only locator-URL occurrences; receivers do not infer declarations for tokens discovered later in a fetched document.', min_length=1), OmittedNotNull] = None
 

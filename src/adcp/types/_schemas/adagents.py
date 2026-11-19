@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Match, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -269,7 +277,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemProperty
         UniqueItems('placement_tags'),
         UniqueItems('countries'),
     )
-    authorization_type: Annotated[Literal['property_ids'], Field(description='Discriminator indicating authorization by specific property IDs')]
+    authorization_type: Annotated[Literal['property_ids'], Field(description='Discriminator indicating authorization by specific property IDs'), PinnedDefault]
     property_ids: Annotated[list[PropertyID], Field(description='Property IDs this agent is authorized for. Resolved against the top-level properties array in this file', min_length=1)]
     collections: Annotated[list[CollectionSelector] | None, Field(description="Optional collection constraints. When present, authorization only applies to inventory associated with these collections. A selector without collection_ids grants for all collections declared in that selector's publisher_domain adagents.json (the bulk-grant form for owner-sold carriage).", min_length=1), OmittedNotNull] = None
     placement_ids: Annotated[list[str] | None, Field(description='Optional placement constraints. When present, authorization only applies to these placement IDs from the top-level placements array in this file.', min_length=1), OmittedNotNull] = None
@@ -296,7 +304,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemProperty
         UniqueItems('placement_tags'),
         UniqueItems('countries'),
     )
-    authorization_type: Annotated[Literal['property_tags'], Field(description='Discriminator indicating authorization by property tags')]
+    authorization_type: Annotated[Literal['property_tags'], Field(description='Discriminator indicating authorization by property tags'), PinnedDefault]
     property_tags: Annotated[list[PropertyTag], Field(description='Tags identifying which properties this agent is authorized for. Resolved against the top-level properties array in this file using tag matching', min_length=1)]
     collections: Annotated[list[CollectionSelector] | None, Field(description="Optional collection constraints. When present, authorization only applies to inventory associated with these collections. A selector without collection_ids grants for all collections declared in that selector's publisher_domain adagents.json (the bulk-grant form for owner-sold carriage).", min_length=1), OmittedNotNull] = None
     placement_ids: Annotated[list[str] | None, Field(description='Optional placement constraints. When present, authorization only applies to these placement IDs from the top-level placements array in this file.', min_length=1), OmittedNotNull] = None
@@ -323,7 +331,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlinePr
         UniqueItems('placement_tags'),
         UniqueItems('countries'),
     )
-    authorization_type: Annotated[Literal['inline_properties'], Field(description='Discriminator indicating authorization by inline property definitions. Companion field is `properties` (not `inline_properties`) — the only authorization_type whose companion field name does not mirror the discriminator value.')]
+    authorization_type: Annotated[Literal['inline_properties'], Field(description='Discriminator indicating authorization by inline property definitions. Companion field is `properties` (not `inline_properties`) — the only authorization_type whose companion field name does not mirror the discriminator value.'), PinnedDefault]
     properties: Annotated[list[Property], Field(description='Specific properties this agent is authorized for, defined inline on the agent entry (alternative to property_ids/property_tags). Note: this is the companion field for `authorization_type: "inline_properties"` — the field is named `properties`, not `inline_properties`.', min_length=1)]
     collections: Annotated[list[CollectionSelector] | None, Field(description="Optional collection constraints. When present, authorization only applies to inventory associated with these collections. A selector without collection_ids grants for all collections declared in that selector's publisher_domain adagents.json (the bulk-grant form for owner-sold carriage).", min_length=1), OmittedNotNull] = None
     placement_ids: Annotated[list[str] | None, Field(description='Optional placement constraints. When present, authorization only applies to these placement IDs from the top-level placements array in this file.', min_length=1), OmittedNotNull] = None
@@ -350,7 +358,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublishe
         UniqueItems('placement_tags'),
         UniqueItems('countries'),
     )
-    authorization_type: Annotated[Literal['publisher_properties'], Field(description='Discriminator indicating authorization for properties from other publisher domains')]
+    authorization_type: Annotated[Literal['publisher_properties'], Field(description='Discriminator indicating authorization for properties from other publisher domains'), PinnedDefault]
     publisher_properties: Annotated[list[PublisherPropertySelector], Field(description='Properties from other publisher domains this agent is authorized for. Each entry specifies a publisher domain and which of their properties this agent can sell', min_length=1)]
     collections: Annotated[list[CollectionSelector] | None, Field(description="Optional collection constraints. When present, authorization only applies to inventory associated with these collections. A selector without collection_ids grants for all collections declared in that selector's publisher_domain adagents.json (the bulk-grant form for owner-sold carriage).", min_length=1), OmittedNotNull] = None
     placement_ids: Annotated[list[str] | None, Field(description='Optional placement constraints. When present, authorization only applies to these placement IDs from the top-level placements array in this file.', min_length=1), OmittedNotNull] = None
@@ -370,7 +378,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalId
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/authorized_agents/items/oneOf/4')
-    authorization_type: Annotated[Literal['signal_ids'], Field(description='Discriminator indicating authorization by specific signal IDs')]
+    authorization_type: Annotated[Literal['signal_ids'], Field(description='Discriminator indicating authorization by specific signal IDs'), PinnedDefault]
     signal_ids: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalIdsItem], Field(description='Signal IDs this agent is authorized to resell. Resolved against the top-level signals array in this file', min_length=1)]
 
 
@@ -382,7 +390,7 @@ class AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTa
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='adagents.json', pointer='#/oneOf/1/properties/authorized_agents/items/oneOf/5')
-    authorization_type: Annotated[Literal['signal_tags'], Field(description='Discriminator indicating authorization by signal tags')]
+    authorization_type: Annotated[Literal['signal_tags'], Field(description='Discriminator indicating authorization by signal tags'), PinnedDefault]
     signal_tags: Annotated[list[AdCPAgentsAuthorizationAuthorizedAgentsItemSignalTagsItem], Field(description='Signal tags this agent is authorized for. Agent can resell all signals with these tags', min_length=1)]
 
 

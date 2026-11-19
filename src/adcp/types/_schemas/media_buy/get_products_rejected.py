@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import OmittedNotNull, SchemaRef
+from adcp.types._base import OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMinLen1MaxLen1000, StrMinLen1MaxLen2000
 
@@ -26,7 +26,7 @@ class GetProductsRejected(AdCPVersionEnvelope, ProtocolEnvelope):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('products',), ('proposals',), ('errors',), ('adcp_error',), ('incomplete',), ('cache_scope',), ('filter_diagnostics',), ('refinement_applied',), ('unchanged',), ('wholesale_feed_version',), ('pricing_version',), ('pagination',))),
     )
-    status: Annotated[Literal['rejected'], Field(description='Task-level business-outcome discriminator. The request was understood and processed, but the seller declined to offer products.')]
+    status: Annotated[Literal['rejected'], Field(description='Task-level business-outcome discriminator. The request was understood and processed, but the seller declined to offer products.'), PinnedDefault]
     reason: Annotated[StrMinLen1MaxLen2000, Field(description="Buyer-facing market explanation for the decline. MAY be sanitized to protect confidential seller rules; for example, 'The requested budget is below the minimum for this inventory' rather than naming the internal rule, candidate products, inventory identifiers, or upstream partners that caused the decision. Plain text only.")]
     suggestions: Annotated[list[StrMinLen1MaxLen1000] | None, Field(description='Actionable alternatives the buyer can try, such as changing budget, dates, or channel. If present, the buyer MAY submit a revised brief, but the suggestions do not guarantee acceptance. If absent, the seller is not offering a protocol-level alternative for this brief.', max_length=20, min_length=1), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None

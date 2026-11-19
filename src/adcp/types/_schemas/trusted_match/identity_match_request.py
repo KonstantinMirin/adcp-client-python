@@ -6,7 +6,7 @@ from typing import Annotated, Any, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -107,7 +107,7 @@ class IdentityMatchRequest(AdCPBaseModel):
     schema_: Annotated[HostedUrl | None, Field(alias='$schema', description='Optional schema URI for validation. Ignored at runtime.'), OmittedNotNull] = None
     adcp_version: Annotated[AdCPVersionEnvelopeAdcpVersion | None, Field(description='Release-precision AdCP version (VERSION.RELEASE, e.g. "3.0", "3.1", "3.1-beta"). On a request: the buyer\'s release pin. Inlined here (rather than via core/version-envelope.json allOf) so this schema can keep `additionalProperties: false` — the privacy boundary on this endpoint is contract-bearing.'), OmittedNotNull] = None
     adcp_major_version: Annotated[IntMin1Max99 | None, Field(deprecated=True, description='DEPRECATED in favor of adcp_version. Removed in 4.0. Inlined alongside adcp_version to preserve strict-mode on this endpoint.'), OmittedNotNull] = None
-    type: Annotated[Literal['identity_match_request'], Field(description='Message type discriminator for deserialization.')]
+    type: Annotated[Literal['identity_match_request'], Field(description='Message type discriminator for deserialization.'), PinnedDefault]
     protocol_version: Annotated[str | None, Field(description='TMP protocol version. Allows receivers to handle semantic differences across versions.'), OmittedNotNull] = '1.0'
     request_id: Annotated[str, Field(description='Unique request identifier. MUST NOT correlate with any context match request_id.')]
     seller_agent_url: Annotated[HostedUrl, Field(description="API endpoint URL of the seller agent issuing this request. The buyer's identity-match service uses this to resolve the active package set it has registered for this seller; when `package_ids` is omitted, evaluation occurs against that full set. If `seller_agent_url` does not match any seller for which the buyer has registered active packages, the buyer MUST return an empty `eligible_package_ids` set — it MUST NOT fall back to evaluating against another seller's active set. Compared using the AdCP URL canonicalization rules, not byte-equality — see docs/reference/url-canonicalization. Consistent with `seller_agent.agent_url` on `AvailablePackage` and `agent_url` in `adagents.json`.")]

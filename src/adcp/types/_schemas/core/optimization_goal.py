@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictFloat
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    Approximation,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, RequiredGroups, Rule
 from adcp.types.constraints import FloatGt0, IntMin1, StrMinLen1
 
@@ -89,7 +97,7 @@ class OptimizationGoalMetricTargetCostPer(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/0/properties/target/oneOf/0')
-    kind: Literal['cost_per']
+    kind: Annotated[Literal['cost_per'], PinnedDefault]
     value: Annotated[FloatGt0, Field(description='Target cost per metric unit in the buy currency')]
 
 
@@ -101,7 +109,7 @@ class OptimizationGoalMetricTargetThresholdRate(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/0/properties/target/oneOf/1')
-    kind: Literal['threshold_rate']
+    kind: Annotated[Literal['threshold_rate'], PinnedDefault]
     value: Annotated[FloatGt0, Field(description='Minimum per-impression value. Units depend on the metric: proportion (clicks, views, completed_views, viewable_rate), seconds (viewed_seconds, attention_seconds), or score (attention_score).')]
 
 
@@ -120,7 +128,7 @@ class OptimizationGoalMetric(OptimizationGoal):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/optimization-goal.json', pointer='#/oneOf/0/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'metric': {'const': 'viewable_rate'}}, 'required': ['metric']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    kind: Literal['metric']
+    kind: Annotated[Literal['metric'], PinnedDefault]
     metric: Annotated[OptimizationMetric, Field(description="Seller-native metric to optimize for. Delivery metrics: clicks (link clicks, swipe-throughs, CTA taps that navigate away), views (content views at the billable view threshold, as defined by delivery-metrics `views`; for viewability use viewable_rate), completed_views (video/audio completions — see view_duration_seconds), reach (unique audience reach — see reach_unit and target_frequency). Duration/score metrics: viewed_seconds (time in view per impression — reported back via `delivery-metrics.viewability.viewed_seconds`, governed by the viewability `standard`). Quality-rate metrics: viewable_rate (viewable / measurable impressions under the goal's `standard`; requires `standard`). Audience action metrics: engagements (any direct interaction with the ad unit beyond viewing — social reactions/comments/shares, story/unit opens, interactive overlay taps, companion banner interactions on audio and CTV), follows (new followers, page likes, artist/podcast/channel follows, or free channel/feed subscribes; paid subscriptions use event_type: subscribe), saves (saves, bookmarks, playlist adds, pins — signals of intent to return), profile_visits (visits to the brand's in-platform page — profile, artist page, channel, or storefront. Does not include external website clicks, which are covered by 'clicks'). **DEPRECATED values** (slated for removal at next major): `attention_seconds` and `attention_score` — these have no industry-graduated definition (DoubleVerify, IAS, Adelaide, TVision, Lumen each define them differently) and cannot be meaningfully optimized for without a vendor binding. Use `kind: 'vendor_metric'` with an explicit `vendor` and `metric_id` instead — that path binds the goal to a specific measurement vendor and reconciles to the same `(vendor, metric_id)` key in delivery's `vendor_metric_values[]`. Sellers MAY reject the deprecated values with `TERMS_REJECTED` and a suggestion to use the `vendor_metric` kind.")]
     standard: Annotated[ViewabilityStandard | None, Field(description="Viewability standard the goal is judged against. Required when metric is 'viewable_rate'; optional for 'viewed_seconds' (seller default standard when omitted); not allowed for other metrics. Must be in metric_optimization.supported_viewability_standards when declared. A goal below a same-standard viewability performance_standard never relaxes that standard."), OmittedNotNull] = None
     vendor: Annotated[BrandReference | None, Field(description="Measurement vendor judging a viewable_rate or viewed_seconds goal; not allowed for other metrics. When omitted, the seller's default viewability measurement applies. Sellers MUST reject a vendor they cannot optimize against rather than substitute another."), OmittedNotNull] = None
@@ -151,7 +159,7 @@ class OptimizationGoalEventTargetCostPer(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/1/properties/target/oneOf/0')
-    kind: Literal['cost_per']
+    kind: Annotated[Literal['cost_per'], PinnedDefault]
     value: Annotated[FloatGt0, Field(description='Target cost per event in the buy currency')]
 
 
@@ -163,7 +171,7 @@ class TargetPerAdSpend(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/1/properties/target/oneOf/1')
-    kind: Literal['per_ad_spend']
+    kind: Annotated[Literal['per_ad_spend'], PinnedDefault]
     value: Annotated[FloatGt0, Field(description='Target return ratio (e.g., 4.0 means $4 of value per $1 spent)')]
 
 
@@ -175,7 +183,7 @@ class TargetMaximizeValue(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/1/properties/target/oneOf/2')
-    kind: Literal['maximize_value']
+    kind: Annotated[Literal['maximize_value'], PinnedDefault]
 
 
 class OptimizationGoalEvent(OptimizationGoal):
@@ -186,7 +194,7 @@ class OptimizationGoalEvent(OptimizationGoal):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/1')
-    kind: Literal['event']
+    kind: Annotated[Literal['event'], PinnedDefault]
     event_sources: Annotated[list[EventSourcesItem], Field(description='Event source and type pairs that feed this goal. Each entry identifies a source and event type to include. When the seller supports multi_source_event_dedup (declared in get_adcp_capabilities), they deduplicate by event_id across all entries — the same business event from multiple sources counts once, using value_field and value_factor from the first matching entry. When multi_source_event_dedup is false or absent, buyers should use a single entry per goal; the seller will use only the first entry. All event sources must be configured via sync_event_sources.', min_length=1)]
     target: Annotated[OptimizationGoalEventTargetCostPer | TargetPerAdSpend | TargetMaximizeValue | None, Field(description='Target cost or return for this event goal. When omitted, the seller optimizes for maximum conversion count within budget — regardless of whether value_field is present on event sources. The presence of value_field alone does not change the optimization objective; it only makes value available for reporting. An explicit target of maximize_value or per_ad_spend is required to steer toward value.'), OmittedNotNull] = None
     attribution_window: Annotated[AttributionWindow | None, Field(description="Attribution window for this optimization goal — references the canonical `attribution-window` shape (post_click, post_view, model). Values must match an option declared in the seller's `conversion_tracking.attribution_windows` capability. Sellers MUST reject windows not in their declared capabilities. When the entire field is omitted, the seller uses their default window."), OmittedNotNull] = None
@@ -201,7 +209,7 @@ class OptimizationGoalVendorMetricTargetCostPer(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/2/properties/target/oneOf/0')
-    kind: Literal['cost_per']
+    kind: Annotated[Literal['cost_per'], PinnedDefault]
     value: Annotated[FloatGt0, Field(description='Target cost per metric unit in the buy currency. Units of the metric are vendor-defined.')]
 
 
@@ -213,7 +221,7 @@ class OptimizationGoalVendorMetricTargetThresholdRate(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/2/properties/target/oneOf/1')
-    kind: Literal['threshold_rate']
+    kind: Annotated[Literal['threshold_rate'], PinnedDefault]
     value: Annotated[FloatGt0, Field(description='Minimum per-impression value. Units of the metric are vendor-defined.')]
 
 
@@ -225,7 +233,7 @@ class OptimizationGoalVendorMetric(OptimizationGoal):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/2')
-    kind: Literal['vendor_metric']
+    kind: Annotated[Literal['vendor_metric'], PinnedDefault]
     vendor: Annotated[BrandReference, Field(description='Vendor that defines and computes this metric. Same shape as `vendor_metric_values.vendor`, `reporting_capabilities.vendor_metrics[].vendor`, and `vendor_metric_optimization.supported_metrics[].vendor` — symmetric across discovery, capability, commitment, optimization, and reporting surfaces.')]
     metric_id: Annotated[VendorMetricID, Field(description="Identifier for the metric within the vendor's vocabulary (e.g., `attention_score`, `attention_seconds`, `gco2e_per_impression`, `awareness_lift`). MUST be present in the vendor's published `measurement.metrics[]` catalog and in the product's `vendor_metric_optimization.supported_metrics[]`.")]
     target: Annotated[OptimizationGoalVendorMetricTargetCostPer | OptimizationGoalVendorMetricTargetThresholdRate | None, Field(description="Target for this vendor metric. When omitted, the seller optimizes for maximum metric volume / score within budget. `cost_per` and `threshold_rate` semantics mirror the same target kinds on the `metric` kind — units are vendor-defined and depend on the vendor's `measurement.metrics[]` declaration for this `metric_id`."), OmittedNotNull] = None

@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ConditionalRequired, Match, NegatedConditional, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -72,8 +72,8 @@ class ReportingRevision(AdCPBaseModel):
     schema_version: StrMinLen1MaxLen64
     schema_uri: Annotated[ReportingCanonicalContentDigestCanonicalizationUri, Field(description='Machine-readable schema on the authenticated seller/provider or AdCP-registry origin.')]
     schema_sha256: Annotated[ReportingAdjustmentReceiptObservedAdjustmentSha256, Field(description='Digest of the exact schema bytes used to validate this immutable revision.')]
-    schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description='Closed SDK-bundled dialect; the metaschema is never network-fetched.')]
-    schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is self-contained and every $ref is a local # fragment.')]
+    schema_dialect: Annotated[Literal['https://json-schema.org/draft/2020-12/schema'], Field(description='Closed SDK-bundled dialect; the metaschema is never network-fetched.'), PinnedDefault]
+    schema_ref_policy: Annotated[Literal['local_fragment_only'], Field(description='The fetched schema is self-contained and every $ref is a local # fragment.'), PinnedDefault]
     account_id: StrMinLen1
     media_buy_ids: Annotated[list[ReportingMediaBuyId], Field(description='Exact frozen media-buy denominator inherited from the obligation, including buys with zero rows. An empty array proves a zero-buy period rather than an unknown denominator.', json_schema_extra={'uniqueItems': True})]
     coverage: Annotated[ReportingCoverage, Field(description='Frozen product/package denominator represented by this logical content. The same coverage follows the revision to every destination.')]

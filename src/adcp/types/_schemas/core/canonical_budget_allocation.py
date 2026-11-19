@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, PinnedDefault, SchemaRef
 
 from .canonical_optimization_goal import CanonicalOptimizationGoal
 
@@ -28,7 +28,7 @@ class CanonicalBudgetAllocationFixed(CanonicalBudgetAllocation):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-budget-allocation.json', pointer='#/oneOf/0')
-    mode: Literal['fixed']
+    mode: Annotated[Literal['fixed'], PinnedDefault]
 
 
 class CanonicalBudgetAllocationSellerOptimized(CanonicalBudgetAllocation):
@@ -36,7 +36,7 @@ class CanonicalBudgetAllocationSellerOptimized(CanonicalBudgetAllocation):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/canonical-budget-allocation.json', pointer='#/oneOf/1')
-    mode: Literal['seller_optimized']
+    mode: Annotated[Literal['seller_optimized'], PinnedDefault]
     optimization_goals: Annotated[list[CanonicalOptimizationGoal], Field(min_length=1)]
 
 

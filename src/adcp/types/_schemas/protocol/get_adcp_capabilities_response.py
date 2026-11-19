@@ -7,7 +7,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import AfterValidator, ConfigDict, Field, NonNegativeInt, StrictBool, StrictFloat, TypeAdapter
 
-from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import AtLeastOne, ConditionalRequired, ForbiddenGroups, Match, NotValue, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
@@ -110,7 +110,7 @@ class IdempotencySupported(AdCPBaseModel):
     Seller honors idempotency_key replay protection on mutating requests. Replays within replay_ttl_seconds return the cached response (or IDEMPOTENCY_CONFLICT on payload divergence); a completed key record MUST remain available until at least committed_at + replay_ttl_seconds independently of the lifecycle of any resource the request created. If the mutation committed but its affected resource was independently deleted or purged before the canonical success response could be durably recorded, exact replays return COMMITTED_RESOURCE_PURGED without re-executing the mutation. Ambiguous in-flight outcomes retain their claims until reconciled and MUST NOT be released on a handler or downstream timeout. Replays past the completed entry's window return IDEMPOTENCY_EXPIRED when the seller can still distinguish 'seen and evicted' from 'never seen'.
     """
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/adcp/properties/idempotency/oneOf/0')
-    supported: Annotated[Literal[True], Field(description='Discriminator. True means the seller deduplicates replays — a repeat of the same idempotency_key within replay_ttl_seconds returns the cached response without re-executing side effects.')]
+    supported: Annotated[Literal[True], Field(description='Discriminator. True means the seller deduplicates replays — a repeat of the same idempotency_key within replay_ttl_seconds returns the cached response without re-executing side effects.'), PinnedDefault]
     replay_ttl_seconds: Annotated[AdcpIdempotencyIdempotencySupportedReplayTtlSeconds, Field(description="How long the seller retains a canonical response or committed-outcome tombstone for an idempotency_key, measured from the successful mutation's durable commit time. The completed key record and canonical request hash MUST remain available until at least committed_at + this interval, independently of the lifecycle of any resource the request created; a UNIQUE idempotency_key column on the resource row alone does not satisfy this contract. Within this window, a replay with the same key + equivalent canonical payload returns the cached response, or COMMITTED_RESOURCE_PURGED when the mutation committed but the affected resource was independently deleted or purged before the canonical success response could be durably recorded; a replay with a different canonical payload returns IDEMPOTENCY_CONFLICT. An unresolved in-flight or reconciliation-required claim is retained regardless of this completed-entry clock. A replay past a completed entry's window returns IDEMPOTENCY_EXPIRED when the seller can still distinguish 'seen and evicted' from 'never seen'. Minimum 3600 (1h); recommended 86400 (24h). Maximum 604800 (7 days) — longer windows force buyers to retain secret keys at rest for extended periods and grow the seller's cache table without bounded benefit.")]
     in_flight_max_seconds: Annotated[AdcpIdempotencyIdempotencySupportedInFlightMaxSeconds | None, Field(description="Maximum active execution lease in seconds before the seller stops or replaces the original handler and transitions the durable idempotency claim to reconciliation-required per L1/security.mdx rule 9. Expiry does not release or evict an unresolved claim and never permits reinvocation while commit state is ambiguous. Buyer SDKs use this value to cap an individual retry wait when they see `IDEMPOTENCY_IN_FLIGHT`, rather than using the much wider `replay_ttl_seconds` ceiling; it is not a deadline after which they may mint a fresh key. Optional in 3.1 (additive declaration); SDKs that don't see the field fall back to rule 9's order-of-magnitude SHOULD heuristic. Required when `supported: true` in 4.0. MUST be no greater than `replay_ttl_seconds`; validators MUST enforce this cross-field constraint at the test layer since JSON Schema cannot express field-relative bounds. A buyer that observes top-level `error.retry_after` exceeding this value MAY treat that as a seller bug for an actively executing attempt."), OmittedNotNull] = None
     account_id_is_opaque: Annotated[StrictBool | None, Field(description="When true, the seller derives `account_id` via an HKDF-based one-way transform of the buyer's natural account key rather than echoing the natural key on the wire. Buyers MUST NOT attempt to invert the opaque id and MUST treat it as a blind handle scoped to this seller. Absent or false, callers should assume `account_id` is the natural key (or a server-assigned but non-opaque id). This flag does not change the wire shape, but it DOES change buyer behavior — buyers MUST NOT cache, log, or treat `account_id` as a natural-key analog when this flag is true. Migration note for sellers already returning an opaque id without this flag: set it to true at the next capabilities refresh so buyers stop inferring natural-key semantics; until set, new-buyer replay/retry logic will misclassify these ids as natural keys."), OmittedNotNull] = False
@@ -124,7 +124,7 @@ class IdempotencyUnsupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('replay_ttl_seconds',), ('in_flight_max_seconds',))),
     )
-    supported: Annotated[Literal[False], Field(description='Discriminator. False means the seller does not deduplicate retries.')]
+    supported: Annotated[Literal[False], Field(description='Discriminator. False means the seller does not deduplicate retries.'), PinnedDefault]
 
 
 class SupportedSectionsItem(StrEnum):
@@ -177,9 +177,9 @@ class Principal(AdCPBaseModel):
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/adcp/properties/principal/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'supported_sections': {'contains': {'const': 'reporting_destinations'}}}, 'required': ['supported_sections']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
-    supported: Literal[True]
-    sync_task: Literal['sync_principal']
-    read_task: Annotated[Literal['get_principal'], Field(description="Side-effect-free task returning the caller's current connection configuration and version.")]
+    supported: Annotated[Literal[True], PinnedDefault]
+    sync_task: Annotated[Literal['sync_principal'], PinnedDefault]
+    read_task: Annotated[Literal['get_principal'], Field(description="Side-effect-free task returning the caller's current connection configuration and version."), PinnedDefault]
     supported_sections: Annotated[list[SupportedSectionsItem], Field(description='Connection configuration sections this seller accepts. Unsupported sections are rejected rather than silently ignored.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     max_reporting_destinations: Annotated[AdcpPrincipalMaxReportingDestinations | None, Field(description='Maximum caller-scoped destination bindings when reporting_destinations is supported. The task schema has a portable maximum of 64; sellers may advertise a lower operational limit.'), OmittedNotNull] = None
     reporting_destination_offerings: Annotated[list[ReportingDestinationOfferingsItem] | None, Field(description='Objective per-pattern delivery offering, so buyers can select a compatible destination without submit-and-reject probing. A destination whose pattern, transport, access mode, format set, or verification-profile set falls outside this offering fails the sync request atomically with UNSUPPORTED_FEATURE; provider-side setup outcomes for in-offering destinations are expressed only through destination states.', max_length=3, min_length=1), OmittedNotNull] = None
@@ -211,7 +211,7 @@ class CapabilityChangeNotificationsSupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('event_types'),
     )
-    supported: Annotated[Literal[True], Field(description='Discriminator. True means the seller accepts the declared registration_task for capabilities.changed subscriptions.')]
+    supported: Annotated[Literal[True], Field(description='Discriminator. True means the seller accepts the declared registration_task for capabilities.changed subscriptions.'), PinnedDefault]
     registration_task: Annotated[RegistrationTask, Field(description='Task consumers call to manage their caller-scoped agent-level subscriber set.')]
     event_types: Annotated[list[CapabilityChangeNotificationsSupportedEventTypesItem], Field(description='Agent-level notification types this seller can emit for capability changes. Currently only `capabilities.changed` is defined.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     coalescence_window_seconds: Annotated[IntMin0Max86400 | None, Field(description='Maximum coalescence window the seller applies before firing a `capabilities.changed` webhook after a burst of related capability edits. The default recommendation is at most 300 seconds; latency-sensitive deactivations SHOULD fire sooner.'), OmittedNotNull] = None
@@ -225,7 +225,7 @@ class CapabilityChangeNotificationsUnsupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('registration_task',), ('event_types',))),
     )
-    supported: Annotated[Literal[False], Field(description='Discriminator. False means consumers must rely on TTL refresh, manual refresh, or registry polling for capability changes.')]
+    supported: Annotated[Literal[False], Field(description='Discriminator. False means consumers must rely on TTL refresh, manual refresh, or registry polling for capability changes.'), PinnedDefault]
 
 
 class CapabilityChanges(AdCPBaseModel):
@@ -260,7 +260,7 @@ class TasksItemCreateMediaBuy(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['create_media_buy']
+    task: Annotated[Literal['create_media_buy'], PinnedDefault]
     modes: Annotated[Annotated[list[TasksItemCreateMediaBuyModesItem], AfterValidator(AtLeastOne(values=('signed_context',), pinned=()))], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -275,7 +275,7 @@ class TasksItemUpdateMediaBuy(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['update_media_buy']
+    task: Annotated[Literal['update_media_buy'], PinnedDefault]
     modes: Annotated[Annotated[list[TasksItemUpdateMediaBuyModesItem], AfterValidator(AtLeastOne(values=('signed_context',), pinned=()))], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -290,7 +290,7 @@ class TasksItemBuyProducts(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['buy_products']
+    task: Annotated[Literal['buy_products'], PinnedDefault]
     modes: Annotated[Annotated[list[TasksItemBuyProductsModesItem], AfterValidator(AtLeastOne(values=('signed_context',), pinned=()))], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -305,7 +305,7 @@ class TasksItemAcceptProposal(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['accept_proposal']
+    task: Annotated[Literal['accept_proposal'], PinnedDefault]
     modes: Annotated[Annotated[list[TasksItemAcceptProposalModesItem], AfterValidator(AtLeastOne(values=('signed_context',), pinned=()))], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -320,7 +320,7 @@ class TasksItemControlMediaBuy(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['control_media_buy']
+    task: Annotated[Literal['control_media_buy'], PinnedDefault]
     modes: Annotated[Annotated[list[TasksItemControlMediaBuyModesItem], AfterValidator(AtLeastOne(values=('signed_context',), pinned=()))], Field(json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -332,7 +332,7 @@ class TasksItemBuildCreative(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['build_creative']
+    task: Annotated[Literal['build_creative'], PinnedDefault]
     modes: Annotated[list[Literal['signed_context']], Field(json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
 
 
@@ -344,7 +344,7 @@ class TasksItemActivateSignal(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['activate_signal']
+    task: Annotated[Literal['activate_signal'], PinnedDefault]
     modes: Annotated[list[Literal['signed_context']], Field(json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
 
 
@@ -356,7 +356,7 @@ class TasksItemAcquireRights(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['acquire_rights']
+    task: Annotated[Literal['acquire_rights'], PinnedDefault]
     modes: Annotated[list[Literal['signed_context']], Field(json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
 
 
@@ -368,7 +368,7 @@ class TasksItemUpdateRights(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('modes'),
     )
-    task: Literal['update_rights']
+    task: Annotated[Literal['update_rights'], PinnedDefault]
     modes: Annotated[list[Literal['signed_context']], Field(json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
 
 
@@ -436,9 +436,9 @@ class AccountNotificationsSupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('event_types'),
     )
-    supported: Annotated[Literal[True], Field(description='Discriminator. True means the seller accepts account-level `notification_configs[]` registrations for account lifecycle events.')]
-    registration_task: Annotated[Literal['sync_accounts'], Field(description='Task buyers call to manage account-level subscriber sets.')]
-    read_task: Annotated[Literal['list_accounts'], Field(description='Authoritative repair read after receiving an account lifecycle invalidation.')]
+    supported: Annotated[Literal[True], Field(description='Discriminator. True means the seller accepts account-level `notification_configs[]` registrations for account lifecycle events.'), PinnedDefault]
+    registration_task: Annotated[Literal['sync_accounts'], Field(description='Task buyers call to manage account-level subscriber sets.'), PinnedDefault]
+    read_task: Annotated[Literal['list_accounts'], Field(description='Authoritative repair read after receiving an account lifecycle invalidation.'), PinnedDefault]
     event_types: Annotated[list[AccountNotificationsSupportedEventTypesItem], Field(description='Account lifecycle notification types this seller can emit. Currently only `account.status_changed` is defined.', json_schema_extra={'uniqueItems': True}, min_length=1)]
     supports_webhook_activity: Annotated[StrictBool | None, Field(description='Whether `list_accounts` can return recent delivery attempts in `accounts[].webhook_activity[]` when the buyer requests `include_webhook_activity: true`.'), OmittedNotNull] = False
 
@@ -451,7 +451,7 @@ class AccountNotificationsUnsupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('registration_task',), ('read_task',), ('event_types',))),
     )
-    supported: Annotated[Literal[False], Field(description='Discriminator. False means buyers must rely on `sync_accounts` results, `push_notification_config` for one-shot provisioning callbacks, and polling `list_accounts` for later status changes.')]
+    supported: Annotated[Literal[False], Field(description='Discriminator. False means buyers must rely on `sync_accounts` results, `push_notification_config` for one-shot provisioning callbacks, and polling `list_accounts` for later status changes.'), PinnedDefault]
 
 
 class AccountChangeFeedSupported(AdCPBaseModel):
@@ -462,10 +462,10 @@ class AccountChangeFeedSupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('resource_types'),
     )
-    supported: Literal[True]
-    read_task: Literal['list_account_changes']
-    registration_task: Literal['sync_accounts']
-    event_type: Literal['account.change_recorded']
+    supported: Annotated[Literal[True], PinnedDefault]
+    read_task: Annotated[Literal['list_account_changes'], PinnedDefault]
+    registration_task: Annotated[Literal['sync_accounts'], PinnedDefault]
+    event_type: Annotated[Literal['account.change_recorded'], PinnedDefault]
     retention_days: Annotated[AccountChangeFeedSupportedRetentionDays, Field(description='Minimum number of days committed change records remain readable.')]
     resource_types: Annotated[list[ListAccountChangesRequestResourceTypesItem], Field(description='Resource families for which this seller can produce change records. Account-specific connected-source status and freshness are returned by list_account_changes.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
@@ -478,7 +478,7 @@ class AccountChangeFeedUnsupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('read_task',), ('registration_task',), ('event_type',), ('retention_days',), ('resource_types',))),
     )
-    supported: Literal[False]
+    supported: Annotated[Literal[False], PinnedDefault]
 
 
 class SupportedChangesItem(StrEnum):
@@ -498,7 +498,7 @@ class AccountIdentityUpdatesSupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('supported_changes'),
     )
-    supported: Annotated[Literal[True], Field(description='Discriminator. True means the seller accepts operator_identity in sync_accounts settings-update mode.')]
+    supported: Annotated[Literal[True], Field(description='Discriminator. True means the seller accepts operator_identity in sync_accounts settings-update mode.'), PinnedDefault]
     supported_changes: Annotated[list[SupportedChangesItem], Field(description='Identity changes the seller accepts. operator_unit_name covers display-name-only reconciliation within the current operator. operator_unit covers adding, removing, or changing the stable unit id within the current operator and also implies name updates. operator covers an inter-entity operator-domain handoff and encompasses the entire replacement operator identity, including any simultaneous unit addition, removal, or change; a seller need not also advertise operator_unit for that cross-operator replacement.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -510,7 +510,7 @@ class AccountIdentityUpdatesUnsupported(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('supported_changes',),)),
     )
-    supported: Annotated[Literal[False], Field(description='Discriminator. False means buyers must not submit operator_identity settings updates.')]
+    supported: Annotated[Literal[False], Field(description='Discriminator. False means buyers must not submit operator_identity settings updates.'), PinnedDefault]
 
 
 class GetAdCPCapabilitiesResponseAccount(AdCPBaseModel):
@@ -663,8 +663,8 @@ class RelationshipNotifications(AdCPBaseModel):
         UniqueItems('repair_tasks'),
         UniqueItems('projection_tasks'),
     )
-    supported: Annotated[Literal[True], Field(description='Discriminator. True means the declared invalidation event types are supported.')]
-    registration_task: Annotated[Literal['sync_accounts'], Field(description='Task buyers call to register account-level subscribers.')]
+    supported: Annotated[Literal[True], Field(description='Discriminator. True means the declared invalidation event types are supported.'), PinnedDefault]
+    registration_task: Annotated[Literal['sync_accounts'], Field(description='Task buyers call to register account-level subscribers.'), PinnedDefault]
     event_types: Annotated[list[RelationshipNotificationsEventTypesItem], Field(description='Relationship invalidation events supported by this seller. indicators.changed requires supported_indicator_types but is not required merely because polling readback is available. creative.assignment_changed is independently available when the seller can detect assignment or assignment-approval changes; it does not require indicator support or list_creatives.', json_schema_extra={'uniqueItems': True}, max_length=2, min_length=1)]
     repair_tasks: Annotated[list[Literal['get_media_buys']], Field(description='Complete authoritative snapshot reads used after an invalidation. get_media_buys is mandatory and is the only 3.2 repair task for this contract.', json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1)]
     projection_tasks: Annotated[list[Literal['list_creatives']] | None, Field(description='Optional bounded reverse projections of relationship-scoped indicator and approval state. list_creatives is a discovery/read convenience for creative-library sellers, not a complete repair path; declaring it also requires creative in supported_protocols. Buyers fall back to get_media_buys whenever nested assignments are truncated or a relationship must be proven absent.', json_schema_extra={'uniqueItems': True}, max_length=1, min_length=1), OmittedNotNull] = None
@@ -1340,7 +1340,7 @@ class RepresentationResolution(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         UniqueItems('strategies'),
     )
-    supported: Annotated[Literal[True], Field(description='True means the agent accepts CreativeRepresentationSet input and returns `representation_selection` or per-candidate structured rejections.')]
+    supported: Annotated[Literal[True], Field(description='True means the agent accepts CreativeRepresentationSet input and returns `representation_selection` or per-candidate structured rejections.'), PinnedDefault]
     strategies: Annotated[list[RepresentationSelectionStrategy], Field(description='Deterministic selection strategies the seller implements after compatibility filtering. `representation_order` selects the first compatible source entry. `highest_compatible_vast` selects the highest exact VAST version from the already-intersected candidate set, with equal-version ties resolved by source array order.', json_schema_extra={'uniqueItems': True}, min_length=1)]
 
 
@@ -1433,7 +1433,7 @@ class Localization(AdCPBaseModel):
         ForbiddenGroups((('supported_locales',), ('translation_modes',), ('review_scope',))),
     )
     max_target_variants: Annotated[CreativeLocalizationMaxTargetVariants | None, Field(description='Maximum target locale variants accepted on one creative. Zero advertises source-only monolingual locale topology. Omit to inherit the protocol ceiling of 50.'), OmittedNotNull] = None
-    locale_matching: Annotated[Literal['rfc4647_lookup'], Field(description='The required deterministic locale-matching algorithm.')]
+    locale_matching: Annotated[Literal['rfc4647_lookup'], Field(description='The required deterministic locale-matching algorithm.'), PinnedDefault]
 
 
 class Creative(AdCPBaseModel):
@@ -1602,8 +1602,8 @@ class MeasurementGateway(AdCPBaseModel):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='protocol/get-adcp-capabilities-response.json', pointer='#/properties/measurement_gateway')
-    delivery_task: Annotated[Literal['get_media_buy_delivery'], Field(description='Task providers call on the orchestrator gateway to read buyer-approved delivery.')]
-    feedback_task: Annotated[Literal['provide_performance_feedback'], Field(description='Task providers call on the orchestrator gateway to return one compact assertion.')]
+    delivery_task: Annotated[Literal['get_media_buy_delivery'], Field(description='Task providers call on the orchestrator gateway to read buyer-approved delivery.'), PinnedDefault]
+    feedback_task: Annotated[Literal['provide_performance_feedback'], Field(description='Task providers call on the orchestrator gateway to return one compact assertion.'), PinnedDefault]
 
 
 class AccreditationsItem(AdCPBaseModel):

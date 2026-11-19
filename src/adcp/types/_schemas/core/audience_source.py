@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrMinLen1MaxLen256, StrMinLen1MaxLen512
 
@@ -33,7 +33,7 @@ class Dataset(AudienceSource):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-source.json', pointer='#/oneOf/0')
-    kind: Literal['dataset']
+    kind: Annotated[Literal['dataset'], PinnedDefault]
     vendor: Annotated[BrandReference, Field(description='Data-sharing platform hosting the shared object.')]
     locator: Annotated[StrMinLen1MaxLen512, Field(description="Vendor-native reference to the shared object (share/database/table path). Opaque to AdCP; meaningful to the vendor. Never a credential. For the Databricks path, the locator convention is share://<provider-sharing-identifier>/<share-name>/<schema>.<object>; this identifies what to read and is distinct from the seller's recipient identity in consumer_identities[].")]
     access_expires_at: Annotated[WireDatetime | None, Field(description='ISO 8601 time after which the buyer will revoke the grant. Declarative — tells the seller when the pipe closes so re-read behavior is predictable. Expiry bounds the access window, not retention: revocation does not claw back matched membership, and retention remains governed by the buyer-seller data processing agreement.'), OmittedNotNull] = None
@@ -47,7 +47,7 @@ class PlatformSegment(AudienceSource):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/audience-source.json', pointer='#/oneOf/1')
-    kind: Literal['platform_segment']
+    kind: Annotated[Literal['platform_segment'], PinnedDefault]
     vendor: Annotated[BrandReference, Field(description='Distribution platform delivering the segment.')]
     segment_ref: Annotated[StrMinLen1MaxLen256, Field(description="The vendor's segment identifier as issued to the buyer (the ID observable in the vendor's console/API). The seller owns the mapping to whatever identifier its ingest minted — it configured the destination and is the only party that can see both sides.")]
 

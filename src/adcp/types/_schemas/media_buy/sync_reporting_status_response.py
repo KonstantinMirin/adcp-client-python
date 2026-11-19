@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import StrIdempotencyKey
 from adcp.types.envelopes import AdcpResponse
@@ -34,7 +34,7 @@ class RecordedReportingConsumerStatus(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#/properties/results/items/oneOf/0')
-    result: Literal['recorded']
+    result: Annotated[Literal['recorded'], PinnedDefault]
     consumer_status: RecordedReportingConsumerStatusConsumerStatus
 
 
@@ -46,7 +46,7 @@ class UnchangedReportingConsumerStatus(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#/properties/results/items/oneOf/1')
-    result: Literal['unchanged']
+    result: Annotated[Literal['unchanged'], PinnedDefault]
     consumer_status: UnchangedReportingConsumerStatusConsumerStatus
 
 
@@ -55,7 +55,7 @@ class FailedReportingConsumerStatus(AdCPBaseModel):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#/properties/results/items/oneOf/2')
-    result: Literal['failed']
+    result: Annotated[Literal['failed'], PinnedDefault]
     reporting_status_id: StrIdempotencyKey
     errors: Annotated[list[Error], Field(max_length=16, min_length=1)]
 
@@ -68,7 +68,7 @@ class SyncReportingStatusResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/sync-reporting-status-response.json', pointer='#')
-    status: Annotated[Literal['completed'], Field(description='Status batches complete synchronously with one result per submitted statement.')]
+    status: Annotated[Literal['completed'], Field(description='Status batches complete synchronously with one result per submitted statement.'), PinnedDefault]
     results: Annotated[list[RecordedReportingConsumerStatus | UnchangedReportingConsumerStatus | FailedReportingConsumerStatus], Field(max_length=100, min_length=1)]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None

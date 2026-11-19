@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import StrMinLen1
 
@@ -73,7 +73,7 @@ class BrandResponseAuthorizationResultTrusted(BrandResponseAuthorizationResult):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('reason',),)),
     )
-    trust: Annotated[Literal[Trust.TRUSTED], Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.')]
+    trust: Annotated[Literal[Trust.TRUSTED], Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.'), PinnedDefault]
     jwks_uri: Annotated[HTTPSURL, Field(description='JWKS URI selected only from the matched brand.json agent entry, or its same-origin default.')]
     kid: Annotated[StrMinLen1, Field(description='JWS kid evaluated by the cross-check.')]
 
@@ -83,7 +83,7 @@ class BrandResponseAuthorizationResultUntrusted(BrandResponseAuthorizationResult
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/brand-response-authorization-result.json', pointer='#/oneOf/1')
-    trust: Annotated[Literal[Trust.UNTRUSTED], Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.')]
+    trust: Annotated[Literal[Trust.UNTRUSTED], Field(description='Whether the signing key was bound to the asserted brand_domain through an authorized brand-agent entry. An untrusted result MUST NOT extend or revoke relationship trust on its own.'), PinnedDefault]
     reason: Annotated[Reason, Field(description='Machine-readable reason for an untrusted result.')]
 
 

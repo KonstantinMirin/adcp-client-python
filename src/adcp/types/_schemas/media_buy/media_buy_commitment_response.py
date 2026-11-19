@@ -6,7 +6,15 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, NonNegativeInt
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, MemberAlias, OmittedNotNull, OmittedWhenNone, SchemaRef
+from adcp.types._base import (
+    AdCPBaseModel,
+    BranchDispatchMixin,
+    MemberAlias,
+    OmittedNotNull,
+    OmittedWhenNone,
+    PinnedDefault,
+    SchemaRef,
+)
 from adcp.types._runtime import ForbiddenGroups, Rule, UniqueItems
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import IntMin1, MediaBuyName, StrMaxLen2000, StrMinLen1
@@ -41,7 +49,7 @@ class AcceptedProposal(CanonicalProposal):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/media-buy-commitment-response.json', pointer='#/oneOf/0/properties/accepted_proposal')
-    proposal_status: Annotated[Literal['accepted'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.')]
+    proposal_status: Annotated[Literal['accepted'], Field(description='draft is indicative and unreserved; committed has firm terms with inventory reserved until expires_at; accepted is the historical snapshot attached to a MediaBuy.'), PinnedDefault]
     media_buy_id: StrMinLen1
     accepted_at: WireDatetime
 
@@ -87,7 +95,7 @@ class CommittedMediaBuy(MediaBuyCommitmentResponse):
         UniqueItems('purchase_bindings'),
         UniqueItems('available_actions'),
     )
-    status: Literal['completed']
+    status: Annotated[Literal['completed'], PinnedDefault]
     media_buy_id: StrMinLen1
     name: Annotated[MediaBuyName | None, Field(description='Persisted human-readable MediaBuy name for trafficking UI display and operational communication. The seller MUST echo a buyer-supplied request name unchanged; when the seller seeded a new MediaBuy name from an already-valid proposal.name, it MUST return that value unchanged here. Existing named MediaBuys return the stored value on amendment or cancellation commitments. This operational metadata is outside accepted_proposal and is not covered by terms_digest. This display label is not an identifier or financial reference.'), OmittedNotNull] = None
     revision: IntMin1
@@ -110,7 +118,7 @@ class CommitmentError(MediaBuyCommitmentResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('media_buy_id',),)),
     )
-    status: Literal['failed']
+    status: Annotated[Literal['failed'], PinnedDefault]
     errors: Annotated[list[Error], Field(min_length=1)]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -125,7 +133,7 @@ class CommitmentSubmitted(MediaBuyCommitmentResponse):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('media_buy_id',),)),
     )
-    status: Literal['submitted']
+    status: Annotated[Literal['submitted'], PinnedDefault]
     task_id: StrMinLen1
     message: Annotated[StrMaxLen2000 | None, OmittedNotNull] = None
     errors: Annotated[list[Error] | None, OmittedNotNull] = None

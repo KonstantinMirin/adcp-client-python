@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, SchemaRef
+from adcp.types._base import AdCPBaseModel, BranchDispatchMixin, PinnedDefault, SchemaRef
 
 from ..core.domain_name import DomainName
 from ..core.identifier import Identifier
@@ -34,7 +34,7 @@ class PublisherTagsSource(BasePropertySource):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/base-property-source.json', pointer='#/oneOf/0')
-    selection_type: Annotated[Literal['publisher_tags'], Field(description='Discriminator indicating selection by property tags within a publisher')]
+    selection_type: Annotated[Literal['publisher_tags'], Field(description='Discriminator indicating selection by property tags within a publisher'), PinnedDefault]
     publisher_domain: Annotated[DomainName, Field(description="Domain where publisher's adagents.json is hosted (e.g., 'raptive.com')")]
     tags: Annotated[list[PropertyTag], Field(description="Property tags from the publisher's adagents.json. Selects all properties with these tags.", min_length=1)]
 
@@ -47,7 +47,7 @@ class PublisherPropertyIDsSource(BasePropertySource):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/base-property-source.json', pointer='#/oneOf/1')
-    selection_type: Annotated[Literal['publisher_ids'], Field(description='Discriminator indicating selection by specific property IDs within a publisher')]
+    selection_type: Annotated[Literal['publisher_ids'], Field(description='Discriminator indicating selection by specific property IDs within a publisher'), PinnedDefault]
     publisher_domain: Annotated[DomainName, Field(description="Domain where publisher's adagents.json is hosted (e.g., 'raptive.com')")]
     property_ids: Annotated[list[PropertyID], Field(description="Specific property IDs from the publisher's adagents.json", min_length=1)]
 
@@ -60,7 +60,7 @@ class DirectIdentifiersSource(BasePropertySource):
         extra='forbid',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='property/base-property-source.json', pointer='#/oneOf/2')
-    selection_type: Annotated[Literal['identifiers'], Field(description='Discriminator indicating selection by direct identifiers')]
+    selection_type: Annotated[Literal['identifiers'], Field(description='Discriminator indicating selection by direct identifiers'), PinnedDefault]
     identifiers: Annotated[list[Identifier], Field(description='Direct property identifiers (domains, app IDs, etc.)', min_length=1)]
 
 

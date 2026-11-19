@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._runtime import ForbiddenGroups, Rule
 from adcp.types.constraints import ContextMatchResponseRouterPublisherSignalsByProvider
 
@@ -56,7 +56,7 @@ class ContextMatchResponseRouterPublisher(AdCPVersionEnvelope, ProtocolEnvelope)
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         ForbiddenGroups((('context',), ('ext',))),
     )
-    type: Annotated[Literal['context_match_response'], Field(description='Message type discriminator for deserialization.')]
+    type: Annotated[Literal['context_match_response'], Field(description='Message type discriminator for deserialization.'), PinnedDefault]
     request_id: Annotated[str, Field(description='Echoed request identifier from the context match request.')]
     offers: Annotated[list[Offer], Field(description='Offers collected across the provider fan-out, one per activated package. An empty array means no packages matched. For simple activation, each offer has just package_id. For richer responses, offers include brand, price, summary, and creative manifest.')]
     signals: Annotated[Signals | None, Field(description='Merged non-keyed response-level signals. Provider-local targeting pairs do not pass through this object; the router emits them only in signals_by_provider.'), OmittedNotNull] = None

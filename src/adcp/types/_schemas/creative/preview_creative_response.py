@@ -5,7 +5,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field, StrictBool
 
-from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import HostedUrl, StrMaxLen2000
 from adcp.types.envelopes import AdcpResponse
@@ -71,7 +71,7 @@ class PreviewCreativeSingleResponse(PreviewCreativeResponse):
         Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/0/properties/interactive_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/0/properties/interactive_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    response_type: Annotated[Literal['single'], Field(description='Discriminator indicating this is a single preview response')]
+    response_type: Annotated[Literal['single'], Field(description='Discriminator indicating this is a single preview response'), PinnedDefault]
     previews: Annotated[list[PreviewCreativeSingleResponsePreviewsItem], Field(description='Array of preview variants. Each preview corresponds to an input set from the request. If no inputs were provided, returns a single default preview.', min_length=1)]
     quality_used: Annotated[CreativeQuality | None, Field(description='Actual render quality applied to every preview in this response. This field MUST be present when the corresponding request supplied `quality`, and SHOULD be present otherwise. It may differ from the requested value when the agent cannot provide that tier, allowing buyers to detect a downgrade before approval.'), OmittedNotNull] = None
     interactive_url: Annotated[HostedUrl | None, Field(description='Optional URL to an interactive testing page that shows all preview variants with controls to switch between them, modify macro values, and test different scenarios.'), OmittedNotNull] = None
@@ -129,13 +129,13 @@ class ResultsItem(BranchDispatchMixin, AdCPBaseModel):
 
 class PreviewBatchResultSuccess(ResultsItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/oneOf/0')
-    success: Annotated[Literal[True], Field(description='Indicates this preview request succeeded')]
+    success: Annotated[Literal[True], Field(description='Indicates this preview request succeeded'), PinnedDefault]
     response: Annotated[Response, Field(description='Preview data for successful requests')]
 
 
 class PreviewBatchResultError(ResultsItem):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/oneOf/1')
-    success: Annotated[Literal[False], Field(description='Indicates this preview request failed')]
+    success: Annotated[Literal[False], Field(description='Indicates this preview request failed'), PinnedDefault]
     errors: Annotated[list[Error], Field(description='Errors for failed requests', min_length=1)]
 
 
@@ -155,7 +155,7 @@ class PreviewCreativeBatchResponse(PreviewCreativeResponse):
         Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='format', kind='NARROWED', rung='TYPE', fact={'format': {'host_required': True}}, attribution='docs/plan/rebuild-plan.md §5 strings/format'),
         Approximation(document='creative/preview-creative-response.json', pointer='#/oneOf/1/properties/results/items/properties/response/properties/interactive_url', keyword='minLength', kind='NARROWED', rung='KEYWORD', fact={'minLength': 1}, attribution='docs/plan/rebuild-plan.md §5 strings/minLength'),
     )
-    response_type: Annotated[Literal['batch'], Field(description='Discriminator indicating this is a batch preview response')]
+    response_type: Annotated[Literal['batch'], Field(description='Discriminator indicating this is a batch preview response'), PinnedDefault]
     results: Annotated[list[ResultsItem], Field(description='Array of preview results corresponding to each request in the same order. results[0] is the result for requests[0], results[1] for requests[1], etc. Order is guaranteed even when some requests fail. Each result contains either a successful preview response or an error.', min_length=1)]
     context: Annotated[ContextObject | None, OmittedNotNull] = None
     ext: Annotated[ExtensionObject | None, OmittedNotNull] = None
@@ -175,7 +175,7 @@ class PreviewCreativeVariantResponse(PreviewCreativeResponse):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/2')
-    response_type: Annotated[Literal['variant'], Field(description='Discriminator indicating this is a variant preview response')]
+    response_type: Annotated[Literal['variant'], Field(description='Discriminator indicating this is a variant preview response'), PinnedDefault]
     variant_id: Annotated[str, Field(description="Agent-assigned AdCP served-execution identifier. Agent-unique for an agent advertising creative.supports_revisions; otherwise scoped by this response's creative_id.")]
     creative_id: Annotated[str | None, Field(description='Creative identifier this variant belongs to'), OmittedNotNull] = None
     previews: Annotated[list[PreviewCreativeVariantResponsePreviewsItem], Field(description='Array of rendered pieces for this variant. Most formats render as a single piece.', min_length=1)]
@@ -193,8 +193,8 @@ class PreviewCreativeSubmitted(PreviewCreativeResponse):
         extra='allow',
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/preview-creative-response.json', pointer='#/oneOf/3')
-    response_type: Annotated[Literal['submitted'], Field(description='Preview-response discriminator for the asynchronous arm.')]
-    status: Annotated[Literal['submitted'], Field(description='Discriminates this opt-in async envelope from synchronous preview responses.')]
+    response_type: Annotated[Literal['submitted'], Field(description='Preview-response discriminator for the asynchronous arm.'), PinnedDefault]
+    status: Annotated[Literal['submitted'], Field(description='Discriminates this opt-in async envelope from synchronous preview responses.'), PinnedDefault]
     task_id: Annotated[str, Field(description='Unique identifier for tracking asynchronous operations. Present when a task requires extended processing time. Used to query task status and retrieve results when complete.')]
     message: Annotated[StrMaxLen2000 | None, Field(description='Optional human-readable explanation of why preview rendering was queued. Plain text only; buyers MUST treat this as untrusted agent input.'), OmittedNotNull] = None
     context: Annotated[ContextObject | None, OmittedNotNull] = None

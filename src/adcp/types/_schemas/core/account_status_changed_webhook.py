@@ -6,7 +6,7 @@ from typing import Annotated, ClassVar, Literal
 
 from pydantic import ConfigDict, Field
 
-from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, SchemaRef
+from adcp.types._base import AdCPBaseModel, MemberAlias, OmittedNotNull, PinnedDefault, SchemaRef
 from adcp.types._wire import WireDatetime
 from adcp.types.constraints import (
     AccountChangeRecordedWebhookSubscriberId,
@@ -73,7 +73,7 @@ class AccountStatusChangedWebhook(AdCPBaseModel):
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/account-status-changed-webhook.json', pointer='#')
     idempotency_key: Annotated[IdempotencyKey, Field(description='Sender-generated key stable across retries of the same fire. Sellers MUST generate a cryptographically random value (UUID v4 recommended) per distinct fire and reuse it on every retry of the same fire. Receivers MUST dedupe by this key, scoped to the authenticated sender identity.')]
     notification_id: Annotated[ComplyTestControllerRequestParamsReceivedReportingRevisionId, Field(description='Stable identifier for this logical account status transition. Stability key is (account_id, previous_status, status, observed_at): retries and re-emissions of the same transition reuse the id under a new idempotency_key, while a later transition cycle receives a new id.')]
-    notification_type: Annotated[Literal['account.status_changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's event_types.")]
+    notification_type: Annotated[Literal['account.status_changed'], Field(description="Fixed notification type discriminator. Matches the value registered on the subscriber's event_types."), PinnedDefault]
     fired_at: Annotated[WireDatetime, Field(description='ISO 8601 timestamp when the seller initiated this fire. Distinct from observed_at, which is when the seller recorded the account transition.')]
     subscriber_id: Annotated[AccountChangeRecordedWebhookSubscriberId, Field(description="Identifies which sync_accounts.accounts[].notification_configs[] entry is receiving this fire. Echoed verbatim from the entry's subscriber_id.")]
     account_id: Annotated[str, Field(description='Seller-assigned account identifier whose status changed. Sellers MUST assign account_id before activating an account.status_changed subscriber, including accounts still pending external approval, so later pending_approval -> rejected or pending_approval -> active transitions can be delivered and repaired through list_accounts.')]

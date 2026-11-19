@@ -105,6 +105,8 @@ from pydantic import (
     GetCoreSchemaHandler,
     Tag,
     TypeAdapter,
+    ValidationInfo,
+    model_validator,
 )
 from pydantic._internal._model_construction import ModelMetaclass
 from pydantic.fields import FieldInfo
@@ -655,6 +657,169 @@ def omits_null(field: FieldInfo) -> bool:
     the ``exclude_if`` is the half that answers for the whole marker.
     """
     return field.exclude_if is OmittedNotNull.exclude_if
+
+
+class _ThePinIsSupplied:
+    """**A REQUIRED property whose document PINS it to ONE value: the Python route supplies
+    that value, and the JSON route still refuses the omission.**
+
+    :class:`_AbsenceIsOmission`'s sibling, and the SAME route split one case over:
+    ``docs/plan/rebuild-plan.md`` §2's *"``None`` is absence and ``null`` is a value"* is
+    the optional non-nullable property, this is the required PINNED one, and the two are
+    the whole of where the Python spelling of a value is not the JSON one.
+
+    **The line, and it is the whole of the decision**
+    (``verdicts/a-pinned-default-is-the-documents-own.md``).  A default on a generated
+    field has been treated as one thing -- an INVENTED default, 867 pairs of them measured
+    over upstream's tree at ``adcp-client-python-0z0u`` -- and that reading is right
+    wherever the document admits SEVERAL values at the property: a default then picks one
+    of them, this SDK rather than the document decides which, and a payload omitting the
+    key is accepted as if it had said something it never said.  It is wrong wherever the
+    document admits EXACTLY ONE.  ``core/assets/image-asset.json`` states
+    ``required: ['asset_type', …]`` with ``properties.asset_type: {"const": "image"}``:
+    there is no second value ``asset_type`` could carry, ``ImageAsset(url=…, width=300,
+    height=250)`` cannot mean anything but ``asset_type="image"``, and requiring a caller
+    to write it is asking them to repeat the document back to it.
+
+    **So the test is the NODE's and never the property's NAME**, which is why the emitter
+    decides this and nothing here re-derives it: ``status`` is pinned at 541 positions of
+    the bundle and unpinned at many more -- ``SyncReportingReceiptsResponse.status``
+    states ``const: 'completed'`` and ``GetProductsResponse.status`` states the
+    seven-member ``TaskStatus``, in the same bundle.  A ``const`` and a one-member ``enum``
+    are one question (``codegen.intersect.as_enum``, *"a ``const`` is a one-member
+    vocabulary"*), and the walk has already answered it: both reach
+    :attr:`codegen.ir.TypeRef.literals` as a 1-tuple and render as ``Literal[v]``.
+
+    **THE FOUR ROUTES, which is what reading 1 is measured through:**
+
+    * **JSON route** (``model_validate_json``): a DOCUMENT omitting a required property is
+      refused, on the document's own ``required`` keyword.  Unchanged.
+    * **Python route** (``Model(…)``, and ``model_validate`` on a mapping): the pinned
+      value is supplied, because it is the only value the document admits and the caller
+      cannot have meant another.
+    * **``strict_validate``**: the document's screen (:func:`_refuse_at`), unchanged -- it
+      refuses the omission before pydantic is reached.
+    * **``model_json_schema()``**: publishes ``required`` as the document states it, with
+      no ``default`` keyword, because the FIELD is still required.  That is also what keeps
+      ``tests_emit/test_the_invented_default_set.py``'s ruling true of this tree: nothing
+      here puts a ``default`` on a field the conjunction requires, so the gate that reads
+      ``model_fields`` for one stays green over a pinned property as over any other.
+
+    **WHY THIS MARKER CARRIES NO CORE SCHEMA, and it is measured rather than chosen.**  A
+    missing key is visible to the MODEL and not to the field: pydantic-core's model-fields
+    validator asks the field's own validator for a default, and ``default_value`` is
+    implemented by ``with-default`` alone -- a ``json-or-python`` wrapper does not delegate
+    it.  Probed on pydantic 2.13.5 / pydantic-core 2.46.5,
+    ``json_or_python(json=<literal>, python=with_default(<literal>, 'image'))`` supplies
+    the value on NEITHER route and both report ``Field required``.  So the supply is one
+    ``model_validator(mode="before")`` on :class:`AdCPBaseModel`
+    (:meth:`AdCPBaseModel._supply_the_pins_the_document_states`) and this is the per-field
+    DECLARATION it reads -- the same division :data:`OmittedNotNull` draws between a
+    marker in the annotation and the behaviour it names.
+
+    **AND THE FILL MARKS THE FIELD AS SET, which is the half that closes a second row.**
+    The validator writes the key into the payload, so ``__pydantic_fields_set__`` carries
+    it and :func:`adcp.types._runtime.supplied` reports the property PRESENT -- which is
+    what a ``ConditionalRequired`` over a pinned property asks.
+    ``core/reporting-delivery-offering.json``'s ``allOf[1].then`` requires
+    ``reporting_profile.canonicalization_contract_version`` and
+    ``.canonicalization_media_type``, both ``const``, and a caller that omits the two the
+    document leaves them no choice about no longer fails *"offering must satisfy the
+    complete public contract"*.
+
+    ``ADCP_STRICT_VALIDATION`` strikes this side too, for :class:`_AbsenceIsOmission`'s
+    reason: under it the Python route answers as the JSON route does, and the suite that
+    wants a caller's omission caught catches it.
+    """
+
+    __slots__ = ()
+
+    def __repr__(self) -> str:
+        return "PinnedDefault"
+
+    # ONE marker however a ``FieldInfo`` carrying it is copied -- :class:`_AbsenceIsOmission`'s
+    # own reason: pydantic deep-copies a field's metadata when a subclass redeclares the
+    # field.
+    def __copy__(self) -> _ThePinIsSupplied:
+        return self
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> _ThePinIsSupplied:
+        return self
+
+    def __eq__(self, other: object) -> bool:
+        return isinstance(other, _ThePinIsSupplied)
+
+    def __hash__(self) -> int:
+        return hash(_ThePinIsSupplied)
+
+
+#: **The pinned-and-required property's marker**, written beside the generated
+#: ``Field(...)`` in the emitted annotation.  :class:`_ThePinIsSupplied` is the whole of
+#: what it states and why.
+#:
+#: A bare metadata object and not a ``FieldInfo``, which is the one place this differs in
+#: SHAPE from :data:`OmittedNotNull`: that marker has a serialisation half to carry
+#: (``exclude_if``) and a null arm to strike, and this one has neither -- the annotation
+#: already states the pin, the dump of a required property is the document's own, and the
+#: only thing left to say is "the Python route may supply this".  So it rides
+#: ``field.metadata``, where pydantic puts an annotation it has no meaning for, and
+#: :func:`pins_default` is the reader.
+PinnedDefault: Final = _ThePinIsSupplied()
+
+#: The marker's own name, for the emitter that writes it into an annotation --
+#: :data:`OMITTED_NOT_NULL`'s reason, and read off the declaration rather than typed, so
+#: renaming the marker here renames nothing in ``codegen/``.
+PINNED_DEFAULT = "PinnedDefault"
+
+
+def pins_default(field: FieldInfo) -> bool:
+    """Whether ``field`` carries :data:`PinnedDefault`.
+
+    ``isinstance`` over the metadata, where :func:`omits_null` reads an ``exclude_if``:
+    this marker has no field-level half to be merged into the ``FieldInfo``, so the
+    metadata item IS the marker, and ``isinstance`` answers the same whether pydantic
+    handed the field the object or a copy of it.
+    """
+    return any(isinstance(item, _ThePinIsSupplied) for item in field.metadata)
+
+
+def the_pins(cls: type[BaseModel]) -> Mapping[str, Any]:
+    """``{the document's property name: the one value it admits}`` for ``cls``'s pinned
+    required properties, and ``{}`` for every class that has none.
+
+    **The key is the WIRE spelling** (``field.alias or name``, ``codegen.emit.field_name``),
+    because the payload this is folded into is keyed as the document keys it -- the same
+    reading :func:`adcp.types._runtime.supplied` and
+    :func:`codegen.harness.the_marker_declares` make of the same question.
+
+    **The VALUE is read off the annotation and is not written twice.**  The emitter decides
+    the pin and renders it into the ``Literal`` the field already carries, so a second
+    spelling of it beside the marker could disagree with the first; ``get_args`` of a
+    one-member ``Literal`` is that one value, whether it is a bare JSON value or a
+    ``StrEnum`` member a conjunct narrowed the vocabulary to.  A field carrying the marker
+    whose annotation is NOT a one-member ``Literal`` is a defect of the run that wrote it
+    and raises here, because the marker and the annotation are one decision.
+
+    Cached on the CLASS and not computed per validation: the walk is over every field of
+    the class and the answer cannot change once the class exists.  Read lazily rather than
+    at ``__pydantic_init_subclass__``, so a module that edits ``model_fields`` after the
+    class is built (``adcp.types.aliases``, and §1694's deferred rebuild) is read as it
+    stands at the first validation rather than as it stood at class creation.
+    """
+    held = _PINS.get(cls)
+    if held is None:
+        held = {
+            (field.alias or name): get_args(field.annotation)[0]
+            for name, field in cls.model_fields.items()
+            if pins_default(field)
+        }
+        _PINS[cls] = held
+    return held
+
+
+#: :func:`the_pins`' cache, keyed by class.  A plain dict, because a generated class lives
+#: as long as the module that declares it and a weak key would buy nothing.
+_PINS: dict[type[BaseModel], Mapping[str, Any]] = {}
 
 
 def _record_root(module: str | None) -> str | None:
@@ -2054,6 +2219,37 @@ class AdCPBaseModel(SchemaBound, _UpstreamBaseModel, metaclass=_Dispatching):
         super().__pydantic_init_subclass__(**kwargs)
         if "__pydantic_extra__" in cls.__dict__:
             delattr(cls, "__pydantic_extra__")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _supply_the_pins_the_document_states(cls, payload: Any, info: ValidationInfo) -> Any:
+        """:data:`PinnedDefault`'s other half: on the PYTHON route, a property the document
+        pins to one value may be left out.
+
+        :class:`_ThePinIsSupplied` carries the decision and the four routes it keys on.
+        What is here is the one thing that could not be there: **a missing key is the
+        MODEL's to see.**  Pydantic-core asks a FIELD's validator for a default and only
+        ``with-default`` answers, so no annotation of the field can supply one -- measured,
+        with the probe named in that class -- and this is the position where the payload
+        still has a key set to read.
+
+        **One validator on the base, over one mapping**, which is
+        :meth:`adcp.types._runtime.RuleBound._enforce_adcp_rules`' own arrangement and its
+        reason: a class with no pinned required property reads :func:`the_pins`' empty
+        answer and returns on its first line, so every other class pays one cached lookup.
+
+        ``info.mode`` and not a second reading of the route: pydantic-core says which of
+        the two is running, and the JSON route is left exactly as the document wrote it.
+        A payload that is not a mapping -- an instance being re-validated, a positional
+        root -- has no key set to fold into and is handed on untouched.
+        """
+        pins = the_pins(cls)
+        if not pins or info.mode != "python" or _strict_validation():
+            return payload
+        if not isinstance(payload, Mapping):
+            return payload
+        absent = {key: value for key, value in pins.items() if key not in payload}
+        return {**payload, **absent} if absent else payload
 
 
 class AdCPRootModel(SchemaBound, _UpstreamRootModel[Any]):
