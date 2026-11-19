@@ -305,7 +305,13 @@ async def test_update_media_buy_arg_projects_media_buy_id_and_patch(
             return UpdateMediaBuySuccessResponse(
                 media_buy_id=media_buy_id,
                 revision=2,
-                status="paused",
+                # The envelope's own `status` (`core/protocol-envelope.json`, one
+                # `allOf` up, `enums/task-status.json`): "paused" is not one of its
+                # nine members; "completed" is the member for an update that
+                # returned. The media buy's own state has its own field, typed by
+                # `enums/media-buy-status.json`, and that is where "paused" goes.
+                status="completed",
+                media_buy_status="paused",
                 packages=[],
             )
 

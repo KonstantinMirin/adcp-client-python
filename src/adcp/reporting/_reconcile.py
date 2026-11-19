@@ -1983,7 +1983,15 @@ async def reconcile_reporting(
                 {
                     "account": request.account,
                     "idempotency_key": str(uuid4()),
-                    "receipts": submitted,
+                    # `media-buy/sync-reporting-receipts-request.json`'s
+                    # `#/properties/receipts/items` is
+                    # `allOf: [$ref core/reporting-receipt.json, not: {required:
+                    # [received_at]}]` -- a receipt the SELLER has not yet stamped, so
+                    # it is a different subject from `core/reporting-receipt.json` and
+                    # a different class.  A `ReportingReceipt` instance is refused
+                    # there by pydantic, not by the document; its JSON is admitted,
+                    # and an unset `received_at` is absent from that JSON.
+                    "receipts": [item.model_dump(mode="json") for item in submitted],
                 }
             )
         )

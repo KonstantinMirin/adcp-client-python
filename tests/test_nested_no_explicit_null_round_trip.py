@@ -105,7 +105,12 @@ def test_provider_level_nesting_round_trips() -> None:
         pricing=_parent().pricing,
         trusted_match=TrustedMatch(
             context_match=True,
-            providers=[Provider(agent_url="https://tmp.example.com/", identity_match=True)],
+            # `core/product.json`'s
+            # `#/properties/trusted_match/properties/providers/items` states
+            # `if: {identity_match: {const: true}} -> then: required: [agent_url,
+            # countries, uid_types]`. A provider that OMITS the two is therefore a
+            # provider that does not claim identity match, which is the subject here.
+            providers=[Provider(agent_url="https://tmp.example.com/", context_match=True)],
         ),
     )
     body = parent.model_dump_json()

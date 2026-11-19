@@ -84,7 +84,23 @@ def test_preview_capability_models_construct_with_bundled_creative() -> None:
             )
         ]
     )
-    creative = Creative(preview=preview)
+    # `protocol/get-adcp-capabilities-response.json`'s
+    # `#/properties/creative/allOf[3]` is `if: required: [preview]` ->
+    # `then: required: [supported_formats]`, and `allOf[2]` pairs the other
+    # direction: a `supported_formats` entry whose `operations` contain "preview"
+    # is what a declared `preview` is the route for. The item requires `format`,
+    # and `core/creative-operation-format-declaration.json` requires
+    # `format_kind` and `params`.
+    creative = Creative(
+        preview=preview,
+        supported_formats=[
+            {
+                "capability_id": "hosted_preview",
+                "operations": ["preview"],
+                "format": {"format_kind": "image", "params": {"width": 300, "height": 250}},
+            }
+        ],
+    )
 
     assert creative.preview is preview
     assert creative.preview.routes[0].capability_id == "hosted-preview"

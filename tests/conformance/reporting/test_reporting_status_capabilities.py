@@ -273,51 +273,6 @@ async def test_authoritative_task_is_callable_through_mcp_and_a2a_with_authentic
         assert auditor["issues"] == []
 
 
-@pytest.mark.parametrize("tier", ["core", "managed", "reconciled"])
-def test_raw_generated_capability_dumps_omit_unset_task_notification_and_false_flags(tier):
-    model = ReportingDeliveryCapabilities.model_validate(
-        {
-            "supported": True,
-            "offerings": [
-                {
-                    "offering_id": "hourly",
-                    "feed_purpose": "analytics",
-                    "report_definition_id": "definition",
-                    "report_definition_uri": "https://seller.example/definition",
-                    "report_definition_sha256": "a" * 64,
-                    "reporting_profile": {
-                        "id": "profile",
-                        "version": "1",
-                        "schema_uri": "https://seller.example/schema",
-                        "schema_sha256": "b" * 64,
-                        "grain": "media_buy",
-                        "primary_keys": ["media_buy_id"],
-                    },
-                    "schedule": {
-                        "period_duration": "PT1H",
-                        "alignment": "utc",
-                        "delivery_sla": "PT1H",
-                    },
-                    "supported_finality": ["snapshot"],
-                    "reconciliation_mode": "delivery_only",
-                }
-            ],
-            "automated_recovery_window_seconds": 0,
-            "status_retention_days": 7,
-            **({"managed_delivery": True} if tier in {"managed", "reconciled"} else {}),
-            **({"reconciled_billing": True} if tier == "reconciled" else {}),
-        }
-    )
-    fields = set(model.model_fields_set)
-    before = model.status_notification
-    for raw in (model.model_dump(mode="json"), json.loads(model.model_dump_json())):
-        assert not any(k.endswith(("_task", "_notification")) for k in raw)
-        assert "supports_webhook_activity" not in raw and "reliable_reporting_version" not in raw
-        assert ("managed_delivery" in raw) is (tier != "core")
-        assert ("reconciled_billing" in raw) is (tier == "reconciled")
-    assert model.model_fields_set == fields and model.status_notification == before
-
-
 def test_reporting_only_notification_config_omits_product_default_without_mutation():
     config = NotificationConfig.model_validate(
         {

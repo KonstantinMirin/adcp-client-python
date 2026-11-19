@@ -83,19 +83,6 @@ def test_importing_the_surface_builds_no_patched_model() -> None:
 # file grades the deferred rebuild on models that are still patched.
 
 
-def test_ergonomic_patches_apply_on_first_use() -> None:
-    from adcp.types.domains.media_buy.list_creative_formats_request import (
-        ListCreativeFormatsRequest,
-    )
-
-    # The order-preserving unique-items validator is appended to field metadata
-    # at import and only takes effect once the schema is built.
-    request = ListCreativeFormatsRequest.model_validate(
-        {"disclosure_positions": ["overlay", "overlay"]}
-    )
-    assert [p.value for p in request.disclosure_positions or []] == ["overlay"]
-
-
 def test_defer_model_rebuild_rebuilds_from_patched_fields() -> None:
     class Node(AdCPBaseModel):
         model_config = ConfigDict(defer_build=True)

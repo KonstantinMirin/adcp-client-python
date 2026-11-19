@@ -2321,11 +2321,22 @@ class ADCPClient:
             return canonical_result
         if canonical_result.success and canonical_result.data is not None:
             direct_products = list(canonical_result.data.products or [])
-            self._remember_canonical_product_routes(direct_products)
-            metadata = dict(canonical_result.metadata or {})
-            metadata["projection"] = {"diagnostics": []}
-            canonical_result.metadata = metadata
-            return canonical_result
+            # A SUCCESSFUL canonical parse does not mean there is nothing to project.
+            # `core/product.json`'s root `anyOf` admits `format_ids`, `format_options`,
+            # or both -- "Products MUST carry `format_ids`, `format_options`, or both
+            # during the 3.x migration window" -- and `format_ids` is
+            # `deprecated: true`, which is metadata and not absence.  So a v1-only
+            # product parses cleanly here with `format_options` left `None`, and
+            # returning early is what left the consumer no canonical declaration to
+            # read.  Those products go through the v1 -> v2 projection below.
+            if not any(
+                product.format_ids and not product.format_options for product in direct_products
+            ):
+                self._remember_canonical_product_routes(direct_products)
+                metadata = dict(canonical_result.metadata or {})
+                metadata["projection"] = {"diagnostics": []}
+                canonical_result.metadata = metadata
+                return canonical_result
 
         legacy_result: TaskResult[Any] = self.adapter._parse_response(
             raw_result, LegacyGetProductsResponse

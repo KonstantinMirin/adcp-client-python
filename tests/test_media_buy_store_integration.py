@@ -149,7 +149,13 @@ async def test_create_media_buy_persists_overlay_through_handler(executor) -> No
                 confirmed_at="2026-05-01T00:00:00Z",
                 revision=1,
                 packages=[Package(package_id="seller_pkg_001")],
-                status="active",
+                # The envelope's own `status` (`core/protocol-envelope.json`, one
+                # `allOf` up, `enums/task-status.json`): "active" is not one of its
+                # nine members; "completed" is the member chosen here. The media
+                # buy's own state is `media_buy_status`, typed by
+                # `enums/media-buy-status.json`, and that is where "active" goes.
+                status="completed",
+                media_buy_status="active",
             )
 
     backing = _RecordingMediaBuyStore()
@@ -267,7 +273,13 @@ async def test_create_media_buy_noop_path_when_seller_lacks_specialism(executor)
                 confirmed_at="2026-05-01T00:00:00Z",
                 revision=1,
                 packages=[Package(package_id="p1")],
-                status="active",
+                # The envelope's own `status` (`core/protocol-envelope.json`, one
+                # `allOf` up, `enums/task-status.json`): "active" is not one of its
+                # nine members; "completed" is the member chosen here. The media
+                # buy's own state is `media_buy_status`, typed by
+                # `enums/media-buy-status.json`, and that is where "active" goes.
+                status="completed",
+                media_buy_status="active",
             )
 
     backing = _RecordingMediaBuyStore()
@@ -314,7 +326,14 @@ async def test_update_media_buy_merges_overlay_through_handler(executor) -> None
 
         async def update_media_buy(self, media_buy_id, patch, ctx):
             return UpdateMediaBuySuccessResponse(
-                media_buy_id=media_buy_id, revision=2, status="active", packages=[]
+                media_buy_id=media_buy_id,
+                revision=2,
+                # The envelope status is `enums/task-status.json`'s nine members
+                # (`core/protocol-envelope.json`, one `allOf` up); "active" is not
+                # one of them and belongs in `media_buy_status`.
+                status="completed",
+                media_buy_status="active",
+                packages=[],
             )
 
     backing = _RecordingMediaBuyStore()
@@ -456,7 +475,13 @@ async def test_persist_then_backfill_round_trip(executor) -> None:
                 confirmed_at="2026-05-01T00:00:00Z",
                 revision=1,
                 packages=[Package(package_id="seller_pkg_42")],
-                status="active",
+                # The envelope's own `status` (`core/protocol-envelope.json`, one
+                # `allOf` up, `enums/task-status.json`): "active" is not one of its
+                # nine members; "completed" is the member chosen here. The media
+                # buy's own state is `media_buy_status`, typed by
+                # `enums/media-buy-status.json`, and that is where "active" goes.
+                status="completed",
+                media_buy_status="active",
             )
 
         async def get_media_buys(self, req, ctx):

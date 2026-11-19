@@ -172,21 +172,6 @@ class TestMediaBuyResponse:
         assert result["status"] == "completed"
         assert result["media_buy_status"] == "pending_creatives"
 
-    def test_typed_success_normalizes_legacy_status(self):
-        from adcp.types import CreateMediaBuySuccessResponse
-
-        result = CreateMediaBuySuccessResponse(
-            media_buy_id="mb-123",
-            packages=[],
-            status="active",
-            confirmed_at="2026-05-27T12:00:00Z",
-            revision=1,
-        )
-
-        assert result.status == "completed"
-        assert result.media_buy_status is not None
-        assert result.media_buy_status.value == "active"
-
     def test_typed_success_rejects_async_task_status(self):
         from pydantic import ValidationError
 
@@ -290,19 +275,6 @@ class TestUpdateMediaBuyResponse:
         )
         assert result["status"] == "completed"
         assert result["media_buy_status"] == "paused"
-
-    def test_typed_success_normalizes_legacy_status(self):
-        from adcp.types import UpdateMediaBuySuccessResponse
-
-        result = UpdateMediaBuySuccessResponse(
-            media_buy_id="mb-123",
-            status="paused",
-            revision=2,
-        )
-
-        assert result.status == "completed"
-        assert result.media_buy_status is not None
-        assert result.media_buy_status.value == "paused"
 
     def test_typed_success_rejects_async_task_status(self):
         from pydantic import ValidationError

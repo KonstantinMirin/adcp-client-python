@@ -519,15 +519,33 @@ async def test_configuration_must_honor_its_registered_public_contract() -> None
 async def test_first_boot_offerings_require_their_installed_tier(tier: str) -> None:
     service = ReliableReportingService.memory(account_context=_account_context)
     offering = _capability_offering("gam")
+    # `core/reporting-delivery-offering.json`'s `method` requires `provider`
+    # whenever `pattern` is present, and `format` when `pattern: "file_transfer"`.
+    method = {
+        "pattern": "file_transfer",
+        "transport": "https",
+        "orchestration": "producer_managed",
+        "destination_modes": ["existing"],
+        "provider": {"domain": "gam.example.test"},
+        "format": "jsonl",
+    }
     if tier == "managed":
-        offering["method"] = {
-            "pattern": "file_transfer",
-            "transport": "https",
-            "orchestration": "producer_managed",
-            "destination_modes": ["existing"],
-        }
+        offering["method"] = method
     else:
+        # The same document's root `allOf[1]`: `reconciliation_mode:
+        # "consumer_receipt"` requires `method` and the five canonicalization
+        # properties on `reporting_profile`, two of which the document pins by
+        # `const`.
         offering["reconciliation_mode"] = "consumer_receipt"
+        offering["method"] = method
+        offering["reporting_profile"] = {
+            **offering["reporting_profile"],
+            "canonicalization_id": "adcp-reporting-jcs",
+            "canonicalization_contract_version": "1.0",
+            "canonicalization_media_type": ("application/vnd.adcp.reporting-canonicalization+json"),
+            "canonicalization_uri": ("https://contracts.example.test/reporting/canonicalization"),
+            "canonicalization_sha256": "c" * 64,
+        }
     service.sources.register(
         "gam",
         ScriptedReportingAdapter(redacted_capabilities(), []),
