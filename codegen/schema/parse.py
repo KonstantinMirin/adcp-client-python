@@ -97,7 +97,7 @@ needs in order to refuse are FIELDS:
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Collection, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -1085,6 +1085,12 @@ def admits_nothing(raw: Any) -> bool:
     ``lower.rules`` asks it of the same raw map (:attr:`nodes.Base.declared`) to write
     the rule.  §4's rule that this module is the only entry reading a raw mapping is why
     it lives here rather than beside either caller.
+
+    **IT IS SYNTACTIC, AND THAT IS ITS WHOLE SCOPE**: it reads ONE subschema and answers
+    from the spelling in front of it.  A subschema that admits nothing only BESIDE a
+    sibling -- a branch requiring a key the enclosing conjunction forbids -- is
+    :func:`forbidden_and_required`'s, which is a comparison of two nodes' key sets and
+    cannot be asked of one node alone.
     """
     if raw is False:
         return True
@@ -1092,6 +1098,66 @@ def admits_nothing(raw: Any) -> bool:
         return False
     negated = raw.get("not")
     return negated == {} or negated is True
+
+
+def forbidden_and_required(
+    forbidden: Iterable[Sequence[str]], required: Collection[str]
+) -> tuple[str, ...] | None:
+    """The first group of keys ``forbidden`` demands be ABSENT that ``required`` demands be
+    PRESENT -- the proof that a conjunction of the two admits nothing -- or ``None``.
+
+    **THE SEMANTIC HALF of :func:`admits_nothing`, scoped to the one shape the bundle
+    states** (``adcp-client-python-8cz3``, the owner's item 3).  A ``not`` over
+    ``required`` and a ``required`` are statements about KEY PRESENCE and nothing else, so
+    conjoining them is a set comparison and needs no solver: a group every member of which
+    is required cannot be jointly absent, and no instance satisfies both.  ``forbidden`` is
+    :func:`required_groups`' answer for the enclosing ``not`` -- "a set of names whose
+    simultaneous presence satisfies ``sub``, so an enclosing ``not`` forbids it" -- and a
+    group is therefore dead only where ``required`` holds ALL of it: ``not: {"required":
+    ["a", "b"]}`` forbids the PAIR and admits ``a`` alone, so ``⊆`` and never ``&``.
+
+    **WHAT IT DOES NOT COVER, named rather than left for a reader to assume it is total.**
+    General satisfiability is undecidable in the limit and this decides one family; every
+    form below answers ``None``, which EMITS, and that direction is the decision:
+
+    * a ``not`` this reduction cannot read as groups at all -- ``not`` over ``oneOf``
+      ("not exactly one", which no group list expresses), over ``properties``, over a
+      value keyword, or over ``required`` BESIDE any of those.  ``required_groups``
+      answers ``None`` for each and the caller then has no group to compare.  Measured,
+      one of the 11 positions is this: ``core/budget-allocation.json`` at
+      ``/oneOf/1/properties/optimization_goals/items`` negates ``{"properties": {"target":
+      {...}}, "required": ["target"]}``, which forbids ``target`` only AT one ``kind``, and
+      a branch requiring ``target`` is live at every other;
+    * a contradiction in VALUES rather than in presence -- disjoint ``const``\\ s,
+      disjoint ``enum``\\ s, disjoint type words.  That is
+      :func:`codegen.intersect.provably_empty`'s family, asked of the same branches by the
+      same caller, and the two are read together and never merged: one compares
+      declarations OF a key, this one compares the keys themselves;
+    * a contradiction reached THROUGH a keyword that is not ``required`` -- a
+      ``dependencies``, an ``if``/``then``, a ``minProperties`` the forbidden keys make
+      unreachable, a branch whose own ``not`` contradicts the position's ``required``
+      (the mirror of this rule, with 0 sites);
+    * a group split ACROSS the conjunction -- a two-key group with one key required by the
+      branch and the other by the composing node's own ``required``.  The comparison is
+      against the branch's OWN requiredness, which is what "a sibling conjunct eliminates
+      this branch" means; 0 sites.
+
+    **The erring direction is not a preference.**  A branch dropped wrongly makes a
+    payload the standard defines unexpressible, and the only evidence is an
+    ``ImportError`` in an adopter's code; a branch kept wrongly costs a class that refuses
+    everything.  So nothing here guesses: the group is returned only where the inclusion
+    is proved, and every unread form is a branch that stays.
+
+    Returned as the GROUP and not as a bool, because the caller reports it: a drop a
+    reader cannot trace to the two statements that made it is the silent deletion the
+    paragraph above is about.
+    """
+    present = set(required)
+    for group in forbidden:
+        keys = tuple(group)
+        if keys and present.issuperset(keys):
+            return keys
+    return None
 
 
 def forbidden_keys(declared: Mapping[str, Any]) -> tuple[str, ...]:

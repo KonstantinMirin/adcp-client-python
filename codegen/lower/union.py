@@ -1446,22 +1446,36 @@ def _distributing(
     in place for it -- there is one list of plans and one reading of what each branch
     inherits, and a second carrier beside it would be a second answer.
 
+    **The collapse's ONE EXCEPTION is the twin row's and is read here the same way**
+    (``adcp-client-python-8cz3``, ``composition.eliminated``): where the survivor is the
+    last one standing because the node FORBIDS a key the others require, the union stays a
+    union over what is left.  ``lower.composition``'s comment carries the measurement that
+    decided it.  **0 sites here**: no root of this bundle forbids a key one of its
+    distributed products requires, so the exception moves no document and is stated so the
+    two rows do not read one clause two ways.
+
     What the node ASSERTS is its own declarations and its conjuncts', read off the raw
-    declarations by the one function that reads them (``composition.asserted_properties``):
-    those are the facts the base contributes to every product through the base class, so
-    they are the other side of §2's intersection at each one.
+    declarations by the one function that reads them (``composition.asserted_properties``),
+    **and the keys it demands be ABSENT** (``composition.asserted_absences``,
+    ``adcp-client-python-8cz3``): those are the facts the base contributes to every product
+    through the base class, so they are the other side of §2's intersection at each one.
+    Both halves cross because a root's ``not`` applies to the same instance every branch
+    of its combinator does -- so a product requiring a key the root forbids is as empty
+    here as it is at CONJ, and the rule that decides it is the same function.
 
     **0 of this bundle's roots reach the all-empty refusal**, which is §5's
     empty-intersection row and not this one: the two sites that distribute are branches
     of a root declaring no property at all, so nothing is asserted and nothing can be
-    proved empty.
+    proved empty.  Re-measured with the absences read as well: **0 products dropped**,
+    for the same reason -- neither root states a ``not``.
     """
     out: dict[str, compiler.TargetBranches] = {}
     asserted = composition.asserted_properties(node, node.conjuncts)
+    absent = composition.asserted_absences(node, node.conjuncts)
     for i, plan in enumerate(planned):
         if plan.inherits is None or plan.inherits.distributes is None:
             continue
-        live = composition.surviving(asserted, plan.inherits.distributes)
+        live = composition.surviving(asserted, plan.inherits.distributes, absent)
         if not live.live:
             return Refusal(
                 "$ref",
@@ -1472,7 +1486,7 @@ def _distributing(
                 "one, and with every branch empty the branch admits no instance at all",
                 kind=Kind.VERDICT,
             )
-        if len(live.live) == 1:
+        if len(live.live) == 1 and not composition.eliminated(absent, plan.inherits.distributes):
             survivor = live.live[0][1]
             mod.importing(survivor.symbol, survivor.where)
             planned[i] = replace(

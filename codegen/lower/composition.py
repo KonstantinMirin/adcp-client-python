@@ -464,8 +464,59 @@ def asserted_properties(
     return out
 
 
+def asserted_absences(
+    node: nodes.Base, conjuncts: Sequence[nodes.Conjunct]
+) -> tuple[tuple[str, ...], ...]:
+    """Every group of keys this node and its conjuncts demand be jointly ABSENT.
+
+    The presence half of :func:`asserted_properties`, collected the same way and at the
+    same moment, for the same reason: a draft-07 conjunct applies to the SAME instance, so
+    a ``not`` a sibling conjunct states is a statement about the instance the referenced
+    union's branches describe, and the raw declarations are all readable before the field
+    loop starts.  Flattened through a nested ``allOf`` because an ``allOf`` of an
+    ``allOf`` conjoins just the same (``schema.parse.applies_to_one_instance``).
+
+    ``schema.parse.required_groups`` at RULE with ``partial=True`` is the whole of the
+    reading, which is the SAME reduction ``lower/rules.py`` writes the node's own
+    :class:`adcp.types._runtime.ForbiddenGroups` from -- one keyword, one reduction (§11),
+    so the rule the surviving class carries and the drop decided here cannot come to
+    disagree about what the ``not`` says.  ``partial`` is sound in this direction for its
+    own docstring's reason: ``not (A or B or C)`` is ``not A and not B and not C``, so a
+    disjunct the reduction cannot read contributes NO group, and a group that is never
+    contributed drops no branch.
+    """
+    groups: list[tuple[str, ...]] = []
+
+    def negated(sub: Any) -> None:
+        for group in schema.required_groups(sub, Position.RULE, partial=True) or ():
+            if group not in groups:
+                groups.append(group)
+
+    def descend(raw: Any) -> None:
+        if not isinstance(raw, Mapping):
+            return
+        if "not" in raw:
+            negated(raw["not"])
+        nested = raw.get("allOf")
+        if isinstance(nested, list):
+            for one in nested:
+                descend(one)
+
+    # The node's OWN ``not`` through :attr:`nodes.Base.rules` and not off a raw mapping:
+    # "no node carries the mapping it was PARSED FROM", and ``not`` at this position is a
+    # rule source, so ``rules`` is where the parser put it.  A conjunct is a DECLARATION
+    # and travels as written, which is why the two halves are read differently -- the same
+    # split :func:`asserted_properties` makes between ``declared`` and ``conjunct.raw``.
+    negated(getattr(node, "rules", {}).get("not"))
+    for conjunct in conjuncts:
+        descend(conjunct.raw)
+    return tuple(groups)
+
+
 def surviving(
-    asserted: Mapping[str, list[dict]], branches: compiler.TargetBranches
+    asserted: Mapping[str, list[dict]],
+    branches: compiler.TargetBranches,
+    absent: Sequence[Sequence[str]] = (),
 ) -> compiler.TargetBranches:
     """``branches`` with every branch whose intersection with what this node asserts is
     PROVABLY empty recorded as dropped.
@@ -484,8 +535,17 @@ def surviving(
     target's own branch list, so renumbering would pair every survivor against the wrong
     branch node.
 
-    :func:`provably_empty` is the whole of the test, and its docstring carries why it is
-    not :func:`restatement`'s ``None``.
+    **TWO PROOFS, ONE DROP, and the second is what ``adcp-client-python-8cz3`` adds.**
+    A branch is empty here either because a DECLARATION of one key cannot be satisfied
+    both ways -- :func:`intersect.provably_empty`, disjoint pins -- or because a key the
+    branch REQUIRES is one this node demands be absent, which is :func:`eliminated`.  They
+    are the same §5 clause read at the two kinds of statement a position can make about a
+    branch, so they answer into one ``dropped`` set: a branch that is empty by either is
+    empty, and the clause drops it once.
+
+    :func:`provably_empty` and :func:`schema.forbidden_and_required` carry why each is a
+    PROOF and not a guess; both answer "not provably" for everything they cannot decide,
+    so a branch this function cannot prove impossible survives and gets its class.
     """
     return replace(
         branches,
@@ -498,7 +558,34 @@ def surviving(
                 if key in branch.declares.properties
                 for stated in views
             )
-        ),
+        )
+        | eliminated(absent, branches),
+    )
+
+
+def eliminated(
+    absent: Sequence[Sequence[str]], branches: compiler.TargetBranches
+) -> frozenset[int]:
+    """The branches a sibling conjunct ELIMINATES: those requiring a key the position
+    demands be absent.
+
+    ``adcp-client-python-8cz3``.  Apart from :func:`surviving`'s other proof and not
+    folded into it, because the two answers are read by different callers for different
+    questions: :func:`surviving` needs the union of the drops, and the ONE-SURVIVOR
+    collapse needs to know whether THIS proof is what left one standing.
+
+    The requiredness compared is the BRANCH's own (:attr:`compiler.Shape.required` --
+    the document's ``required`` at that branch and at every base it composes,
+    transitively), because "a sibling conjunct eliminates this branch" is a fact about
+    what the BRANCH demands.  The composing node's own ``required`` is deliberately not
+    added to it: a group the node itself both requires and forbids is a contradiction in
+    the NODE, which every branch would then "fail", and reporting that as an empty
+    intersection per branch would name the wrong statement.  0 sites.
+    """
+    return frozenset(
+        index
+        for index, branch in enumerate(branches.of)
+        if schema.forbidden_and_required(absent, branch.declares.required) is not None
     )
 
 
@@ -1525,8 +1612,20 @@ def lower_composition(
                     # through the machinery that already answers it for every other class
                     # base -- so nothing shadows anything and no second intersection is
                     # written.
+                    #
+                    # **And a branch a sibling conjunct ELIMINATES is dropped by the same
+                    # clause** (``adcp-client-python-8cz3``): what this node asserts is not
+                    # only its declarations but the keys it demands be ABSENT
+                    # (:func:`asserted_absences`), and a branch requiring one of those is
+                    # empty for a reason no declaration of a property can show.
+                    # ``core/creative-representation.json`` is the site -- ``allOf/1``
+                    # requires ``format_kind`` and forbids ``format_id``, which is the
+                    # referenced manifest's ``oneOf/0`` in full -- so that branch had been
+                    # crossed into ``CreativeRepresentationFormatId``, a class refusing
+                    # every payload offered to it.
                     asserted = asserted_properties(node, conjuncts)
-                    live = surviving(asserted, target.branches)
+                    absent = asserted_absences(node, conjuncts)
+                    live = surviving(asserted, target.branches, absent)
                     if not live.live:
                         # Every disjunct empty, which is the node §5's empty-intersection
                         # row IS about: "the node admits nothing, which is a contradiction
@@ -1541,7 +1640,31 @@ def lower_composition(
                             "the node admits no instance at all",
                             kind=compiler.kind_for("allOf", Position.CONJ),
                         )
-                    if len(live.live) > 1:
+                    if len(live.live) > 1 or eliminated(absent, target.branches):
+                        # **THE EXCEPTION TO THE COLLAPSE, and it is MEASURED rather than
+                        # symmetric** (``adcp-client-python-8cz3``).  Where this proof is
+                        # what left one branch standing, the node stays a UNION over what
+                        # survives instead of taking the survivor as a base.  The collapse
+                        # is sound about the ACCEPTED SET -- that is the algebra above --
+                        # and it is silent about NAMES, and a name is what it costs:
+                        # collapsing ``core/creative-representation.json`` emitted
+                        # ``CreativeRepresentation`` as a subclass of
+                        # ``CanonicalFormatManifest`` and emitted NO class for the
+                        # surviving branch, so ``src/adcp/types/legacy_names.py`` -- which
+                        # binds upstream's own published ``CreativeRepresentation`` to
+                        # ``CreativeRepresentationFormatKind`` -- stopped importing and
+                        # ``import adcp.types`` raised ``ImportError``.  This row removes
+                        # the branch no payload can reach and removes nothing else, which
+                        # is the direction :func:`schema.forbidden_and_required` is scoped
+                        # by; a second class going with it is outside what was asked and
+                        # outside what was proved.
+                        #
+                        # The 5 documents that reach the collapse by the DECLARATION proof
+                        # are therefore unmoved, and that is the other half of the reason:
+                        # they have no branch class to lose (the collapse is all they have
+                        # ever emitted), so reversing it there would ADD 9 classes and
+                        # change what ``isinstance`` answers at 5 positions -- measured, by
+                        # re-emitting the tree with the collapse removed outright.
                         conjoined.append((where, replace(target, branches=live), reference))
                         continue
                     # The one survivor stands as a BASE, so its own symbol is what this
@@ -1976,15 +2099,36 @@ def lower_composition(
             root_required=tuple(sorted(required)),
             discriminator=branches.discriminator,
             combinator=branches.combinator,
+            # **The LIVE branches, and each one's own index inside its pointer**
+            # (``adcp-client-python-8cz3``).  This ranged over ``of``, which is every
+            # branch the target declares -- and a DROPPED branch has no class, so the
+            # pointer went into :attr:`codegen.ir.ClassDecl.branches` and the naming pass
+            # raised ``KeyError`` on it at ``emit.resolve``.  Measured at
+            # ``core/creative-representation.json`` the moment the first branch was
+            # dropped.
+            #
+            # :attr:`TargetBranches.dropped`'s invariant is UNTOUCHED by the filter,
+            # because what the index addresses and what the slot numbers are two different
+            # things: ``distributed_pointer`` still stamps each survivor with its position
+            # in the TARGET's own branch list, so no survivor is renumbered and none pairs
+            # against the wrong branch node.  What shortens is the base's slot LIST.
             branches=tuple(
                 ir.TypeRef(distributed_pointer(where, branches, j), local=True)
-                for j in range(len(branches.of))
+                for j, _ in branches.live
             ),
-            # Indexed with ``of`` and not with ``live``, which is the branch slot's own
-            # arrangement one line up and :attr:`TargetBranches.dropped`'s reason: the
-            # index IS the pointer, so filtering would pair every surviving clause
-            # against the wrong branch node.
-            presence=branches.presence,
+            # Filtered IN LOCKSTEP with the slot list, which is the one thing it cannot
+            # be read apart from: ``presence`` travels PARALLEL to ``branches``
+            # (:func:`render._union_base_lines` zips them to pair a clause with a branch
+            # SYMBOL, and :meth:`codegen.ir.ClassDecl.__post_init__` raises on a length
+            # mismatch), so a clause list indexed by the target and a slot list indexed by
+            # the survivors would pair every clause after the drop with the wrong class.
+            # The target's own index is read HERE, where both are in hand, and
+            # :attr:`TargetBranches.presence` stays indexed with ``of`` for its own reason.
+            presence=(
+                None
+                if branches.presence is None
+                else tuple(branches.presence[j] for j, _ in branches.live)
+            ),
         )
         # The mixin FIRST so the MRO finds its ``__get_pydantic_core_schema__``, and the
         # model base only where this node composes nothing else -- the same arrangement
