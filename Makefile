@@ -1,4 +1,4 @@
-.PHONY: help check-uv bootstrap format lint lint-all typecheck typecheck-all test test-type-checks check-type-ignore-contract regenerate-schemas pre-push ci-local clean install-dev check-schema-drift
+.PHONY: help check-uv bootstrap format lint lint-all typecheck typecheck-all test test-type-checks check-type-ignore-contract regenerate-schemas pre-push ci-local clean install-dev check-schema-drift gate emit-suite
 
 # Detect Python and use venv if available
 PYTHON := $(shell if [ -f .venv/bin/python ]; then echo .venv/bin/python; else echo python3; fi)
@@ -67,6 +67,135 @@ gate: ## THE emission gate: a schema-valid payload is accepted, an invalid one r
 	$(PYTEST) tests_emit/test_the_grade_is_green.py::test_this_pair_meets_the_contract \
 		--junitxml=test-results/gate/junit.xml \
 		--json-report-file=test-results/gate/report.json
+
+# THE EMISSION SUITE: 94 files of emission invariants, and until this target nothing ran
+# them. `make test` is `tests/` only, `gate` above names ONE node id of ONE file, and
+# `ci-local` named neither -- so every merge in this project was approved against gates that
+# did not cover what was being changed. It cost twice in two days: `domains.mirrored()` was
+# deleted by the next whole re-emission with
+# `test_emit.py::test_the_committed_tree_is_what_a_fresh_run_emits` sitting right there
+# covering it, and `8e64bafe5` took `test_union_dispatch.py` from 15 passed to 2 failed, 13
+# passed with `make test` and `make gate` both green.
+#
+# ONE PROCESS PER FILE, AND THAT IS THE WHOLE OF WHY IT TERMINATES. Measured 2026-11-19:
+# as ONE pytest process the suite reached 26% of its 11,970 items in 50 m 40 s and printed
+# nothing for a 20 m 33 s stretch at exactly the 25% mark, because two of its tests are
+# unbounded and a PER-TEST backstop cannot be trusted to cut them --
+# `pytest-timeout`'s default `signal` method arms a one-shot ITIMER_REAL that
+# `hypothesis`'s GC callback can swallow and that `codegen.harness.within` clears in its
+# own `finally`. Sharded, every file is bounded twice by something OUTSIDE the interpreter
+# being bounded: `--timeout-method=thread` (a timer thread, which neither failure mode
+# reaches) and `timeout(1)` around the process. A hang is then one file's, named in one
+# `.status` file, with the other 93 still reported.
+#
+# THE SUBJECT IS A WILDCARD, so a file added later is run without anyone remembering --
+# which is the half `test_union_dispatch.py` did not have. NOTHING IS EXEMPT: the one node
+# this suite does not run is `tests_emit/conftest.py`'s `UNBOUNDED`, which is a bound and not
+# an allowlist, and it is reported as `XFAIL [NOTRUN]` with its measurement rather than
+# deselected.
+#
+# THIS TARGET IS RED TODAY AND IS NOT IN `ci-local`. 493 nodes over 53 files fail at
+# `6263d7b2e`, and an enumerated list of 493 is a second backlog rather than a ratchet, so
+# they are TRIAGED BY CAUSE in `FINDINGS-runner.md` -- with the short list `ci-local` should
+# carry, and what has to be fixed or scoped first, named there.
+#
+# `test_the_grade_is_green.py` is split between the two targets on purpose: `gate` owns
+# `test_this_pair_meets_the_contract` (2,570 pairs, 7 failed / 2,563 passed) and must not
+# move, so this target takes the OTHER half -- `test_this_pair_has_no_undeclared_approximation`,
+# 2,570 pairs that no target ran before this one.
+EMIT_OUT := test-results/emit/suite
+# THE TWO LONG POLES FIRST, because `xargs` starts the subjects in the order it is given
+# them and the last one started decides the wall clock. Measured: `test_emit.py` is 19 min
+# and the approximation half 17 min, against 2,344 s of CPU for the other 92 files together.
+# It is a scheduling order and not an exemption -- every subject still runs.
+EMIT_FIRST := tests_emit/test_emit.py \
+	tests_emit/test_the_grade_is_green.py::test_this_pair_has_no_undeclared_approximation
+EMIT_SUBJECTS := $(EMIT_FIRST) \
+	$(filter-out tests_emit/test_emit.py tests_emit/test_the_grade_is_green.py,$(wildcard tests_emit/test_*.py))
+# BOTH BOUNDS ARE SET BY ONE TEST, measured rather than chosen.
+# `test_emit.py::test_the_output_is_a_function_of_its_inputs_and_of_nothing_else` is
+# **1,012.3 s and green** -- it emits the whole 1,059-document bundle twice in child
+# processes and compares -- and `test_emit.py` whole is 1,200.8 s. The next slowest test
+# anywhere in the 93 files is 17.7 s and the next slowest file is 211 s. So the per-test
+# bound has to clear 1,012 s with room for a 6-way contended run, and a hang in a small file
+# therefore costs up to half an hour before it is cut. A lane that wants the tight bound back
+# has it one flag away: `make emit-suite EMIT_TEST_TIMEOUT=60 EMIT_SUBJECTS=<file>`.
+# A cut is a red with the file named, never a skip.
+EMIT_TEST_TIMEOUT ?= 1800
+EMIT_FILE_TIMEOUT ?= 2700
+# Six, because the box this was measured on has 24 cores and the suite's own children take
+# more: `test_emit.py` and three others spawn a whole `python -m codegen` emission each.
+EMIT_JOBS ?= 6
+
+# THE REPORT, which is what makes a sharded run readable as one result. It fails on a
+# subject that left no report (a kill, which is what a hang looks like once it is bounded),
+# on a nonzero exit, and on any failure -- and it names every failing node, grouped by file,
+# because the next thing anyone does with this run is triage it.
+define EMIT_REPORT
+import json, pathlib, sys
+
+out = pathlib.Path(sys.argv[1])
+subjects = sys.argv[2:]
+killed, counts, red, seen, slow = [], {}, [], set(), []
+for status in sorted(out.glob("*.status")):
+    rc, secs, subject = status.read_text().split(None, 2)
+    subject = subject.strip()
+    seen.add(subject)
+    slow.append((int(secs), subject))
+    report, log = status.with_suffix(".json"), status.with_suffix(".log")
+    if not report.exists():
+        killed.append(
+            f"{subject}: exit {rc} and NO REPORT -- killed before teardown, which is what a"
+            f" hang looks like once it is bounded; the stack is in {log}"
+        )
+        continue
+    data = json.loads(report.read_text())
+    for key, value in data["summary"].items():
+        counts[key] = counts.get(key, 0) + value
+    for test in data["tests"]:
+        if test["outcome"] not in ("passed", "skipped", "xfailed"):
+            red.append(test["nodeid"])
+for subject in subjects:
+    if subject not in seen:
+        killed.append(f"{subject}: no shard ran it, so this run ranges over an unknown subset")
+print("emission suite over " + str(len(seen)) + " of " + str(len(subjects)) + " subjects: " + ", ".join(
+    str(counts[key]) + " " + key for key in sorted(counts) if counts[key]
+))
+print("slowest subjects: " + ", ".join(s + " " + str(n) + "s" for n, s in sorted(slow, reverse=True)[:3]))
+byfile = {}
+for node in red:
+    byfile[node.split("::")[0]] = byfile.get(node.split("::")[0], 0) + 1
+(out / "_red.txt").write_text("\n".join(sorted(red)) + "\n")
+print(str(len(red)) + " failing nodes over " + str(len(byfile)) + " files, every one of them named in " + str(out / "_red.txt"))
+for name in sorted(byfile, key=lambda f: -byfile[f]):
+    print("  " + str(byfile[name]).rjust(4) + "  " + name)
+for line in killed:
+    print("  KILLED " + line)
+sys.exit(1 if (red or killed) else 0)
+endef
+export EMIT_REPORT
+
+emit-suite: ## THE emission suite: one bounded pytest process per file, with every failure named and attributed
+	@mkdir -p $(EMIT_OUT)
+	@# EVERY ARTIFACT OF THE PREVIOUS RUN GOES, not just the statuses: a shard that is
+	@# killed leaves no report, and a STALE report under that name would be read as this
+	@# run's and called green -- the one failure the reconciliation may not have.
+	@rm -f $(EMIT_OUT)/*.status $(EMIT_OUT)/*.json $(EMIT_OUT)/*.xml $(EMIT_OUT)/*.log
+	@printf '%s\n' $(EMIT_SUBJECTS) | xargs -P $(EMIT_JOBS) -I{} sh -c 'subject="{}"; \
+		name=$$(printf %s "$$subject" | sed -e "s|^tests_emit/||" -e "s|\.py$$||" -e "s|::|--|g"); \
+		started=$$(date +%s); \
+		timeout -k 10 $(EMIT_FILE_TIMEOUT) $(PYTEST) "$$subject" -q -p no:cacheprovider \
+			--timeout=$(EMIT_TEST_TIMEOUT) --timeout-method=thread \
+			--junitxml=$(EMIT_OUT)/$$name.xml --json-report-file=$(EMIT_OUT)/$$name.json \
+			> $(EMIT_OUT)/$$name.log 2>&1; \
+		rc=$$?; \
+		printf "%s %s %s\n" "$$rc" "$$(( $$(date +%s) - started ))" "$$subject" > $(EMIT_OUT)/$$name.status'
+	@# `rc=$$?` IS TAKEN OFF THE COMMAND AND NOT OFF A PIPELINE, which is the one way this
+	@# harness can lie: a `pytest ... | tail` records `tail`'s status, every file reports
+	@# rc=0, and a suite with 493 failures reads as green. Measured on another lane's slice
+	@# script on 2026-11-19. Nothing here pipes, and EMIT_REPORT grades the JSON report as
+	@# well as the exit code, so a wrong rc cannot carry a run on its own.
+	@$(PYTHON) -c "$$EMIT_REPORT" $(EMIT_OUT) $(EMIT_SUBJECTS)
 
 test: ## Run SDK test suite with coverage
 	$(PYTEST) tests/ -v --cov=src/adcp --cov-report=term-missing \
