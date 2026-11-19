@@ -3326,9 +3326,25 @@ def domain_modules(
     directory in front of ``adcp.types.__path__``, and ``__path__`` decides where a
     package's CHILDREN come from.  A package's own ``__init__`` IS the package, so it is
     already bound before any path entry is consulted and no fresh copy of it could ever be
-    the one graded.  It stays hand-written, it names no type, and §1's reason is that a
-    flat ``from adcp.types import PaginationRequest`` would be the second spelling §1
-    forbids -- the import is meant to tell a reader which document a class came from.
+    the one graded.  It names no type, and §1's reason is that a flat ``from adcp.types
+    import PaginationRequest`` would be the second spelling §1 forbids -- the import is
+    meant to tell a reader which document a class came from.
+
+    **IT IS GENERATED ALL THE SAME, BY A GENERATOR THAT IS NOT THIS ONE, AND THE LINE
+    BETWEEN THEM IS WHAT THE TWO CLAUSES ABOVE MEASURE** (2026-11-19,
+    :mod:`codegen.facade`).  The clause above said "it stays hand-written" and that half is
+    overturned: the owner's ruling of 2026-11-19 is that ``adcp.types.__all__`` is a
+    LITERAL, written at build time, because no static analyser can evaluate the
+    ``__getattr__`` branch that used to union it.  What is NOT overturned is that the file
+    is outside this function and outside ``Emitted.beside``, and the reason is the stronger
+    one: six layers bind a flat word at ``adcp.types`` and only ONE of them --
+    ``_surface/_flat.py``, written here -- is the compiler's.  The other five are
+    ``survey/``'s output and a module that derives its names at import, so the facade's
+    text is a function of the committed PACKAGE and not of the bundle.  Writing it from
+    here would put a committed artifact on the input side of
+    ``test_the_committed_tree_is_what_a_fresh_run_emits``, which compares ``beside`` byte
+    for byte as ``f(bundle, emitter, compiler)``.  So ``codegen/__main__.py`` writes it
+    AFTER this run's output has landed, from a reading of the package beside the tree.
 
     **AND READING 6's INNER CLAUSE IS A WORD AND NOT A SECOND PATH** (2026-11-07,
     ``lower/names.THE_INNER_EXPORT``).  ``published`` is the run's record of the word an
