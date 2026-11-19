@@ -2933,11 +2933,39 @@ class BranchDispatchMixin(_MixedInto):
         ``Error.field`` is derived from the ``loc`` and is empty either way.  The
         document half already reports the pointer it refuses at
         (``_refuse``'s ``tuple(e.absolute_path)``), so the refusal is raised AT it.
+
+        **AND THE ROW IS THE ONE THE PAYLOAD CAN BE LOOKED AT, WHICH IS :meth:`_present`'S
+        OWN SCREEN AND NOT A SECOND READING.**  The document refuses this payload at EVERY
+        branch, so the branch the structure matched reports more than one row: its own
+        ``required`` for a key the payload does not carry, and the fault every branch
+        agrees on.  ``errors()[0]`` is the document's order and not a ranking, so which of
+        those came first was an accident of the matched branch -- and a ``required`` for an
+        ABSENT key locates nothing in the caller's own document, which is the whole of
+        :meth:`_present`'s argument and the reason :meth:`_common_position` screens the
+        same rows the same way.  So the first row naming a position the payload actually
+        HAS is the one reported, and ``errors()[0]`` stands where no row does (the
+        required-group case, at the object itself).
+
+        **MEASURED, AND IT IS THE PINNED DEFAULT THAT MADE IT VISIBLE**
+        (``verdicts/a-pinned-default-is-the-documents-own.md``).
+        ``media-buy/proposal-refinement.json#/oneOf/1/anyOf/5`` requires
+        ``remove_media_buy_frequency_cap``, which the document pins to ``true``, so its
+        CLASS now admits a payload omitting it and the structural first match moved there
+        from ``#/oneOf/1/anyOf/0``.  Both branches' document refusals carry
+        ``'0' is not of type 'number'`` at ``('constraints', 'total_budget', 'min')`` and
+        only the new one carries a root ``required`` first, so the position a consumer got
+        fell from that field to ``()`` with no branch, no document and no class having
+        changed what they accept.  The row is chosen here rather than left to the order
+        because the order is the one thing that is not an obligation.
         """
         ref = answered.__dict__.get("__adcp_schema__") or getattr(
             answered, "__adcp_schema__", None
         )
-        why = refused.errors()[0]
+        rows = refused.errors()
+        why = next(
+            (row for row in rows if row["loc"] and cls._present(value, tuple(row["loc"]))),
+            rows[0],
+        )
         where = f"{ref.document}{ref.pointer} " if ref is not None else ""
         return ValidationError.from_exception_data(
             cls.__name__,
