@@ -181,6 +181,67 @@ def pytest_addoption(parser) -> None:
     #: runs and nothing a flag could promote.
 
 
+# ---------------------------------------------------------------------------------------
+# THE ONE BOUND THE SUITE CARRIES ITSELF
+# ---------------------------------------------------------------------------------------
+
+#: **THE ONE NODE THIS SUITE DOES NOT RUN, and it is a BOUND and not an allowlist.**
+#:
+#: An enumerated list of what is red is a second backlog unless it is short, so the 493 reds
+#: measured at ``6263d7b2e`` are TRIAGED BY CAUSE in ``FINDINGS-runner.md`` and are not
+#: frozen in a table here: a run reports them as the failures they are.  What is here is the
+#: one node that cannot be reported either way, because running it costs the run.
+#:
+UNBOUNDED: dict[str, tuple[str, ...]] = {
+    "unbounded: run alone with no bound at all it was STILL RUNNING AT 38 MIN and was killed "
+    "(2,296 s, ADCP_RUN_UNBOUNDED=1); cut at 600 s under --timeout-method=thread in its own "
+    "process and at 1,233 s under --timeout=1200 in a whole-suite run -- all three inside "
+    "codegen/catalogue.py's admitted_identities, which this test reaches PER PAIR through "
+    "pair_of -> identity_of, OUTSIDE the harness.within(PAIR_BUDGET) that bounds the graded "
+    "path. It is past make emit-suite's own 1,800 s per-test bound, so no run of this suite "
+    "can carry it. FINDINGS-runner.md carries the py-spy stack.": (
+        "tests_emit/test_emit.py::test_every_declared_fact_holds_a_value_at_its_innermost_graded_carrier",
+    ),
+}
+
+
+def unbounded() -> dict[str, str]:
+    """Node id -> the reason it is not run, read from :data:`UNBOUNDED`.
+
+    One reading, so the marker below and any reader of the table cannot disagree about what
+    is in it.  A node named twice is a contradiction about one node and is reported here
+    rather than resolved by dict order.
+    """
+    out: dict[str, str] = {}
+    for reason, nodes in UNBOUNDED.items():
+        for node in nodes:
+            assert node not in out, f"{node} is named twice; one node, one reason"
+            out[node] = reason
+    return out
+
+
+def pytest_collection_modifyitems(config, items) -> None:
+    """Mark every node :func:`unbounded` names ``xfail(run=False)``, with its reason.
+
+    **Reported and not deselected**, which is the whole difference: the node appears in the
+    run's own count as ``XFAIL [NOTRUN] <the reason and the measurement>``, where a deselect
+    or a ``skip`` would have made it vanish from the total.  A reader of the report sees that
+    a check did not run and why, which is ``docs/plan/final-state.md``'s rule about an
+    instrument that reports nothing.
+
+    **And it can be overridden, because a bound nobody can re-measure is a bound nobody can
+    delete.**  ``ADCP_RUN_UNBOUNDED=1 pytest <the node id>`` runs it, which is how the figure
+    in the table was taken and how the day it becomes finite is noticed.
+    """
+    if os.environ.get("ADCP_RUN_UNBOUNDED"):
+        return
+    named = unbounded()
+    for item in items:
+        reason = named.get(item.nodeid)
+        if reason is not None:
+            item.add_marker(pytest.mark.xfail(reason=reason, run=False))
+
+
 def refusal_from(outcome: object) -> Refusal:
     """The refusal a call RETURNED, asserted to be one and narrowed to it.
 
