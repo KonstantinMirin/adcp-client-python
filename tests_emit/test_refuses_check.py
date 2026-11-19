@@ -80,11 +80,12 @@ from functools import cache
 from pathlib import Path
 from typing import Annotated, Any
 
+import constructed
 import fresh
 import pytest
 from compiled import compiled
 from nodeset import claimed
-from pydantic import BaseModel, StringConstraints, TypeAdapter
+from pydantic import BaseModel, Field, StringConstraints, TypeAdapter, field_validator
 
 from adcp.types._base import OmittedNotNull
 from codegen import bundle, harness
@@ -271,9 +272,9 @@ def test_the_explicit_null_witness_is_derived_and_it_discriminates() -> None:
 
     taken = check_refuses(schema, TakesTheNull.model_validate, instance)
     assert taken.outcome == "widened_undeclared", taken
-    assert any(json.loads(row[0]) == {"cursor": "a", "limit": None} for row in taken.undeclared), (
-        taken.undeclared
-    )
+    assert any(
+        json.loads(row[0]) == {"cursor": "a", "limit": None} for row in taken.undeclared
+    ), taken.undeclared
 
     class RefusesTheNull(BaseModel):
         cursor: str
@@ -515,35 +516,109 @@ def test_the_conditional_arm_fails_a_model_that_drops_the_conditional() -> None:
     assert check_refuses(WVOD_SHAPE, carries, WVOD_ADMITTED).outcome == "model_error"
 
 
+#: **A NODE WHOSE CONDITIONAL NO INSTANCE OF IT CAN REACH, and the reach is empty because
+#: the DOCUMENT says so rather than because the instrument declined to go.**
+#:
+#: The root pins ``a`` to ``1`` and the ``if`` selects ``a == 2``, so the region the ``if``
+#: names holds nothing the node admits, and no ``else`` stands beside it.  That is the one
+#: unreached conditional ``codegen.harness.check_refuses`` will always report -- its own
+#: docstring says so: *"REPORTED UNREACHED STILL where no such value exists: an ``if`` the
+#: node's own keywords contradict names a region the document admits nothing in, and that
+#: is a fact about the DOCUMENT rather than a boundary the instrument declined to visit."*
+#: So :func:`test_a_conditional_no_value_was_offered_for_is_not_a_pass` grades the
+#: ``absent`` direction on a node no improvement to the witness builder can empty, which is
+#: the whole of why the fixture is constructed and not drawn.
+UNREACHABLE_SHAPE = {
+    "type": "object",
+    "properties": {"a": {"const": 1}, "b": {"type": "string", "minLength": 1}},
+    "required": ["a", "b"],
+    "additionalProperties": False,
+    "if": {"properties": {"a": {"const": 2}}, "required": ["a"]},
+    "then": {"required": ["c"]},
+}
+
+
 def test_a_conditional_no_value_was_offered_for_is_not_a_pass() -> None:
-    """**The reach, which is not the population, measured rather than described.**
+    """**THE PROPERTY: an unreached conditional is REPORTED, and a pass is earned exactly
+    where nothing is unreached.**  Never the membership of the unreached set.
 
     A conditional's boundary lies inside the region its ``if`` selects and the reduction
     has ONE accepted instance, so where that instance is outside the region and the node
-    states no ``else`` there is no arm in force and the class is never asked.  Measured on
-    ``adcp-client-python-wvod``'s own third site --
-    ``account/sync-accounts-request.json#/properties/accounts/items/properties/notification_configs/items``
-    -- whose draw is ``{event_types, subscriber_id, url}``: it satisfies neither of that
-    node's two ``if``s, so the row that proved the other two reports nothing there.
+    states no ``else`` there is no arm in force and the class is never asked.  A ``pass``
+    there would say the class refuses what its document refuses, about a fact a value was
+    never built for -- so the result carries the unreached conditionals with the reason
+    each, and the cell reads ``absent`` with the count against the node's own total.
 
-    A ``pass`` would say the class refuses what its document refuses, about the one fact
-    the row is about and a value for which was never built.  So the result carries the
-    unreached conditionals with the reason each, and the verdict reads ``absent`` with the
-    count against the node's own total.
+    **WHAT THIS ASSERTED UNTIL 2026-11-19, AND WHY THAT WAS THE WRONG SHAPE.**  It pinned
+    the EXACT set: ``assert result.unreached == unreached`` against
+    ``adcp-client-python-wvod``'s third site, whose draw misses both of that node's ``if``s.
+    It went red reading ``assert () == ('the instance is outside the region {"required":
+    ["authentication"]} selects and the node states no else, so no value was offered',)``
+    -- because the witness builder got BETTER.  ``adcp-client-python-11f1`` made an ``if``
+    a schema like any other, so ``least_instance([schema, condition])`` constructs a value
+    that satisfies it and the ``then`` is in force by construction; the builder also gained
+    local ``$ref`` resolution, the definitions store, union consumption, ``const`` and
+    ``not``, and a draw for registry roots.  That improvement took **326 pairs** out of
+    ``undeclared=absent:N_of_N_conditionals_unreached`` -- 14% of the tree where the
+    undeclared-widening check could not look -- and this assertion reported it as a defect.
+
+    A list of what the instrument CANNOT do is a list that shrinks, and a check pinned to
+    it reddens on every improvement while a user's ability to express or validate a payload
+    does not move at all.  So the two directions are now graded as PROPERTIES, each on the
+    node that can always exhibit it:
+
+    * the ``absent`` direction on :data:`UNREACHABLE_SHAPE`, whose ``if`` the node's own
+      ``const`` contradicts -- an empty region is a fact about the document, so no builder
+      can enter it and this direction cannot be improved away;
+    * the earned-pass direction on the live ``wvod`` node, as a BICONDITIONAL between the
+      verdict and the reach, so whichever way the builder's reach falls the claim holds and
+      the denominator stays a derivation.
     """
-    #: The admitted instance carries no ``authentication``, so the second conjunct's ``if``
-    #: is not satisfied and that conjunct states no ``else``.
-    outside = {"subscriber_id": "s", "event_types": ["capabilities.changed"]}
-    assert harness.conforms(WVOD_SHAPE, outside) is True
-    unreached = harness.unreached_conditionals(WVOD_SHAPE, outside)
-    assert len(unreached) == 1, unreached
-    assert "authentication" in unreached[0] and "else" in unreached[0], unreached
 
-    #: A class that refuses every witness this instance DOES yield -- the two required
-    #: keys, the ``minLength`` conjunct 0's own ``then`` states, and each alien JSON type.
-    #: So the result is a ``pass`` on everything offered, which is precisely the case the
-    #: verdict must not report as green: the one conditional nobody built a value for is
-    #: the fact ``adcp-client-python-wvod`` is about.
+    #: A class faithful to :data:`UNREACHABLE_SHAPE` in everything EXCEPT the conditional:
+    #: it refuses every witness the accepted instance yields -- the two required keys, the
+    #: ``const``, the ``minLength``, the closed object, each alien JSON type -- and carries
+    #: no ``if``.  So the outcome is a ``pass`` on everything offered, which is precisely
+    #: the case the verdict must not report as green.
+    class DropsTheUnreachableConditional(BaseModel):
+        model_config = {"extra": "forbid"}
+
+        a: Annotated[int, Field(strict=True)]
+        b: Annotated[str, StringConstraints(min_length=1)]
+
+        @field_validator("a")
+        @classmethod
+        def _pinned(cls, value: int) -> int:
+            if value != 1:
+                raise ValueError("the document pins this to 1")
+            return value
+
+    inside = {"a": 1, "b": "x"}
+    assert harness.conforms(UNREACHABLE_SHAPE, inside) is True
+    result = check_refuses(UNREACHABLE_SHAPE, DropsTheUnreachableConditional.model_validate, inside)
+    #: Every witness offered was refused, so nothing about the CLASS is wrong here: what
+    #: the cell must not do is call that a green while a boundary went unvisited.
+    assert result.outcome == "pass", result
+    #: The reach is REPORTED, with the reason travelling beside it -- which is what keeps
+    #: ``absent`` honest: a reader is told the region is empty, not that a check was skipped.
+    assert result.unreached, result
+    assert all("no value was offered" in reason for reason in result.unreached), result
+    #: The DENOMINATOR, as an equality between two derivations and never a pinned integer:
+    #: the result's count is the node's own triples, so a document that grows a conditional
+    #: moves both sides and neither has to be told.
+    sites = len(harness.conditionals(UNREACHABLE_SHAPE))
+    assert result.conditional_sites == sites, result
+    #: The cell, which is where a reader meets this: ``absent`` with the count, never
+    #: ``pass`` -- and the state is read off the table's own function so a rename cannot
+    #: leave this asserting a token nothing writes.
+    verdict = harness._undeclared_verdict(result)
+    assert verdict.state == harness.ABSENT, verdict
+    assert verdict.cause == f"{len(result.unreached)}_of_{sites}_conditionals_unreached", verdict
+
+    #: **AND THE OTHER DIRECTION, on the live node, as a biconditional.**  A pass is
+    #: reported exactly where the reach is complete, so the verdict tracks the reach however
+    #: far the builder gets: the day it enters one more region this moves from the ``absent``
+    #: side to the ``pass`` side and stays green, which is what the pinned set could not do.
     class CarriesWhatWasOffered(BaseModel):
         model_config = {"extra": "allow"}
 
@@ -555,25 +630,24 @@ def test_a_conditional_no_value_was_offered_for_is_not_a_pass() -> None:
         #: refuses on ``type`` -- was admitted, and the pass this test is about would have
         #: been a ``widened_undeclared`` about a different fact.  The node declares the
         #: property, so a faithful class declares it; what this class still does not carry
-        #: is the second conjunct's ``if``, which is the fact the test is about.
+        #: is the second conjunct's ``if``.
         authentication: Annotated[dict[str, Any] | None, OmittedNotNull] = None
 
-    result = check_refuses(WVOD_SHAPE, CarriesWhatWasOffered.model_validate, outside)
-    assert result.outcome == "pass", result
-    assert result.unreached == unreached, result
-    #: The DENOMINATOR, as an equality between two derivations and never a pinned integer:
-    #: the result's count is the node's own triples, so a document that grows a conditional
-    #: moves both sides and neither has to be told.
-    sites = len(harness.conditionals(WVOD_SHAPE))
-    assert result.conditional_sites == sites, result
-    #: The cell, which is where a reader meets this: ``absent`` with the count, never
-    #: ``pass`` -- and the state is read off the table's own function so a rename cannot
-    #: leave this asserting a token nothing writes.
-    verdict = harness._undeclared_verdict(result)
-    assert verdict.state == harness.ABSENT, verdict
-    assert verdict.cause == f"{len(unreached)}_of_{sites}_conditionals_unreached", verdict
-    #: And the instance that IS inside the region reaches it, so the ``absent`` above is a
-    #: statement about the draw and not about the node.
+    outside = {"subscriber_id": "s", "event_types": ["capabilities.changed"]}
+    assert harness.conforms(WVOD_SHAPE, outside) is True
+    live = check_refuses(WVOD_SHAPE, CarriesWhatWasOffered.model_validate, outside)
+    assert live.outcome == "pass", live
+    assert live.conditional_sites == len(harness.conditionals(WVOD_SHAPE)), live
+    cell = harness._undeclared_verdict(live)
+    assert (cell.state == harness.PASS) == (live.unreached == ()), (cell, live.unreached)
+    if live.unreached:
+        assert cell.state == harness.ABSENT, cell
+        assert (
+            cell.cause
+            == f"{len(live.unreached)}_of_{live.conditional_sites}_conditionals_unreached"
+        ), cell
+    #: And the instance that IS inside the region reaches it, so neither reading above is a
+    #: statement about the node being unreachable in general.
     assert harness.unreached_conditionals(WVOD_SHAPE, WVOD_ADMITTED) == (), WVOD_ADMITTED
 
 
@@ -654,12 +728,27 @@ def _pins(view: Any, root: dict, depth: int = 0) -> dict[str, Any]:
 def an_instance_this_check_can_offer(document: str, node: dict) -> Any:
     """One instance ``document`` admits for the reduction to perturb, or ``None``.
 
-    **TWO DERIVATIONS, and the second is §8's FIXTURE DERIVATION** -- "a referenced
-    document is graded by its own pair", read here at the document's own pair rather than
-    at a referring position.  ``harness.Fixtures`` holds it, and what it answers with for a
-    root pointer is the instance the ACCEPTS CORPUS already holds for that pair: drawn from
-    the document by ``check_accepts``, keyed on the document's raw bytes and its raw
-    reference closure's, and re-offered to the document on every read.
+    **TWO DERIVATIONS, and the second is §8's CONSTRUCTION** -- the payload built from the
+    document's own keywords, read here at the document's own ROOT.
+
+    **IT NAMED A DELETED API AND SO THE SECOND DERIVATION NEVER RAN** (measured
+    2026-11-19).  It read ``test_emit.fixtures().one(document, "#")``, and
+    ``test_emit.fixtures()`` returns ``harness.Fixtures``, which no longer exists:
+    ``adcp-client-python-hzio.5`` deleted the fixture derivation and its store outright --
+    ``codegen/__main__.py`` records the reason, *"nothing is drawn, so there is nothing to
+    make affordable, and the accepts corpus it read is gone with it"* -- and
+    :class:`codegen.verify.witness.Construction` is what stands in its place
+    (``tests/test_no_cap_is_on_the_grading_path.py`` says so by name).  So all 8 of the
+    documents this function exists for raised ``AttributeError: module 'codegen.harness'
+    has no attribute 'Fixtures'. Did you mean: 'fixtured'?`` -- the check did not fail on
+    the class, it never reached the class, which is the same evasion with a traceback
+    attached.
+
+    ``constructed.whole()`` is the suite's ONE construction over the bundle a run reads,
+    and ``value(document, "")`` is its answer at the document root -- memoised per
+    ``(document, pointer, stack)``, so this costs the walk the suite pays once and nothing
+    per document.  A second ``Construction`` built here would pay the walk twice and report
+    two readings of one number, which is ``tests/constructed.py``'s own rule.
 
     **It is here because eight documents of this set reported "no instance derivable" and
     a check scoped away from eight of its own documents reports green.**
@@ -684,11 +773,9 @@ def an_instance_this_check_can_offer(document: str, node: dict) -> Any:
     pinned = an_instance_the_document_admits(node)
     if pinned is not None and harness.conforms(node, pinned) is True:
         return pinned
-    import test_emit  # the tree reader, one reading for the whole suite  # noqa: PLC0415
-
-    drawn = test_emit.fixtures().one(document, "#")
-    if drawn is not harness.NONE and harness.conforms(node, drawn) is True:
-        return drawn
+    built = constructed.whole().value(document, "")
+    if built.held and harness.conforms(node, built.value) is True:
+        return built.value
     return None
 
 
@@ -976,9 +1063,9 @@ def test_any_other_value_at_a_MARKED_field_is_still_undeclared() -> None:
         note: Annotated[str | None, OmittedNotNull] = None
 
     built = Marked.model_validate(_AN_ACCEPTED_INSTANCE)
-    assert harness.the_marker_declares(_AN_ACCEPTED_INSTANCE, {"id": 1, "note": None}, built), (
-        "the marked field's own null is not declared"
-    )
+    assert harness.the_marker_declares(
+        _AN_ACCEPTED_INSTANCE, {"id": 1, "note": None}, built
+    ), "the marked field's own null is not declared"
     for other in ("abcd", 7, [], {}, False):
         assert not harness.the_marker_declares(
             _AN_ACCEPTED_INSTANCE, {"id": 1, "note": other}, built
@@ -1015,9 +1102,9 @@ def test_a_second_undeclared_widening_survives_beside_a_declared_null() -> None:
     assert result.outcome == "widened_undeclared", result
     assert {row[1] for row in result.undeclared} == {"minProperties"}, result.undeclared
     # the null row at the marked field is the one the marker declares, so it is not here
-    assert not any(json.loads(row[0]).get("note", False) is None for row in result.undeclared), (
-        result.undeclared
-    )
+    assert not any(
+        json.loads(row[0]).get("note", False) is None for row in result.undeclared
+    ), result.undeclared
 
 
 def test_the_marker_declares_nothing_for_a_key_the_class_binds_to_no_field() -> None:

@@ -893,7 +893,8 @@ def auth_context_factory(meta: RequestMetadata) -> ToolContext:
 
     Also sets ``metadata["adcp.auth_info"]`` to a typed
     :class:`~adcp.decisioning.AuthInfo` when the request is
-    authenticated, so :meth:`~adcp.decisioning.PlatformHandler._extract_auth_info`
+    authenticated, so
+    :meth:`~adcp.decisioning.handler.PlatformHandler._extract_auth_info`
     surfaces a non-``None`` :attr:`~adcp.decisioning.RequestContext.auth_info`
     for bearer and resolved flows — the same typed surface signed-request
     flows already populate. Resolved principals use kind ``derived``;

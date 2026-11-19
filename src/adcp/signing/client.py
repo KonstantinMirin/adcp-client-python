@@ -110,7 +110,7 @@ def install_signing_event_hook(
     """Install an RFC 9421 request-signing event hook on ``client``.
 
     The hook reads the AdCP operation name from
-    :data:`adcp.signing.current_operation` (set by
+    :data:`adcp.signing.autosign.current_operation` (set by
     :func:`signing_operation`), consults the seller's advertised
     ``request_signing`` policy, and attaches ``Signature`` /
     ``Signature-Input`` / ``Content-Digest`` headers when the operation
@@ -255,7 +255,7 @@ def install_signing_event_hook(
 
 @contextmanager
 def signing_operation(name: str) -> Iterator[None]:
-    """Set :data:`adcp.signing.current_operation` for the duration of the block.
+    """Set :data:`adcp.signing.autosign.current_operation` for the block's duration.
 
     ``install_signing_event_hook`` reads this ContextVar to decide
     whether an outbound request should be signed and what the signing

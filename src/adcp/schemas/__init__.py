@@ -33,8 +33,8 @@ def load_schema(name: str) -> dict[str, Any]:
     """Return the named AdCP JSON schema as a dict.
 
     Raises :class:`FileNotFoundError` if the schema is not bundled with
-    the SDK.  Pass one of the ``adcp.schemas.<NAME>`` string constants to
-    avoid typos (e.g. :data:`ADCP_AGENTS`).
+    the SDK.  Pass one of the string constants this module declares rather
+    than a literal filename, to avoid typos (e.g. :data:`ADCP_AGENTS`).
 
     :param name: Filename of the schema, e.g. ``"adcp-agents.json"``.
 

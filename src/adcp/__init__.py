@@ -920,8 +920,8 @@ if not TYPE_CHECKING:
         Resolution order: (1) ``__version__`` resolves on demand; (2) names
         removed in 4.0 raise an informative :class:`ImportError`; (3) re-exported
         symbols are imported from their owning module and cached; (4) real
-        submodules pass through to the import system so ``adcp.<submodule>``
-        attribute access keeps working.
+        submodules pass through to the import system, so attribute access on
+        one of them -- :mod:`adcp.signing`, say -- keeps working.
         """
         if name == "__version__":
             value = _resolve_version()
@@ -940,8 +940,9 @@ if not TYPE_CHECKING:
             globals()[name] = value  # cache: __getattr__ fires once per name
             return value
 
-        # Submodule passthrough — expose ``adcp.<name>`` for real submodules so
-        # attribute access (not just ``import adcp.<name>``) resolves as before.
+        # Submodule passthrough — expose a real submodule under its own name so
+        # attribute access (``adcp.signing``, not just ``import adcp.signing``)
+        # resolves as before.
         if not name.startswith("__") and importlib.util.find_spec(f"adcp.{name}") is not None:
             module = importlib.import_module(f"adcp.{name}")
             globals()[name] = module

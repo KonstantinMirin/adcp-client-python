@@ -216,7 +216,7 @@ def _spec_compat_hooks_impl(
            left for schema validation to report.
 
         Adopters who need granular control over the three sub-behaviors
-        can use ``adcp.types.legacy.coerce_legacy_assets`` directly, adapt
+        can use ``adcp.compat.legacy.coerce_legacy_assets`` directly, adapt
         ``_hook_get_products``
         or compose an ordered hook chain with
         :func:`adcp.server.compose_pre_validation_hooks`.

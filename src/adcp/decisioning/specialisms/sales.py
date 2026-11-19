@@ -27,7 +27,7 @@ docstrings):
   pre-3.2 releases. AdCP 3.2 deprecates named-format discovery in favor of
   ``get_products`` / ``Product.format_options[]``. A 3.2-only seller can omit
   this method, including under strict platform validation, by declaring
-  ``adcp.supported_versions=["3.2"]``.
+  ``capabilities["adcp"]["supported_versions"] = ["3.2"]``.
 * :meth:`list_creatives`
 
 Required only when claiming ``sales-catalog-driven``:

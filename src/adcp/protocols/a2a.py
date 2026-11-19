@@ -1033,7 +1033,8 @@ class A2AAdapter(ProtocolAdapter):
         extracts:
 
         - Basic agent info (name, description, version)
-        - AdCP extension (extensions.adcp.adcp_version, extensions.adcp.protocols_supported)
+        - AdCP extension (``extensions["adcp"]`` keys ``adcp_version`` and
+          ``protocols_supported``)
         - Available skills/tools
 
         Returns:

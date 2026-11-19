@@ -201,7 +201,7 @@ def validate_capabilities_response_shape(handler: PlatformHandler) -> None:
        ``protocol/get-adcp-capabilities-response.json`` requires
        ``account.required: ["supported_billing"]`` with
        ``minItems: 1``).
-    4. Advertised ``adcp.supported_versions`` entries are accepted by the
+    4. Advertised ``capabilities["adcp"]["supported_versions"]`` entries are accepted by the
        dispatcher and have installed request and response validators.
 
     Synchronous entry point — drives the async handler via

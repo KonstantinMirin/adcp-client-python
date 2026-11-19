@@ -50,7 +50,7 @@ from pydantic import ValidationError
 
 from adcp.types import _base
 from adcp.types._base import applied_schema
-from codegen import bundle, emit, intersect
+from codegen import bundle, emit, intersect, overrides
 from codegen.keywords import Position
 from codegen.refusal import Refusal
 from nodeset import claimed, partitions
@@ -118,6 +118,36 @@ def kwargs_of(annotation: ast.AST) -> set[str]:
         for kw in n.keywords
         if kw.arg
     }
+
+
+#: **The ``Field(...)`` keywords that are NOT a fact about the instance, DERIVED from the
+#: renderer's own declaration of them rather than restated here.**
+#:
+#: The claim this serves is "a constraint of the node has nowhere else in the module to
+#: hide": the node's bound lives on the alias, so a property may carry a name and a
+#: sentence and nothing more.  That claim is about the CONSTRAINTS, and the permitted side
+#: of it is a list of what the renderer happens to write today -- so a restated copy goes
+#: red the moment the renderer carries one more annotation, which is a FIX arriving as a
+#: failure.
+#:
+#: **Measured, and it is why this is derived** (``79965885f``, 2026-11-16).  The literal
+#: here read ``{"description", "alias", "default", "json_schema_extra"}`` and went red on
+#: ``('adcp_major_version', ['deprecated', 'description'])`` -- because ``deprecated``
+#: joined :data:`codegen.intersect.RENDERED`, which closed a gap where **21 fields on 11
+#: classes** lost a base's ``deprecated``, among them ``adcp_major_version`` on ten request
+#: roots, which ``core/version-envelope.json`` states as ``{"deprecated": true,
+#: "x-removed-in": "4.0.0"}``.  A buyer reading ``ListProductsRequest``'s field metadata
+#: was not told the field is removed in 4.0; the fix told them, and this assertion reported
+#: the fix as a defect.  Nothing a user can express or validate moved either way.
+#:
+#: So ``intersect.RENDERED`` is READ: it is the ONE declaration of "the annotations a FIELD
+#: renders" and ``codegen.render._field`` is its only writer.  ``alias`` and
+#: ``json_schema_extra`` are the remaining two, and neither is an annotation: ``alias`` is
+#: the WIRE NAME (``_field``'s ``if decided.wire != decided.name``) and
+#: ``json_schema_extra`` is the carrier for a fact pydantic has no annotation for -- a
+#: ``format``, D6's ``uniqueItems``, a constructed ``default``.  Both are named here because
+#: the renderer declares neither in a table there is anything to read.
+NOT_A_FACT_ABOUT_THE_INSTANCE = frozenset(intersect.RENDERED) | {"alias", "json_schema_extra"}
 
 
 def constraint_aliases(source: str | None = None) -> dict[str, set[str]]:
@@ -348,9 +378,9 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
         raw = bundle.read(BUNDLE, document)
         record = bundle.record(BUNDLE, document, known)
         assert not isinstance(record, Refusal), (document, record)
-        assert bundle.references(bundle.expanded(record, record)) == bundle.references(raw), (
-            document
-        )
+        assert bundle.references(bundle.expanded(record, record)) == bundle.references(
+            raw
+        ), document
         # Every reference the STORED text holds is one the document STATES or one the
         # storage wrote, which is what makes the comparison above the whole reading.
         # Compared by URI and not by pointer, because a reference inside a subtree the
@@ -363,9 +393,12 @@ def test_a_local_reference_is_left_in_the_record_exactly_as_the_document_writes_
             if u not in spelled and not _base.is_a_store_entry(u.rsplit("/", 1)[-1])
         ]
         assert foreign == [], (document, foreign[:5])
-        assert bundle.undecidable_references(
-            record, bundle.named_nodes(BUNDLE).get(document, frozenset())
-        ) == [], document
+        assert (
+            bundle.undecidable_references(
+                record, bundle.named_nodes(BUNDLE).get(document, frozenset())
+            )
+            == []
+        ), document
     # The three whose chain is recursive are still in the set and are no longer special:
     # named here so a reading that started inlining a local reference again reddens
     # with the documents it cannot finish on.
@@ -581,9 +614,7 @@ def test_no_entry_under_the_store_prefix_is_a_documents_own() -> None:
                     continue
                 sections.append((document, pointer, kw))
                 own += [
-                    (document, pointer, kw, key)
-                    for key in section
-                    if _base.is_a_store_entry(key)
+                    (document, pointer, kw, key) for key in section if _base.is_a_store_entry(key)
                 ]
     claimed("definition sections the raw bundle states", sections)
     assert not own, (
@@ -775,8 +806,12 @@ def test_the_named_node_population_is_read_off_the_bundle_and_not_off_a_run() ->
     absolute, local_refs = halves[True], halves[False]
     claimed("documents named by an ABSOLUTE fragment reference", absolute)
     claimed("documents named by a LOCAL reference", local_refs)
-    claimed("(document, pointer) named absolutely", {(d, p) for d, ps in absolute.items() for p in ps})
-    claimed("(document, pointer) named locally", {(d, p) for d, ps in local_refs.items() for p in ps})
+    claimed(
+        "(document, pointer) named absolutely", {(d, p) for d, ps in absolute.items() for p in ps}
+    )
+    claimed(
+        "(document, pointer) named locally", {(d, p) for d, ps in local_refs.items() for p in ps}
+    )
     # The overlap is the fact, and it is asserted at both granularities: some documents
     # are named by each kind, and some of those are named at the SAME pointer by each.
     # Both sets non-empty, because an empty overlap would make the two arms independent
@@ -863,25 +898,106 @@ def test_a_named_node_is_declared_once_in_its_own_module_and_the_property_uses_i
         assert stated <= on_alias, (symbol, sorted(on_alias))
         assert not stated & on_field, (key, sorted(on_field))
         assert symbol in {n.id for n in ast.walk(fields[key]) if isinstance(n, ast.Name)}, key
-        # Nothing but a name and a description rides on the property: a constraint of
-        # the node has nowhere else in the module to hide.
-        assert on_field <= {"description", "alias", "default", "json_schema_extra"}, (
+        # Nothing but a name and the renderer's own annotations ride on the property: a
+        # constraint of the node has nowhere else in the module to hide.  The permitted
+        # side is read off the renderer (:data:`NOT_A_FACT_ABOUT_THE_INSTANCE`) and not
+        # restated, so a new ANNOTATION is not reported here as a new constraint.
+        assert on_field <= NOT_A_FACT_ABOUT_THE_INSTANCE, (
             key,
-            sorted(on_field),
+            sorted(on_field - NOT_A_FACT_ABOUT_THE_INSTANCE),
         )
 
 
 # --------------------------------------------------------------------------- #
 # the import: on a bundle this file writes, because the real one reaches it 0 times
 # --------------------------------------------------------------------------- #
+#: **The two documents the constructed bundle's TASK REGISTRY names, and they are the
+#: fixture's and never the caller's.**
+#:
+#: ``codegen.bundle.task_messages`` reads ``manifest.json``'s ``tools`` map to decide which
+#: documents take ``AdcpRequest`` and which take ``AdcpResponse`` -- "a function of the
+#: BUNDLE and never of the run's document set", so a bundle carrying no registry is a
+#: ``BuildFailure`` and not an empty answer.  The registry therefore has to name a request
+#: and a response that EXIST, and naming one of the caller's documents would put a message
+#: base on the very class every assertion below reads.  So the pair is the fixture's own,
+#: outside ``core/`` so no document of the bundle becomes a package root
+#: (``bundle.package_roots``: a document whose path is also a directory), and referenced by
+#: nothing -- ``emit.emit``'s closure is reference-driven, so neither appears in
+#: ``out.emitted`` and every ``sorted(out.emitted) == [...]`` below is untouched.
+REGISTRY_REQUEST = "registry/a-request.json"
+REGISTRY_RESPONSE = "registry/a-response.json"
+
+
+def scaffold() -> dict[str, dict]:
+    """The documents that make a directory a bundle THIS COMPILER can compile, DERIVED.
+
+    Two obligations, neither of them about the mechanism this file grades, and both read
+    off the compiler rather than copied from it:
+
+    * the TASK REGISTRY's two slots (:data:`REGISTRY_REQUEST`, :data:`REGISTRY_RESPONSE`),
+      because ``bundle.task_messages`` refuses a bundle that names no request and no
+      response -- see :func:`write_bundle`;
+    * one document per :data:`codegen.overrides.OVERRIDES` entry, carrying the words that
+      entry QUOTES.  ``overrides.load`` runs on every emission and reads each entry's
+      document out of the bundle under compilation, so a bundle missing one raises
+      ``OverrideRefused: core/format.json cannot be read`` -- which is what 19 of this
+      file's tests hit next once the registry landed.  Derived from the table and not
+      listed, so an entry added to it does not redden this file: a check that restated the
+      table would be the same hand-copied second declaration
+      :data:`NOT_A_FACT_ABOUT_THE_INSTANCE` stopped being.
+
+    The pair is outside ``core/`` and the override documents are at the table's own paths;
+    nothing references any of them, and ``emit.emit``'s closure is reference-driven, so
+    none appears in ``out.emitted``.
+    """
+    held = {
+        REGISTRY_REQUEST: {"title": "A Request", "type": "object"},
+        REGISTRY_RESPONSE: {"title": "A Response", "type": "object"},
+    }
+    for entry in overrides.OVERRIDES:
+        held.setdefault(
+            entry.document,
+            {"title": entry.name, "type": "object", "description": entry.defect},
+        )
+    return held
+
+
 def write_bundle(tmp_path: Path, documents: dict[str, dict]) -> Path:
-    """A bundle directory holding exactly ``documents``, references spelled the way
-    the real bundle spells them."""
+    """A bundle directory holding ``documents``, references spelled the way the real
+    bundle spells them, beside the task registry a bundle is not a bundle without.
+
+    **THE REGISTRY IS NOT DECORATION AND ITS ABSENCE WAS 19 FAILURES** (measured
+    2026-11-19, and the diagnosis this file was handed said "a hand-copied whitelist" for
+    all 20 -- it was one).  ``codegen.bundle.task_messages`` grew into the emitting path
+    and raises ``BuildFailure: the bundle at <tmp> carries no manifest.json, so no task
+    registry names which documents are requests and which are responses``, so nineteen
+    tests of the IMPORT half never reached the mechanism they grade.  Nothing a user can
+    express or validate moved: the compiler is right that a bundle with no registry cannot
+    be compiled -- the request/response bases are derived from the registry and from no
+    file name -- and it is this FIXTURE that was writing something that is not a bundle.
+    """
     root = tmp_path / "bundle"
-    for name, doc in documents.items():
+    for name, doc in {**scaffold(), **documents}.items():
         path = root / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"$schema": DRAFT, **doc}, indent=1))
+    # ``manifest.json`` is named in ``bundle.REGISTRY`` -- "files describing the bundle,
+    # not a message" -- so it is excluded from ``bundle.portable`` and emitted from no
+    # module.  Writing it adds a registry and not a document.
+    (root / bundle.REGISTRY_FILE).write_text(
+        json.dumps(
+            {
+                "adcp_version": "9.9.9",
+                "tools": {
+                    "a_task": {
+                        "request_schema": REGISTRY_REQUEST,
+                        "response_schema": REGISTRY_RESPONSE,
+                    }
+                },
+            },
+            indent=1,
+        )
+    )
     return root
 
 
@@ -924,9 +1040,7 @@ def test_a_fragment_reference_is_an_import_of_the_targets_symbol_and_not_a_copy(
     carries none of the target's constraints.  ``minLength``/``maxLength`` are the
     target's, and a copy would put them here.
     """
-    root = write_bundle(
-        tmp_path, {"core/target.json": TARGET, "core/selection.json": REFERRER}
-    )
+    root = write_bundle(tmp_path, {"core/target.json": TARGET, "core/selection.json": REFERRER})
     out = emit.emit(root, ["core/selection.json"])
     assert out.refusals == {}, out.refusals
     # The target emits too, though nothing named it: a module cannot import from a
@@ -950,9 +1064,9 @@ def test_a_fragment_reference_is_an_import_of_the_targets_symbol_and_not_a_copy(
         if isinstance(t, ast.AnnAssign) and isinstance(t.target, ast.Name)
     }
     target_tree = ast.parse(out.files["core/target.py"])
-    declared = {
-        a.targets[0].id for a in target_tree.body if isinstance(a, ast.Assign)
-    } | {a.target.id for a in target_tree.body if isinstance(a, ast.AnnAssign)}
+    declared = {a.targets[0].id for a in target_tree.body if isinstance(a, ast.Assign)} | {
+        a.target.id for a in target_tree.body if isinstance(a, ast.AnnAssign)
+    }
 
     # D3: ``pascal_case(property)`` for the property's OWN position, assigned by
     # ``lower/names.py`` and not here -- the module path carries the document (§4, and
@@ -961,9 +1075,9 @@ def test_a_fragment_reference_is_an_import_of_the_targets_symbol_and_not_a_copy(
         assert (module, symbol) in imported, (key, sorted(imported))
         got = fields[key]
         assert symbol in {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}, key
-        assert kwargs_of(got) <= {"description", "alias", "default", "json_schema_extra"}, (
+        assert kwargs_of(got) <= NOT_A_FACT_ABOUT_THE_INSTANCE, (
             key,
-            sorted(kwargs_of(got)),
+            sorted(kwargs_of(got) - NOT_A_FACT_ABOUT_THE_INSTANCE),
         )
         # And the symbol the import names is really DECLARED there, by the target --
         # not merely present in its text and not imported into it from elsewhere.
@@ -1375,9 +1489,7 @@ def declared_in(source: str) -> dict[str, ast.AST]:
 
 def fields_of(source: str, name: str) -> dict[str, ast.AST]:
     """``field -> annotation`` for the class ``name`` of a rendered module."""
-    cls = next(
-        c for c in ast.parse(source).body if isinstance(c, ast.ClassDef) and c.name == name
-    )
+    cls = next(c for c in ast.parse(source).body if isinstance(c, ast.ClassDef) and c.name == name)
     return {
         t.target.id: t.annotation
         for t in cls.body
@@ -1387,9 +1499,7 @@ def fields_of(source: str, name: str) -> dict[str, ast.AST]:
 
 def schema_ref_of(source: str, name: str) -> str:
     """The ``__adcp_schema__`` expression in the class ``name``'s own body."""
-    cls = next(
-        c for c in ast.parse(source).body if isinstance(c, ast.ClassDef) and c.name == name
-    )
+    cls = next(c for c in ast.parse(source).body if isinstance(c, ast.ClassDef) and c.name == name)
     return next(
         ast.unparse(t.value)
         for t in cls.body
@@ -1443,7 +1553,7 @@ def test_a_local_reference_is_a_symbol_this_module_declares_and_not_an_import(
         assert symbol in {n.id for n in ast.walk(got) if isinstance(n, ast.Name)}, key
         # Nothing but a name and an annotation rides on the property: the entry's own
         # bound has nowhere else in the module to hide.
-        extra = kwargs_of(got) - {"description", "alias", "default", "json_schema_extra"}
+        extra = kwargs_of(got) - NOT_A_FACT_ABOUT_THE_INSTANCE
         assert extra == set(), (key, sorted(extra))
     # One symbol for one node, though two properties name it.  Read off the module's own
     # top-level BINDINGS rather than off the text: ``declared_in`` is a dict and cannot
@@ -1794,9 +1904,7 @@ def test_a_local_pointer_as_an_allOf_conjunct_resolves_through_the_local_resolve
     # than through its absence, and the document's own description rides on it.
     reusing = next(c for c in composed if "area" in fields_of(source, c.name))
     area = fields_of(source, reusing.name)["area"]
-    assert "Area" in {n.id for n in ast.walk(area) if isinstance(n, ast.Name)}, (
-        ast.unparse(area)
-    )
+    assert "Area" in {n.id for n in ast.walk(area) if isinstance(n, ast.Name)}, ast.unparse(area)
     assert "Which area." in ast.unparse(area), ast.unparse(area)
     assert "Area" not in imported, sorted(imported)
 
@@ -1970,9 +2078,7 @@ def test_the_bundles_own_sections_are_walked_and_the_closure_follows() -> None:
     # a position of the bundle and not a string the walk composed.  Total, with the
     # offenders NAMED: this is what makes the partition above evidence of a descent
     # through real nodes rather than of a naming convention.
-    unreal = sorted(
-        (d, p) for d, p in declared if node_at(bundle.read(BUNDLE, d), p) is NOTHING
-    )
+    unreal = sorted((d, p) for d, p in declared if node_at(bundle.read(BUNDLE, d), p) is NOTHING)
     assert unreal == [], unreal[:10]
 
     # And the descent CHAINS, which is the "the walk got FURTHER" fact the retired pin
@@ -2220,9 +2326,12 @@ def test_a_remote_reference_in_a_declared_entry_is_inlined_and_no_longer_refused
     # the one thing the old answer turned on.
     assert "/definitions/Widget" in bundle.section_entries(carried), carried
     assert [p for p, u, _ in bundle.references(carried) if bundle.split_ref(u)[0]] == [], carried
-    assert bundle.undecidable_references(carried, bundle.named_nodes(root).get(
-        "a2ui/catalog.json", frozenset()
-    )) == []
+    assert (
+        bundle.undecidable_references(
+            carried, bundle.named_nodes(root).get("a2ui/catalog.json", frozenset())
+        )
+        == []
+    )
 
 
 def test_a_property_named_definitions_is_a_property_and_not_a_section(tmp_path: Path) -> None:
@@ -2356,12 +2465,7 @@ def test_a_bare_ref_root_is_a_subclass_of_its_target(tmp_path: Path) -> None:
     assert sorted(out.emitted) == ["core/alias.json", "core/target.json"], out.emitted
 
     tree = ast.parse(out.files["core/alias.py"])
-    imported = {
-        a.name
-        for n in ast.walk(tree)
-        if isinstance(n, ast.ImportFrom)
-        for a in n.names
-    }
+    imported = {a.name for n in ast.walk(tree) if isinstance(n, ast.ImportFrom) for a in n.names}
     assert "CatalogLike" in imported, imported
     declared = [c for c in tree.body if isinstance(c, ast.ClassDef)]
     assert [c.name for c in declared] == ["AliasLike"], [c.name for c in declared]
@@ -2369,9 +2473,9 @@ def test_a_bare_ref_root_is_a_subclass_of_its_target(tmp_path: Path) -> None:
     # No field of its own, and the ``__adcp_schema__`` of its OWN document: the class
     # grades against the document of record, where §3 inlines the target unchanged, so
     # there is a pointer for every inherited fact.
-    assert [
-        t.target.id for t in declared[0].body if isinstance(t, ast.AnnAssign)
-    ] == ["__adcp_schema__"], ast.dump(declared[0])
+    assert [t.target.id for t in declared[0].body if isinstance(t, ast.AnnAssign)] == [
+        "__adcp_schema__"
+    ], ast.dump(declared[0])
     assert "core/alias.json" in out.files["core/alias.py"]
 
 
@@ -2522,9 +2626,7 @@ def test_the_one_bare_ref_root_in_the_bundle_is_an_identity_binding_onto_a_union
     # one of its branches, and ``_branch_models`` is the tuple it dispatches over.
     target = ast.parse(files["core/vendor_pricing_option.py"])
     (declared,) = [
-        c
-        for c in target.body
-        if isinstance(c, ast.ClassDef) and c.name == "VendorPricingOption"
+        c for c in target.body if isinstance(c, ast.ClassDef) and c.name == "VendorPricingOption"
     ]
     assert "BranchDispatchMixin" in {
         b.id for b in declared.bases if isinstance(b, ast.Name)
@@ -2547,4 +2649,3 @@ def test_the_one_bare_ref_root_in_the_bundle_is_an_identity_binding_onto_a_union
         n.id for n in ast.walk(bound.value) if isinstance(n, ast.Name)
     }, ast.unparse(bound)
     assert "core/signal-pricing-option.json" in files["core/signal_pricing_option.py"]
-

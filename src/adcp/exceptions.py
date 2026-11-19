@@ -823,7 +823,8 @@ class IdempotencyUnsupportedError(ADCPError):
     """Seller does not support idempotency replay protection on mutating requests.
 
     Raised before the first mutating call when ``strict_idempotency=True`` and
-    either the seller's capabilities response is missing ``adcp.idempotency``,
+    either the seller's capabilities response carries no
+    ``capabilities["adcp"]["idempotency"]`` block,
     declares ``supported=False``, or declares ``supported=True`` without a
     ``replay_ttl_seconds`` window. Per AdCP spec, clients MUST NOT assume a
     default — a seller that does not positively declare support cannot be

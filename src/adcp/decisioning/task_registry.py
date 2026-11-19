@@ -721,7 +721,7 @@ class TaskHandoffContext:
     kicking off slow work. This fixes a documented v1 ergonomics bug
     where adopters could only learn the task_id AFTER returning.
 
-    Constructed by :func:`adcp.decisioning.dispatch._build_handoff_context`;
+    Constructed by :func:`adcp.decisioning.dispatch._project_handoff`;
     never instantiated by adopter code.
     """
 
