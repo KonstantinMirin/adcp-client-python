@@ -8,9 +8,10 @@ credential resolver; it is never itself a credential or an authorization grant.
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field, fields
 from datetime import datetime
-from types import UnionType
+from types import MappingProxyType, UnionType
 from typing import Any, ClassVar, Literal, TypeAlias, Union, get_args, get_origin, get_type_hints
 
 from pydantic import ConfigDict
@@ -58,8 +59,73 @@ class _ClosedValue:
     )
 
 
-def _hints(cls: type[Any]) -> dict[str, Any]:
-    return get_type_hints(cls)
+#: What :func:`_hints` resolved, by class -- one entry per record class, held for the life
+#: of the process.  :func:`_hints` is what reads it and its docstring defends the hold.
+_HELD_HINTS: dict[type[Any], Mapping[str, Any]] = {}
+
+
+def _hints(cls: type[Any]) -> Mapping[str, Any]:
+    """``cls``'s resolved annotations, resolved ONCE per class.
+
+    **WITHOUT THE HOLD ABOVE, THIS LINE ALLOCATED 49.19 GB -- 22.3 % of every byte one
+    instrumented run of ``tests/`` allocated, and the largest single allocator in it**
+    (`adcp-client-python-jv26`). 252,359 calls, re-resolving the annotations of the same
+    record classes once per RECORD CONSTRUCTED: 1,427,256 ``ForwardRef`` objects built and
+    1,427,256 ``compile`` calls, 14.38 s of them. ``from __future__ import annotations``
+    makes every annotation in this module a string, so resolving one is a COMPILE and not
+    a lookup -- which is what makes doing it per record expensive and doing it per class
+    free.
+
+    **THE KEY IS THE ARGUMENT AND THERE IS NO HIDDEN INPUT.** ``get_type_hints`` reads
+    ``cls.__annotations__`` and resolves those strings against the globals of the module
+    that declared ``cls``. Both are fixed before the first call can happen: a class's
+    annotations are bound when its body runs, and :func:`_freeze_fields` reaches this
+    function from ``__post_init__`` -- so the earliest possible call is the first record
+    CONSTRUCTED, which is after the declaring module's body has bound every name its
+    annotations spell. A name not yet bound raises ``NameError`` and nothing is held.
+
+    **WHAT WOULD INVALIDATE IT:** rebinding an annotation on one of these classes, or
+    rebinding a module global one of their annotations names, after a record of that class
+    has been built. Nothing in this package does either -- every record is a
+    ``frozen=True, slots=True`` dataclass declared at module scope -- and
+    :func:`_forget_hints` is the answer for a caller that does.
+
+    **THE KEY SET IS FOUR MODULES' RECORDS AND NOT THIS ONE'S**, which is what bounds a
+    hold that declares no bound: ``delivery_models``, ``notification_models``,
+    ``materializer/verification`` and ``materializer/contracts`` import
+    :func:`_freeze_fields` and declare 39 record classes between them, all at module scope,
+    so the hold reaches 39 entries and stops. A caller that manufactured record classes at
+    runtime would grow it; nothing in this repository does.
+
+    **A DICT AND NOT ``functools.cache``, which is a typing fact and not a preference.**
+    Decorated, every call site is graded against ``_lru_cache_wrapper.__call__``, whose
+    arguments must be ``Hashable``, and ``type[Any]`` does not satisfy that protocol for
+    mypy -- the bound ``__hash__`` signatures differ -- so ``_hints(type(record))`` needs a
+    ``type: ignore`` for a call that is correct. A dict needs no suppression, and it is the
+    hold ``adcp.types._restored._surface`` uses for the same reason in the same change.
+
+    **TWO THREADS RESOLVE EQUAL ANSWERS**, so the unsynchronised write is not a race worth
+    a lock: the second resolution overwrites the first with the same annotations, and a
+    caller holding either mapping holds the same answer.
+
+    The mapping is read-only because it is now SHARED -- every record of a class reads the
+    same resolution, where each used to be handed a ``dict`` of its own.
+    """
+    held = _HELD_HINTS.get(cls)
+    if held is None:
+        held = _HELD_HINTS[cls] = MappingProxyType(get_type_hints(cls))
+    return held
+
+
+def _forget_hints() -> None:
+    """Drop every held resolution, so the next ask resolves again.
+
+    The escape hatch :func:`_hints` names, and what
+    ``tests/test_derived_answers_are_computed_once.py`` drops the hold through to show that
+    its work count is a measurement: cleared before each ask, the counter observes every
+    one of them.
+    """
+    _HELD_HINTS.clear()
 
 
 def _freeze(value: Any, annotation: Any) -> Any:

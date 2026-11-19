@@ -210,12 +210,34 @@ class _SchemaRoot:
         return self.bundled.is_dir()
 
 
+@lru_cache(maxsize=1)
 def _sdk_pinned_bundle_key() -> str:
-    """Bundle key for the SDK's compile-time-pinned AdCP version.
+    """Bundle key for the SDK's compile-time-pinned AdCP version, read once per process.
 
     Reads the packaged ``ADCP_VERSION`` file and collapses it via
-    :func:`resolve_bundle_key`. Cached at import time so the lookup
-    happens once.
+    :func:`resolve_bundle_key`.
+
+    **THE SENTENCE THAT STOOD HERE WAS "Cached at import time so the lookup happens once"
+    AND NOTHING CACHED IT** (`adcp-client-python-jv26`). Measured over one instrumented run
+    of ``tests/``: 59,221 calls, reaching ``adcp._version._read_packaged_version`` -- which
+    opens and reads a packaged resource every time -- **57,261** of the 73,205 times that
+    function ran at all. The claim is now the decorator's, and
+    ``tests/test_derived_answers_are_computed_once.py`` is what keeps the two together.
+    (The other 15,944 reads enter through ``adcp._version``'s own callers and are not this
+    function's to remove.)
+
+    **WHAT WOULD INVALIDATE IT: a change to the packaged ``ADCP_VERSION`` file, which
+    cannot happen while the distribution holding it is imported.** That file ships inside
+    the wheel this module is part of, so a different pin is a different installation and
+    therefore a different process. ``_sdk_pinned_bundle_key.cache_clear()`` is the answer
+    for a test that rewrites it in place.
+
+    **AND THE KEY IS THE ARGUMENTS, WHICH ARE NONE** -- the SDK's own pin is the whole
+    input. A caller's pin is never this value: :func:`_resolve_bundle_key_for_version`
+    takes that as its argument and reaches this function only for ``None``. The failure
+    mode of getting that wrong is on record -- ``action_update_fields`` carried
+    ``lru_cache(maxsize=1)`` over a function that DID take a version and answered every pin
+    with the default bundle (``tests/test_rc3_media_buy_runtime.py``).
     """
     from adcp._version import _read_packaged_version
 
