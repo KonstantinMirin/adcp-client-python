@@ -9,7 +9,7 @@ from adcp.types._base import AdCPBaseModel, Approximation, BranchDispatchMixin, 
 from adcp.types._runtime import ForbiddenGroups, Presence, Rule
 from adcp.types.constraints import CreativeRepresentationRepresentationId, StrMinLen1
 
-from .creative_manifest import CanonicalFormatManifest, NamedFormatManifest
+from .creative_manifest import CanonicalFormatManifest
 
 
 class Source(AdCPBaseModel):
@@ -33,7 +33,7 @@ class CreativeRepresentation(BranchDispatchMixin, AdCPBaseModel):
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ('format_kind', 'representation_id', 'source')
     _BRANCH_DISCRIMINATOR: ClassVar[str] = ""
-    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('CreativeRepresentationFormatId', Presence(require=(('format_id',),), forbid=(('format_kind',),))), ('CreativeRepresentationFormatKind', Presence(require=(('format_kind',),), forbid=(('format_id',),))),)
+    _BRANCH_PRESENCE: ClassVar[tuple[tuple[str, Presence], ...]] = (('CreativeRepresentationFormatKind', Presence(require=(('format_kind',),), forbid=(('format_id',),))),)
     @classmethod
     def _branch_combinator(cls) -> str:
         return "oneOf"
@@ -47,16 +47,6 @@ class CreativeRepresentation(BranchDispatchMixin, AdCPBaseModel):
     source: Source
 
 
-class CreativeRepresentationFormatId(CreativeRepresentation, NamedFormatManifest):
-    """
-    Deprecated 3.x compatibility branch. Manifest references a named format via the structured format_id object. New 3.2 manifests use format_kind.
-    """
-    model_config = ConfigDict(
-        extra='allow',
-    )
-    __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/allOf/0')
-
-
 class CreativeRepresentationFormatKind(CreativeRepresentation, CanonicalFormatManifest):
     """
     Manifest declares which canonical format it targets via `format_kind` (e.g., `image`). This 3.1+ canonical-format path was introduced by RFC #3305.
@@ -67,7 +57,7 @@ class CreativeRepresentationFormatKind(CreativeRepresentation, CanonicalFormatMa
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-representation.json', pointer='#/allOf/0')
 
 
-CreativeRepresentation._branch_models = (CreativeRepresentationFormatId, CreativeRepresentationFormatKind,)
+CreativeRepresentation._branch_models = (CreativeRepresentationFormatKind,)
 CreativeRepresentation.model_rebuild(force=True)
 
 

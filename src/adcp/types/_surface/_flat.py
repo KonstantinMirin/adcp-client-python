@@ -1873,7 +1873,6 @@ from .core import CreativePolicy as CreativePolicy
 from .core import CreativePolicyAcceptedVerifiersItem as CreativePolicyAcceptedVerifiersItem
 from .core import CreativePolicyProvenanceRequirements as CreativePolicyProvenanceRequirements
 from .core import CreativeRepresentation as CreativeRepresentation
-from .core import CreativeRepresentationFormatId as CreativeRepresentationFormatId
 from .core import CreativeRepresentationFormatKind as CreativeRepresentationFormatKind
 from .core import CreativeRepresentationSet as CreativeRepresentationSet
 from .core import CreativeRepresentationSource as CreativeRepresentationSource
@@ -6046,7 +6045,6 @@ __all__ = [
     'CreativeRejected',
     'CreativeRejectedDetails',
     'CreativeRepresentation',
-    'CreativeRepresentationFormatId',
     'CreativeRepresentationFormatKind',
     'CreativeRepresentationSet',
     'CreativeRepresentationSource',

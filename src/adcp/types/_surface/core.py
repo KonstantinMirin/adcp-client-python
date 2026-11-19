@@ -604,7 +604,6 @@ from .._schemas.core.creative_policy import AcceptedVerifiersItem as CreativePol
 from .._schemas.core.creative_policy import CreativePolicy as CreativePolicy
 from .._schemas.core.creative_policy import ProvenanceRequirements as CreativePolicyProvenanceRequirements
 from .._schemas.core.creative_representation import CreativeRepresentation as CreativeRepresentation
-from .._schemas.core.creative_representation import CreativeRepresentationFormatId as CreativeRepresentationFormatId
 from .._schemas.core.creative_representation import CreativeRepresentationFormatKind as CreativeRepresentationFormatKind
 from .._schemas.core.creative_representation import Source as CreativeRepresentationSource
 from .._schemas.core.creative_representation_set import CreativeRepresentationSet as CreativeRepresentationSet
@@ -2505,7 +2504,6 @@ __all__ = [
     'CreativePolicyAcceptedVerifiersItem',
     'CreativePolicyProvenanceRequirements',
     'CreativeRepresentation',
-    'CreativeRepresentationFormatId',
     'CreativeRepresentationFormatKind',
     'CreativeRepresentationSet',
     'CreativeRepresentationSource',
