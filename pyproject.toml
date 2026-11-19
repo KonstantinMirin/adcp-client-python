@@ -361,6 +361,33 @@ ignore = [
 ]
 
 [tool.mypy]
+# WHAT THE CHECKER RANGES OVER, STATED HERE BECAUSE THREE READERS NEED ONE ANSWER.
+# `tests_emit/test_type_checker.py` reads `files` and `exclude` back out of this section
+# -- §14 step 6's gate is "the type checker IS the test", so the test's population and
+# the checker's have to be one statement -- and `python -m mypy --no-incremental`, the
+# invocation that file runs and a reader runs by hand, takes its population from here
+# and no arguments.
+#
+# IT WAS STATED NOWHERE, which is why that gate could not run at all: with no `files`
+# the invocation reached mypy with no population (`usage: mypy [-h] ...`, exit 2) and
+# the three readers of `files` raised `KeyError: 'files'`. Four of the emission suite's
+# nodes were that, and none of them had ever run. The two sets the gate's own guards
+# require are `codegen`'s decision layer (§14 step 6) and the shipped package
+# (`final-state.md` reading 7, "the package declares its types to a consumer").
+files = ["codegen", "src/adcp"]
+# THE EMITTED TREE IS NOT THE SUBJECT, AND THE EXCLUSION IS NOT FREE -- the count is
+# here so it cannot be read as free. `docs/plan/architecture.md`: "The committed tree is
+# an ARTIFACT, verified by one byte-compare, and is never the subject", so a type error
+# in a generated module is a defect of `codegen/render.py`, which is inside `files`
+# above. Measured 2026-11-19 over `codegen src/adcp`, same commit, one flag apart:
+#   with this exclusion       497 files checked, 3,183 errors in 134 files
+#   without it              1,591 files checked, 4,843 errors in 722 files
+# so the emitted tree is 1,094 of the files and 1,660 of the errors in 588 of them.
+# What stops this from growing into an evasion is the gate's own third control,
+# `test_the_gate_ranges_over_the_shipped_PACKAGE_and_cannot_be_narrowed_back`: it
+# subtracts this one path and then requires every other hand-written module of
+# `src/adcp` to be in the graded set.
+exclude = "^src/adcp/types/_schemas/"
 enable_incomplete_feature = ["TypeForm"]
 # Mypy 1.20.2 drops is_type_form in its fixed-format cache. The JSON
 # cache preserves Pydantic 2.14 adapter signatures across incremental checks.
