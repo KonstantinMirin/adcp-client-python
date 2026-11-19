@@ -572,6 +572,21 @@ async def production_harness(
             "canonicalization_id": key.canonicalization.canonicalization_id,
             "canonicalization_uri": key.canonicalization.canonicalization_uri,
             "canonicalization_sha256": key.canonicalization.canonicalization_sha256,
+            #: **SUPPLIED HERE BECAUSE THE CLASS DOES NOT REQUIRE THEM, AND IT SAYS SO.**
+            #: ``core/reporting-delivery-offering.json#/allOf/1/then`` requires these two
+            #: on ``reporting_profile`` whenever ``reconciliation_mode`` is
+            #: ``consumer_receipt``, and that requiredness is a NESTED one -- about a
+            #: child's keys -- which no rule kind in ``adcp.types._runtime`` can carry.
+            #: So ``ReportingDeliveryOffering`` is a declared widening at that pointer
+            #: (``__adcp_approximations__``, ``#/allOf/1``, ``WIDENED``) and
+            #: ``model_validate`` builds a profile the DOCUMENT refuses.
+            #: ``ReportingProductionOffering.__post_init__`` screens the dump against the
+            #: document, so a fixture that leans on the constructor alone fails there and
+            #: not here.  ``test_reporting_offering_conditional_widening.py`` pins all
+            #: three halves; the carrier that would enforce instead of declare is the
+            #: follow-up in ``FINDINGS-pointer.md`` §5 (``adcp-client-python-8cz3``).
+            "canonicalization_contract_version": "1.0",
+            "canonicalization_media_type": "application/vnd.adcp.reporting-canonicalization+json",
         }
         offering = ReportingDeliveryOffering.model_validate(
             {

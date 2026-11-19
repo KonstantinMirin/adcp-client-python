@@ -169,6 +169,70 @@ With that carrier those two nodes keep their restriction and need no declaration
 and neither needs a class either way. The CONJ site needs nothing: its narrowing subclass
 already enforces the restriction, which is the whole of §4's distinction.
 
+### 5a. A THIRD SITE, and it widens the carrier: the consequent must be CONDITIONABLE
+
+Added 2026-11-19 by lane `claude/a-conditional-requirement-is-lowered`
+(`adcp-client-python-8cz3`), to this trail rather than a second one, because the limit is
+the same one: **no rule kind reaches a child's keys.**
+
+The site is `core/reporting-delivery-offering.json#/allOf/1`, whose `then` is
+
+```json
+{"required": ["method"],
+ "properties": {"reporting_profile": {"required": ["canonicalization_id",
+   "canonicalization_contract_version", "canonicalization_media_type",
+   "canonicalization_uri", "canonicalization_sha256"]}}}
+```
+
+The `required: ["method"]` half IS carried — `ConditionalRequired((Match('reconciliation_mode',
+True, ('consumer_receipt',)),), require=('method',))` is in the emitted tuple. The nested half
+is dropped, and `codegen/lower/rules.py::_conditional` already DECLARES the drop: `_arm_carried`
+answers `False` because the arm states `properties`, which `_CARRIED_BY_A_RULE` does not hold,
+so the conditional mints `Approximation(pointer='#/allOf/1', keyword='if', kind='WIDENED',
+rung='KEYWORD')`. Measured in a FRESH compile, not read off the committed file, and the
+committed module is byte-identical to it.
+
+**So this site needed no new declaration and `./check` could not fall** — there is nothing to
+lower. What it adds is a requirement on the carrier §5 sketches:
+
+* §5's `(key, groups)` is UNCONDITIONED, and applied here it would refuse every Core and
+  managed-delivery offering — the document requires those five keys only where
+  `reconciliation_mode == 'consumer_receipt'`, and the profile's own `required` lists none of
+  them. So the carrier's consequent must be nestable UNDER a condition: either
+  `ConditionalRequired` gains a nested-consequent slot, or the new kind takes a `when` of
+  `Match` clauses about the PARENT's keys. The second is the smaller change and keeps
+  `ConditionalRequired`'s one meaning.
+* the two §4 sites need the unconditioned form and this one needs the conditioned form, so the
+  carrier is one kind with an optional `when` — not two.
+
+**And the pinned default does not reach it, confirmed rather than assumed.** Both missing
+properties are `const` on `reporting_profile`'s own node, so
+`verdicts/a-pinned-default-is-the-documents-own.md` looked like the carrier.
+`codegen/render.py::_field`'s predicate is `required` AND `const` at the SAME node;
+`reporting_profile`'s own `required` is `['id', 'version', 'schema_uri', 'schema_sha256',
+'schema_dialect', 'schema_ref_policy', 'grain', 'primary_keys']` and lists neither. The
+requiredness lives one `allOf` up, under a condition, which is exactly the fact no kind
+carries.
+
+**The measurement that rules out a spelling, rather than a reading that rules it out.** The only
+spelling `ConditionalRequired` admits for a child's key is a dotted property NAME, and a rule on
+it refuses a payload the document ACCEPTS: `supplied()` yields the class's OWN keys, a dotted
+name is never among them, so the rule fires on the conformant offering too. A rule narrower than
+its document is forbidden outright, which is why the declaration is the treatment and not a
+shortcut. Pinned at
+`tests/conformance/reporting/test_reporting_offering_conditional_widening.py` —
+the document refuses, the class admits, the class declares, and the dotted rule is wrong — so
+when the carrier lands, that file is where the three assertions invert.
+
+**What the widening cost in the meantime, and it was not the declaration.** Five of `make
+test`'s 71 (7 node ids, 2 postgres-skipped) raised `ValueError: offering must satisfy the
+complete public contract` at `src/adcp/reporting/production/offerings.py:70`:
+`tests/conformance/reporting/_production_support.py`'s fixture profile omitted the two keys,
+because the CLASS does not require them, and `ReportingProductionOffering.__post_init__` screens
+the dump against the document. That is the declared widening's own consumer-visible shape — a
+typed object the SDK's schema half refuses — and the fixture now supplies both keys with a
+comment naming the pointer. It was never an undeclared drop.
+
 ## 6. Out of scope, and therefore NOT written
 
 **`src/adcp/types/_surface/{core,media_buy,_flat}.py`.** Removing six classes removes six
