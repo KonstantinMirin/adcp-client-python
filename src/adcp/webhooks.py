@@ -384,15 +384,22 @@ def create_media_buy_delivery_webhook_payload(
     Raises:
         ReportingWebhookOperationIdMissingError: ``registration`` has no
             ``operation_id``. Skip this send; do not fabricate a value.
-        pydantic.ValidationError: ``registration`` is malformed, including a
-            stored ``operation_id`` outside the 1–255 ``[A-Za-z0-9_.:-]`` form.
+        pydantic.ValidationError: ``registration`` is malformed at one of the five
+            properties ``core/reporting-webhook.json`` states.
     """
     webhook = (
         registration
         if isinstance(registration, ReportingWebhook)
         else ReportingWebhook.model_validate(registration)
     )
-    if not webhook.operation_id:
+    # ``core/reporting-webhook.json`` states five properties -- url, token,
+    # authentication, reporting_frequency, requested_metrics -- and
+    # ``additionalProperties: true``.  ``operation_id`` is none of the five, so it
+    # reaches the class as an EXTRA and lives in ``model_extra``; reading it as a
+    # declared attribute raises ``AttributeError`` for every registration that
+    # omits it, which is the case this function exists to report.
+    operation_id = (webhook.model_extra or {}).get("operation_id")
+    if not operation_id:
         result_dict = (
             result.model_dump(mode="json") if isinstance(result, PydanticBaseModel) else result
         )
@@ -414,7 +421,7 @@ def create_media_buy_delivery_webhook_payload(
         task_type=TaskType.media_buy_delivery,
         result=result,
         timestamp=timestamp,
-        operation_id=webhook.operation_id,
+        operation_id=operation_id,
         message=message,
         idempotency_key=idempotency_key,
         token=webhook.token,

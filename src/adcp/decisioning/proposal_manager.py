@@ -239,16 +239,23 @@ class ProposalCapabilities:
         ):
             raise ValueError("proposal_refinement must be a capability mapping or None")
         if self.proposal_refinement is not None:
-            from adcp.decisioning.capabilities import MediaBuy
+            # The refinement is graded at ITS OWN node.  Validating the fragment
+            # through the whole `MediaBuy` reaches
+            # `protocol/get-adcp-capabilities-response.json#/properties/media_buy`,
+            # whose `allOf[0]` if/then requires `lifecycle_tools` to be present and to
+            # contain "refine_proposals" whenever `proposal_refinement` is declared --
+            # a conjunction a bare refinement cannot satisfy, so every caller was
+            # refused.  `#/properties/media_buy/properties/proposal_refinement` is the
+            # position this value actually occupies.
+            from adcp.types.protocol import (
+                GetAdCPCapabilitiesResponseMediaBuyProposalRefinement as ProposalRefinement,
+            )
 
             raw_refinement = dict(self.proposal_refinement)
             unknown = set(raw_refinement) - {"supported_dimensions", "max_alternatives"}
             if unknown:
                 raise ValueError(f"proposal_refinement contains unknown fields: {sorted(unknown)}")
-            validated = MediaBuy.model_validate(
-                {"proposal_refinement": raw_refinement}
-            ).proposal_refinement
-            assert validated is not None
+            validated = ProposalRefinement.model_validate(raw_refinement)
             normalized = validated.model_dump(mode="json", exclude_none=True)
             if (
                 "max_alternatives" in normalized

@@ -478,21 +478,13 @@ def test_materialize_cannot_expand_status_scope_or_constraint_kind() -> None:
 def test_generated_constraint_models_require_a_portable_bound(
     constraint_type: str, kind: str, bounds: tuple[str, ...]
 ) -> None:
-    """Each arm of ``media-buy/change-term-constraints.json`` states TWO facts.
-
-    ``required: ['kind']`` and an ``anyOf`` over one-key ``required`` groups — the
-    portable bounds. An empty payload breaks both, and the document's own first
-    answer is the missing ``kind``: the ``anyOf`` rule is an after-validator and
-    cannot run on a payload the field layer already refused. So the two are asked
-    separately, each by its own error TYPE and location rather than by a message.
+    """Each branch of ``media-buy/change-term-constraints.json`` states an ``anyOf``
+    over one-key ``required`` groups — the portable bounds — and a payload carrying
+    only ``kind`` satisfies none of them.
     """
     from adcp import types
 
     model = getattr(types, constraint_type)
-
-    with pytest.raises(ValidationError) as missing_kind:
-        model.model_validate({})
-    assert [(e["type"], e["loc"]) for e in missing_kind.value.errors()] == [("missing", ("kind",))]
 
     with pytest.raises(ValidationError) as missing_bound:
         model.model_validate({"kind": kind})

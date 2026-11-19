@@ -976,7 +976,11 @@ async def test_get_signals_wholesale_handoff_rejected_leaves_no_registry_row(exe
     handler = _make_handler(_Platform(), executor, registry=registry)
     with pytest.raises(AdcpError) as exc:
         await handler.get_signals(
-            GetSignalsRequest(discovery_mode="wholesale", signal_spec="x"),
+            # `signals/get-signals-request.json`'s root `if/then`: "Wholesale
+            # enumeration: signal_spec, signal_refs, and legacy signal_ids MUST NOT
+            # be present." A wholesale read carries the mode alone, the way the
+            # sibling `get_products` test carries `buying_mode` alone.
+            GetSignalsRequest(discovery_mode="wholesale"),
             ToolContext(),
         )
     assert exc.value.code == "INVALID_REQUEST"
