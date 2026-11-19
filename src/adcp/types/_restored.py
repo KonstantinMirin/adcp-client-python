@@ -268,7 +268,7 @@ def offered(module: types.ModuleType) -> dict[str, object]:
     return {name: value for name, value in held.items() if name.isidentifier()}
 
 
-def _surface() -> dict[str, object]:
+def _derive_surface() -> dict[str, object]:
     """Every name the restored modules offer, in :data:`MODULES` order.
 
     Earlier modules win, which is :data:`MODULES`' own order and is a decision only in
@@ -309,6 +309,12 @@ def _surface() -> dict[str, object]:
     No import is added by this: ``adcp.types.__getattr__`` consults ``compat`` and
     ``_adapter`` for every word this one does not state, so both are in ``sys.modules``
     whenever this function runs and ``import_module`` on a loaded module is a dict lookup.
+
+    **AND IT RUNS ONCE PER PROCESS, WHICH IS :func:`_surface`'S JOB AND NOT THIS ONE'S.**
+    Every caller asks :func:`_surface`, which holds what this returns.  This function stays
+    reachable on its own because a hold is only worth as much as the answer it holds being
+    the answer a fresh derivation gives, and
+    ``tests/test_derived_answers_are_computed_once.py`` asserts that by calling both.
     """
     found: dict[str, object] = {}
     for module in MODULES:
@@ -345,11 +351,96 @@ def _surface() -> dict[str, object]:
     return found
 
 
+#: :func:`_derive_surface`'s answer, held after the first derivation; ``None`` until then.
+#:
+#: :func:`_surface` is what reads it and its docstring is where the hold is defended.
+_HELD: types.MappingProxyType[str, object] | None = None
+
+
+def _surface() -> types.MappingProxyType[str, object]:
+    """What the restored modules offer, DERIVED ONCE PER PROCESS and held.
+
+    **THE DEFECT THE ``__all__`` BRANCH OF ``adcp.types.__getattr__`` HAD, 26 TIMES LARGER
+    AND IN THIS FILE** (`adcp-client-python-jv26`).  That branch rebuilt the union of six
+    layers on every ask and the ruling of 2026-11-19 made it a generated literal; this
+    surface was still derived on every ATTRIBUTE ACCESS.  Measured over one instrumented
+    run of ``tests/``: **112,118 derivations, 53.0 s of wall and 20.42 GB allocated --
+    9.3 % of every byte the run allocated** -- because ONE derivation walks all twelve
+    restored modules, then asks 149 words ``registry`` contests of up to 23 domain paths,
+    which is ~3,243 ``getattr`` and ~1,522 ``dict.pop`` spent to answer ONE name.  The
+    demand is 112,118 accesses; the work is one derivation.
+
+    **WHAT WOULD INVALIDATE IT, INPUT BY INPUT, because "immutable after import" is a claim
+    and not a licence.**  :func:`_derive_surface` reads four things:
+
+    * :data:`MODULES`, :data:`STATED` and :data:`VENDORED` -- this module's own constants,
+      so changing one is an edit to this file and not a runtime event;
+    * what each restored module offers (:func:`offered` over its own ``__all__`` or its own
+      declarations) -- fixed when that module's body ran, and the first derivation IMPORTS
+      all twelve, so nothing here is read before the module that declares it has finished
+      executing;
+    * what ``compat`` and ``_adapter`` advertise -- both GENERATED literals, so a run that
+      regenerates them writes files a LATER process imports;
+    * what a domain path gives each contested word (``adcp.types._domain_subjects``).
+
+    **THE FOURTH IS THE ONE A PROCESS CAN CHANGE, and the reason the hold is still right.**
+    ``adcp.types.__path__`` decides which tree a domain path -- ``adcp.types.core`` and the
+    22 others :func:`adcp.types._domain_paths` reads off the compiler's own package --
+    imports from, and two callers prepend to it: ``tests_emit/fresh.py`` and
+    ``codegen/__main__.py``, both to grade a freshly compiled tree.  Both do it BEFORE any
+    generated module is imported, and ``tests_emit/fresh.py`` -- imported by
+    ``tests_emit/conftest.py`` at session start, so before collection -- asserts exactly
+    that: it refuses the run when "the generated half of adcp.types is already bound
+    outside the fresh tree".  A derivation cannot precede them, because it imports
+    ``adcp.types._surface._flat``, which is under the ``_surface`` prefix that assertion
+    ranges over, and would therefore BE the import it refuses.  So the hold is formed over
+    the tree the rest of the process reads, and :func:`_forget_surface` is the answer for a
+    caller that rebinds ``__path__`` later -- nothing in this repository does.
+
+    **AND WHAT IS HANDED OUT IS READ-ONLY, because it is now SHARED.**  Every caller used
+    to get a ``dict`` of its own; one derivation held for the process is one mapping
+    reachable from all of them, and a surface a caller can edit is a worse outcome than the
+    recomputation this removes.
+
+    **THREADS DERIVE EQUAL ANSWERS, so the race is not one.**  Two threads arriving on an
+    empty hold both derive, both get the same words bound to the same objects (asserted by
+    ``tests/test_derived_answers_are_computed_once.py``), the second assignment wins, and a
+    caller holding the first mapping holds a correct surface.  A lock would serialise
+    112,118 reads to order two outcomes that are equal.
+
+    Held in a module global rather than behind ``functools.lru_cache`` because
+    ``adcp/types/__init__.py`` states that this module's body "imports nothing but
+    ``importlib`` and ``types``" -- a fact about what asking this surface costs -- and
+    ``types.MappingProxyType`` is already reachable from the imports that sentence names.
+    """
+    global _HELD
+    if _HELD is None:
+        _HELD = types.MappingProxyType(_derive_surface())
+    return _HELD
+
+
+def _forget_surface() -> None:
+    """Drop the held surface, so the next ask derives it again.
+
+    The escape hatch for the one input :func:`_surface` names as changeable within a
+    process -- a caller that rebinds ``adcp.types.__path__`` after a domain module has been
+    imported -- and the instrument
+    ``tests/test_derived_answers_are_computed_once.py`` reaches for to show that its work
+    count is a measurement and not a silence: with the hold dropped before each access, the
+    counter observes every one of them.
+    """
+    global _HELD
+    _HELD = None
+
+
 def __getattr__(name: str) -> object:
     """A restored module's own name, or ``AttributeError``.
 
-    ``__all__`` is answered here too, through PEP 562, so the set is derived at the moment
-    it is asked for and this module holds no second copy of it.
+    ``__all__`` is answered here too, through PEP 562, so the set is DERIVED and this
+    module holds no second copy of it -- no list of words is written down anywhere here,
+    and :data:`MODULES` plus each module's own declarations remain the whole of the source.
+    What :func:`_surface` holds is that derivation's own answer, formed once per process
+    from those same inputs; the words are still read off the modules that declare them.
     """
     if name == "__all__":
         return sorted(_surface())
