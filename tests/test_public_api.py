@@ -712,6 +712,7 @@ def test_no_public_all_repeats_a_name() -> None:
     """
     import importlib
     import pkgutil
+    from collections import Counter
 
     from adcp.types import _surface
 
@@ -742,7 +743,18 @@ def test_no_public_all_repeats_a_name() -> None:
     repeated = {}
     for module_path in modules:
         module = importlib.import_module(module_path)
-        duplicates = sorted({n for n in module.__all__ if module.__all__.count(n) > 1})
+        # ``__all__`` IS READ ONCE, and that is not a style preference.
+        # ``adcp.types.__all__`` is not a list: ``__getattr__`` rebuilds it from five
+        # sources -- ``compat.__all__``, ``compat.__adcp_flat_only__``,
+        # ``adapter.__all__``, ``_restored.__all__``, ``_flat.__all__`` -- and sorts the
+        # union of 4,358 names.  Measured: 4.39 s on first access and 0.06 s on every
+        # one after.  The previous spelling named ``module.__all__`` twice, the second
+        # inside the comprehension, so it was re-derived ONCE PER NAME: 4,358 rebuilds
+        # at 0.06 s is 261 s for this module alone, over ~30 modules, which read as a
+        # hung ``make test`` rather than a slow test.  ``Counter`` also replaces the
+        # ``count()`` per name, which was the other half of the quadratic.
+        names = list(module.__all__)
+        duplicates = sorted({n for n, seen in Counter(names).items() if seen > 1})
         if duplicates:
             repeated[module_path] = duplicates
     assert not repeated, repeated
