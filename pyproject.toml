@@ -493,7 +493,27 @@ markers = [
 #   test-results/report.json pytest-json-report's own output: one entry per test with its
 #                            outcome, its duration and its longrepr, which is what a reader
 #                            needs to enumerate what went wrong without running it again
-addopts = "-m 'not integration' --junitxml=test-results/junit.xml --json-report --json-report-file=test-results/report.json"
+addopts = "-m 'not integration' --junitxml=test-results/junit.xml --json-report --json-report-file=test-results/report.json --timeout=300 --timeout-method=thread"
+
+# **NO TEST MAY RUN LONGER THAN FIVE MINUTES, AND ONE THAT DOES IS A NAMED FAILURE RATHER
+# THAN A HANG.**  The owner's budget, 2026-11-19: *"the test timeout should be 5 mins.
+# Everything above means that we do some unreasonable shit and have to re-think the
+# approach."*  It is a design constraint and not a safety net -- a test that needs longer is
+# measuring something it should not be measuring from where it stands.
+#
+# Measured cost of its absence, the day it was added:
+# ``tests/test_public_api.py::test_no_public_all_repeats_a_name`` read
+# ``adcp.types.__all__`` once per name and the facade rebuilt the list on every access, so
+# one node consumed 32 minutes of wall clock and 25 of CPU with its log frozen, and
+# ``make test`` could not produce a figure at all.  With this line it would have been one
+# red test in five minutes, naming itself.
+#
+# ``--timeout-method=thread`` and not the default signal method, for the reason
+# ``FINDINGS-runner.md`` §1.3 measures: the signal method arms a one-shot ``ITIMER_REAL``,
+# ``hypothesis``'s GC callback discards the exception it raises, and
+# ``codegen.harness.within`` clears ``ITIMER_REAL`` in its own ``finally`` -- so a signal
+# timeout is a coin flip here, and ``--timeout=1200`` demonstrably never fired on the run
+# that wedged ``tests_emit``.
 
 [tool.coverage.run]
 source = ["src/adcp"]
