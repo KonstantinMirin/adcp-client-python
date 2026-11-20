@@ -63,6 +63,30 @@ normalisation nobody can see is an equality nobody can check.
     $UP/bin/python   survey/structural_signature.py --dump $T/up.sig.json  --side upstream
     $OURS/bin/python survey/structural_signature.py --dump $T/our.sig.json --side ours
 
+**AND `$UP` NEEDS NO WHEEL AND NO SECOND VENV: UPSTREAM 9.6.1 IS IN THIS REPOSITORY.**
+`639134c75` took the socket from `upstream/main` at `4ed0bce87`, and that commit carries
+all 1,143 files of `src/adcp/types/` -- `_eager.py`, `_ergonomic.py`, `_forward_compat.py`
+and `_generated.py` included.  So the upstream side is two lines, on the project's own
+interpreter::
+
+    git archive 4ed0bce87 src/adcp | tar -x -C $SCRATCH
+    PYTHONPATH=$SCRATCH/src:. ./.venv/bin/python survey/structural_signature.py \
+        --dump $T/up.sig.json --side upstream --relax null-arm,const-default,inline-refs
+
+Measured 2026-11-20: **2.5 minutes, 57 MB, 12,344 declarations over 12,704 names, 4,788 of
+them deliberate.**  The "one interpreter per tree" rule above is unchanged and is the whole
+reason this is a PYTHONPATH prefix rather than an install -- both trees are called `adcp`,
+`PYTHONPATH` precedes the `.pth` entry in `site-packages`, and the two sides are two runs.
+
+**THE DUMP IS NOT COMMITTED, AND THAT IS THE STANDING RULING RATHER THAN A SIZE
+DECISION** (the owner, 2026-11-20).  `up.sig.json` is a function of pinned upstream 9.6.1
+alone, so committing it CACHES A DERIVATION, which is what "generate, don't derive" forbids;
+and the two lines above reproduce it in 2.5 minutes from a commit this repository already
+holds.  It is also not the case `tests/fixtures/public_api_snapshot.json` is: that file must
+stay a CHECK and never an input because it says which names existed, which is a fact nothing
+can re-derive.  This dump says neither which names should exist nor what they should mean --
+it is a mechanical signature of a pinned tree.
+
     # the join, on any interpreter: standard library only
     ./.venv/bin/python survey/structural_signature.py --join \
         --ours $T/our.sig.json --theirs $T/up.sig.json \
