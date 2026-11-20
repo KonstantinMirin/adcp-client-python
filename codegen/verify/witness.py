@@ -4349,17 +4349,49 @@ def _least_once(
         for one in joined
         if isinstance(one.get("enum"), list) and one["enum"]
     ]
+    #: **AND A MEMBER A CONJOINED ``not`` FORBIDS IS NOT AN ANSWER EITHER**
+    #: (``adcp-client-python-09ti``).  The intersection above answers from the ENUMS alone,
+    #: so a sibling ``not`` was never consulted and the first member went out even where
+    #: the node's own statement forbids exactly that one.
+    #:
+    #: Measured on ``core/agent-notification-config.json``, whose ``event_types/items`` is
+    #: ``allOf: [{$ref enums/notification-type.json}, {not: {enum: ["scheduled", "final",
+    #: "delayed", "adjusted", "window_update", "impairment"]}}]``.  The enum has 26 members
+    #: and the ``not`` forbids 6 -- **the first of them is ``"scheduled"``, which is also
+    #: the enum's first member**, so the construction offered the one value the pair of
+    #: statements exists to exclude while 20 admitted members went unoffered.  The screen
+    #: after the build then reported ``broke ['not']``, and three of the seven
+    #: ``fail:unproved_widening`` rows were that one site reached from three pairs.
+    #:
+    #: A value CHOICE inside the existing construction and no new keyword support: the
+    #: ``not`` is asked of each candidate in the document's own order, and the first member
+    #: every statement admits is the answer.
+    #:
+    #: **AND AN EXHAUSTED ENUM IS REPORTED, NEVER WIDENED.**  Where no member survives, the
+    #: conjunction admits no member at all and the reason says which half emptied it -- the
+    #: whole value of this column is that an obligation the construction cannot witness
+    #: stays ABSENT rather than becoming a pass
+    #: (``tests_emit/test_the_widening_column_errs_absent.py``).
+    refusals = [one["not"] for one in joined if isinstance(one.get("not"), Mapping)]
     for members in enums:
         for member in members:
-            if all(any(_equal(member, other) for other in rest) for rest in enums):
-                return Built(member, Source.CONSTRUCTED)
+            if not all(any(_equal(member, other) for other in rest) for rest in enums):
+                continue
+            if any(_refused_by(member, refusal, defs) for refusal in refusals):
+                continue
+            return Built(member, Source.CONSTRUCTED)
         #: An empty intersection is a fact about the DOCUMENT -- two enums sharing no
-        #: member admit nothing -- and is reported rather than answered with a member one
+        #: member admit nothing, and a ``not`` forbidding every member of one is the same
+        #: fact one keyword along -- and is reported rather than answered with a member one
         #: of them refuses.
         return Built(
             None,
             Source.APPROXIMATED,
-            "the enums this node conjoins share no member",
+            (
+                "the enums this node conjoins share no member a conjoined not admits"
+                if refusals
+                else "the enums this node conjoins share no member"
+            ),
         )
     for one in joined:
         ref = one.get("$ref")
@@ -4569,22 +4601,111 @@ def _least_once(
     if word == "array":
         least = _bound(joined, "minItems")
         count = int(least) if isinstance(least, (int, float)) else 0
-        if count == 0:
-            return Built([], Source.CONSTRUCTED)
         items = [one["items"] for one in joined if isinstance(one.get("items"), Mapping)]
+        #: **A ``contains`` DEMANDS AN ELEMENT ``minItems`` DOES NOT STATE**
+        #: (``adcp-client-python-09ti``).  The builder read the floor and the item schema
+        #: and stopped, so an array whose node also states ``contains`` was filled with the
+        #: item schema's own least element -- and ``contains`` is a statement about WHICH
+        #: element must be there, not how many.
+        #:
+        #: Measured on ``protocol/get-adcp-capabilities-response.json``'s ``media_buy``
+        #: conjunct: ``{if: {required: [proposal_refinement]}, then: {properties:
+        #: {lifecycle_tools: {contains: {const: "refine_proposals"}}}, required:
+        #: [lifecycle_tools]}}``.  With the declaration demanding ``proposal_refinement``
+        #: the ``if`` fires, :func:`least_instance` folds the ``then`` in -- and then built
+        #: ``{"lifecycle_tools": ["list_products"]}``, the item enum's first member, which
+        #: the folded ``contains`` refuses.  The screen reported ``broke ['contains']``, and
+        #: two of the seven ``fail:unproved_widening`` rows were this shape.
+        #:
+        #: The element is built from the ``contains`` schema CONJOINED with ``items``,
+        #: because every element of the array satisfies ``items`` whatever else demands it
+        #: -- the same reading the union arm takes for a branch and its siblings.  Placed
+        #: FIRST so the floor fills behind it: one element satisfies both keywords where
+        #: ``minItems`` is 1, which is the measured shape.
+        #: **SEVERAL ``contains`` DEMANDS ARE ONE ELEMENT WHERE THEY AGREE**, which is both
+        #: the frugal reading and the correct one: ``contains`` asks that SOME element
+        #: satisfy it, so one element satisfying every demand satisfies every keyword.
+        #: Tried first, and only a conjunction no element can satisfy falls back to one
+        #: element each -- without which two agreeing demands would claim two slots and a
+        #: node with ``maxItems: 1`` would be reported unwitnessable for a value it admits.
+        wants = [one["contains"] for one in joined if isinstance(one.get("contains"), Mapping)]
+        demanded: list[Any] = []
+        if wants:
+            together = least_instance([*wants, *items], seen, consumed, defs)
+            if together.held:
+                demanded = [together.value]
+            else:
+                for wanted in wants:
+                    inner = least_instance([wanted, *items], seen, consumed, defs)
+                    if not inner.held:
+                        return Built(
+                            None,
+                            Source.APPROXIMATED,
+                            f"the least instance needs the element contains demands: "
+                            f"{inner.reason}",
+                        )
+                    demanded.append(inner.value)
+        #: A ceiling below the number of elements the demands need is a fact about the
+        #: DOCUMENT and is reported: no array satisfies both, and inventing one that
+        #: overruns ``maxItems`` would be the widening this column exists to refuse.
+        ceiling = _bound(joined, "maxItems")
+        if isinstance(ceiling, (int, float)) and len(demanded) > int(ceiling):
+            return Built(
+                None,
+                Source.APPROXIMATED,
+                "the elements this node's contains keywords demand overrun maxItems",
+            )
+        if count == 0 and not demanded:
+            return Built([], Source.CONSTRUCTED)
         if not items:
-            return Built([None] * count, Source.CONSTRUCTED)
+            return Built([*demanded, *[None] * max(0, count - len(demanded))], Source.CONSTRUCTED)
+        if len(demanded) >= count:
+            return Built(list(demanded), Source.CONSTRUCTED)
         inner = least_instance(items, seen, consumed, defs)
         if not inner.held:
             return Built(
                 None, Source.APPROXIMATED, f"the least instance needs an element: {inner.reason}"
             )
-        return Built([inner.value] * count, Source.CONSTRUCTED)
+        return Built([*demanded, *[inner.value] * (count - len(demanded))], Source.CONSTRUCTED)
     if word == "string":
         return _string(joined)
     if word in ("integer", "number"):
         return _number(joined, whole=word == "integer")
     return Built(WORD_FLOOR.get(word), Source.CONSTRUCTED)
+
+
+def _refused_by(
+    member: Any, refusal: Mapping[str, Any], defs: Mapping[str, Any] = MappingProxyType({})
+) -> bool:
+    """Does a conjoined ``not: refusal`` forbid ``member``?
+
+    ``not S`` holds of a value exactly where ``S`` does NOT, so the question is asked of
+    ``S`` and the answer inverted -- which is draft-07's own reading and needs no keyword
+    support of this builder's.  Asked of ``jsonschema`` rather than of a spelling, because
+    a ``not`` is a whole schema: ``{"enum": [...]}`` is the measured shape and ``{"const":
+    x}``, a ``pattern`` or a ``type`` word are the same question.
+
+    **THE STORE TRAVELS, for the reason the union screen's does**: the subschema may hold a
+    ``$ref`` into the host's ``definitions``, and without a root carrying them the screen
+    raises ``PointerToNowhere`` instead of answering.  Wrapped in an ``allOf`` so the
+    subschema is left exactly as the document states it and only the resolution base is
+    added.
+
+    **A SCREEN THAT CANNOT ANSWER REFUSES THE MEMBER**, which is the direction this column
+    errs in: a candidate whose admissibility cannot be decided is not offered, so the worst
+    outcome is an enum reported as admitting nothing -- an obligation left ABSENT -- and
+    never a value the document refuses handed over as proof.
+    """
+    try:
+        return bool(
+            jsonschema.Draft7Validator(
+                {"allOf": [refusal], "definitions": dict(defs)} if defs else {"allOf": [refusal]}
+            ).is_valid(member)
+        )
+    except jsonschema.exceptions.SchemaError:
+        return True
+    except Exception:  # pragma: no cover -- an unresolvable reference inside the not
+        return True
 
 
 def _referenced(
