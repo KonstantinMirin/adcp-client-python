@@ -342,9 +342,9 @@
  },
  "provenance": {
   "bundle": "/srv/ws/.adcp-cache/patched-bundle/c8f516b74117815c0ccfbe4670d101c112b1fbc9a44e77d8a90450f98d527367",
-  "head": "83c7f9238+dirty",
+  "head": "33317f0bc",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 534.4,
- "seconds_per_pair": 0.208
+ "seconds": 593.3,
+ "seconds_per_pair": 0.231
 }
