@@ -27,7 +27,6 @@ COMPATIBILITY_TESTS = (
     "tests/test_lazy_types.py::test_import_adcp_types_does_not_build_schema_graph",
     "tests/test_lazy_types.py::test_schema_symbol_triggers_build",
     "tests/test_lazy_types.py::test_lazy_types_surface_matches_eager",
-    "tests/test_type_guards.py",
     "tests/test_type_aliases.py",
     "tests/test_version_helpers.py",
     "tests/test_validation_envelope.py",
