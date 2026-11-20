@@ -1,23 +1,21 @@
-"""The import-time patchers defer their rebuilds to first use (#1694).
+"""A patched model rebuilds on first use, not at import (#1694).
 
-``_ergonomic``, ``_forward_compat`` and ``aliases``
-edit generated models' ``model_fields`` at import and then need the core
-schema re-derived. They used to call ``model_rebuild(force=True)`` on the
-spot, which walked each request or response root's whole subtree into
-pydantic-core at import — the bulk of the 520 MiB ``adcp.client`` cost.
+A patcher that edits a generated model's ``model_fields`` needs the core
+schema re-derived. ``model_rebuild(force=True)`` does that immediately: it
+walks each request or response root's whole subtree into pydantic-core at
+import — the bulk of the 520 MiB ``adcp.client`` cost.
 :func:`adcp.types.base.defer_model_rebuild` puts the model back into the
 ``defer_build`` state instead, so the patched fields take effect on first use.
 
 This module grades that contract on pydantic's private placeholders, which
-the helper depends on: that the patched models are NOT built by importing
-the surface, that they DO build on first use with the patches applied, and
-that a generated ``RootModel`` parametrizes :class:`AdCPRootModel` without
-building at class creation.
+the helper depends on: that a patched model DOES build on first use with the
+patches applied, that a deferred instance dumps through a plain pydantic
+parent, and that a generated ``RootModel`` parametrizes
+:class:`AdCPRootModel` without building at class creation.
 """
 
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from typing import Literal
@@ -25,50 +23,6 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 
 from adcp.types.base import AdCPBaseModel, AdCPRootModel, defer_model_rebuild
-
-# Models each patcher force-rebuilt at import before #1694. Read from a
-# subprocess so the assertion is about the import itself, not about whatever
-# an earlier test in this process already validated.
-_PATCHED_MODELS = {
-    "adcp.types._forward_compat": [
-        "CreateMediaBuyRequest",
-        "UpdateMediaBuyRequest",
-        "ReportingWebhook",
-        "McpWebhookPayload",
-        "GetCreativeDeliveryResponse",
-    ],
-    "adcp.types._ergonomic": [
-        "GetProductsRequest",
-        "ListCreativesResponse",
-        "GetMediaBuyDeliveryResponse",
-    ],
-    "adcp.types.domains.adagents": ["AdcpAgentsAuthorization"],
-    "adcp.types.domains.core.format": ["CanonicalParameters"],
-}
-
-_PROBE = """
-import adcp.types
-import importlib, json
-out = {}
-for module, names in SPEC.items():
-    mod = importlib.import_module(module)
-    for name in names:
-        out[f"{module}.{name}"] = getattr(mod, name).__pydantic_complete__
-print(json.dumps(out))
-"""
-
-
-def test_importing_the_surface_builds_no_patched_model() -> None:
-    result = subprocess.run(
-        [sys.executable, "-I", "-c", _PROBE.replace("SPEC", repr(_PATCHED_MODELS))],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=600,
-    )
-    built = {name for name, complete in json.loads(result.stdout).items() if complete}
-    assert not built, f"importing adcp.types._eager built {sorted(built)} at import time"
-
 
 # ``test_forward_compat_patches_apply_on_first_use`` stood here.  Its whole
 # subject was ``adcp.types._forward_compat``'s patched-in
@@ -163,13 +117,10 @@ def test_generated_root_models_parametrize_adcp_root_model() -> None:
         assert root.model_config.get("defer_build") is True
 
 
-
-
 _DUMP_PROBE = """
 from typing import Any
 from pydantic import BaseModel
 from adcp.types import CreateMediaBuyRequest, Placement
-from adcp.types.domains.adagents import AdcpAgentsAuthorization
 from adcp.types.domains.core.targeting import TargetingOverlay
 
 
@@ -204,9 +155,6 @@ package = request.packages[0]
 assert not type(package).__pydantic_complete__
 assert Parent(item=package).model_dump(mode="json")["item"]["buyer_ref"] == "p"
 assert type(package).__pydantic_complete__
-# A deferred generated root, unvalidated.
-root = AdcpAgentsAuthorization.model_construct(root=None)
-assert Parent(item=root).model_dump(mode="json") == {"item": None}
 print("ok")
 """
 

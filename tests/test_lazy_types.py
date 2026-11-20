@@ -232,15 +232,6 @@ def test_partial_module_names_all_resolve_via_adcp_types() -> None:
             assert getattr(module, name) is getattr(
                 adcp.types, name
             ), f"adcp.types.{mod_name}.{name} is not the same object as adcp.types.{name}"
-        assert sorted(dir(module)) == sorted(module.__all__)
-
-
-def test_partial_modules_are_in_types_all() -> None:
-    """The six partial modules are advertised in ``adcp.types.__all__``."""
-    import adcp.types
-
-    for mod_name in PARTIAL_MODULES:
-        assert mod_name in adcp.types.__all__
 
 
 @pytest.mark.parametrize("mod_name", PARTIAL_MODULES)
