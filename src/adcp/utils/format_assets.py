@@ -31,9 +31,16 @@ class LegacyFormatAssetsInput(Protocol):
 
 
 class CanonicalFormatAssetsInput(Protocol):
-    """Canonical declaration view whose slots live under ``params``."""
+    """Canonical declaration view whose slots live under ``params``.
 
-    params: Mapping[str, Any]
+    ``params`` is an OBJECT the document states, not a mapping:
+    ``core/product-format-declaration.json`` requires ``['format_kind', 'params']`` and
+    each of its 16 branches ``$ref``s a params document -- ``formats/canonical/image.json``
+    for the image branch -- so a validated declaration carries a CLASS there and a raw
+    catalog dict carries a dict. Both are read, by :func:`_slots`.
+    """
+
+    params: Any
 
 
 FormatAssetsInput = LegacyFormatAssetsInput | CanonicalFormatAssetsInput
@@ -67,13 +74,12 @@ def get_format_assets(format: FormatAssetsInput | Mapping[str, Any]) -> list[For
     """
     if isinstance(format, Mapping):
         assets = format.get("assets")
-        if assets is None and isinstance(format.get("params"), Mapping):
-            assets = format["params"].get("slots")
+        if assets is None:
+            assets = _slots(format.get("params"))
     else:
         assets = getattr(format, "assets", None)
         if assets is None:
-            params = getattr(format, "params", None)
-            assets = params.get("slots") if isinstance(params, Mapping) else None
+            assets = _slots(getattr(format, "params", None))
     if assets:
         return list(assets)
 
@@ -241,11 +247,45 @@ def has_assets(format: FormatAssetsInput | Mapping[str, Any]) -> bool:
 # Internal helpers
 
 
+def _slots(params: Any) -> Sequence[Any] | None:
+    """``params.slots``, whether ``params`` is the document's OBJECT or a raw mapping.
+
+    **THE DECLARATION'S ``params`` IS A CLASS, AND READING IT AS A MAPPING ANSWERED
+    EMPTY.**  ``core/product-format-declaration.json`` requires ``['format_kind',
+    'params']`` and every one of its 16 branches ``$ref``s a params document, so a
+    validated declaration carries ``CanonicalFormatImage`` (or a sibling) there --
+    never a ``dict``.  The reader here tested ``isinstance(params, Mapping)`` and
+    dropped the slots for every canonical declaration in the tree, so
+    :func:`get_format_assets`, :func:`get_required_assets`, :func:`has_assets` and
+    :func:`get_asset_count` all returned "no assets" for a format that states six.
+    Silently: nothing raised and nothing said so.
+    """
+    if params is None:
+        return None
+    slots = params.get("slots") if isinstance(params, Mapping) else getattr(params, "slots", None)
+    return slots if isinstance(slots, Sequence) and not isinstance(slots, str | bytes) else None
+
+
 def _is_required(asset: FormatAsset) -> bool:
-    """Check if an asset is required."""
+    """Check if an asset is required.
+
+    Read off a mapping as well as off a model, because :func:`get_format_assets` accepts
+    a raw catalog dict and hands its slots back as dicts -- where ``getattr`` answered
+    ``False`` for a slot the document marks ``required: true``.
+    """
+    if isinstance(asset, Mapping):
+        return asset.get("required", False) is True
     return getattr(asset, "required", False) is True
 
 
 def _get_item_type(asset: FormatAsset) -> str:
-    """Get the item_type of an asset."""
-    return getattr(asset, "item_type", "individual")
+    """Get the item_type of an asset.
+
+    ``individual`` for a canonical SLOT, which states no ``item_type`` at all:
+    ``formats/canonical/_base.json#/properties/slots/items`` requires
+    ``['asset_group_id', 'asset_type']``, and ``item_type`` is ``core/format.json``'s v1
+    key. So a canonical slot is one asset, which is what the default already says.
+    """
+    if isinstance(asset, Mapping):
+        return str(asset.get("item_type", "individual"))
+    return str(getattr(asset, "item_type", "individual"))

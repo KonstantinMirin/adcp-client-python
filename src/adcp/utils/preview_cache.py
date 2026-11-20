@@ -8,6 +8,7 @@ import hashlib
 import json
 import logging
 from collections import OrderedDict
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, cast
 
@@ -517,6 +518,24 @@ async def add_preview_urls_to_products(
         return await asyncio.gather(*[process_product(product) for product in products])
 
 
+def _param(fmt: Any, name: str) -> Any:
+    """A params value of ``fmt``, whether ``params`` is the document's OBJECT or a mapping.
+
+    ``core/product-format-declaration.json`` requires ``['format_kind', 'params']`` and
+    each of its 16 branches ``$ref``s a params document, so a validated declaration's
+    ``params`` is a class -- ``formats/canonical/image.json`` -> ``CanonicalFormatImage``,
+    which states ``width`` and ``height`` as optional integers. Reading it as a mapping
+    raised ``'CanonicalFormatImage' object has no attribute 'get'`` at the first format an
+    adopter asked a preview for.
+    """
+    params = getattr(fmt, "params", None)
+    if params is None:
+        return None
+    if isinstance(params, Mapping):
+        return params.get(name)
+    return getattr(params, name, None)
+
+
 def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
     """
     Create a sample manifest for a format.
@@ -537,8 +556,8 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
 
     assets: dict[str, Any] = {}
     if not required_assets:
-        width = int(getattr(fmt, "params", {}).get("width", 300))
-        height = int(getattr(fmt, "params", {}).get("height", 250))
+        width = int(_param(fmt, "width") or 300)
+        height = int(_param(fmt, "height") or 250)
         assets = {
             "primary_asset": ImageContent(
                 url="https://example.com/sample-image.jpg",
@@ -561,10 +580,18 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
             item_type = getattr(asset, "item_type", "individual")
 
             if item_type == "individual":
-                asset_id = asset.asset_id
+                # **A CANONICAL SLOT IS KEYED BY ``asset_group_id`` AND STATES NO
+                # ``asset_id``.**  ``formats/canonical/_base.json#/properties/slots/items``
+                # requires ``['asset_group_id', 'asset_type']``; ``asset_id`` and
+                # ``item_type`` are ``core/format.json``'s v1 slot keys.  Both shapes reach
+                # here, so the key is whichever the slot's own document states.
+                asset_id = getattr(asset, "asset_id", None) or getattr(
+                    asset, "asset_group_id", None
+                )
                 has_value = hasattr(asset.asset_type, "value")
                 asset_type = asset.asset_type.value if has_value else str(asset.asset_type)
-                assets[asset_id] = _create_sample_asset(asset_type)
+                if asset_id:
+                    assets[asset_id] = _create_sample_asset(asset_type)
             elif item_type == "repeatable_group":
                 # For repeatable groups, create sample assets for each asset in the group
                 group_assets = getattr(asset, "assets", [])
@@ -585,19 +612,15 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
     if not assets:
         return None
 
-    if hasattr(fmt, "format_kind") and not hasattr(fmt, "format_id"):
-        option_id = getattr(fmt, "format_option_id", None)
-        option_ref = {"scope": "product", "format_option_id": option_id} if option_id else None
-        return CreativeManifest(
-            format_kind=fmt.format_kind,
-            format_option_ref=option_ref,
-            assets=assets,
-        )
-    # The aggregate legacy manifest schema inlines its own asset classes. A
-    # public standalone ImageAsset (etc.) is wire-compatible but is not the
-    # same Python class after 3.2 code generation, so cross the boundary via
-    # the JSON-shaped payload instead of asking Pydantic for class identity.
-    legacy_assets = {
+    # The aggregate legacy manifest schema inlines its own asset classes, and so does the
+    # canonical one: ``core/creative-manifest.json`` states the asset union at
+    # ``core/creative-asset.json`` and the branch is picked from the payload. A public
+    # standalone ImageAsset (etc.) is wire-compatible but is not the same Python class
+    # after 3.2 code generation, so cross the boundary via the JSON-shaped payload instead
+    # of asking Pydantic for class identity. Each asset carries its own ``asset_type``:
+    # the document pins it with ``const`` and the class defaults to it, which is what
+    # lets the union select the branch from the dump alone.
+    shaped = {
         asset_id: (
             asset.model_dump(mode="json", exclude_none=True)
             if hasattr(asset, "model_dump")
@@ -605,9 +628,14 @@ def _create_sample_manifest_for_format(fmt: Any) -> Any | None:
         )
         for asset_id, asset in assets.items()
     }
-    return LegacyCreativeManifest.model_validate(
-        {"format_id": fmt.format_id, "assets": legacy_assets}
-    )
+    if hasattr(fmt, "format_kind") and not hasattr(fmt, "format_id"):
+        option_id = getattr(fmt, "format_option_id", None)
+        option_ref = {"scope": "product", "format_option_id": option_id} if option_id else None
+        payload: dict[str, Any] = {"format_kind": fmt.format_kind, "assets": shaped}
+        if option_ref is not None:
+            payload["format_option_ref"] = option_ref
+        return CreativeManifest.model_validate(payload)
+    return LegacyCreativeManifest.model_validate({"format_id": fmt.format_id, "assets": shaped})
 
 
 def _create_sample_manifest_for_format_id(format_id: FormatId, product: Product) -> Any | None:
