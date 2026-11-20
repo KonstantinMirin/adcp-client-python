@@ -733,6 +733,38 @@ def their_document(module: str) -> str | None:
     return rest
 
 
+def items_pointer_names(pointer: str, word: str) -> bool:
+    """Does `pointer` end at the ELEMENT of a property `word` is that property's name for?
+
+    **THE DOCUMENT'S OWN PATH IS WHAT IS READ, and never either tree's naming convention.**
+    `pointer` comes from :meth:`Join.pointer_pool`, which maps our declaration to the
+    pointer in the document that reaches it; the comparison is against the last PROPERTY
+    SEGMENT of that pointer, which is a word the DOCUMENT states.  So this asks "is
+    upstream's word this document's name for the thing at this position", and the two
+    readings tried are the property as spelled and its singular, because a document says
+    `creatives` where upstream's generator says `Creative`.
+
+    Case is folded and `_` dropped on both sides for one reason only: a document states a
+    property in `snake_case` and every class name on both sides is `CamelCase`, so the two
+    spellings of ONE word of the document would otherwise never compare equal.  No other
+    transform is applied -- in particular no suffix stripping, which is the text rule this
+    instrument refuses (`Accreditation`/`AccreditationsItem` are matched by
+    :func:`shape`, not by their letters).
+
+    The singular reading is the only plural rule, and it is the trailing `s`: that is what
+    `#/properties/creatives/items` -> `Creative` is, and a document whose property is
+    irregular simply does not match, which leaves the row exactly as it was.
+    """
+    if not pointer.endswith("/items"):
+        return False
+    segments = pointer[: -len("/items")].rstrip("/").split("/")
+    if len(segments) < 2 or segments[-2] != "properties":
+        return False
+    stated = segments[-1].replace("_", "").lower()
+    asked = word.replace("_", "").lower()
+    return asked in (stated, stated[:-1] if stated.endswith("s") else stated)
+
+
 def consts(schema: str) -> dict[str, object]:
     """Every root property this schema pins a `const` on -- the discriminator and its kin.
 
@@ -1771,6 +1803,98 @@ class Join:
                 if len(hit) > 1:
                     row["pointer_refused"] = (
                         f"{len(hit)} pointers of the document carry that structure"
+                    )
+
+            # 11a: THE DOCUMENT'S OWN DISCRIMINATOR VALUES, which is the key the two above
+            # cannot be -- and the one the owner's ruling of 2026-11-20 names: **THE
+            # SIGNATURE IS A CONFIRMATION, NOT A KEY.**
+            #
+            # `document+pointer-identity` selects on signature equality and
+            # `document+pointer-structure` on `shape`, and for a UNION BRANCH both are
+            # exhausted while the document itself still says which branch is which.
+            # Measured on `adagents.json`: upstream's `AuthorizedAgents1` pins
+            # `{'authorization_type': 'property_ids'}`, our branch for that node is
+            # `…AuthorizedAgentsItemPropertyIds` and pins the same, and the two sides'
+            # signatures and structures agree on NEITHER -- 0 sig hits and 0 shape hits out
+            # of a 50-candidate pool, so the row read `DOCUMENT-NO-WORD-NO-IDENTITY` and the
+            # census recorded a live subject as having none.  §4 is what makes that reading
+            # backwards: it forbids MINTING a public name no document states, and says
+            # nothing about a word whose upstream CITATION is positional.
+            # `AuthorizedAgents1` is a fact about upstream's spelling; the subject is the
+            # document's.
+            #
+            # **THE SELECTOR IS THE DOCUMENT'S OWN VOCABULARY AND NOTHING ELSE**, which is
+            # the same standard :func:`shape` is held to.  :func:`consts` is every root
+            # property the schema pins a `const` on -- the discriminator and its kin -- so
+            # the comparison is "both sides say this node is the one where
+            # `authorization_type` is `property_ids`".  Not one letter of either side's
+            # SPELLING is read, which is what separates this from the text rules this
+            # instrument has already refused (de-pluralising a name, matching on a suffix).
+            #
+            # **AN EMPTY CONST SET IDENTIFIES NOTHING AND IS REFUSED OUTRIGHT**, for
+            # :func:`names_nothing`'s reason one level over: a union whose branches pin
+            # nothing has no discriminator, every branch of every union in the document
+            # would match, and "whichever came first" is not a subject.  Unique in the pool
+            # or the row is refused and says so.
+            if (
+                not row.get("pointer_refused")
+                and (want_consts := consts(their["schema"]))
+                and "pointer_refused" not in row
+            ):
+                mine = self.ours["declarations"]
+                hit = [k for k in pool if consts(mine[k]["schema"]) == want_consts]
+                if len(hit) == 1:
+                    return bind(
+                        "document+consts",
+                        hit[0],
+                        f"the document pins {want_consts} at {pool[hit[0]] or '#'} and "
+                        f"nowhere else in it",
+                    )
+                if len(hit) > 1:
+                    row["pointer_refused"] = (
+                        f"{len(hit)} pointers of the document pin {want_consts}"
+                    )
+
+            # 11b: THE `items` POINTER, for a word that is the document's own property name
+            # read singular (the owner's ruling of 2026-11-20, on the evidence for
+            # `SyncCreativeResult`, `SyncCatalogResult` and `SyncAudiencesAudience`).
+            #
+            # **ONE RULE AND NOT THREE COINCIDENCES.**  Upstream's generator names an inline
+            # node after the property that states it; §4 derives ours at the position, so an
+            # ARRAY's element gets the property's name plus `Item`.  So their `Creative` and
+            # our `CreativesItem` are both `#/properties/creatives/items`, their `Catalog`
+            # and our `CatalogsItem` are `#/properties/catalogs/items`, and their `Audience`
+            # and our `AudiencesItem` are `#/properties/audiences/items`.  Measured: 0 shape
+            # hits out of 16 candidates for the first, with `names_nothing` False -- the
+            # structure key is reaching and finding nothing equal, so the two emitters
+            # disagree about a keyword `shape` keeps at exactly these nodes.
+            #
+            # **THE KEY IS THE POINTER THIS POOL ALREADY CARRIES, which is why it is not a
+            # text rule about either tree.**  :meth:`pointer_pool` maps our declaration to
+            # the pointer in the document that reaches it, so the candidate is selected by
+            # the document's own path; what upstream's word is compared against is the last
+            # PROPERTY SEGMENT of that pointer, which is a word the DOCUMENT states.  Both
+            # the plural property and its singular element reading are tried, because the
+            # document says `creatives` and upstream says `Creative`.
+            #
+            # **AND IT IS REFUSING TO LOSE A BINDING RATHER THAN MINTING ONE**: the committed
+            # `aliases.py` binds exactly these three today, and `SyncCreativeResult` is the
+            # founding measurement of `test_public_words_resolve.py`'s
+            # `test_our_own_source_does_not_import_a_word_the_package_refuses`
+            # -- `ImportError: cannot import name 'SyncCreativeResult' from 'adcp.types'`,
+            # raised from a function-scope import in `src/adcp/server/_creative_batch.py`.
+            if not row.get("pointer_refused") and word:
+                hit = [k for k, p in pool.items() if items_pointer_names(p, word)]
+                if len(hit) == 1:
+                    return bind(
+                        "document+items-pointer",
+                        hit[0],
+                        f"the document states {word!r} at {pool[hit[0]]}, whose element our "
+                        "walk declares",
+                    )
+                if len(hit) > 1:
+                    row["pointer_refused"] = (
+                        f"{len(hit)} pointers of the document name {word!r} at an element"
                     )
 
         # 12: THE DOCUMENT'S CONSTRAINED-SCALAR POSITIONS, which the two keys above cannot
