@@ -2372,9 +2372,19 @@ def emit(
         walk already has a site for.
         """
         out: dict[str, Target | Refusal] = {}
+        # **THE FIRST-WINS RULE IS A `not in` AND NOT A `setdefault`, and the difference is
+        # whether the walk runs** (``adcp-client-python-lfir``, measured 2026-11-20).  Both
+        # de-duplications here were ``out.setdefault(uri, answer(document, edge))``, and
+        # Python evaluates an argument BEFORE the call -- so :func:`answer` ran for every
+        # ``(base, uri)`` pair and its result was then discarded at every pair but the
+        # first.  ``answer`` is not a lookup: it rebuilds :func:`at` and walks the target's
+        # branches, so the discarded calls are the expensive kind.  The rule the comment
+        # below states is unchanged -- first answer wins, absolute before local -- and it is
+        # now stated in the one form that does not pay for the answers it throws away.
         for base in sorted(composes.get(document, ())):
             for uri, edge in sorted(composes_sites.get(base, {}).items()):
-                out.setdefault(uri, answer(document, edge))
+                if uri not in out:
+                    out[uri] = answer(document, edge)
         # **A BASE's own LOCAL spelling, read from here as the fragment reference it is**
         # (:func:`based_edges`, ``adcp-client-python-97w``).  ``composes_sites`` excludes a
         # local edge by construction, and the composed node needs the answer: §5's
@@ -2384,7 +2394,8 @@ def emit(
         # belonging to THIS document.  Asked LAST, so a URI either the document or a
         # base's absolute text spells keeps the answer it already has.
         for uri, (edge, _node) in sorted(based_edges(document).items(), key=lambda kv: kv[0]):
-            out.setdefault(uri, answer(document, edge))
+            if uri not in out:
+                out[uri] = answer(document, edge)
         return out
 
     def based_edges(document: str) -> dict[str, tuple[bundle.Edge, dict]]:
