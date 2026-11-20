@@ -182,9 +182,11 @@ import functools
 import importlib
 import importlib.util
 import json
+import pkgutil
 import re
 import subprocess
 import sys
+import typing
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -704,6 +706,75 @@ def demand(c: dict) -> dict[tuple[str, str], list[str]]:
     for file, mod, name in c["resolving"]:
         if mod in adapters or (mod == "adcp.types" and flat is not None and name in flat.__all__):
             out[(mod, name)].append(file)
+    for pair in published():
+        out[pair].append(PUBLISHED)
+    return out
+
+
+#: The stand-in for a file name in :func:`demand`, for a pair that is on the population
+#: because WE PUBLISH IT rather than because one of upstream's files asks for it.  A row's
+#: `pairs` column is a count of askers and this is not one, so it is spelled rather than
+#: counted as a file.
+PUBLISHED = "<adcp.types.__all__>"
+
+
+def published() -> set[tuple[str, str]]:
+    """Every `(module, name)` pair THIS SURFACE PUBLISHES TODAY, read off the live tree.
+
+    **THE POPULATION IS THE PUBLISHED SET, AND DEMAND IS AN INPUT TO IT RATHER THAN ITS
+    DEFINITION** (the owner's ruling of 2026-11-20).  :func:`census` measures what upstream's
+    kept machinery IMPORTS, and that is the right question for "what does their code need".
+    It is the wrong question for "what do we publish", and keying the population on it alone
+    makes this instrument a **silent regression generator**: a published word whose last
+    importer is edited away leaves the demand, leaves the population, leaves the table, and
+    is then written out of the module that served it -- as a SIDE EFFECT of an edit to an
+    unrelated file.
+
+    **MEASURED, AND THAT IS WHAT SETTLED IT.**  Between the census the committed table was
+    taken from and 2026-11-20, 107 pairs left the demand and 0 arrived, and a regeneration on
+    the demand alone took ``adcp.types.__all__`` from **4,358 to 4,344**.  Of the fifteen
+    words that vanished, **every one resolved on the tree it was being deleted from** --
+    ``VerifyBrandClaimsPayload`` to ``brand.verify_brand_claims_response.Payload``,
+    ``PrimaryCountry`` to our ``core.CountryCode``, ``MediaBuyPackage`` to
+    ``get_media_buys_response.PackagesItem``, the ``VastAsset``/``DaastAsset`` four to their
+    url and inline branches.  Nine of them were in ``adcp.types.__all__`` as well.
+    Unpublishing a live, advertised, resolving word is not a measurement result.
+
+    **AND THIS DOES NOT MAKE THE SNAPSHOT AN INPUT, which is the distinction the ruling turns
+    on.**  What is read here is ``adcp.types.__all__`` and each owned module's own ``__all__``
+    -- the LIVE set, itself derived from the tree by ``codegen/facade.py`` and the writer
+    below.  ``tests/fixtures/public_api_snapshot.json`` is NOT read and stays a CHECK: the
+    live set says what we publish NOW and the snapshot says what we published BEFORE, and
+    only the second would be a derivation cached as an input.  Refreshing the snapshot to
+    match the tree destroys the one thing that can detect a vanish; reading the tree's own
+    advertisement cannot, because it is the tree.
+
+    A module is ours to re-demand iff it carries :data:`MARKER` or is the flat ``_adapter``,
+    which is :func:`demand`'s own ownership reading one clause up -- so nothing hand-written
+    and nothing another instrument decides (``compat``, by :data:`ALIAS_LAYERS`) enters here.
+    """
+    out: set[tuple[str, str]] = set()
+    # Walked and never listed, for the reason every name list in this file is derived: a
+    # module this writer starts owning joins the population with nothing edited here, and one
+    # it stops owning leaves.  `_adapter` is named because it is the FLAT layer -- it carries
+    # no marker, and the pairs it publishes are `adcp.types`'s rather than its own.
+    try:
+        root = importlib.import_module("adcp.types")
+    except BaseException:  # noqa: BLE001 -- no tree, nothing published
+        return out
+    found = ["adcp.types._adapter"]
+    for mod in pkgutil.walk_packages(root.__path__, prefix="adcp.types."):
+        if not mod.name.startswith(f"{OUR_GEN}.") and mod.name not in ALIAS_LAYERS:
+            found.append(mod.name)
+    for mod in found:
+        try:
+            held = importlib.import_module(mod)
+        except BaseException:  # noqa: BLE001 -- an absent or broken module publishes nothing
+            continue
+        if mod != "adcp.types._adapter" and getattr(held, MARKER, None) is None:
+            continue
+        at = "adcp.types" if mod == "adcp.types._adapter" else mod
+        out.update((at, word) for word in getattr(held, "__all__", ()))
     return out
 
 
@@ -1096,6 +1167,81 @@ class Join:
                 pool[root] = pointer or "#"
         self._pools[doc] = pool
         return pool
+
+    def a_discriminator_with_no_class(self, doc: str, pool: dict[str, str], hit: str) -> str:
+        """Why the consts key must refuse `hit`: its node states a DISCRIMINATOR and we emit
+        no class at it.
+
+        **THE CONDITION IS THE DOCUMENT'S AND NEEDS NOTHING FROM OUR TREE** (the owner's
+        re-ruling of 2026-11-20, in the form the fifth attempt identified).  The guard that
+        was asked for first -- "the candidate is a branch of a union the word denotes" --
+        cannot be evaluated at the nodes it has to cover: `AuthorizedAgents1`'s subject in
+        our tree is listed as a branch of NOTHING and no declaration of ours carries the
+        pointer `/oneOf/1/properties/authorized_agents/items`, because **the base class at
+        that node has not been emitted** (`adcp-client-python-lfir`, 25 such nodes).  So
+        there is no union of ours to compare against, and every candidate-side reading of
+        "is a branch" answers no.
+
+        What IS evaluable is the document: the node states
+        `discriminator propertyName=authorization_type` beside a six-branch `oneOf`, and our
+        walk emits no class there.  Where that holds, the only candidates the pool can offer
+        are the BRANCHES, the subject is the base we have not emitted, and a consts match
+        picks a branch for whatever word asked -- which is the retarget this refuses.
+
+        **DERIVED FROM THE BUNDLE AND NEVER FROM A LIST OF TODAY'S POINTERS**, which is the
+        reason the ruling gives and the same one `document+consts` itself turns on: a list
+        passes forever on a node nobody wrote down.  `survey/discriminated_without_base.py`
+        enumerates exactly this set and is the lane that owns it -- but it is a SCRIPT, not a
+        reader: it walks at module scope and prints, so importing it would run a survey.  The
+        eight lines below are its `walk` asked of one pointer instead of the whole bundle,
+        and the node set is the bundle's either way.
+
+        Returns the reason, or `""` where the guard does not hold.
+        """
+        if self.bundle_dir is None:
+            return ""
+        path = self.documents.get(doc)
+        pointer = pool.get(hit)
+        if path is None or not pointer:
+            return ""
+        from codegen import bundle as _bundle
+
+        document = _bundle.read(self.bundle_dir, path)
+        # The pool spells a pointer with its `#` root, which is not a step.
+        at = [k for k in pointer.lstrip("#").split("/") if k]
+        emitted = {p for p in pool.values() if p}
+        # Every ancestor of the candidate's own pointer, longest first: the discriminator
+        # sits at the COMBINATOR's node and the candidate at one of its branches.
+        for depth in range(len(at) - 1, 0, -1):
+            here, node = "/" + "/".join(at[:depth]), document
+            for step in at[:depth]:
+                # A JSON pointer steps into a LIST as readily as into an object -- the
+                # branches of a `oneOf` are indexed -- and walking only dicts was the sixth
+                # attempt's bug: `/oneOf/1/...` stopped at `1` and every ancestor was skipped.
+                if isinstance(node, dict):
+                    node = node.get(step)
+                elif isinstance(node, list) and step.isdigit() and int(step) < len(node):
+                    node = node[int(step)]
+                else:
+                    node = None
+                if node is None:
+                    break
+            if not isinstance(node, dict):
+                continue
+            branches = node.get("oneOf") or node.get("anyOf")
+            if not (isinstance(node.get("discriminator"), dict) and branches):
+                continue
+            if here in emitted:
+                return ""
+            key = node["discriminator"].get("propertyName")
+            return (
+                f"{doc}{here} states discriminator propertyName={key!r} beside a "
+                f"{len(branches)}-branch combinator and our "
+                f"walk emits no class at it, so the only candidates there are its branches "
+                f"and the subject is the base (adcp-client-python-lfir); a consts match on a "
+                f"branch is a retarget of the word that denotes the node"
+            )
+        return ""
 
     def scalar_pool(self, doc: str) -> dict[str, tuple[tuple[tuple[str, object], ...], str]]:
         """**EVERY CONSTRAINED-SCALAR POSITION THE DOCUMENT STATES, AND WHAT WE LOWERED IT TO.**
@@ -1493,13 +1639,50 @@ class Join:
     def resolve(self, mod: str, name: str, _stated: bool = True) -> dict:
         row = self._by_dump(mod, name)
         if row.get("verdict") == "BOUND" or not _stated or self.aliases is None:
-            return row
+            return self.keep_a_live_binding(mod, name, row)
         better = self.stated(mod, name)
         if better is None:
-            return row
+            return self.keep_a_live_binding(mod, name, row)
         if better.get("verdict") == "BOUND":
             return better
-        return {**row, **better}
+        return self.keep_a_live_binding(mod, name, {**row, **better})
+
+    def keep_a_live_binding(self, mod: str, name: str, row: dict) -> dict:
+        """`row`, unless it refuses a word THE TREE BINDS -- then the third verdict.
+
+        **AT THE ONE EXIT AND NEVER PER VERDICT, which is the correction that made it
+        right.**  Placed at the bottom of the key ladder first, this clause reached only the
+        words that fall all the way through, and measured it left three --
+        `LegacyProductFormatDeclaration`, `MediaBuyPackage` and `Refine` -- still vanishing
+        from ``adcp.types.__all__``, because `UPSTREAM-AMBIGUOUS` is decided EARLY and
+        returns before the ladder ends.  The ruling is not about where a verdict is reached;
+        it is that **a live binding is never traded for a verdict**, and the only place that
+        holds for every verdict there is and every verdict added later is the single exit.
+
+        :meth:`publishes` is the test and it reads the tree, so the three shapes it answers
+        for are the three a statement can be written from: one class or function, a UNION of
+        them (decomposed through ``get_args``, which is what the writer's own union branch
+        emits), and nothing.  A word bound to a module, to a value, or to nothing at all is
+        left refused, because there is no import statement to keep.
+        """
+        if row.get("verdict") == "BOUND":
+            return row
+        held = self.publishes(mod, name)
+        if not held:
+            return row
+        return {
+            **row,
+            "verdict": "BOUND-WITHOUT-A-KEY",
+            "how": "",
+            "identity": "no key",
+            "target": held,
+            "public": [list(k.rsplit(".", 1)) for k in held],
+            "note": (
+                f"no key of this instrument reaches it and the tree binds it to "
+                f"{' | '.join(held)} today, so the binding is kept and the gap is this row; "
+                f"the verdict a key would have recorded is {row.get('verdict')}"
+            ),
+        }
 
     def _by_dump(self, mod: str, name: str) -> dict:
         row: dict = {"module": mod, "name": name}
@@ -1836,6 +2019,51 @@ class Join:
             # nothing has no discriminator, every branch of every union in the document
             # would match, and "whichever came first" is not a subject.  Unique in the pool
             # or the row is refused and says so.
+            # **AND NEVER FOR THE BARE STEM OF A NUMBERED FAMILY, which is the guard the
+            # accountability gate taught this key.**  Without it, upstream's bare
+            # `AuthorizedAgents` -- whose dumped schema is its first branch's -- bound to
+            # `…AuthorizedAgentsItemPropertyIds`, so a word denoting the UNION got one
+            # specific branch, and `tests/fixtures/public_api_declarations.json` already
+            # declares that word `lowered-not-a-subject` on §4's ruling: "an anonymous object
+            # or enum under a property is not a subject".  The declaration was right and the
+            # key was re-minting the word it declines.
+            #
+            # The owner's ruling is about a POSITIONAL CITATION -- `AuthorizedAgents1` -- and
+            # the bare stem is not one.  So the question asked here is upstream's own: did
+            # THEIR generator number this word's siblings in this document?  If `<word>1`
+            # exists there, `<word>` is that family's root and a branch is the one thing it
+            # cannot be.  Read off `their_word`, which is the same family reading
+            # :meth:`ordinal` already makes, and not off our tree.
+            # Keyed on the word WE PUBLISH (`name`) and not on the declaration the dump
+            # resolved to: the flat row for `AuthorizedAgents` resolves to upstream's
+            # `AuthorizedAgents1` declaration, so a guard on the resolved word sees a digit
+            # and lets the stem through -- which is exactly the row that got it wrong.
+            # **AND IT MUST NOT BIND A WORD TO A BRANCH OF THE UNION THAT WORD DENOTES**
+            # (the owner's ruling of 2026-11-20).  That substitution is a RETARGET, and a
+            # retarget outranks the binding being found at all: a word naming the union and
+            # then naming one of its branches is the worst available outcome, which is the
+            # rule `Format`/`LegacyFormat` exists to serve.
+            #
+            # **MEASURED, and the mechanism is upstream of this key.**  Upstream's bare
+            # `AuthorizedAgents` resolves through the `upstream-source` path to THEIR
+            # `AuthorizedAgents1` declaration, whose `consts` are branch 1's -- so this key
+            # read branch 1's pins as the word's own and bound `AuthorizedAgents` to
+            # `…AuthorizedAgentsItemPropertyIds`, one of the six branches it denotes.
+            #
+            # **THE GUARD IS ON THE CANDIDATE AND NOT ON THE WORD**, which is what three
+            # attempts on the word got wrong: `name` carries no digit and the resolved `word`
+            # does, the `upstream-source` path rebinds both before this key sees them, and the
+            # six legitimate `AuthorizedAgentsBy*` branches arrive by the same route -- so
+            # every reading of the two spellings either missed the stem or took the six with
+            # it.  Asked of the candidate, both halves are facts and neither is a spelling:
+            # the hit IS a branch of a union root this document states (our own
+            # `branches` record), and the resolution IS the stem-to-numbered redirect
+            # (`word` is `name` plus digits).  Together that is "the word denotes the union
+            # and the candidate is one of its branches", and nothing else matches it.
+            #
+            # **REFUSED AND NEVER FALLEN THROUGH**, which the ruling says in as many words: a
+            # wrong binding found by a later key is the same defect wearing a different
+            # label, so `pointer_refused` is set and the keys below decline too.
             if (
                 not row.get("pointer_refused")
                 and (want_consts := consts(their["schema"]))
@@ -1843,7 +2071,30 @@ class Join:
             ):
                 mine = self.ours["declarations"]
                 hit = [k for k in pool if consts(mine[k]["schema"]) == want_consts]
-                if len(hit) == 1:
+                waiting = self.a_discriminator_with_no_class(doc, pool, hit[0]) if hit else ""
+                if len(hit) == 1 and waiting:
+                    # **A BRANCH IS NOT WHAT A CONSTS MATCH ESTABLISHES** (the owner's
+                    # ruling of 2026-11-20).  A branch's `consts` ARE the discriminator's
+                    # value, so matching on them picks a branch for every word of the
+                    # family -- and where the document states a discriminated `oneOf` and
+                    # our walk emits no class AT the node, the branches are the only
+                    # candidates in the pool, so the key reaches for one of them however
+                    # the word is spelled.  Measured on
+                    # `adagents.json#/oneOf/1/properties/authorized_agents/items`, which
+                    # `survey/discriminated_without_base.py` reports as one of
+                    # `adcp-client-python-lfir`'s 25 nodes stating a discriminator with no
+                    # class at it: upstream publishes ONE declaration there under three
+                    # words -- `AuthorizedAgents`, `AuthorizedAgents1` and
+                    # `AuthorizedAgentsByPropertyId` -- so nothing on the row tells the
+                    # union's word from a branch's, and a guard on the SPELLINGS cannot
+                    # exist.  Refusing the candidate can, and it is the right scope: the
+                    # word whose subject is the missing BASE gets no binding, and a word
+                    # the tree already binds keeps it through `BOUND-WITHOUT-A-KEY`.
+                    #
+                    # REFUSED and never fallen through, because a wrong binding found by a
+                    # later key is the same defect wearing a different label.
+                    row["pointer_refused"] = waiting
+                elif len(hit) == 1:
                     return bind(
                         "document+consts",
                         hit[0],
@@ -1964,6 +2215,41 @@ class Join:
         else:
             row["verdict"] = "NO-DOCUMENT-NO-SUBJECT"
         return row
+
+    def publishes(self, mod: str, name: str) -> list[str]:
+        """Where the LIVE tree binds `mod.name`, as the declaring paths a statement needs.
+
+        Read through ``getattr`` on the module rather than off a table, because the question
+        is what a consumer writing that import gets TODAY -- and returned as
+        ``<module>.<qualname>`` of each object, which is the DEFINING site and not the path
+        the import went through, so what gets written imports the subject rather than
+        another re-export of it.
+
+        **A UNION IS DECOMPOSED AND NOT REFUSED**, which is the shape four of these take:
+        ``Refine`` is three branches of ``media_buy/get-products-request.json`` joined with
+        ``|``, so ``get_args`` is what names them, and the writer's own union branch emits
+        exactly that form.  Measured: without this clause ``Refine``,
+        ``PrincipalReadResult`` and ``PrincipalSyncResult`` kept vanishing while their
+        branches were all right there.
+
+        Empty for anything no `from X import Y` can be written from -- a module object, a
+        value, a name the module does not bind, or a union with a member from outside
+        ``adcp``.  Those are left to their refusal, which is honest: there is no binding to
+        keep.
+        """
+        try:
+            held = getattr(importlib.import_module(mod), name)
+        except BaseException:  # noqa: BLE001 -- an unbound name publishes nothing
+            return []
+        members = list(typing.get_args(held)) or [held]
+        out: list[str] = []
+        for member in members:
+            where = getattr(member, "__module__", None)
+            word = getattr(member, "__qualname__", None)
+            if not where or not word or not where.startswith("adcp.") or "." in word:
+                return []
+            out.append(f"{where}.{word}")
+        return out
 
 
 # --------------------------------------------------------------------------- the modules
@@ -2238,7 +2524,10 @@ def write_modules(
         names: list[str] = []
         refused: dict[str, str] = {}
         for row in sorted(group, key=lambda r: r["name"]):
-            if row["verdict"] != "BOUND":
+            # `BOUND-WITHOUT-A-KEY` writes its statement exactly as `BOUND` does: the ruling
+            # is that a live binding is kept, so the only difference between the two is which
+            # column a reader learns the gap from.
+            if row["verdict"] not in ("BOUND", "BOUND-WITHOUT-A-KEY"):
                 # **THE REASON IS THE RICHEST ONE THE ROW HOLDS, not the verdict alone.**
                 # A verdict names the CLASS of refusal; the sentences below name THIS name's
                 # own obstruction, and the obstruction is what a caller reading an
