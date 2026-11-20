@@ -16,7 +16,7 @@ from adcp.types.domains.trusted_match.publisher_tmpx_config import (
 
 
 def test_provider_registration_requires_identity_dimensions_when_identity_match_enabled():
-    with pytest.raises(ValidationError, match="countries is required"):
+    with pytest.raises(ValidationError) as refused:
         TypeAdapter(TmpProviderRegistration).validate_python(
             {
                 "provider_id": "provider_1",
@@ -24,6 +24,13 @@ def test_provider_registration_requires_identity_dimensions_when_identity_match_
                 "identity_match": True,
             }
         )
+    # `trusted-match/provider-registration.json`'s `then` requires BOTH, and the refusal is
+    # read off the fields and the type rather than off the sentence: no document states an
+    # error message, and the one pinned here was upstream's hand-written validator's.
+    assert {(error["loc"], error["type"]) for error in refused.value.errors()} == {
+        (("countries",), "required"),
+        (("uid_types",), "required"),
+    }
 
 
 def test_provider_registration_admits_an_http_endpoint_the_prose_warns_about():

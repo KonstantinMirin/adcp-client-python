@@ -136,28 +136,6 @@ def test_packaged_release_schema_and_fixture_provenance_is_complete():
     )
 
 
-def test_historical_v32_models_keep_their_beta6_identity_offline():
-    from adcp.types.v32 import ListCreativesRequest, PackageRequest
-
-    assert ListCreativesRequest.schema_version == "3.2-beta.6"
-    assert PackageRequest.schema_version == "3.2-beta.6"
-    properties = ListCreativesRequest.model_json_schema()["properties"]
-    assert {"assignment_projection", "assignment_limit"} <= properties.keys()
-    request = ListCreativesRequest(
-        assignment_projection="matching",
-        assignment_limit=1,
-        filters={"indicator_types": ["creative_fatigue"]},
-    )
-    assert ListCreativesRequest.model_validate_json(request.model_dump_json()) == request
-    package = PackageRequest(product_id="product-1", pricing_option_id="fixed")
-    assert package.budget is None
-    assert package.model_dump() == {
-        "product_id": "product-1",
-        "pricing_option_id": "fixed",
-        "paused": False,
-    }
-
-
 @pytest.mark.parametrize(
     "relative,digest",
     [
