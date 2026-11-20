@@ -49,7 +49,16 @@ def _looks_like_variant_name(segment: Any) -> bool:
         return False
     # Class names start with an uppercase letter and contain only
     # alphanumerics. Reject ``snake_case`` field names.
-    return segment[0].isupper() and segment.replace("_", "").isalnum() and "_" not in segment
+    if segment[0].isupper() and segment.replace("_", "").isalnum() and "_" not in segment:
+        return True
+    # **AND A BRANCH THIS COMPILER EMITS IS SPELLED BY ITS CORE-SCHEMA KIND, NOT BY A CLASS
+    # NAME.**  A union reached through ``BranchDispatchMixin`` puts no class name in the loc
+    # at all: pydantic spells the branch ``function-wrap[<lambda>()]`` and an array branch
+    # ``list[function-wrap[<lambda>()]]``, each in the position a class name occupies.
+    # Without this the narrowing is a NO-OP on every union of the emitted tree -- measured
+    # on ``core/creative-manifest.json``'s ``assets`` node, where all three errors passed
+    # through untouched and the array branch's reached the adopter.
+    return "[" in segment and segment.endswith("]")
 
 
 def _split_at_variant(
@@ -241,6 +250,43 @@ _DISCRIMINATOR_MISMATCH_TYPES = frozenset(
     {"literal_error", "union_tag_not_found", "union_tag_invalid"}
 )
 
+#: Pydantic-2 error types that say "the input is not of this branch's KIND", which is the
+#: structural twin of a discriminator miss and is read ONLY where the error lands on the
+#: branch itself.  ``core/creative-manifest.json`` states ``assets.<role>`` as one asset OR
+#: an array of them, so a dict payload fails the array branch with ``list_type`` AT that
+#: branch while the branch that did match fails on the field the adopter forgot -- and the
+#: document's own refusal separates the two the same way ("is not valid under any of the
+#: given schemas" / "is not of type 'array'").
+#:
+#: **AT THE BRANCH AND NEVER AT A FIELD UNDER IT**, which is the whole of why this is safe:
+#: a matched branch whose ``width`` is a string also carries ``int_type``, and a rule
+#: reading that would disqualify the one branch the adopter meant.
+_KIND_MISMATCH_TYPES = frozenset(
+    {
+        "list_type",
+        "dict_type",
+        "model_type",
+        "model_attributes_type",
+        "string_type",
+        "int_type",
+        "float_type",
+        "bool_type",
+        "tuple_type",
+        "set_type",
+    }
+)
+
+
+def _is_kind_mismatch(variant: str, err: Any) -> bool:
+    """Did ``variant`` itself reject the input's kind, rather than a field under it?
+
+    The loc ENDING at the branch is what says "itself": an error one segment deeper is
+    about a property of a branch that did match.  :data:`_KIND_MISMATCH_TYPES` carries the
+    reading.
+    """
+    loc = tuple(err.get("loc", ()))
+    return bool(loc) and loc[-1] == variant and err.get("type") in _KIND_MISMATCH_TYPES
+
 
 def _pick_winning_variant(
     per_variant: dict[str, list[Any]],
@@ -274,6 +320,7 @@ def _pick_winning_variant(
         variant: errs
         for variant, errs in per_variant.items()
         if not any(e.get("type") in _DISCRIMINATOR_MISMATCH_TYPES for e in errs)
+        and not any(_is_kind_mismatch(variant, e) for e in errs)
     }
 
     if matched:
