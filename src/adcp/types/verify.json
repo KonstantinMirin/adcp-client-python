@@ -1,12 +1,11 @@
 {
  "causes": {
-  "fail:accepts:witness_refused": 1,
   "fail:admits:model_refused_admitted": 8,
   "fail:undeclared:widened_undeclared": 6,
   "fail:widening:unproved_widening": 7
  },
- "graded": 2570,
- "not_pass": 22,
+ "graded": 2569,
+ "not_pass": 21,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -123,19 +122,6 @@
    "refuses": "refuses=pass",
    "undeclared": "undeclared=fail:widened_undeclared",
    "verdict": "verdict=fail:undeclared:widened_undeclared",
-   "widening": "widening=absent:no_declarations"
-  },
-  {
-   "accepts": "accepts=fail:witness_refused",
-   "admits": "admits=absent:no_witness",
-   "class": "CreativeRepresentationFormatId",
-   "document": "core/creative-representation.json",
-   "dump": "dump=absent:no_instance_reached_the_dump",
-   "note": "the node refuses the value its own keywords construct, on not; refused {\"assets\": {}, \"representation_id\": \"a\", \"source\": {\"system\": \"a\", \"source_representation\": \"a\"}, \"format_kind\": \"image\", \"format_id\": {\"agent_url\": \"https://example.com\", \"id\": \"a\"}} at allOf/1/not, allOf/5/not; screened against the distributed node; the document admits none of the 425 classes the construction builds over this",
-   "pointer": "#/allOf/0",
-   "refuses": "refuses=absent:no_payload",
-   "undeclared": "undeclared=absent:unrun",
-   "verdict": "verdict=fail:accepts:witness_refused",
    "widening": "widening=absent:no_declarations"
   },
   {
@@ -299,40 +285,40 @@
  "per_check": {
   "accepts": {
    "absent": 0,
-   "fail": 1,
+   "fail": 0,
    "pass": 2569
   },
   "admits": {
-   "absent": 17,
+   "absent": 16,
    "fail": 8,
    "pass": 2545
   },
   "dump": {
-   "absent": 1,
+   "absent": 0,
    "fail": 0,
    "pass": 2569
   },
   "refuses": {
-   "absent": 7,
+   "absent": 0,
    "fail": 0,
-   "pass": 2563
+   "pass": 2565
   },
   "undeclared": {
-   "absent": 102,
+   "absent": 101,
    "fail": 6,
    "pass": 2462
   },
   "widening": {
-   "absent": 2385,
+   "absent": 2384,
    "fail": 7,
    "pass": 178
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/3e37d3c64ee5218abd2bded2ea047f5a41109b6bbcc98ad703b88f6103b1d9fa",
-  "head": "e00437663+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/3e10ba555894e8a2fc32c2932f3479c945ba6252112cb88f7f218eca69dca269",
+  "head": "6dd46870e+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 736.3,
- "seconds_per_pair": 0.2865
+ "seconds": 527.0,
+ "seconds_per_pair": 0.2051
 }

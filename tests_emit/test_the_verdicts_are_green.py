@@ -58,8 +58,8 @@ def _report() -> dict:
 INPUTS = ("src/adcp/types/_schemas", "src/adcp/types/constraints.py", "codegen")
 
 
-def _graded_at() -> str:
-    """The last commit that changed anything the grade reads.
+def _changed_inputs_since(recorded: str) -> list[str]:
+    """Every commit after ``recorded`` that touched an input the grade reads.
 
     **``HEAD`` IS THE WRONG COMPARISON, and it is wrong in a way no artifact can ever
     satisfy.**  ``verify.json`` records the tree it graded, so an artifact graded at commit
@@ -72,21 +72,41 @@ def _graded_at() -> str:
     What the clause is actually for is "does this artifact describe the tree in front of
     me" -- and the tree in front of me is the EMITTED tree and the COMPILER, not the
     repository.  A commit that edits a document, a bead or this test changes no input the
-    grade reads and must not invalidate it.  So the comparison is the last commit that
-    touched :data:`INPUTS`, which is a fact about the graded subject rather than about the
-    history around it.
+    grade reads and must not invalidate it.  So the subject is :data:`INPUTS`, which is a
+    fact about the graded tree rather than about the history around it.
 
-    Still strict in the direction that matters: regenerate the tree or change the harness,
-    and the next commit moves this answer, so a stale artifact is caught at the first
-    commit that could have changed its verdicts.
+    **AND "THE LAST COMMIT THAT TOUCHED INPUTS" WAS STILL THE WRONG QUESTION, because it
+    is not the commit that CONTAINS the change.**  ``git log -1 -- <paths>`` names the
+    commit that edited the path, and under a ``--no-ff`` merge that is the branch commit,
+    never the merge.  Measured on 2026-11-20: a grade taken at the merge ``6dd46870e`` --
+    the freshest possible, nothing between it and the working tree -- compared itself
+    against ``799fcb348``, the lane commit the merge brought in, and reported itself stale.
+    That is the same defect this docstring already describes, reintroduced one level up by
+    merging rather than fast-forwarding, and no re-run can clear it: ``./verify`` records
+    the merge every time and the comparison names the parent every time.
+
+    So the question is asked as a RANGE and not as an equality: is there any commit after
+    the one the artifact names that touched an input?  Empty means current, whatever the
+    shape of the history in between -- merge, fast-forward or rebase -- and a non-empty
+    answer NAMES what changed, which is the thing a reader needs in order to know whether
+    to re-grade or to look closer.
+
+    Still strict in the direction that matters, and strictly more so than the equality was:
+    regenerate the tree or change the harness and the next commit appears in this range, so
+    a stale artifact is caught at the first commit that could have changed its verdicts.
     """
     done = subprocess.run(
-        ["git", "-C", str(ROOT), "log", "-1", "--format=%h", "--", *INPUTS],
+        ["git", "-C", str(ROOT), "rev-list", f"{recorded}..HEAD", "--", *INPUTS],
         capture_output=True,
         text=True,
         check=False,
     )
-    return done.stdout.strip()
+    if done.returncode != 0:
+        pytest.fail(
+            f"verify.json names head {recorded!r}, which this repository cannot resolve: "
+            f"{done.stderr.strip()} -- the artifact was graded in another checkout"
+        )
+    return done.stdout.split()
 
 
 def _rows() -> list[dict]:
@@ -99,14 +119,15 @@ def test_the_artifact_graded_this_tree() -> None:
     The reason this clause exists at all: the committed ``verdicts.tsv`` was two days and
     twenty commits old and was being quoted as the current state, because nothing compared
     its provenance to the tree it sat in.  A ``+dirty`` head is accepted -- a lane with
-    uncommitted work has graded its own tree, which is the point -- but a head that names a
-    DIFFERENT commit is a stale artifact and says so.
+    uncommitted work has graded its own tree, which is the point -- but a commit touching
+    an input AFTER the one the artifact names is a stale artifact and says so.
     """
     recorded = (_report().get("provenance") or {}).get("head", "")
     assert recorded, "verify.json records no head; the artifact cannot be dated"
-    assert recorded.split("+")[0] == _graded_at(), (
-        f"verify.json graded {recorded}, and the graded inputs last changed at "
-        f"{_graded_at()} -- "
+    since = _changed_inputs_since(recorded.split("+")[0])
+    assert not since, (
+        f"verify.json graded {recorded}, and {len(since)} commit(s) have touched "
+        f"{', '.join(INPUTS)} since -- {' '.join(c[:9] for c in since[:5])} -- "
         "the artifact is stale, run ./verify"
     )
 
