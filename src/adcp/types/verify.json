@@ -1,11 +1,11 @@
 {
  "causes": {
-  "fail:admits:model_refused_admitted": 8,
-  "fail:undeclared:widened_undeclared": 6,
+  "fail:admits:model_refused_admitted": 6,
+  "fail:undeclared:widened_undeclared": 10,
   "fail:widening:unproved_widening": 7
  },
  "graded": 2569,
- "not_pass": 21,
+ "not_pass": 23,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -126,6 +126,19 @@
   },
   {
    "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "SignalForecastDimension",
+   "document": "core/forecast-dimension-signal.json",
+   "dump": "dump=pass",
+   "note": "undeclared widening on properties: the class admitted {\"kind\": \"signal\", \"presence\": \"present\", \"signal_ref\": {\"scope\": \"product\", \"signal_id\": \"a\"}, \"signal_value\": null} which the document refuses on type",
+   "pointer": "#",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
+   "widening": "widening=pass"
+  },
+  {
+   "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
    "class": "Annotated",
    "document": "core/localized-creative-asset.json",
@@ -178,28 +191,41 @@
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=fail:model_refused_admitted",
-   "class": "ControlMediaBuyRequest",
-   "document": "media-buy/control-media-buy-request.json",
+   "admits": "admits=pass",
+   "class": "FailedLookup",
+   "document": "media-buy/get-reporting-status-response.json",
    "dump": "dump=pass",
-   "note": "the class is NARROWER than its document: it refused 7 of 870 values the document admits, on anyOf at ('packages', 0) (and on url_parsing at ('packages', 0, 'targeting_overlay', 'collection_list', 'agent_url'), url_parsing at ('packages', 0, 'targeting_overlay', 'collection_list_exclude', 'agent_url'), url_parsing at ('packages', 0, 'targeting_overlay', 'property_list', 'agent_url'), url_parsing at",
-   "pointer": "#",
+   "note": "undeclared widening on properties: the class admitted {\"data_through\": null, \"errors\": [{\"code\": \"NOT_FOUND\", \"message\": \"Reporting status resource is unavailable.\"}], \"failure_kind\": \"lookup_unavailable\", \"status\": \"failed\", \"view\": \"summary\"} which the document refuses on additionalProperties, const, oneOf; the instance is outside the region {\"properties\": {\"health\": {\"const\": \"complete\"}}, \"req",
+   "pointer": "#/oneOf/1",
    "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:admits:model_refused_admitted",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
    "widening": "widening=absent:no_declarations"
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=fail:model_refused_admitted",
-   "class": "PackageControl",
-   "document": "media-buy/package-control.json",
+   "admits": "admits=pass",
+   "class": "UnavailableLookup",
+   "document": "media-buy/get-reporting-status-response.json",
    "dump": "dump=pass",
-   "note": "the class is NARROWER than its document: it refused 5 of 744 values the document admits, on anyOf at () (and on url_parsing at ('targeting_overlay', 'collection_list', 'agent_url'), url_parsing at ('targeting_overlay', 'collection_list_exclude', 'agent_url'), url_parsing at ('targeting_overlay', 'property_list', 'agent_url'), url_parsing at ('targeting_overlay', 'property_list_exclude', 'agent_url",
-   "pointer": "#",
+   "note": "undeclared widening on properties: the class admitted {\"data_through\": null, \"errors\": [{\"code\": \"NOT_FOUND\", \"message\": \"Reporting status resource is unavailable.\"}], \"failure_kind\": \"lookup_unavailable\", \"status\": \"failed\", \"view\": \"summary\"} which the document refuses on additionalProperties",
+   "pointer": "#/oneOf/1/oneOf/0",
    "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:admits:model_refused_admitted",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
+   "widening": "widening=absent:no_declarations"
+  },
+  {
+   "accepts": "accepts=pass",
+   "admits": "admits=pass",
+   "class": "OperationalFailure",
+   "document": "media-buy/get-reporting-status-response.json",
+   "dump": "dump=pass",
+   "note": "undeclared widening on properties: the class admitted {\"data_through\": null, \"errors\": [{\"code\": \"a\", \"message\": \"\"}], \"failure_kind\": \"operational\", \"status\": \"failed\", \"view\": \"summary\"} which the document refuses on additionalProperties",
+   "pointer": "#/oneOf/1/oneOf/1",
+   "refuses": "refuses=pass",
+   "undeclared": "undeclared=fail:widened_undeclared",
+   "verdict": "verdict=fail:undeclared:widened_undeclared",
    "widening": "widening=absent:no_declarations"
   },
   {
@@ -281,7 +307,7 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2548,
+ "pass": 2546,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -290,8 +316,8 @@
   },
   "admits": {
    "absent": 16,
-   "fail": 8,
-   "pass": 2545
+   "fail": 6,
+   "pass": 2547
   },
   "dump": {
    "absent": 0,
@@ -304,9 +330,9 @@
    "pass": 2565
   },
   "undeclared": {
-   "absent": 101,
-   "fail": 6,
-   "pass": 2462
+   "absent": 100,
+   "fail": 10,
+   "pass": 2459
   },
   "widening": {
    "absent": 2384,
@@ -315,10 +341,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/94a7899f5f5e154b0f5ce16d7d655a95bd9f433c15d9143962239d540d59884a",
-  "head": "b273e0c99",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/c8f516b74117815c0ccfbe4670d101c112b1fbc9a44e77d8a90450f98d527367",
+  "head": "83c7f9238+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 501.4,
- "seconds_per_pair": 0.1952
+ "seconds": 534.4,
+ "seconds_per_pair": 0.208
 }

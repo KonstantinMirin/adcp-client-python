@@ -486,8 +486,15 @@ def _strict_validation() -> bool:
 
 
 def _is_absent(value: Any) -> bool:
-    """:data:`OmittedNotNull`'s serialisation half: ``None`` is "the property is absent"."""
+    """:data:`OmittedNotNull`'s serialisation half: ``None`` is "the property is absent".
+
+    **ONE OBJECT FOR BOTH MARKERS, and the predicates read the halves rather than this.**
+    :data:`OmittedWhenNone` carries the same exclusion -- it owes pydantic-core the same
+    answer -- so :func:`omits_null` and :func:`omits_none` are told apart by
+    :func:`_refuses_null` and never by this identity.
+    """
     return value is None
+
 
 
 class _AbsenceIsOmission:
@@ -636,6 +643,33 @@ OmittedNotNull.metadata.append(_AbsenceIsOmission())
 #: dumped a payload their own document refuses on ``required``:
 #: ``OptionsItem({"value": None})`` dumped ``{}`` against ``required: ["value"]``.  With the
 #: omission on the field, requiredness decides, which is what the rule says.
+#:
+#: **IT IS THIS MARKER'S ABSENT VALIDATION HALF THAT TELLS THE TWO APART, AND NOTHING ELSE
+#: DOES** (``adcp-client-python-hsht``).  The two markers carry the same ``exclude_if``
+#: object -- they owe pydantic-core the same answer, "leave a ``None`` off" -- so
+#: :func:`omits_null` read as an identity over that object alone answered ``True`` for
+#: both, and the distinction the emitter takes care to make was unreadable by the three
+#: readers that ask for it.  Measured on ``core/targeting-input.json``: all 37 properties
+#: admit ``null`` explicitly, all 37 carry this marker, and all 37 answered "this property
+#: refuses ``null``".  The costs, each with its own test:
+#:
+#: * ``_runtime.supplied`` dropped a SET ``None`` at such a property from the key set, so a
+#:   document rule about key PRESENCE fired on a value the document states --
+#:   ``PackageControl.model_validate({"package_id": "p1", "budget": None})`` was refused on
+#:   its own ``anyOf`` while the bundled schema accepts it.  An UNDECLARED NARROWING, which
+#:   §2's index calls a defect in as many words;
+#: * :meth:`adcp.types.base.AdCPBaseModel.model_dump_as_received` could not keep the
+#:   ``null`` its own docstring promises to keep;
+#: * ``decisioning.handler._to_store_dict``'s ``patch`` shape turned "clear this field"
+#:   back into "leave it unchanged".
+#:
+#: So the predicates read the HALVES, which is how the emitter writes them and how the
+#: field stores them: :func:`omits_null` is the exclusion AND the validation half,
+#: :func:`omits_none` is the exclusion WITHOUT it, and the two partition the marked fields.
+#: A second ``exclude_if`` function would have carried the same distinction, and it would
+#: have made "every optional field carries THE exclusion" -- a tree-wide invariant two
+#: tests state as one identity -- false for 68 properties while nothing about serialisation
+#: had changed.
 OmittedWhenNone: Final[FieldInfo] = FieldInfo(exclude_if=_is_absent)
 
 #: The serialisation-only marker's own name, for :data:`OMITTED_NOT_NULL`'s reason.
@@ -655,8 +689,51 @@ def omits_null(field: FieldInfo) -> bool:
     Identity and not equality, for the reason :data:`OmittedNotNull` gives: the marker is
     MERGED into the field, so the field's own ``metadata`` holds the validation half and
     the ``exclude_if`` is the half that answers for the whole marker.
+
+    **It answers "does this property's document REFUSE ``null``", and the VALIDATION HALF
+    is what answers it** -- the exclusion alone is carried by both markers, so this read it
+    as ``True`` for a property whose document ADMITS one until 2026-11-20
+    (``adcp-client-python-hsht``, and :data:`OmittedWhenNone` carries the measurement).
+    Every caller reads it as the document's answer and none of them wants the exclusion:
+    ``_runtime.supplied`` asks whether a ``None`` here means absence,
+    ``base.is_no_explicit_null`` asks whether the marker is present, and
+    ``base._restore_supplied_nulls`` asks the complement through :func:`omits_none`.
+
+    The conjunction and not the metadata alone, because the two halves are one marker: a
+    field carrying the validation half without the exclusion is not a thing the emitter
+    writes, and reporting it as "refuses ``null``" would hide that it had come apart.
     """
-    return field.exclude_if is OmittedNotNull.exclude_if
+    return field.exclude_if is OmittedNotNull.exclude_if and _refuses_null(field)
+
+
+def _refuses_null(field: FieldInfo) -> bool:
+    """Whether ``field`` carries :class:`_AbsenceIsOmission` -- the VALIDATION half.
+
+    The one place ``in field.metadata`` is read for it, which is what
+    :data:`OmittedNotNull`'s "never ``in field.metadata``" instruction means: a CALLER asks
+    :func:`omits_null` or :func:`omits_none`, and those two read the field the way the
+    marker is merged onto it.  Identity over the singleton instance, so a copy of the
+    marker made elsewhere is not mistaken for it; ``base.inherit_field`` deep-copies the
+    whole ``FieldInfo``, and a deep copy of the instance is a different object -- so the
+    test is ``isinstance`` and not ``is``, for the same reason ``is_no_explicit_null`` is a
+    membership test over two spellings.
+    """
+    return any(isinstance(item, _AbsenceIsOmission) for item in field.metadata)
+
+
+def omits_none(field: FieldInfo) -> bool:
+    """Whether ``field`` carries :data:`OmittedWhenNone` -- the SERIALISATION half ALONE.
+
+    ``True`` exactly where the property is optional and its document ADMITS ``null``: the
+    dump leaves a ``None`` off, because §2's dump row keys on ``required``, and validation
+    accepts an explicit ``null``, because the document does.  So this is the predicate for
+    "a ``None`` here is a value the document states, not this SDK's spelling of absence" --
+    the question :func:`omits_null` was being asked and answering wrongly.
+
+    The exclusion WITHOUT the validation half, which is :func:`omits_null`'s complement
+    over the marked fields and the whole of the difference between the two markers.
+    """
+    return field.exclude_if is OmittedNotNull.exclude_if and not _refuses_null(field)
 
 
 class _ThePinIsSupplied:
