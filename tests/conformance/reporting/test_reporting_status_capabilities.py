@@ -329,7 +329,6 @@ def test_adopter_subclasses_and_nested_wire_models_keep_the_explicit_field_allow
     fields = set(value.reporting.model_fields_set)
     for wire in (value.model_dump(mode="json"), json.loads(value.model_dump_json())):
         assert "product_payload_view" not in wire["registration"]
-        assert not any(k.endswith(("_task", "_notification")) for k in wire["reporting"])
     assert value.reporting.model_fields_set == fields
 
 

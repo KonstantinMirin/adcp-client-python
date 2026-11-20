@@ -1653,20 +1653,22 @@ async def test_official_revision_requires_finality_evidence() -> None:
         reconciliation_status="not_required",
         health="complete",
     )
-    revision = raw["revisions"][0]
-    assert isinstance(revision, dict)
-    revision.pop("finality_basis")
-    revision.pop("finality_policy_id")
-    revision.pop("finalized_at")
+    # `core/reporting-revision.json`'s second `allOf` member states
+    # `if finality == "official" then required: [finality_basis, finality_policy_id,
+    # finalized_at]`, so no payload a validator admits can carry this state. The evidence is
+    # stripped AFTER validation, which is the same bypass the tier checks above use: the
+    # reason the reconciler screens for it is a provider that did not honour the document.
+    validated = GetReportingStatusResponse.model_validate(deepcopy(raw))
+    stripped = validated.revisions[0].model_copy(
+        update={"finality_basis": None, "finality_policy_id": None, "finalized_at": None}
+    )
+    response = validated.model_copy(update={"revisions": [stripped, *validated.revisions[1:]]})
 
     class MissingFinalityEvidenceClient(_Client):
         async def get_reporting_status(
             self, request: GetReportingStatusRequest
         ) -> TaskResult[GetReportingStatusResponse]:
-            return TaskResult(
-                status=TaskStatus.COMPLETED,
-                data=GetReportingStatusResponse.model_validate(deepcopy(raw)),
-            )
+            return TaskResult(status=TaskStatus.COMPLETED, data=response.model_copy(deep=True))
 
     ledger = await load_reporting_ledger(
         MissingFinalityEvidenceClient(),
