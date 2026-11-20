@@ -33,7 +33,7 @@
     "model": "GetSignalsRequest",
     "payload": {"discovery_mode": "wholesale", "signal_spec": "sports fans"},
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "get_signals.pricing_requires_feed_version",
@@ -45,7 +45,7 @@
       "if_pricing_version": "pricing-v1"
     },
     "canonical_valid": false,
-    "pydantic_valid": true
+    "pydantic_valid": false
   },
   {
     "id": "get_signals.signal_refs_min_items",
