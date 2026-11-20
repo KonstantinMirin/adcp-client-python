@@ -133,9 +133,21 @@ FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
     #: CORRECTLY** (measured 2026-11-16: 0 fields).  The gate is ``fmt in mod.asserted``,
     #: and :func:`emit.asserted_formats` reads the DOCUMENT'S OWN draft --
     #: ``validator_for(doc).FORMAT_CHECKER`` -- which for draft-07 has no ``uuid``
-    #: checker at all; ``uuid`` entered the vocabulary in 2019-09.  Every document here
-    #: is draft-07, so ``format: uuid`` rides as ``json_schema_extra`` and the class
-    #: stays exactly as wide as its document.  That is §2's direction and not a gap.
+    #: checker at all; ``uuid`` entered the vocabulary in 2019-09.  So ``format: uuid``
+    #: rides as ``json_schema_extra`` and the class stays exactly as wide as its
+    #: document.  That is §2's direction and not a gap.
+    #:
+    #: **THE REASON IS THE SEVEN DOCUMENTS THAT STATE IT AND NOT THE WHOLE BUNDLE'S
+    #: DRAFT**, which is the correction of the sentence that stood here ("Every document
+    #: here is draft-07").  Re-measured 2026-11-20 over the patched bundle's 1,630
+    #: documents: **1,177 declare draft-07, 399 declare 2020-12**, 53 declare no
+    #: ``$schema`` and one names the manifest schema -- and a 2020-12 checker DOES assert
+    #: ``uuid``.  All 7 documents stating ``format: uuid`` are in the first group, so the
+    #: conclusion holds where it is applied and the premise did not: a 2020-12 document
+    #: stating the format would select ``WireUuid`` tomorrow, which is this entry's
+    #: purpose.  ``tests_emit/test_the_rule_tables_agree.py`` reads the census per
+    #: DOCUMENT for exactly that reason -- a union over the bundle's asserted sets
+    #: contains ``uuid`` and concludes the opposite of the truth.
     #:
     #: It is kept because the entry is the RIGHT answer the moment a document's draft
     #: asserts the format, and because the alternative -- enforcing it anyway -- would be
@@ -146,6 +158,15 @@ FORMAT_TYPES: dict[str, Callable[[Mapping[str, Any]], str]] = {
     #: ``tests/conformance/test_schema_model_parity.py`` reports it -- 5 divergences on
     #: ``context_match/property_rid``.  Which side moves is the owner's call, not this
     #: table's.
+    #:
+    #: **AND IT IS NOT THE ONLY ONE: the drift is THREE formats, not one.**  Measured per
+    #: document: ``uri-template`` in 52 documents (199 nodes) and ``hostname`` in 18 (49
+    #: nodes) are stated by the bundle, asserted by the runtime's global
+    #: ``FormatChecker`` and by no stating document's own draft, and have no entry in this
+    #: table at all -- so at those nodes the class accepts what the bundled schema
+    #: refuses, which is the shape the ``format: email`` defect had.  Neither is a
+    #: ``FORMAT_TYPES`` entry waiting to be written: the repair is the same decision
+    #: ``uuid``'s is, and it is the owner's.  ``adcp-client-python-ahbe``.
     "uuid": lambda node: "adcp.types._wire.WireUuid",
     #: ``format: email`` as the BUNDLED SCHEMA grades it, which is ``jsonschema``'s
     #: ``is_email`` -- ``"@" in instance``.  ``constraints.EmailAddress`` carries the
