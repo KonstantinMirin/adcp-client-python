@@ -1426,27 +1426,27 @@ _ADMITTED: dict[str, Row] = {
             "and no read/write split for them to state.",
         )
     ),
-    #: **``rendered`` is FALSE here and §6's row says "Rendered, so graded" -- a
-    #: DEVIATION, and it is declared on the row rather than resolved by this one.**
+    #: **``rendered`` IS NOW TRUE AT ROOT AND AT BRANCH, because the emitter writes it.**
     #:
-    #: The emitter writes nothing for ``deprecated``: no ``Field(deprecated=True)``, no
-    #: ``json_schema_extra`` on a class.  Measured over the committed tree, the keyword
-    #: is stated by 105 documents at 153 positions -- 115 at a property of a root class,
-    #: 25 at a property of a nested one, 11 at a class root, 2 inside an array element
-    #: -- and the model states none of them.
+    #: It was ``False`` beside a sentence saying where the fact lands, which is the shape
+    #: ``adcp-client-python-ahbe`` was filed about one row over: measured over the
+    #: committed tree, 0 class-level ``json_schema_extra`` sites against 25 document roots
+    #: and 278 BRANCH nodes stating the keyword -- ``core/format.json`` among them, the
+    #: document ``CLAUDE.md`` singles out as ``deprecated: true`` as a whole, whose class
+    #: said nothing a consumer could read.  ``render.klass`` now writes
+    #: ``model_config = ConfigDict(json_schema_extra={'deprecated': True})`` from
+    #: :attr:`codegen.ir.ClassDecl.deprecated`, so ``model_json_schema()`` carries
+    #: ``"deprecated": true`` at the document's own root.
     #:
-    #: ``False`` is therefore the declaration that matches the emitter, and the column's
-    #: one live reader makes the direction matter: ``rendered_at`` is the set the
-    #: document-side FOLD carries, so declaring ``True`` for a keyword the emitter never
-    #: writes would make the fold carry a fact to a composed pointer that no artifact
-    #: states there.
+    #: **THE DIRECTION MATTERS BECAUSE THE COLUMN HAS A LIVE READER**: ``rendered_at`` is
+    #: the set the document-side FOLD carries, so ``True`` here is only correct while the
+    #: emitter writes it -- which is why the cell moved WITH the handler and not before it,
+    #: and why ``tests_emit/test_the_rule_tables_agree.py`` grades the pair rather than
+    #: either half.
     #:
-    #: It is not resolved here because the emitter half is a handler edit and §14 gives
-    #: no step that carries it: step 8's list of unwritten cells names root siblings on
-    #: a union base, a scalar target as a composing node's type, the type-bound
-    #: validators for ``uniqueItems``/``contains``/``not``, a one-class union, and the
-    #: manifest dispatch source -- and not this.  Flipping it is the whole of the change
-    #: once a row owns the emitter half.
+    #: ``DEF`` and ``ELEM`` keep the default cell and state nothing: the bundle states the
+    #: keyword at 486 ``DEF`` and 116 ``ELEM`` nodes, where the subject is a definition
+    #: section or an array's items rather than a class the renderer writes a config for.
     "deprecated": Row(
         Cell(Effect.NOTHING, False, None, "A `false` → nothing. Rendered, so graded."),
         {
@@ -1454,7 +1454,7 @@ _ADMITTED: dict[str, Row] = {
                 (Position.ROOT, Position.BRANCH),
                 Cell(
                     Effect.ANNOTATION,
-                    False,
+                    True,
                     None,
                     " → the class's `json_schema_extra`.",
                 ),

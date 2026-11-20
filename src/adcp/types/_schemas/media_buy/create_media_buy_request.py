@@ -115,6 +115,7 @@ class CreateMediaBuyRequest(BranchDispatchMixin, AdCPVersionEnvelope, AdcpReques
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/create-media-buy-request.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()

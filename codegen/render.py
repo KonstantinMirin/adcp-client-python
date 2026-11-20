@@ -1179,7 +1179,24 @@ def klass(decl: ir.ClassDecl, declared: Sequence[Approximation] = ()) -> Rendere
     ``SchemaRef`` naming no document would be a reference the schema half would then try
     to read.
     """
-    config = {"extra": decl.extra} if decl.extra else None
+    config: dict[str, Any] = {}
+    if decl.extra:
+        config["extra"] = decl.extra
+    if decl.deprecated:
+        # §6's ``deprecated`` row at ROOT and at BRANCH: " → the class's
+        # ``json_schema_extra``".  The sentence is generated from the cell's own prose and
+        # nothing kept it: measured over the committed tree, 0 class-level
+        # ``json_schema_extra`` sites against 25 document roots and 278 BRANCH nodes
+        # stating the keyword -- ``core/format.json`` among them, whose own description
+        # opens "**DEPRECATED in 3.2.**" and whose class said nothing a consumer could
+        # read (``adcp-client-python-ahbe``).
+        #
+        # ``json_schema_extra`` on the CONFIG and not a field, because the subject is the
+        # class: ``model_json_schema()`` then carries ``"deprecated": true`` at the
+        # document's own root, which is the position the document states it at.  A
+        # ``Field(deprecated=True)`` is the PROP cell and a different fact -- that one
+        # property is deprecated -- so the two cells cannot be served by one channel.
+        config["json_schema_extra"] = {"deprecated": True}
     extra_template_data: defaultdict[str, Any] = defaultdict(dict)
     if config:
         extra_template_data[decl.name] = {"config": config}

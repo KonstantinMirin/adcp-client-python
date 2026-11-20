@@ -35,6 +35,7 @@ class ListCreativeFormatsResponseCreativeAgent(AdCPVersionEnvelope, ProtocolEnve
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='creative/list-creative-formats-response.json', pointer='#')
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (

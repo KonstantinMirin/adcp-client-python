@@ -170,6 +170,7 @@ PostalAreaCountrySystemValues.model_rebuild(force=True)
 class PostalAreaWithFusedSystem(PostalArea):
     model_config = ConfigDict(
         extra='forbid',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/postal-area.json', pointer='#/anyOf/1')
     system: Annotated[CountryFusedPostalCodeSystem, Field(deprecated=True, description="Deprecated country-fused postal code system (e.g., 'us_zip', 'gb_outward'). Prefer country + postal-system.")]

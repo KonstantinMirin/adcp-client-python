@@ -712,6 +712,17 @@ def declare_object(
     props = tuple(_typed_by_a_base(one, bases, mod) for one in props)
     described = node.description if node.description is not None else description
     declaration = ir.ClassDecl(
+        # §6's ``deprecated`` row at ROOT and at BRANCH: " → the class's
+        # ``json_schema_extra``".  The node's OWN annotation, read exactly as the child's
+        # is above for :attr:`ir.Field.deprecated` -- the two are different facts about
+        # different subjects (this document is deprecated; that property is) and each has
+        # its own cell, so neither can be served by the other's channel.
+        #
+        # The keyword reaches here for every class the walk declares, which is what makes
+        # the ROOT and BRANCH halves one line: a branch is declared through this same
+        # function (``lower/union.py`` calls it), so a branch stating ``deprecated: true``
+        # carries it without this reading the position at all.
+        deprecated=bool(node.annotations.get("deprecated")),
         # **The POINTER in the name slot, until the pass runs** (§7, and
         # ``lower/names.py``'s own docstring): the walk computes no symbol, so what a
         # declaration carries is where it sits and ``names.assign`` binds the name §4
