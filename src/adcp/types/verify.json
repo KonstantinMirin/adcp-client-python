@@ -2,10 +2,10 @@
  "causes": {
   "fail:admits:model_refused_admitted": 6,
   "fail:undeclared:widened_undeclared": 10,
-  "fail:widening:unproved_widening": 7
+  "fail:widening:unproved_widening": 2
  },
  "graded": 2569,
- "not_pass": 23,
+ "not_pass": 18,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -240,74 +240,9 @@
    "undeclared": "undeclared=pass",
    "verdict": "verdict=fail:widening:unproved_widening",
    "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "GetAdCPCapabilitiesResponse",
-   "document": "protocol/get-adcp-capabilities-response.json",
-   "dump": "dump=pass",
-   "note": "#/properties/adcp/properties/principal/allOf/0/if: a value the if admits placed at ['adcp', 'principal'] makes a payload the document refuses, so it says nothing about the class; #/properties/media_buy/properties/proposal_refinement/allOf/0/if: a value the if admits placed at ['media_buy', 'proposal_refinement'] makes a payload the document refuses, so it says nothing about the class; narrower tha",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=absent:1_of_16_conditionals_unreached",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "GetAdCPCapabilitiesResponseMediaBuy",
-   "document": "protocol/get-adcp-capabilities-response.json",
-   "dump": "dump=pass",
-   "note": "#/properties/media_buy/properties/proposal_refinement/allOf/0/if: a value the if admits placed at ['proposal_refinement'] makes a payload the document refuses, so it says nothing about the class; narrower than its document [url_parsing at ('acceptance_policy_discovery', 'catalog_url')] on pattern: at ('acceptance_policy_discovery',): at ('catalog_url',): a string '^https://' admits; the class refu",
-   "pointer": "#/properties/media_buy",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SyncAgentNotificationConfigsRequest",
-   "document": "protocol/sync-agent-notification-configs-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on not",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SyncPrincipalRequest",
-   "document": "protocol/sync-principal-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/configuration/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on not",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
-  },
-  {
-   "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "Configuration",
-   "document": "protocol/sync-principal-request.json",
-   "dump": "dump=pass",
-   "note": "#/properties/configuration/properties/notification_configs/items/allOf/1/if: a value the if admits could not be drawn: the constructed value is refused on not",
-   "pointer": "#/properties/configuration",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=pass",
-   "verdict": "verdict=fail:widening:unproved_widening",
-   "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2546,
+ "pass": 2551,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -330,21 +265,21 @@
    "pass": 2565
   },
   "undeclared": {
-   "absent": 100,
+   "absent": 79,
    "fail": 10,
-   "pass": 2459
+   "pass": 2480
   },
   "widening": {
    "absent": 2384,
-   "fail": 7,
-   "pass": 178
+   "fail": 2,
+   "pass": 183
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/97fa0e90f5e384726f2ef26413251f5ea74ba6c7236cdb0e4bf5f8ee819b0e7d",
-  "head": "a90fed0f6",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/be0af5f166e85d62bda2f438dc3c301a0739a1d25b3311da355f56364aaf9d20",
+  "head": "e15aee88b+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 554.1,
- "seconds_per_pair": 0.2157
+ "seconds": 554.3,
+ "seconds_per_pair": 0.2158
 }
