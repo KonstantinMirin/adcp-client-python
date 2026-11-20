@@ -96,8 +96,8 @@ from adcp.decisioning.capabilities import (
 from adcp.decisioning.capabilities import (
     Adcp as CapsAdcp,
 )
-from adcp.decisioning.capabilities import (
-    Features as MediaBuyFeatures,
+from adcp.types.protocol import (
+    GetAdCPCapabilitiesResponseMediaBuyFeatures as MediaBuyFeatures,
 )
 from adcp.decisioning.capabilities import (
     MediaBuy as CapsMediaBuy,
@@ -136,8 +136,8 @@ from adcp.types import (
     UpdateMediaBuyRequest,
     UpdateMediaBuySuccessResponse,
 )
+from adcp.types.core import LegacyFormat
 from adcp.types.legacy import (
-    LegacyFormat,
     LegacyFormatId,
 )
 from adcp.types.legacy import (
