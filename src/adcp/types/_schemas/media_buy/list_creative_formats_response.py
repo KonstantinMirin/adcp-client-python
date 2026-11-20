@@ -37,6 +37,7 @@ class ListCreativeFormatsResponse(AdCPVersionEnvelope, ProtocolEnvelope, AdcpRes
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/list-creative-formats-response.json', pointer='#')
     formats: Annotated[list[LegacyFormat], Field(deprecated=True, description="Deprecated named-format definitions projected for older 3.x callers. This list is neither the publisher acceptance catalog nor the seller's canonical product deliverability contract.")]

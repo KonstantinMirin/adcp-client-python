@@ -15,6 +15,9 @@ class SignalID(BranchDispatchMixin, AdCPBaseModel):
     """
     DEPRECATED. Use SignalRef for new discovery, activation, and media-buy signal identity surfaces. Legacy universal signal identifier used by older Signals Protocol clients. Uses 'source' as discriminator: 'catalog' for signals from a data provider's published catalog (verifiable), or 'agent' for signals native to a signal source identified by agent_url.
     """
+    model_config = ConfigDict(
+        json_schema_extra={'deprecated': True},
+    )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/signal-id.json', pointer='#')
     _branch_models: ClassVar[tuple[type[AdCPBaseModel], ...]] = ()
     _ROOT_REQUIRED: ClassVar[tuple[str, ...]] = ()

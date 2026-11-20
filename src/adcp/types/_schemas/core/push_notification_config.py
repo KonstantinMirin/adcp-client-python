@@ -22,6 +22,7 @@ class Authentication(AdCPBaseModel):
     """
     model_config = ConfigDict(
         extra='forbid',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/push-notification-config.json', pointer='#/properties/authentication')
     schemes: Annotated[list[AuthenticationScheme], Field(description="Array of authentication schemes. Supported: ['Bearer'] for simple token auth, ['HMAC-SHA256'] for legacy shared-secret signing. Both are deprecated; new integrations SHOULD omit `authentication` and use the RFC 9421 webhook profile.", max_length=1, min_length=1)]

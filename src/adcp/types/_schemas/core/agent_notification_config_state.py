@@ -17,6 +17,7 @@ from .ext import ExtensionObject
 class Authentication(AdCPBaseModel):
     model_config = ConfigDict(
         extra='forbid',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/agent-notification-config-state.json', pointer='#/properties/authentication')
     schemes: Annotated[list[AuthenticationScheme], Field(max_length=1, min_length=1)]

@@ -545,6 +545,22 @@ class ClassDecl:
     #: ``adcp.types._base.SchemaRef`` carries a third field the stamp has two components,
     #: so this one stops at the IR.  The handover is on the bead.
     branch_of: int | None = None
+    #: §6's ``deprecated`` row at ``Position.ROOT`` and ``Position.BRANCH``: " → the
+    #: class's ``json_schema_extra``".  **WRITTEN by ``lower.objects.declare_object``**
+    #: from the node's own ``annotations``, the same read ``lower/objects.py`` already
+    #: does for a CHILD's :attr:`Field.deprecated`; **READ by ``render.klass``**, which
+    #: puts it in the class's ``ConfigDict`` so ``model_json_schema()`` carries
+    #: ``"deprecated": true`` at the document's own root.
+    #:
+    #: A class-level fact cannot travel any other way: the renderer takes
+    #: ``codegen.ir``'s declarations and nothing else (``docs/plan/architecture.md`` §8),
+    #: so without a slot here the keyword had nowhere to go -- which is what 25 document
+    #: roots and 278 BRANCH nodes stating it against 0 class-level
+    #: ``json_schema_extra`` sites measured (``adcp-client-python-ahbe``).
+    #:
+    #: ADDITIVE and last, with a default: a construction site that does not name it is
+    #: unchanged, which is what lets a lane emitting new ``ClassDecl``s compose with this.
+    deprecated: bool = False
 
     def __post_init__(self) -> None:
         """**A base list naming one class twice RAISES** (``architecture.md``, 2026-10-29).

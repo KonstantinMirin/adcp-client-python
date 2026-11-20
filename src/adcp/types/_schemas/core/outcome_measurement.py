@@ -26,6 +26,7 @@ class OutcomeMeasurement(AdCPBaseModel):
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/outcome-measurement.json', pointer='#')
     type: Annotated[str, Field(description='Type of measurement')]

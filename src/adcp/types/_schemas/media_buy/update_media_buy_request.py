@@ -34,6 +34,7 @@ class UpdateMediaBuyRequest(AdCPVersionEnvelope, AdcpRequest):
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/update-media-buy-request.json', pointer='#')
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (

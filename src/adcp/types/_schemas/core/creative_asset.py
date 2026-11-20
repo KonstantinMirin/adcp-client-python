@@ -80,6 +80,7 @@ class V1CreativeNamedFormatReference(CreativeAsset):
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/creative-asset.json', pointer='#/oneOf/0')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (

@@ -84,6 +84,7 @@ class AggregatedTotals(AdCPBaseModel):
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='media-buy/get-media-buy-delivery-response.json', pointer='#/properties/aggregated_totals')
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (

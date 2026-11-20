@@ -95,6 +95,7 @@ class OptimizationGoalMetricTargetCostPer(AdCPBaseModel):
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/0/properties/target/oneOf/0')
     kind: Annotated[Literal['cost_per'], PinnedDefault]
@@ -157,6 +158,7 @@ class OptimizationGoalEventTargetCostPer(AdCPBaseModel):
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/1/properties/target/oneOf/0')
     kind: Annotated[Literal['cost_per'], PinnedDefault]
@@ -169,6 +171,7 @@ class TargetPerAdSpend(AdCPBaseModel):
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/1/properties/target/oneOf/1')
     kind: Annotated[Literal['per_ad_spend'], PinnedDefault]
@@ -207,6 +210,7 @@ class OptimizationGoalVendorMetricTargetCostPer(AdCPBaseModel):
     """
     model_config = ConfigDict(
         extra='allow',
+        json_schema_extra={'deprecated': True},
     )
     __adcp_schema__: ClassVar[SchemaRef] = SchemaRef(document='core/optimization-goal.json', pointer='#/oneOf/2/properties/target/oneOf/0')
     kind: Annotated[Literal['cost_per'], PinnedDefault]

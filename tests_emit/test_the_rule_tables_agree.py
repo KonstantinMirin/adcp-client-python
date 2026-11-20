@@ -61,20 +61,17 @@ difference from that derivation is a declared entry carrying its reason.**
   (:func:`test_no_stated_difference_is_stale`), so the list shrinks when a repair lands
   and cannot accumulate dead rows.
 
-## The differences this file found, which are LIVE and declared rather than fixed
+## The difference this file found that is LIVE and declared rather than fixed
 
-Both are outside this lane's write scope and are reported on ``adcp-client-python-ahbe``:
+One, reported on ``adcp-client-python-ahbe``.  The other this file was written for --
+``deprecated`` at ROOT and at BRANCH rendering nothing where §6 says it renders into the
+class -- is CLOSED: ``render.klass`` writes ``model_config = ConfigDict(json_schema_extra=
+{'deprecated': True})`` from :attr:`codegen.ir.ClassDecl.deprecated`, the cell at both
+positions is ``rendered=True``, and the two :data:`STATED` entries that declared the
+difference are gone because :func:`test_no_stated_difference_is_stale` reddens on an entry
+that stops differing.
 
-1. **``deprecated`` at ROOT and at BRANCH renders nothing, where §6 says it renders into
-   the class.** ``docs/plan/rebuild-plan.md`` §6's own line -- which
-   ``tests/test_keywords.py`` GENERATES from this cell's prose -- reads "ROOT / BRANCH ->
-   the class's ``json_schema_extra``", and the cell beside that sentence is
-   ``rendered=False``.  Measured: no class-level ``json_schema_extra`` is emitted anywhere
-   in the tree, and the bundle states ``deprecated`` at **27 document roots** and **278
-   BRANCH nodes** -- ``core/format.json`` among them, the document ``CLAUDE.md`` singles
-   out as ``deprecated: true`` as a whole, whose class says nothing about it.  The repair
-   is in ``codegen/render.py``, which a sibling lane owns this cycle.
-2. **The compiler's asserted-format set and the SDK runtime's differ by three.**
+1. **The compiler's asserted-format set and the SDK runtime's differ by three.**
    ``emit.asserted_formats``'s docstring claims "the set this walk gates on and the set
    the runtime enforces are one set and cannot drift".  Measured: it has drifted by
    ``hostname``, ``uri-template`` and ``uuid`` -- the compiler reads the DOCUMENT'S draft
@@ -156,21 +153,6 @@ STATED: tuple[Stated, ...] = (
         "own draft here, which needs ``uritemplate`` installed.  Same reading as "
         "``hostname``, and in :data:`RUNTIME_DRIFT` for the same reason.",
     ),
-    Stated(
-        "codegen.keywords.Effect",
-        "deprecated@ROOT",
-        "§6's line says 'ROOT / BRANCH -> the class's ``json_schema_extra``' and the "
-        "cell carries ``rendered=False``; no class-level ``json_schema_extra`` is "
-        "emitted anywhere in the tree.  27 document roots state the keyword, "
-        "``core/format.json`` among them.  The repair is in ``codegen/render.py``, which "
-        "a sibling lane owns this cycle (``adcp-client-python-ahbe``).",
-    ),
-    Stated(
-        "codegen.keywords.Effect",
-        "deprecated@BRANCH",
-        "The same cell as ``deprecated@ROOT`` -- ``_group((ROOT, BRANCH), ...)`` writes "
-        "one cell at both -- at the 278 BRANCH nodes the bundle states the keyword at.",
-    ),
 )
 
 #: **WHERE AN ``ANNOTATION`` CELL'S FACT LANDS, for the cells the rendered schema does not
@@ -188,11 +170,6 @@ CARRIED_TO: dict[str, str | None] = {
     "for; ``render.py`` writes them into the class body.",
     "x-enum-descriptions": "the bundle's prefixed spelling of ``enumDescriptions``, to "
     "the same place.",
-    # Nowhere, at ROOT and at BRANCH: §6's line says the class's ``json_schema_extra``
-    # and the emitted tree has 0 class-level ``json_schema_extra`` sites.  At PROP the
-    # cell is ``rendered=True`` and ``Field(deprecated=True)`` carries it, which is a
-    # different cell and not this one.
-    "deprecated": None,
 }
 
 #: **THE PROBE, and it is not a fourth table.**  ``RENDERED`` is now
@@ -554,7 +531,7 @@ def test_no_stated_difference_is_stale() -> None:
         }, f"{one.table} is not one of the tables this file grades"
     keys = [(one.table, one.key) for one in STATED]
     assert len(keys) == len(set(keys)), f"STATED holds a duplicate: {keys}"
-    assert len(STATED) == 5, (
-        f"STATED declares {len(STATED)} differences, was 5. Fewer is a repair landing and "
+    assert len(STATED) == 3, (
+        f"STATED declares {len(STATED)} differences, was 3. Fewer is a repair landing and "
         "the number moves with it; more is a new declared drop and needs a reader."
     )
