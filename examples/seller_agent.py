@@ -1153,10 +1153,23 @@ class DemoSeller(ADCPHandler):
         if "product_ids" in criteria:
             products = [p for p in products if p["product_id"] in criteria["product_ids"]]
         # Compact discovery omits the deprecated get_products-only fields.
+        #
+        # AND THE V1 LINK, BECAUSE THIS DOCUMENT IS THE ONE THAT LEAVES IT OUT.
+        # `media-buy/list-products-response.json` answers through
+        # `core/canonical-product.json` into `core/canonical-format-option.json`, whose own
+        # description is "Compact canonical creative-format declaration. Legacy named-format
+        # links are intentionally absent" -- `additionalProperties: false` and no
+        # `v1_format_ref` among its 16 properties. `core/product-format-declaration.json`,
+        # which `get_products` answers through, STATES `v1_format_ref` and this seller
+        # dual-emits it on purpose (`_image_format_options`). One field, two documents,
+        # opposite verdicts: it stays on the get_products declaration and goes from the
+        # compact one, which is what makes this a projection and not a deletion.
         for product in products:
             product.pop("property_targeting_allowed", None)
             for option in product.get("pricing_options", []):
                 option.pop("max_bid", None)
+            for option in product.get("format_options", []):
+                option.pop("v1_format_ref", None)
         feed_version = hashlib.sha256(json.dumps(products, sort_keys=True).encode()).hexdigest()
         if params.get("cursor") is None and params.get("if_feed_version") == feed_version:
             return {"outcome": "unchanged", "feed_version": feed_version, "cache_scope": "public"}
