@@ -10,9 +10,9 @@ declarations does not move.
 
 The triple, read off this module's own table::
 
-    adcp.types.aliases.AccountReferenceById is adcp.types.core.AccountReferenceAccountId
+    adcp.types.aliases.AcceptedLoss is adcp.types._schemas.media_buy.request_proposals_response.LossesItem
 
-so `from adcp.types.aliases import AccountReferenceById` and `from adcp.types.core import AccountReferenceAccountId` are two spellings of one
+so `from adcp.types.aliases import AcceptedLoss` and `from adcp.types._schemas.media_buy.request_proposals_response import LossesItem` are two spellings of one
 object, and `isinstance` holds against either.
 
 **WHY THIS MODULE EXISTS AT UPSTREAM'S OWN PATH.**  `adcp.types.compat` is reading 10's ONE
@@ -35,6 +35,31 @@ from __future__ import annotations
 #: elsewhere (`survey/alias_surface.py`'s own `MODULE_MARKER`).
 __adcp_restates_upstream__ = "adcp 9.6.1"
 
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as AuthorizedAgentsByInlineProperties
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as _arm2_AuthorizedAgent
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds as AuthorizedAgentsByPropertyId
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds as _arm0_AuthorizedAgent
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags as AuthorizedAgentsByPropertyTag
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags as _arm1_AuthorizedAgent
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties as AuthorizedAgentsByPublisherProperties
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties as _arm3_AuthorizedAgent
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds as AuthorizedAgentsBySignalId
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds as _arm4_AuthorizedAgent
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags as AuthorizedAgentsBySignalTag
+from adcp.types._schemas.adagents import AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags as _arm5_AuthorizedAgent
+from adcp.types._schemas.brand import Brand as BrandIdentity
+from adcp.types._schemas.brand.verify_brand_claims_response import SignedResponse as VerifyBrandClaimsSignedResponse
+from adcp.types._schemas.core.assets.asset_union import AssetVariant as AssetInstance
+from adcp.types._schemas.core.assets.daast_asset import DAASTAssetInline as InlineDaastAsset
+from adcp.types._schemas.core.assets.daast_asset import DAASTAssetUrl as UrlDaastAsset
+from adcp.types._schemas.core.assets.vast_asset import VASTAssetInline as InlineVastAsset
+from adcp.types._schemas.core.assets.vast_asset import VASTAssetUrl as UrlVastAsset
+from adcp.types._schemas.core.product_format_declaration import ProductFormatDeclaration as LegacyProductFormatDeclaration
+from adcp.types._schemas.media_buy.get_media_buys_response import PackagesItem as MediaBuyPackage
+from adcp.types._schemas.media_buy.get_products_request import ObjScopeAsk as _arm0_Refine
+from adcp.types._schemas.media_buy.get_products_request import ObjScopeProductIdActionAsk as _arm1_Refine
+from adcp.types._schemas.media_buy.get_products_request import ObjScopeProposalIdActionAsk as _arm2_Refine
+from adcp.types._schemas.media_buy.request_proposals_response import LossesItem as AcceptedLoss
 from adcp.types.account import GetAccountFinancialsError as GetAccountFinancialsErrorResponse
 from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsResponse1
 from adcp.types.account import GetAccountFinancialsSuccess as GetAccountFinancialsSuccessResponse
@@ -52,6 +77,7 @@ from adcp.types.brand import GetBrandIdentitySuccess as GetBrandIdentitySuccessR
 from adcp.types.brand import GetRightsError as GetRightsErrorResponse
 from adcp.types.brand import GetRightsSuccess as GetRightsResponse1
 from adcp.types.brand import GetRightsSuccess as GetRightsSuccessResponse
+from adcp.types.brand import VerifyBrandClaimsResponseBulkSignedResponsePayload as VerifyBrandClaimsPayload
 from adcp.types.compliance import ListScenariosSuccess as ComplyTestControllerResponse1
 from adcp.types.content_standards import CalibrateContentResponseVerdict as CalibrateContentResponse1
 from adcp.types.content_standards import CalibrateContentResponseVerdict as CalibrateContentSuccessResponse
@@ -107,6 +133,7 @@ from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesR
 from adcp.types.creative import SyncCreativesResponseSubmitted as SyncCreativesSubmittedResponse
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesResponse1
 from adcp.types.creative import SyncCreativesSuccess as SyncCreativesSuccessResponse
+from adcp.types.creative import SyncCreativesSuccessCreativesItem as SyncCreativeResult
 from adcp.types.media_buy import CreateMediaBuyError as CreateMediaBuyErrorResponse
 from adcp.types.media_buy import CreateMediaBuySuccess as CreateMediaBuySuccessResponse
 from adcp.types.media_buy import GetProductsRequest as GetProductsBriefRequest
@@ -121,6 +148,7 @@ from adcp.types.media_buy import ProvidePerformanceFeedbackRequest as ProvidePer
 from adcp.types.media_buy import ProvidePerformanceFeedbackSuccess as ProvidePerformanceFeedbackResponse1
 from adcp.types.media_buy import ProvidePerformanceFeedbackSuccess as ProvidePerformanceFeedbackSuccessResponse
 from adcp.types.media_buy import SyncAudiencesError as SyncAudiencesErrorResponse
+from adcp.types.media_buy import SyncAudiencesRequestAudiencesItem as SyncAudiencesAudience
 from adcp.types.media_buy import SyncAudiencesSubmitted as SyncAudiencesSubmittedResponse
 from adcp.types.media_buy import SyncAudiencesSuccess as SyncAudiencesResponse1
 from adcp.types.media_buy import SyncAudiencesSuccess as SyncAudiencesSuccessResponse
@@ -128,11 +156,19 @@ from adcp.types.media_buy import SyncCatalogsError as SyncCatalogsErrorResponse
 from adcp.types.media_buy import SyncCatalogsResponseSubmitted as SyncCatalogsSubmittedResponse
 from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsResponse1
 from adcp.types.media_buy import SyncCatalogsSuccess as SyncCatalogsSuccessResponse
+from adcp.types.media_buy import SyncCatalogsSuccessCatalogsItem as SyncCatalogResult
 from adcp.types.media_buy import SyncEventSourcesError as SyncEventSourcesErrorResponse
 from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesResponse1
 from adcp.types.media_buy import SyncEventSourcesSuccess as SyncEventSourcesSuccessResponse
 from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyPackagesRequest
 from adcp.types.media_buy import UpdateMediaBuyRequest as UpdateMediaBuyPropertiesRequest
+from adcp.types.protocol import AppliedPrincipalConfiguration as _arm0_PrincipalSyncResult
+from adcp.types.protocol import CurrentPrincipalConfiguration as _arm0_PrincipalReadResult
+from adcp.types.protocol import FailedPrincipalRead as _arm3_PrincipalReadResult
+from adcp.types.protocol import FailedPrincipalSync as _arm2_PrincipalSyncResult
+from adcp.types.protocol import RecognizedPrincipalWithoutStandingConfiguration as _arm1_PrincipalReadResult
+from adcp.types.protocol import UnconfiguredPrincipal as _arm2_PrincipalReadResult
+from adcp.types.protocol import ValidatedPrincipalDryRun as _arm1_PrincipalSyncResult
 from adcp.types.signals import ActivateSignalError as ActivateSignalErrorResponse
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalResponse1
 from adcp.types.signals import ActivateSignalSuccess as ActivateSignalSuccessResponse
@@ -141,103 +177,11 @@ from adcp.types.signals import GetSignalsRequest as GetSignalsLookupRequest
 from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendActionResponseRequest
 from adcp.types.sponsored_intelligence import SISendMessageRequest as SiSendTextMessageRequest
 
-# **THE WORDS `adcp.__all__` PROMISED AND NOTHING BOUND**, each resolved by the pointer its
-# subject carries and never by spelling.  Every statement below is a re-export of a class
-# this compiler emitted, so the module's own rule holds unchanged: an alias is a name, and
-# `isinstance` holds against the domain spelling.  `FINDINGS-rootnames.md` carries the
-# document, the pointer and the ground for all 27, including the three that are DROPPED --
-# a word with no node behind it is taken out of `adcp.__all__` rather than bound here.
-from adcp.types.adagents import (
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemInlineProperties as AuthorizedAgentsByInlineProperties,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.adagents import (
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyIds as AuthorizedAgentsByPropertyId,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.adagents import (
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPropertyTags as AuthorizedAgentsByPropertyTag,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.adagents import (
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemPublisherProperties as AuthorizedAgentsByPublisherProperties,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.adagents import (
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalIds as AuthorizedAgentsBySignalId,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.adagents import (
-    AdCPAgentsAuthorizationCommunityFormatRegistryAuthorizedAgentsItemSignalTags as AuthorizedAgentsBySignalTag,  # noqa: E501 -- upstream published this spelling
-)
-from adcp.types.brand import BrandDiscoveryBrand as BrandIdentity
-from adcp.types.brand import VerifyBrandClaimsResponseBulkSignedResponse as VerifyBrandClaimsSignedResponse  # noqa: E501 -- upstream published this spelling
-from adcp.types.brand import (
-    VerifyBrandClaimsResponseBulkSignedResponsePayload as VerifyBrandClaimsPayload,
-)
-from adcp.types.core import AssetVariant as AssetInstance
-from adcp.types.core import DAASTAssetInline as InlineDaastAsset
-from adcp.types.core import DAASTAssetUrl as UrlDaastAsset
-from adcp.types.core import ProductFormatDeclaration as LegacyProductFormatDeclaration
-from adcp.types.core import VASTAssetInline as InlineVastAsset
-from adcp.types.core import VASTAssetUrl as UrlVastAsset
-from adcp.types.creative import SyncCreativesSuccessCreativesItem as SyncCreativeResult
-from adcp.types.media_buy import GetMediaBuysResponseMediaBuysItemPackagesItem as MediaBuyPackage  # noqa: E501 -- upstream published this spelling
-from adcp.types.media_buy import ObjScopeAsk as _refine_scope_ask
-from adcp.types.media_buy import ObjScopeProductIdActionAsk as _refine_scope_product
-from adcp.types.media_buy import ObjScopeProposalIdActionAsk as _refine_scope_proposal
-from adcp.types.media_buy import (
-    RequestProposalsResponsePurchaseContinuationLegacyCreateLossesItem as AcceptedLoss,
-)
-from adcp.types.media_buy import SyncAudiencesRequestAudiencesItem as SyncAudiencesAudience
-from adcp.types.media_buy import SyncCatalogsSuccessCatalogsItem as SyncCatalogResult
-from adcp.types.protocol import AppliedPrincipalConfiguration as _principal_applied
-from adcp.types.protocol import CurrentPrincipalConfiguration as _principal_current
-from adcp.types.protocol import FailedPrincipalRead as _principal_read_failed
-from adcp.types.protocol import FailedPrincipalSync as _principal_sync_failed
-from adcp.types.protocol import (
-    RecognizedPrincipalWithoutStandingConfiguration as _principal_recognized,
-)
-from adcp.types.protocol import UnconfiguredPrincipal as _principal_unconfigured
-from adcp.types.protocol import ValidatedPrincipalDryRun as _principal_validated
-
+AuthorizedAgent = _arm0_AuthorizedAgent | _arm1_AuthorizedAgent | _arm2_AuthorizedAgent | _arm3_AuthorizedAgent | _arm4_AuthorizedAgent | _arm5_AuthorizedAgent
+PrincipalReadResult = _arm0_PrincipalReadResult | _arm1_PrincipalReadResult | _arm2_PrincipalReadResult | _arm3_PrincipalReadResult
+PrincipalSyncResult = _arm0_PrincipalSyncResult | _arm1_PrincipalSyncResult | _arm2_PrincipalSyncResult
 PublisherProperties = _arm0_PublisherProperties | _arm1_PublisherProperties | _arm2_PublisherProperties
-
-# **A UNION THE DOCUMENT STATES AND THE WALK EMITS NO ROOT FOR IS RESTATED, NEVER MINTED.**
-# Each of the four below is the annotation OUR OWN field already carries at the stating
-# position, written out under the word upstream published for it -- measured equal to
-# `<Root>.model_fields[<property>].annotation` branch for branch and in the document's own
-# `oneOf` order.  So no class is declared, no accepted set moves, and `isinstance` holds
-# against every branch; what the name adds is the one spelling a consumer can import.
-#
-# A discriminator keyword is NOT re-attached here even where upstream's expression pinned
-# one: `Annotated[..., Field(discriminator=...)]` is a validator and would be the second
-# TYPE this module's own rule forbids.  The branches dispatch on their own `const`s.
-
-#: `protocol/get-principal-response.json#/properties/result` -- 4 branches, `#/properties/result/oneOf/0..3`.
-PrincipalReadResult = (
-    _principal_current | _principal_recognized | _principal_unconfigured | _principal_read_failed
-)
-
-#: `protocol/sync-principal-response.json#/properties/result` -- 3 branches, `#/properties/result/oneOf/0..2`.
-PrincipalSyncResult = _principal_applied | _principal_validated | _principal_sync_failed
-
-#: `media-buy/get-products-request.json#/properties/refine/items` -- 3 branches, `.../oneOf/0..2`.
-Refine = _refine_scope_ask | _refine_scope_product | _refine_scope_proposal
-
-#: `adagents.json#/oneOf/1/properties/authorized_agents/items` -- 6 branches, `.../oneOf/0..5`.
-#:
-#: **AND THE WORD IS TAKEN BY A SECOND SUBJECT ON THE FLAT SURFACE, which this module does
-#: not own and does not resolve.**  `adcp.types.registry.AuthorizedAgent` is the restored
-#: registry model, and `adcp.types.legacy_names` binds it flat -- so `adcp.types`'
-#: `AuthorizedAgent` is that class while `adcp`'s is this union, which is upstream's own
-#: binding for the flat word (`_eager.py:567`, `from adcp.types.aliases import
-#: AuthorizedAgent`).  Keeping upstream's meaning here is what stops the word changing
-#: subject under a consumer; the two-subject collision is recorded in
-#: `FINDINGS-rootnames.md` as a question for the owner and is not settled by this module.
-AuthorizedAgent = (
-    AuthorizedAgentsByPropertyId
-    | AuthorizedAgentsByPropertyTag
-    | AuthorizedAgentsByInlineProperties
-    | AuthorizedAgentsByPublisherProperties
-    | AuthorizedAgentsBySignalId
-    | AuthorizedAgentsBySignalTag
-)
+Refine = _arm0_Refine | _arm1_Refine | _arm2_Refine
 
 __all__ = [
     "AcceptedLoss",
@@ -375,24 +319,8 @@ __all__ = [
 #: `AttributeError` carrying the reason, so `from adcp.types.aliases import X` fails where the name has
 #: no subject and says WHY, rather than resolving to something that silently is not what the
 #: caller asked for.
-#:
-#: **EMPTY, AND THE EMPTYING IS THE MEASUREMENT.**  All fourteen rows this table carried
-#: were resolved against the tree as it is and every one of them was WRONG: each cited a
-#: class of upstream's `adcp.types.domains.*` and concluded the subject had no word, while
-#: our own walk emits that same POINTER under a name derived from the document.  Six are
-#: `adagents.json#/oneOf/1/properties/authorized_agents/items/oneOf/{0..5}`, four are the
-#: url/inline branches of `core/assets/{vast,daast}-asset.json#/oneOf/{0,1}`, and three are
-#: array-element objects of the sync responses -- all fourteen are now bound above by
-#: pointer.  A refusal that survives a re-derivation is a decision; one that does not is the
-#: stale reading `tests/test_public_words_resolve.py` calls group (B), and leaving it beside
-#: a live binding is the one state that makes the surface disagree with itself.
-#:
-#: The three words of the 27 that genuinely have no node -- `IdentityMatchTmpxMacro`,
-#: `ProviderRegistrationTmpxMacro`, `AssetInstanceType` -- are NOT rows here: upstream never
-#: published them from this module, so this module has no word to refuse.  They leave
-#: `adcp.__all__` instead, which is what `docs/plan/rebuild-plan.md` §4 asks for a name no
-#: document states; `FINDINGS-rootnames.md` carries the pointer-level ground for each.
-__adcp_refused__: dict[str, str] = {}
+__adcp_refused__ = {
+}
 
 #: **THE MODULE UPSTREAM PUBLISHES AS A NAMESPACE IS SERVED BY OURS**, or `None` where
 #: upstream's module is not one.  Measured off their own source and never listed: of every
