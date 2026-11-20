@@ -19,6 +19,47 @@ the decision may genuinely be unmade — and then it is a question for the owner
 file. And if a check reports a decision as a failure, the defect is the missing DECLARATION
 (`WIDENED`, `NARROWED`, `UNDERDETERMINED`), never the decision.
 
+## A BEAD'S TITLE IS WHAT GETS READ, SO A NOTE THAT REFUTES IT MUST RE-TITLE IT
+
+**Every pick-up from the backlog owes a RE-MEASURE before anything else.** Not because
+rows are sloppy — because a row's own notes can refute its own headline and the headline
+is what gets handed out.
+
+**MEASURED on 2026-11-20** over the open P0s. Four of about twenty already carried their
+own refutation in their notes, and nobody had acted on it:
+
+| row | its title claims | its own notes already said |
+|---|---|---|
+| `09ti` | 4 pairs at a pointer the harness cannot walk | cause (A) closed **twice**, at `00092b521` and `870aa806d` |
+| `5c8t` | 172 failures name `status` | 172 → 30, and the `handler.py` repair, recorded |
+| `zpss` | 630 divergences over 76 tools | revised to 6 over 2 |
+| `82m.42` | — | *"(this row's description is retracted in its notes)"*, in the title |
+
+And the cost was paid in the same session that measured it: `09ti` was handed to a lane
+under its stale title, and the lane's first commit was the re-measure that closed half of
+it. `5c8t` was handed out at 172 and closed without a fix, because all three sites it named
+were already repaired or gone — `canonical_formats/projection.py` had **zero** occurrences
+of `status` at any line.
+
+So the rule is a rule and not a sweep: **a note that refutes a row's headline figure must
+re-title or close the row in the same action that records the note.** A note that
+supersedes a title does not move the title, and nobody reads to the end of a row before
+starting work.
+
+**AND FOUR VERDICTS, because three are not enough.** When a re-measure disagrees with a
+row, say which of these it is — they have different consequences and different owners:
+
+* **REPRODUCES** — the row's figure is trunk's figure.
+* **DOES NOT REPRODUCE** — the claim is false at trunk. Close it with the measurement.
+* **SUBJECT-GONE-COUNT-STALE** — a residue survives under a smaller count. **Re-pin, do
+  not close.** 630 → 5 is 625 real repairs or 625 lost coverage, and those look identical
+  in a count and opposite in consequence, so say which.
+* **INSTRUMENT-CANNOT-ANSWER** — the row may be true or false and its own instrument
+  cannot say. This is a **different defect with a different owner**: the row waits on a
+  tool, not on a measurement. `fwvm`'s `blocking_names.py` reads 0/0 bare and 0/0 with
+  upstream on the path, because then *both* sides are upstream — a script with no
+  two-sided split cannot produce a two-sided figure however it is invoked.
+
 ## READ THE DOCUMENT THE WAY [docs/reading-a-document.md](docs/reading-a-document.md) SAYS
 
 Eleven rules for answering "what does the schema actually say here", each with the command
