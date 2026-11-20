@@ -33,6 +33,7 @@ defect one layer along: :func:`test_the_artifact_graded_this_tree` fails when
 
 from __future__ import annotations
 
+import ast
 import json
 import pathlib
 import subprocess
@@ -53,9 +54,77 @@ def _report() -> dict:
     return json.loads(REPORT.read_text())
 
 
-#: What the grade READS: the emitted tree and the compiler that graded it.  Not the whole
-#: repository, and that distinction is the whole of :func:`_graded_at`.
-INPUTS = ("src/adcp/types/_schemas", "src/adcp/types/constraints.py", "codegen")
+#: The two inputs that are not a function of anything: the emitted tree, and the compiler
+#: that graded it.  Not the whole repository -- a commit editing a document, a bead or this
+#: test changes nothing the grade reads.
+ROOTED_INPUTS = ("src/adcp/types/_schemas", "codegen")
+
+
+def _runtime_inputs() -> tuple[str, ...]:
+    """The modules under ``src/adcp/types/`` that the EMITTED TREE imports, derived.
+
+    **A LIST HERE WAS WRONG AND A MEASUREMENT PROVED IT.**  This was
+    ``("src/adcp/types/_schemas", "src/adcp/types/constraints.py", "codegen")`` -- the tree
+    and the compiler and ONE of the five modules the tree inherits from.  Measured on
+    2026-11-20: a lane edited ``_base.py`` and ``_runtime.py``, the grade moved from 2,548
+    pass / 21 not pass to 2,546 / 23, and :func:`test_the_artifact_graded_this_tree` would
+    have reported the artifact CURRENT throughout.  Two of the three files that lane changed
+    were invisible to a clause whose whole job is noticing that the graded subject moved.
+
+    So the set is READ OFF THE TREE instead.  Every ``_schemas`` module states its
+    dependencies in its own import lines, and the counts say how load-bearing each is:
+    ``_base`` at 1,020 modules of 1,094, ``constraints`` at 514, ``_runtime`` at 358,
+    ``_wire`` at 179, ``envelopes`` at 155.  Closed over one further level, because ``_base``
+    imports ``base`` and ``envelopes`` imports both, so a change to ``base.py`` reaches every
+    emitted class through ``_base``.
+
+    **DERIVED AND NOT LISTED IS THE POINT, not a preference.**  A module the generator starts
+    importing joins this set with nothing edited here, which is the only version of this
+    clause that stays true across a schema bump.  ``adcp.types._schemas.*`` self-edges are
+    dropped -- they are the tree, already covered -- and anything outside
+    ``src/adcp/types/`` is ignored, because the grade reaches it only through these.
+
+    **AND A MODULE NAME IS NOT A PATH HERE, which the first version of this got wrong.**
+    ``adcp.types.domains`` is a LAZY COMPATIBILITY MIRROR: the package is one hand-written
+    ``__init__.py`` that synthesises ``adcp.types.domains.core.account_ref`` and 90 more
+    names at import, so every one of those is a real import and NONE of them is a file.
+    Naming a path that does not exist costs nothing in ``git rev-list`` -- it simply never
+    matches -- which is exactly why it has to be filtered rather than tolerated: an
+    :data:`INPUTS` entry is a CLAIM that the grade reads that file, and seven entries
+    claiming files that cannot be read would be a silent hole wearing the look of coverage.
+    """
+    seen: set[str] = set()
+    frontier = {"adcp.types._schemas"}
+    while frontier:
+        module = frontier.pop()
+        path = ROOT / "src" / module.replace(".", "/")
+        files = sorted(path.rglob("*.py")) if path.is_dir() else [path.with_suffix(".py")]
+        for file in files:
+            if not file.is_file():
+                continue
+            try:
+                parsed = ast.parse(file.read_text(encoding="utf-8"))
+            except SyntaxError:  # pragma: no cover -- a broken emission fails louder elsewhere
+                continue
+            for node in ast.walk(parsed):
+                named: list[str] = []
+                if isinstance(node, ast.ImportFrom) and node.module:
+                    named = [node.module]
+                elif isinstance(node, ast.Import):
+                    named = [alias.name for alias in node.names]
+                for name in named:
+                    if not name.startswith("adcp.types."):
+                        continue
+                    if name.startswith("adcp.types._schemas"):
+                        continue
+                    if name not in seen:
+                        seen.add(name)
+                        frontier.add(name)
+    spelled = (f"src/{name.replace('.', '/')}.py" for name in seen)
+    return tuple(sorted(p for p in spelled if (ROOT / p).is_file()))
+
+
+INPUTS = ROOTED_INPUTS + _runtime_inputs()
 
 
 def _changed_inputs_since(recorded: str) -> list[str]:
