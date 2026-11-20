@@ -867,7 +867,7 @@ def _conditional(
         if arms and isinstance(node.get("if"), Mapping):
             out.dropped.append(("if", node["if"]))
 
-    if not all(_arm_carried(node[arm]) for arm in arms) or when is None:
+    if not all(_arm_carried(node[arm], root) for arm in arms) or when is None:
         declare_the_conditional()
     if when is None:
         # **A CONDITION the reduction cannot read IS DECLARED, and §8 sentence 2 is what
@@ -906,6 +906,27 @@ def _conditional(
             continue
         require, forbid = branch
         out.rules.append(kind(clauses, require=require, forbid=forbid))
+    # **THE ``null`` A ``then`` STRIKES, as one more rule and not as a parameter of the
+    # one above** (:func:`_null_struck`, ``adcp-client-python-5l3g``).  Its ``when`` is
+    # this conditional's clauses PLUS a clause about the property itself -- present, and
+    # its value in ``(None,)`` -- and its consequent forbids that key, so the pair reads
+    # "a null here, under this condition, is refused": the clause requires the key present
+    # and null, the consequent says it may not be present, and the contradiction IS the
+    # refusal.  An instance omitting the property fails the added clause and the rule does
+    # not fire, which is right -- the arm narrows the value and does not require the key.
+    #
+    # **``then`` ONLY, and the quantifier is why.**  :class:`NegatedConditional` fires when
+    # ANY clause of its ``when`` fails, so appending a clause to an ``else`` makes it fire
+    # on MORE instances rather than fewer, and the added clause would refuse what the
+    # document admits.  Measured, the one site in the bundle is a ``then``; an ``else``
+    # keeps declaring through :func:`_arm_carried`, which reads the same predicate.
+    for name in _null_struck(node.get("then"), root):
+        out.rules.append(
+            ConditionalRequired(
+                (*clauses, Match(name, True, (None,))),
+                forbid=(name,),
+            )
+        )
 
 
 #: The two keywords a ``then``/``else`` can state that :func:`_branch` READS, and so the
@@ -921,7 +942,66 @@ def _conditional(
 _CARRIED_BY_A_RULE = frozenset({"required", "not"})
 
 
-def _arm_carried(sub: Any) -> bool:
+def _types(node: Any) -> frozenset[str] | None:
+    """``node``'s own ``type`` as a set of words, or ``None`` where it states none."""
+    stated = node.get("type") if isinstance(node, Mapping) else None
+    if isinstance(stated, str):
+        return frozenset({stated})
+    if isinstance(stated, list) and all(isinstance(word, str) for word in stated):
+        return frozenset(stated)
+    return None
+
+
+def _null_struck(sub: Any, root: Mapping[str, Any] | None) -> tuple[str, ...]:
+    """The properties this arm narrows by striking the ``null`` TYPE and nothing else.
+
+    **THE ONE VALUE NARROWING A PRESENCE RULE CAN STATE, and the reason it is one is that
+    ``null`` is the one JSON type with a single value** (``adcp-client-python-5l3g``).  A
+    ``then`` narrowing a property's type is §5's "nothing on the model" in general -- a
+    rule tests key PRESENCE and a key's value against a listed SET, so
+    ``{"type": "integer", "minimum": 1}`` has no clause -- but where the only word the arm
+    removes is ``null``, the removed set is the single value ``None``, and
+    :class:`adcp.types._runtime.Match`'s ``allowed`` states it exactly.
+
+    So this answers a pair of questions at once, and both halves are required:
+
+    * the arm states nothing about the property BUT its ``type`` (annotations aside), so
+      there is no second fact left over for a declaration to carry;
+    * the property's own declaration -- on the nearest enclosing node that applies to the
+      same instance, which is ``root`` -- admits exactly the arm's words PLUS ``null``.
+
+    **Measured over the whole bundle: ONE.**  8,470 ``then`` arms and 58 ``else`` arms
+    state ``properties``, 661 of those entries narrow a property, and exactly one removes
+    only ``null``:
+    ``core/forecast-dimension-signal.json#/allOf/1/then/properties/signal_value``, whose
+    own declaration is ``["string", "number", "boolean", "null"]`` and whose arm is
+    ``["string", "number", "boolean"]``.  The document's sibling clause says the other
+    half in prose -- *"Use null with presence 'absent' to represent inventory where the
+    signal is not present"* -- so the pair is the document distinguishing one value, and
+    the class carried the ``absent`` clause's requiredness and nothing for this one.
+
+    ``root`` is ``None`` for a conditional the walk reached without one, and then there is
+    no declaration to compare against and nothing is carried: a narrowing read against no
+    baseline would be a guess at which words the document removed.
+    """
+    properties = sub.get("properties") if isinstance(sub, Mapping) else None
+    if not isinstance(properties, Mapping) or root is None:
+        return ()
+    declared = root.get("properties") if isinstance(root, Mapping) else None
+    if not isinstance(declared, Mapping):
+        return ()
+    struck: list[str] = []
+    for name, narrowed in properties.items():
+        if not isinstance(narrowed, Mapping) or _keys(narrowed) != {"type"}:
+            return ()
+        arm, own = _types(narrowed), _types(declared.get(name))
+        if arm is None or own is None or own - arm != {"null"} or arm != own - {"null"}:
+            return ()
+        struck.append(name)
+    return tuple(struck)
+
+
+def _arm_carried(sub: Any, root: Mapping[str, Any] | None = None) -> bool:
     """Does a rule kind carry EVERYTHING this ``then``/``else`` states?
 
     The gate on :func:`_conditional`'s declaration, and the question is the one reading 2
@@ -958,7 +1038,16 @@ def _arm_carried(sub: Any) -> bool:
     """
     if not isinstance(sub, dict):
         return False
-    if not _keys(sub) <= _CARRIED_BY_A_RULE:
+    # A ``properties`` whose every entry strikes only the ``null`` type IS carried, by the
+    # extra clause :func:`_conditional` appends -- so it is subtracted from the keys this
+    # gate screens rather than added to :data:`_CARRIED_BY_A_RULE`, which is the set a
+    # rule kind reads DIRECTLY.  The two differ: ``required`` and ``not`` are read off the
+    # arm by :func:`_branch`, and this one is read off the arm AND the declaration it
+    # narrows, so it is not a keyword a kind carries on its own.
+    unread = _keys(sub) - _CARRIED_BY_A_RULE
+    if _null_struck(sub, root):
+        unread -= {"properties"}
+    if unread:
         return False
     if "not" in sub:
         groups = _required_groups(sub["not"])

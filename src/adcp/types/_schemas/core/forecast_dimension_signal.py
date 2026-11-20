@@ -42,10 +42,10 @@ class SignalForecastDimension(AdCPBaseModel):
     _adcp_rules: ClassVar[tuple[Rule, ...]] = (
         RequiredGroups((('signal_ref',), ('signal_id',)), 'anyOf'),
         ConditionalRequired((Match('presence', True, ('absent',)),), require=('signal_value',), forbid=()),
+        ConditionalRequired((Match('presence', True, ('present',)),Match('signal_value', True, (None,)),), require=(), forbid=('signal_value',)),
     )
     __adcp_approximations__: ClassVar[tuple[Approximation, ...]] = (
         Approximation(document='core/forecast-dimension-signal.json', pointer='#/allOf/0', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'presence': {'const': 'absent'}}, 'required': ['presence']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
-        Approximation(document='core/forecast-dimension-signal.json', pointer='#/allOf/1', keyword='if', kind='WIDENED', rung='KEYWORD', fact={'properties': {'presence': {'const': 'present'}}, 'required': ['presence']}, attribution='docs/plan/rebuild-plan.md §5 combinators/if'),
     )
     kind: Annotated[Literal['signal'], Field(description='Dimension family discriminator.'), PinnedDefault]
     signal_ref: Annotated[SignalRef | None, Field(description='Canonical signal reference for this forecast row. Required when the row needs to disambiguate product-local, data-provider, or signal-source identity. Product-relative forecasts SHOULD use signal_ref.'), OmittedNotNull] = None

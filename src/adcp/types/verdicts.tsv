@@ -1,5 +1,5 @@
-# verdicts over 2569 graded pairs: 2546 pass, 23 not pass
-# accepts 2569/0/0  refuses 2565/0/0  dump 2569/0/0  widening 178/7/2384  undeclared 2459/10/100  admits 2547/6/16   (pass/fail/absent)
+# verdicts over 2569 graded pairs: 2547 pass, 22 not pass
+# accepts 2569/0/0  refuses 2565/0/0  dump 2569/0/0  widening 178/7/2384  undeclared 2460/9/100  admits 2547/6/16   (pass/fail/absent)
 # refuses 4 vacuous   (apart from the three figures above: the document asserts nothing, so it refuses nothing and the check is satisfied over an empty set)
 # a cell is pass, fail:<cause> or absent:<cause>; absent is NOT a pass -- it is the check that was never put to this pair
 # a cell may also read vacuous:<cause>, which IS a pass of the obligation and is not a pass of the check: there was no value to put to this pair
@@ -799,7 +799,7 @@ core/forecast-dimension-device-platform.json	#	DevicePlatformForecastDimension	v
 core/forecast-dimension-device-type.json	#	DeviceTypeForecastDimension	verdict=pass	accepts=pass	refuses=pass	dump=pass	widening=absent:no_declarations	undeclared=pass	admits=pass	examples=1	evidence=constructed	-
 core/forecast-dimension-geo.json	#	GeoForecastDimension	verdict=pass	accepts=pass	refuses=pass	dump=pass	widening=pass	undeclared=pass	admits=pass	examples=1	evidence=constructed	-
 core/forecast-dimension-placement.json	#	PlacementForecastDimension	verdict=pass	accepts=pass	refuses=pass	dump=pass	widening=absent:no_declarations	undeclared=pass	admits=pass	examples=1	evidence=constructed	-
-core/forecast-dimension-signal.json	#	SignalForecastDimension	verdict=fail:undeclared:widened_undeclared	accepts=pass	refuses=pass	dump=pass	widening=pass	undeclared=fail:widened_undeclared	admits=pass	examples=1	evidence=constructed	undeclared widening on properties: the class admitted {"kind": "signal", "presence": "present", "signal_ref": {"scope": "product", "signal_id": "a"}, "signal_value": null} which the document refuses on type
+core/forecast-dimension-signal.json	#	SignalForecastDimension	verdict=pass	accepts=pass	refuses=pass	dump=pass	widening=pass	undeclared=pass	admits=pass	examples=1	evidence=constructed	-
 core/forecast-dimension-time.json	#	TimeForecastDimension	verdict=pass	accepts=pass	refuses=pass	dump=pass	widening=absent:no_declarations	undeclared=pass	admits=pass	examples=1	evidence=constructed	-
 core/forecast-point-dimensions.json	#	ForecastPointDimensions	verdict=pass	accepts=pass	refuses=pass	dump=pass	widening=absent:no_declarations	undeclared=pass	admits=pass	examples=1	evidence=constructed	-
 core/forecast-point.json	#	ForecastPoint	verdict=pass	accepts=pass	refuses=pass	dump=pass	widening=absent:no_declarations	undeclared=pass	admits=pass	examples=1	evidence=constructed	narrower than its document [url_parsing at ('viewability', 'vendor', 'data_subject_contestation', 'url')] on pattern: at ('viewability',): at ('vendor',): at ('data_subject_contestation',): at ('url',): a string '^https://' admits; the class refused it with 1 validation error for ForecastPoint viewability.vendor.data_subject_contestation.url   Input should be a valid URL, emp; the document admits
