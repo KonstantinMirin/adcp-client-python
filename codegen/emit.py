@@ -443,11 +443,23 @@ def domain_exports(
     replacing the census would let a position return to a name an earlier round had freed:
     round two frees ``FailItemUrl``, round three would take it back, and the loop would
     alternate forever.  Accumulating is monotone -- the set of taken names only grows, and
-    the candidates and depths a position can spell are finite -- so the loop stops.  Measured on
-    this bundle it stops after **three** rounds with every domain collision resolved, and
-    the accumulation costs nothing: the names dropped on the way are each wanted by two
-    positions that both moved off them, so no position is pushed off a name another document
-    finally exports.
+    the candidates and depths a position can spell are finite -- so the loop stops.  Measured
+    on this bundle it stops after **2** rounds over all 23 domains and 3,217 published
+    symbols, in 37.8 s, with every domain collision resolved; and the accumulation costs
+    nothing: the names dropped on the way are each wanted by two positions that both moved
+    off them, so no position is pushed off a name another document finally exports.
+
+    **"SO THE LOOP STOPS" IS AN ARGUMENT AND NOT AN ASSERTION, AND IT IS NOW BOUNDED**
+    (:data:`_CENSUS_ROUNDS`, ``adcp-client-python-wckn``).  Monotonicity bounds the loop by
+    the candidate space, which is finite and enormous -- so "it stops" and "it stops in a
+    number of rounds anyone will wait for" are different claims, and this said the first
+    while readers took the second.  Measured: a lowering change that minted 187 colliding
+    nested-union names took a 92-document closure to **26 rounds and still climbing**, and
+    because each round runs ``decidable`` and ``bundle.record`` once per document the
+    symptom was a HANG with no name.  The round count said three here and nothing read it.
+    So the bound is enforced below and a census that cannot settle names itself.  This
+    paragraph previously read **three** rounds, which was true when written and is now one
+    more than the bundle needs: the figure is re-measured rather than rounded up.
 
     Keyed by the DOMAIN SET and memoised, so a run pays pass one once however many
     documents it was given.  The symbols are keyed to the documents that want them
@@ -475,6 +487,23 @@ def domain_exports(
     )
 
 
+#: **THE BOUND ON §4's REPETITION, and it exists because the loop had none**
+#: (``adcp-client-python-wckn``, measured 2026-11-20).
+#:
+#: Measured over the whole bundle -- all 23 domains, 3,217 published symbols -- the census
+#: settles in **2 rounds** in 37.8 s. :func:`domain_exports`' own docstring said "three",
+#: which was the figure when it was written and is one more than the bundle now needs.
+#:
+#: 12 is generous against 2 on purpose: a schema bump that adds a domain or a batch of
+#: documents may legitimately need more rounds, and this must not redden for that. What it
+#: must redden for is a census that cannot settle AT ALL -- measured at **26 rounds and
+#: still climbing** over a 92-document closure when a lowering change added 187 colliding
+#: nested-union names -- because the symptom of an unbounded loop is a HANG, and a hang is
+#: the one outcome a reader cannot act on. A cap that returned a partial census silently
+#: would be worse again: the names would be wrong and the tree would still be written.
+_CENSUS_ROUNDS = 12
+
+
 def _the_domains_exports(
     bundle_dir: Path, domains: frozenset[str]
 ) -> dict[str, dict[str, frozenset[str]]]:
@@ -483,9 +512,30 @@ def _the_domains_exports(
     Split out so the two layers above it are each one thing: ``lru_cache`` is the memo
     inside a process, ``store.held`` is the content address between them, and this is the
     walk neither of them is allowed to change the answer of.
+
+    **IT IS BOUNDED, AND A CENSUS THAT CANNOT SETTLE IS A NAMED FAILURE** (
+    :data:`_CENSUS_ROUNDS`). This was ``while True:`` with one exit, and
+    :func:`domain_exports` asserted in prose that it "stops after three rounds" -- so a
+    change that stopped it settling produced **a hang and no name**, which is the one
+    outcome nobody can act on. Measured: 26 rounds and still climbing over a 92-document
+    closure, with ``decidable`` and ``bundle.record`` running once per document per round
+    (1,706 to 12,607) and 25,067,171 ``bundle.subschemas`` calls falling out of the round
+    count. No profile could find that and no cache could fix it, because nothing inside a
+    round was wrong.
+
+    **THE THIRD INVARIANT STATED IN PROSE AND FALSE IN FACT**, after
+    ``compiler.branches_of``'s "one level deep by construction" (corrected 2026-11-20,
+    measured at depth 3) and ``emit.asserted_formats``' "one set and cannot drift"
+    (measured at 266 nodes). The pattern is the same each time: a sentence a reader builds
+    on, with nothing asserting it. So the bound is CODE and the failure names the
+    measurement, rather than the docstring being made more careful.
     """
     wanted = sorted(d for d in bundle.portable(bundle_dir) if domain(d) in domains)
     census: dict[str, dict[str, frozenset[str]]] = {}
+    #: The collision count each round left behind, so a failure can say whether the census
+    #: was converging slowly or not converging at all -- the two need different answers and
+    #: a round number alone does not tell them apart.
+    trail: list[int] = []
     while True:
         round_of = emit(bundle_dir, wanted, naming_census=census)
         # **The stop condition is read off THIS ROUND's names and never off the
@@ -517,9 +567,38 @@ def _the_domains_exports(
             renamed = round_of.published.get(module_path(document), {})
             for symbol in round_of.surface.get(module_path(document), {}):
                 held.setdefault(renamed.get(symbol, symbol), set()).add(document)
-        shared = any(
-            len(takers) > 1 for held in this_round.values() for takers in held.values()
-        )
+        contested = {
+            (known, symbol): sorted(takers)
+            for known, held in this_round.items()
+            for symbol, takers in held.items()
+            if len(takers) > 1
+        }
+        shared = bool(contested)
+        trail.append(len(contested))
+        if shared and len(trail) >= _CENSUS_ROUNDS:
+            # **FAIL BY NAME, with the round count and the names still moving.**  §2's rule
+            # for a property of the COMPILER rather than of any document: a
+            # :class:`codegen.refusal.BuildFailure` no layer catches, because a census
+            # that cannot settle is not a verdict any document earned.
+            worst = sorted(contested.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+            raise BuildFailure(
+                f"§4's domain-collision repetition did not settle in {len(trail)} rounds "
+                f"over {len(wanted)} documents in {len(domains)} domain(s). Collisions "
+                f"left per round: {trail}. Still contested, worst first "
+                f"({len(contested)} in total):\n"
+                + "\n".join(
+                    f"  adcp.types.{known}.{symbol} wanted by {', '.join(takers)}"
+                    for (known, symbol), takers in worst[:12]
+                )
+                + (f"\n  ... and {len(contested) - 12} more" if len(contested) > 12 else "")
+                + "\n\nThe repetition settles in 2 rounds on bundle 3.2's 23 domains, so a "
+                "count near this bound means names are being minted that the collision "
+                "rule cannot separate -- §4 names a nested node `pascal_case(property)`, "
+                "and a batch of them at properties the bundle reuses (`assets`, `items`, "
+                "`target`, `goal`) collides faster than the rule can spend prefixes. The "
+                "flat trail above is the signature: a census converging slowly shrinks, "
+                "one that cannot settle does not."
+            )
         grown = {known: {s: set(d) for s, d in held.items()} for known, held in census.items()}
         for known, held in this_round.items():
             into = grown.setdefault(known, {})
