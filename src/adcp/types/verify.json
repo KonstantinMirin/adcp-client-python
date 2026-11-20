@@ -1,11 +1,11 @@
 {
  "causes": {
   "fail:admits:model_refused_admitted": 6,
-  "fail:undeclared:widened_undeclared": 10,
+  "fail:undeclared:widened_undeclared": 9,
   "fail:widening:unproved_widening": 2
  },
  "graded": 2569,
- "not_pass": 18,
+ "not_pass": 17,
  "not_pass_rows": [
   {
    "accepts": "accepts=pass",
@@ -126,19 +126,6 @@
   },
   {
    "accepts": "accepts=pass",
-   "admits": "admits=pass",
-   "class": "SignalForecastDimension",
-   "document": "core/forecast-dimension-signal.json",
-   "dump": "dump=pass",
-   "note": "undeclared widening on properties: the class admitted {\"kind\": \"signal\", \"presence\": \"present\", \"signal_ref\": {\"scope\": \"product\", \"signal_id\": \"a\"}, \"signal_value\": null} which the document refuses on type",
-   "pointer": "#",
-   "refuses": "refuses=pass",
-   "undeclared": "undeclared=fail:widened_undeclared",
-   "verdict": "verdict=fail:undeclared:widened_undeclared",
-   "widening": "widening=pass"
-  },
-  {
-   "accepts": "accepts=pass",
    "admits": "admits=fail:model_refused_admitted",
    "class": "Annotated",
    "document": "core/localized-creative-asset.json",
@@ -242,7 +229,7 @@
    "widening": "widening=fail:unproved_widening"
   }
  ],
- "pass": 2551,
+ "pass": 2552,
  "per_check": {
   "accepts": {
    "absent": 0,
@@ -266,8 +253,8 @@
   },
   "undeclared": {
    "absent": 79,
-   "fail": 10,
-   "pass": 2480
+   "fail": 9,
+   "pass": 2481
   },
   "widening": {
    "absent": 2384,
@@ -276,10 +263,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/be0af5f166e85d62bda2f438dc3c301a0739a1d25b3311da355f56364aaf9d20",
-  "head": "e15aee88b+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/ff403491dce1c222b1cde50df23542c5cc0b2458379e4b4a479f52de9bdd0a05",
+  "head": "0f8a24989+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 554.3,
- "seconds_per_pair": 0.2158
+ "seconds": 543.4,
+ "seconds_per_pair": 0.2115
 }
