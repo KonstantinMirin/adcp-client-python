@@ -738,6 +738,28 @@ def is_no_explicit_null(field: FieldInfo) -> bool:
     ours.  A predicate that recognised one would be right about half the tree and silent
     about the other half -- and SILENT is what it was.
 
+    **IT IS THE THIRD READER OF THE COLLAPSED IDENTITY AND IT IS STILL WRONG, DELIBERATELY
+    AND UNDER A BLOCKED DECISION** (``adcp-client-python-hsht``).  The exclusion it tests is
+    carried by :data:`adcp.types._base.OmittedWhenNone` too -- the SERIALISATION half alone,
+    for an optional property whose document ADMITS ``null`` -- so this answers "refuses
+    ``null``" for 68 properties whose documents admit one, 37 of them
+    ``core/targeting-input.json``'s.  :func:`adcp.types._base.omits_null` and
+    :func:`adcp.types._base.omits_none` are the corrected pair and read BOTH halves; this
+    one is not corrected with them, because correcting it is not a repair on its own:
+
+    ``tests/test_targeting_overlay_compat.py`` branches on this predicate, and the branch it
+    does not currently take asserts the OPPOSITE of what its neighbour asserts for the same
+    class, the same property and the same flags --
+    ``test_bridge_serialization_keeps_objects_on_the_wire``'s ``else`` says a supplied
+    ``null`` is KEPT under ``exclude_none=False`` and
+    ``test_raw_dict_keeps_input_materialization`` says it is OMITTED "whatever
+    ``exclude_none`` says".  The two coexist only because this predicate never answers
+    ``False``, which makes that ``else`` dead code.  Correcting the predicate makes it live,
+    and which of the two assertions is right is ``hsht``'s own closing question: *does "None
+    is absence" hold for a document that explicitly distinguishes ``null`` from omission?*
+    That is the owner's, so this stays as it is and the question is reported rather than
+    answered by a predicate change.
+
     ``adcp.types._base`` is imported on use and not at module scope: that module imports
     this one for its own bases, so a top-level import here is a cycle.
     """
@@ -773,6 +795,119 @@ def _keep_opaque_nulls(
         ):
             kept[key] = None
     return kept
+
+
+#: The context key :meth:`AdCPBaseModel.model_dump` sets when the CALLER asked for nulls,
+#: read by :func:`_restore_supplied_nulls` at every depth.
+#:
+#: **A CONTEXT AND NOT A FLAG, because the flag is invisible.**  Pydantic's own default for
+#: ``exclude_none`` is ``False``, so ``info.exclude_none`` reads ``False`` for a plain
+#: ``model_dump()`` AND for a deliberate ``model_dump(exclude_none=False)`` -- the two
+#: dumps §2's row and ``OmittedWhenNone``'s contract have to separate.  Only the METHOD can
+#: see the difference, because only the method sees ``kwargs``, and only a serializer runs
+#: at depth.  ``context`` is the one channel that carries a fact from the first to the
+#: second: ``model_dump(context=...)`` is handed to every nested model's serializer as
+#: ``info.context``.
+#:
+#: Namespaced, and merged into a caller's own context rather than replacing it: the context
+#: is the adopter's channel too (``docs/extending-types.md``), and a dump that discarded
+#: theirs to carry ours would break a custom serializer to fix a null.
+_SUPPLIED_NULLS: Final = "adcp.keep_supplied_nulls"
+
+
+def _asking_for_nulls(kwargs: dict[str, Any]) -> dict[str, Any]:
+    """``kwargs`` with :data:`_SUPPLIED_NULLS` set where the caller asked for nulls.
+
+    The PRESENCE of ``exclude_none=False`` and not its value, for the reason
+    :data:`_SUPPLIED_NULLS` gives.  ``exclude_none=True`` is a veto and sets nothing;
+    absent is the default dump and sets nothing.
+    """
+    if kwargs.get("exclude_none", True) is not False:
+        return kwargs
+    context = kwargs.get("context")
+    kwargs["context"] = {
+        **(context if isinstance(context, dict) else {}),
+        _SUPPLIED_NULLS: True,
+    }
+    return kwargs
+
+
+def _restore_supplied_nulls(
+    model: BaseModel, value: dict[str, Any], info: SerializationInfo
+) -> dict[str, Any]:
+    """Put back an explicit ``null`` the document admits, where the caller asked for nulls.
+
+    **THE ONE THING ``exclude_if`` CANNOT EXPRESS, and the reason this is a step after the
+    handler rather than a third marker.**  :data:`adcp.types._base.OmittedWhenNone` sits on
+    an optional property whose document ADMITS ``null``, and it owes two things that pull
+    opposite ways: §2's dump row omits a ``None`` there, because serialisation keys on
+    ``required`` and the property is not required -- and the document gives an explicit
+    ``null`` its own meaning, which ``core/targeting-input.json`` states outright: *"Each
+    known dimension has three states: omission inherits the product default on create or
+    leaves the stored dimension unchanged on update; null explicitly suppresses"*.  Three
+    states; ``exclude_if`` is handed the ``None`` and nothing else, so it cannot tell the
+    second from the third.
+
+    **THE DISCRIMINATOR IS THE CALLER'S OWN ``exclude_none=False``**, carried down as
+    :data:`_SUPPLIED_NULLS` because the flag itself is invisible here (that constant says
+    why).  So:
+
+        the caller passed exclude_none=False   ->  a SUPPLIED null is KEPT
+        a plain dump, or exclude_none=True     ->  omitted, as before
+
+    ``tests/test_targeting_overlay_compat.py`` is what states this rather than a preference,
+    and it states it as a pair: for a property whose document REFUSES ``null`` a ``None`` is
+    left off *"even under ``exclude_none=False``"*, and for one whose document ADMITS it the
+    mutation input keeps it.  Both halves now hold, where before the split the predicate the
+    test branches on answered the same thing for both and only the first half was reachable.
+    ``OmittedWhenNone``'s own words for the same contract: a property whose document admits
+    ``null`` *"keeps every ``null`` it ever wrote"*.
+
+    A dump the caller did not narrow is unchanged, which is §2's row: *"an optional one is
+    omitted whatever its type admits"*.  The two callers that need the three states ask for
+    nulls already and say why in their own words --
+    :meth:`AdCPBaseModel.model_dump_as_received` ("keeps an explicit ``null`` on a property
+    whose schema admits one") and ``decisioning.handler._to_store_dict``'s ``patch`` shape
+    ("Explicit nulls survive where the schema admits ``null`` ... but fields the caller
+    never mentioned are *dropped*") -- and neither got it, because the omission had moved to
+    the field where no dump flag reaches.
+
+    ``model_fields_set`` is the second half of the rule: a property the caller never
+    mentioned is absence under every reading, so an UNSET ``None`` is never restored
+    whatever the flags, and restoring it would invent the one command the document
+    distinguishes.
+
+    ``omits_none`` and never ``omits_null``: the first is the property whose document admits
+    a ``null``, the second the property whose document refuses one, and the two were ONE
+    predicate until the markers became two objects (``adcp-client-python-hsht``).  A
+    required property carries no marker at all, keeps its ``null`` through pydantic itself
+    and is already in ``value`` -- which is why ``setdefault`` is the write and not an
+    assignment, and why a field the caller excluded by name stays excluded.
+
+    ``__dict__`` and not ``getattr``, for ``_runtime.supplied``'s measured reason: §6's
+    ``deprecated`` row renders ``Field(deprecated=True)``, pydantic implements it as a
+    descriptor that warns on ATTRIBUTE ACCESS, and this SDK walking its own fields raised
+    64,261 ``DeprecationWarning``s in one grade run.
+    """
+    context = info.context
+    if not isinstance(context, dict) or not context.get(_SUPPLIED_NULLS):
+        return value
+    from adcp.types._base import omits_none
+
+    include, exclude = info.include, info.exclude
+    fields = type(model).model_fields
+    for name in model.__pydantic_fields_set__:
+        declared = fields.get(name)
+        if declared is None or not omits_none(declared):
+            continue
+        if model.__dict__.get(name, False) is not None:
+            continue
+        if (include is not None and name not in include) or (
+            exclude is not None and name in exclude
+        ):
+            continue
+        value.setdefault(declared.alias if declared.alias and info.by_alias else name, None)
+    return value
 
 
 class AdCPBaseModel(BaseModel):
@@ -827,7 +962,17 @@ class AdCPBaseModel(BaseModel):
         generated models; this wrapper does not mask reporting attributes.
 
         Also keeps an opaque object's ``null`` values (see
-        :func:`_keep_opaque_nulls`).
+        :func:`_keep_opaque_nulls`) and, on a dump narrowed to what the caller
+        SUPPLIED, an explicit ``null`` the document admits (see
+        :func:`_restore_supplied_nulls`).
+
+        **The restoration is HERE and not in :meth:`model_dump` because a
+        serializer is what fires at every nesting depth.**  Put on the method, it
+        reached a top-level ``frequency_cap`` and not the
+        ``packages[0].targeting_overlay.geo_countries`` one field below it:
+        pydantic-core serialises a nested model through its serializer and never
+        through its Python ``model_dump``, which is the same reason
+        ``_keep_opaque_nulls`` is called from here.
         """
         value = handler(self)
         if not isinstance(value, dict):
@@ -835,6 +980,7 @@ class AdCPBaseModel(BaseModel):
         extra = self.__pydantic_extra__
         if extra and info.exclude_none and not type(self).model_fields:
             return _keep_opaque_nulls(value, extra, info)
+        value = _restore_supplied_nulls(self, value, info)
         # Bundled schemas can rename or inline the same wire shape. Match its
         # declared fields rather than generated class/module names; supplied
         # values still come exclusively from this instance's fields-set.
@@ -913,7 +1059,17 @@ class AdCPBaseModel(BaseModel):
         kwargs.setdefault("exclude_unset", True)
         kwargs.setdefault("exclude_none", False)
         kwargs.setdefault("by_alias", True)
-        return self.model_dump(**kwargs)
+        # **THE RESTORATION IS THIS METHOD'S AND NOT ``model_dump``'S**, which is narrower
+        # than it looks and is the whole of what `adcp-client-python-hsht` leaves open.
+        # This dump's contract is the document it was PARSED FROM -- a digest over
+        # `commercial_terms` *as declared* (#1613) -- so a `null` the wire sent and the
+        # document admits has to survive it or the digest is computed over a different
+        # document.  A plain `model_dump` keeps §2's dump row untouched: the two tests in
+        # `tests/test_targeting_overlay_compat.py` disagree about what an
+        # `exclude_none=False` dump owes there (see `is_no_explicit_null`), and widening
+        # the restoration to every caller would pick a side of a question that is the
+        # owner's.
+        return self.model_dump(**_asking_for_nulls(kwargs))
 
     def model_dump_json(self, **kwargs: Any) -> str:
         # §2's dump row, by FIELD and not by model -- see `model_dump` above.

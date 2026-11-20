@@ -875,12 +875,23 @@ def supplied(model: BaseModel) -> tuple[frozenset[str], Mapping[str, Any]]:
     :func:`_presence_of` for a nested value.  A second reading of presence is where the
     next one of these would hide, so there is one.
 
-    **THE OTHER DIRECTION IS SCOPED BY THE MARKER AND NOT BY THE VALUE.**  A property
-    whose document ADMITS ``null`` carries no marker (``codegen.ir.admits_null`` is the
-    one reader that decides which), and there a ``None`` is a VALUE the document states --
-    so it stays present and a rule about it still fires.  The test is the marker and never
+    **THE OTHER DIRECTION IS SCOPED BY THE MARKER AND NOT BY THE VALUE.**  At a property
+    whose document ADMITS ``null`` a ``None`` is a VALUE the document states, so it stays
+    present and a rule about it still fires.  The test is the marker and never
     ``value is None``, because the two cases are the same Python object and only the
     document tells them apart.
+
+    **AND THE MARKER IT IS SCOPED BY IS BOTH HALVES, WHICH IS WHAT THIS SENTENCE GOT WRONG**
+    (``adcp-client-python-hsht``, fixed 2026-11-20).  It read "carries no marker", and such
+    a property carries ``OmittedWhenNone`` -- the serialisation half alone, which shares its
+    ``exclude_if`` with ``OmittedNotNull`` because both owe pydantic-core the same answer.
+    So ``omits_null`` answered ``True`` here for all 37 of ``core/targeting-input.json``'s
+    null-admitting properties, this function dropped a SET ``None`` from the key set, and
+    ``PackageControl.model_validate({"package_id": "p1", "budget": None})`` was refused on
+    its own ``anyOf`` while the bundled schema accepts it -- an undeclared NARROWING, with
+    ``tests/conformance/test_schema_model_parity.py`` reporting it.  ``omits_null`` reads
+    the validation half now and ``omits_none`` is its complement; nothing in this function
+    changed, which is the point of there being one reader.
 
     An EXTRA keeps its ``None`` too: it has no field, so no marker, and the ``None``
     came from the payload rather than from this SDK's spelling of absence.
