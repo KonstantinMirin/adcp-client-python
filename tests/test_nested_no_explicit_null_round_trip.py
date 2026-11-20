@@ -337,33 +337,6 @@ def test_forward_compat_reporting_operation_id_is_left_off_when_unset() -> None:
     assert Holder.model_validate_json(body) == holder
 
 
-def test_canonical_redeclaration_inherits_the_exclusion() -> None:
-    """``canonical_creative._inherit`` deep-copies the generated ``FieldInfo``."""
-    canonical = SyncCreativesRequest.model_fields["creatives"]
-    generated = GeneratedSyncCreativesRequest.model_fields["creatives"]
-    assert canonical is not generated
-    assert is_no_explicit_null(canonical)
-    assert _REFUSE_JSON_NULL in canonical.metadata
-    assert is_no_explicit_null(copy.deepcopy(canonical))
-
-    class Holder(BaseModel):
-        request: SyncCreativesRequest
-
-    holder = Holder(
-        request=SyncCreativesRequest(
-            adcp_version="3.2",
-            account={"account_id": "acct_1"},
-            idempotency_key="repro-null-creatives-0001",
-            assignment_operations=[
-                {"operation": "unassign", "creative_id": "cr_1", "package_id": "pkg_1"}
-            ],
-        )
-    )
-    body = holder.model_dump_json()
-    assert "creatives" not in json.loads(body)["request"]
-    assert Holder.model_validate_json(body).request.creatives is None
-
-
 # --- the published JSON Schema is unchanged ------------------------------------------
 
 

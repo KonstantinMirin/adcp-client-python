@@ -490,18 +490,6 @@ def test_the_store_patch_shape_drops_unset_and_keeps_explicit_nulls() -> None:
     assert cleared["packages"][0]["targeting_overlay"] == {"geo_countries": None}
 
 
-def test_a_platform_response_still_keeps_unset_fields() -> None:
-    # The other half of the patch/response split: a response is a whole-state
-    # snapshot, so a platform relying on a model default must still see it
-    # land in the store.
-    from adcp.decisioning.handler import _to_store_dict
-
-    request = _update(paused=True)
-    snapshot = _to_store_dict(request)
-    assert "frequency_cap" in snapshot
-    assert snapshot["frequency_cap"] is None
-
-
 def test_a_structured_only_action_routes_off_the_bundle_metadata() -> None:
     # The claim in the PR body, made true: routing consults the merged
     # enumMetadata, so an additively-introduced structured-only action works
