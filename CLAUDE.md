@@ -19,6 +19,37 @@ the decision may genuinely be unmade — and then it is a question for the owner
 file. And if a check reports a decision as a failure, the defect is the missing DECLARATION
 (`WIDENED`, `NARROWED`, `UNDERDETERMINED`), never the decision.
 
+## WHAT THE SDK IS FOR, AND WHY SCHEMA-FAITHFULNESS IS NOT THE GOAL
+
+**The owner, 2026-11-20.** *"The goal of the SDK is to make a developer's job of parsing
+and representing the JSON structures in the payload easy. The schema provides the
+validation rules. The SDK is generated after the schema to support the parsing and
+emission of the final JSON payload. So there is no need or value in being schema faithful
+if it creates inconsistent or strange SDK behaviour."*
+
+Three things follow, and they resolve a class of question that has been reaching him one
+instance at a time:
+
+1. **Validation is `strict_validate`'s job, not the class's.** The class exists so a
+   developer can construct, read and dump a payload. Where being faithful to a keyword
+   would make the class awkward — a field that cannot be omitted, a default that is not a
+   default, a type that is two types — **the class takes the ergonomic shape and
+   `strict_validate` carries the rule.** The accepted set over DOCUMENTS is what must not
+   move; the Python surface is free to be pleasant.
+2. **A test that grades wire behaviour must go through `strict_validate`.** It is the new
+   surface. A test asserting a validation rule against a bare constructor or a bare
+   `model_dump` is asking the wrong object, and where two such tests disagree the answer
+   is usually that neither is the question — ask `strict_validate`.
+3. **The schema is not sacred and CAN BE PATCHED.** Where the bundle is internally
+   inconsistent, `patches/` is the answer and making the documents consistent is
+   preferred over carrying the inconsistency into the types. A divergence between two
+   halves of the bundle is a bundle defect, not a compiler obligation.
+
+**AND A FIELD NO DOCUMENT STATES IS NOT THE SDK'S TO CARRY.** The owner, same day, on
+`reporting_webhook.operation_id`: *"Schema doesn't have this, therefore SDK cannot be using
+it."* Where the pinned bundle dropped a property, the kept machinery that requires it is
+what changes — not the types, and not a declaration excusing the gap.
+
 ## A BEAD'S TITLE IS WHAT GETS READ, SO A NOTE THAT REFUTES IT MUST RE-TITLE IT
 
 **Every pick-up from the backlog owes a RE-MEASURE before anything else.** Not because
