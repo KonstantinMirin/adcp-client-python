@@ -19,6 +19,60 @@ the decision may genuinely be unmade — and then it is a question for the owner
 file. And if a check reports a decision as a failure, the defect is the missing DECLARATION
 (`WIDENED`, `NARROWED`, `UNDERDETERMINED`), never the decision.
 
+## A UNION IS A PARENT AND ITS BRANCHES ARE SUBCLASSES — AT EVERY UNION, NOT MOST
+
+**The owner, 2026-11-20, stating the contract rather than approving a fix:**
+
+> *"We are expected to have a union with a parent and children where each child represents
+> one branch. We want to be able to throw a payload at the pydantic model instantiation and
+> get the class for the right branch, which would pass `isinstance` both for the branch and
+> the parent union, and then be able to construct the corresponding branch. Therefore the
+> structure where the union defines the parent and the branches are subclasses of the parent
+> fits this developer experience nicely. And we actually follow this for all the unions. Why
+> not this one?"*
+
+So the shape is fixed and it is four obligations, not one:
+
+1. hand a payload to the PARENT and get the right BRANCH back;
+2. `isinstance(x, Branch)` holds;
+3. `isinstance(x, Parent)` holds;
+4. the branch is constructible on its own.
+
+**"WHY NOT THIS ONE" IS THE WHOLE OF `adcp-client-python-lfir`.** Measured: of the bundle's
+81 nodes stating a `discriminator` beside a combinator, **56 get base + children +
+`_BRANCH_DISCRIMINATOR` and 25 get the children with no base.** That is one statement
+rendered two ways in one bundle, and at the 25 obligations 1 and 3 are impossible —
+`isinstance(x, Refine)` cannot hold because `Refine` names nothing. The 25 are not a
+naming question that happens to be expensive; they are the contract above, unmet.
+
+## A DEFAULT ON A BRANCH'S DISCRIMINATOR IS THE POINT, NOT A DEFECT
+
+**The owner, same day, on what defaults are FOR:**
+
+> *"For every class which represents the branch of a discriminated union, we set the field
+> that discriminates it to the value for this branch. If `success` is true for the
+> response-success branch, then the response-success class would have a default value of
+> `status` equals `success`. This creates a nice developer experience: when you instantiate
+> the model of the success response you know that `status` would be `success`. This is the
+> idea for images, for assets, for formats, for pretty much everything where by
+> instantiating the branch you should automatically have these values."*
+
+So a default equal to the value the document PINS is intended, and
+`adcp-client-python-0z0u`'s "invented default" reading does not reach it. **The line is not
+`const` versus `default` — it is HOW MANY VALUES THE NODE ADMITS:**
+
+| the node admits | a default is | why |
+|---|---|---|
+| exactly one (`const`, or a single-member `enum`) | **CORRECT, and wanted** | the value cannot differ, so nothing is decided for the caller and obligation 4 above gets easier |
+| several | **A DEFECT** | the class picks one of the caller's options; a developer who sets nothing puts a value on the wire they never chose |
+| none that include it | **A DEFECT** | the default is refused by the node's own keywords |
+
+Measured over the 867 pairs `0z0u` collected: **477 are the one-value kind and are the
+owner's intent**, 237 pick one of several (`collapsed-disjunction`), 145 state a value no
+keyword states (`invented-value`), and 8 contradict the node outright. **So `0z0u`'s real
+population is 390 and its 867 was never the defect count** — and where a branch's
+discriminator carries NO default, that is a gap to fill rather than leave.
+
 ## WHAT THE SDK IS FOR, AND WHY SCHEMA-FAITHFULNESS IS NOT THE GOAL
 
 **The owner, 2026-11-20.** *"The goal of the SDK is to make a developer's job of parsing
