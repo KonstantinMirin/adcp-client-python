@@ -2121,6 +2121,30 @@ def emit(
         if edge.target is not None:
             spellings.setdefault(edge.target, set()).add((edge.uri, edge.into))
 
+    #: **ONE ANSWER PER NODE PER REFERRING DOCUMENT, and the key is what ``at`` is a
+    #: FUNCTION OF** (``adcp-client-python-lfir``, measured 2026-11-20).
+    #:
+    #: ``at`` is a closure rebuilt inside every :func:`answer` call, and it recurses into
+    #: each branch through ``compiler.branches_of`` -- so the reference graph, which is a
+    #: DAG, was walked as a TREE: every site naming a target re-derived that target's whole
+    #: branch subtree, allocating a bound :class:`compiler.Shape` and a
+    #: :class:`compiler.Target` per visit, and two sites naming one target shared nothing.
+    #:
+    #: **THE KEY IS EXACT AND IS NOT A GUESS.** Everything ``at`` closes over is a function
+    #: of ``(document, declarer)``: ``mod`` and ``bound`` are ``lowered[edge.target]``,
+    #: ``module`` is ``relative_module(document, declarer, …)``, and ``importables`` is
+    #: ``_importable(document, declarer, bound.symbols, mod.imported, …)``. Given those,
+    #: ``at`` reads only ``mod.shapes``, ``mod.hops`` and ``mod.at`` at ``pointer`` and
+    #: returns a frozen :class:`compiler.Target` -- so it is pure in ``(pointer, spelled)``
+    #: and the four together name the answer. ``Target`` and ``TargetBranches`` are both
+    #: ``frozen=True``, which is what makes handing one instance to two callers sound.
+    #:
+    #: **Held per RUN and never at module scope.** The answers are a function of this run's
+    #: ``lowered``, so a memo outliving the run would hand one bundle's target to another --
+    #: and ``emit`` is called once per naming-census round, each with its own ``lowered``,
+    #: which is exactly the staleness a module-level cache would introduce.
+    at_memo: dict[tuple[str, str, str, str], Target] = {}
+
     def answer(document: str, edge: bundle.Edge) -> Target | Refusal:
         """What ONE reference site resolves to, for the document that is about to
         write the import.
@@ -2313,10 +2337,17 @@ def emit(
         )
 
         def at(pointer: str, spelled: str) -> Target:
+            # The memo is read and written HERE and not around the recursive call, so a
+            # node reached as a branch of a branch is shared too -- which is the depth the
+            # cost lives at.
+            key = (document, declarer, pointer, spelled)
+            held = at_memo.get(key)
+            if held is not None:
+                return held
             shape = mod.shapes.get(pointer)
             hop = mod.hops.get(pointer)
             declared = mod.at.get(pointer)
-            return Target(
+            built = Target(
                 module,
                 spelled,
                 None if shape is None else _bound_shape(shape, bound.symbols),
@@ -2328,6 +2359,8 @@ def emit(
                     declared, lambda p: at(p, bound.symbols[p])
                 ),
             )
+            at_memo[key] = built
+            return built
 
         return at(edge.into, symbol)
 

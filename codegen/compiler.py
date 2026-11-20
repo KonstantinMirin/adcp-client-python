@@ -695,10 +695,30 @@ def branches_of(
     ``emit.answer`` for a cross-document reference and :func:`local_target` for a local
     one, so a branch and a root are one construction and cannot come to disagree.
 
-    It TERMINATES on any declaration: a branch of a root union is a class and not a union
-    root (:attr:`codegen.ir.ClassDecl.branches` is ``None`` on it), so the recursion
-    through ``at`` is one level deep by construction and a second level would be a target
-    whose branch is itself a union base, which :func:`declare_object` writes for no node.
+    **IT TERMINATES, AND NOT AT ONE LEVEL.**  This said "the recursion through ``at`` is
+    one level deep by construction and a second level would be a target whose branch is
+    itself a union base, which :func:`declare_object` writes for no node", and that was
+    **false when it was written**: measured over
+    ``media-buy/get-products-request.json`` alone, the recursion reaches **depth 3** on an
+    untouched tree, 53,111 calls of this function for 38,929 bound shapes
+    (``adcp-client-python-lfir``, 2026-11-20).  A branch IS sometimes a union base --
+    ``lower.union.lower_union`` declares one for a union sitting at a BRANCH of another
+    union (:class:`lower.union.Enclosing`), which is the second level the sentence said
+    nothing writes.
+
+    What it terminates on is the IR being finite and acyclic, which is the honest reason:
+    ``ClassDecl.branches`` names pointers of one module, each strictly inside the node
+    declaring it, so the descent is bounded by the document's own nesting.  Depth is
+    therefore a function of the bundle and may grow when the lowering declares a base at a
+    node it did not before -- so **the cost of this walk is the CALLER's to bound, not
+    this function's**: ``emit.answer`` holds a memo keyed on what its ``at`` closure is a
+    function of, because the reference graph is a DAG and walking it as a tree is what the
+    missing memo made it do.
+
+    **AN INVARIANT STATED IN PROSE AND FALSE IN FACT IS WORSE THAN NONE**, which is why the
+    measurement is quoted here rather than the claim restated more carefully: the old
+    sentence read as a guarantee a reader could build on, and a lowering that added one
+    nested base turned a linear walk superlinear with nothing to warn them.
     """
     if not isinstance(declared, ir.ClassDecl) or declared.branches is None:
         return None
