@@ -163,6 +163,10 @@ dev = [
     "pytest-cov>=4.0.0",
     "pytest-xdist>=3.8,<4",
     "pytest-json-report>=1.5",
+    # Declared because ``addopts`` names ``--timeout``: it was present in the venv
+    # ad-hoc and absent from this list, so a ``uv sync`` removed it and every pytest
+    # invocation then failed with ``unrecognized arguments: --timeout``.
+    "pytest-timeout>=2.3",
     "freezegun==1.5.5",  # isolated deferred-schema compatibility regressions
     "mypy==1.20.2",
     "pyright==1.1.414",  # real imported-base adopter regressions
