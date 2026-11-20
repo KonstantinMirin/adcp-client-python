@@ -10,9 +10,13 @@ repos:
       - id: black
         language_version: python3.11
         args: [--line-length=100]
-        # Version-scoped stubs are deterministically emitted and checked by
-        # make validate-generated; reformatting them makes the checked output stale.
-        exclude: ^(src/adcp/types/domains/|src/adcp/types/v(30|31|32)\.pyi$|src/adcp/types/versioned_bases/_?v(30|31|32)\.(py|pyi)$)
+        # Generated and deterministically emitted trees are checked for EQUALITY with a
+        # regeneration by make validate-generated; reformatting them makes the checked
+        # output stale. The emitted tree is src/adcp/types/_schemas/ -- codegen/emit.py's
+        # PACKAGE = "adcp.types._schemas" -- and this exclude named only domains/, which
+        # today holds one hand-written compatibility mirror and no generated module.
+        # Measured 2026-11-20: black would reformat 1,028 of _schemas/'s 1,094 files.
+        exclude: ^(src/adcp/types/_schemas/|src/adcp/types/domains/|src/adcp/types/v(30|31|32)\.pyi$|src/adcp/types/versioned_bases/_?v(30|31|32)\.(py|pyi)$)
 
   # Ruff linting (ignoring line-length for now - black handles it)
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -20,7 +24,12 @@ repos:
     hooks:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix, --ignore=E501]
-        exclude: ^(src/adcp/types/domains/|src/adcp/types/versioned_bases/_?v(30|31|32)\.(py|pyi)$)
+        # _schemas/ for the black hook's reason, and more sharply: this hook carries
+        # --fix, so it EDITS what it touches. Measured 2026-11-20: ruff reports 14,646
+        # errors over the emitted tree and calls 176 of them auto-fixable, so an
+        # unexcluded run writes 176 edits into a tree validate-generated then compares
+        # against a regeneration that does not contain them.
+        exclude: ^(src/adcp/types/_schemas/|src/adcp/types/domains/|src/adcp/types/versioned_bases/_?v(30|31|32)\.(py|pyi)$)
 
   # Mypy type checking (local hook to use project dependencies)
   - repo: local
