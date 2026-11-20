@@ -157,12 +157,11 @@ def test_no_class_refuses_what_its_document_admits() -> None:
         if "model_refused_admitted" in (r.get("verdict") or "")
         or "model_refused_valid" in (r.get("verdict") or "")
     ]
-    assert not narrower, (
-        f"{len(narrower)} pairs refuse a value their document admits; the first ten:\n"
-        + "\n".join(
-            f"  {r['document']}{r['pointer']} -> {r['class']}: {(r.get('note') or '')[:150]}"
-            for r in narrower[:10]
-        )
+    assert (
+        not narrower
+    ), f"{len(narrower)} pairs refuse a value their document admits; the first ten:\n" + "\n".join(
+        f"  {r['document']}{r['pointer']} -> {r['class']}: {(r.get('note') or '')[:150]}"
+        for r in narrower[:10]
     )
 
 
@@ -194,6 +193,6 @@ def test_the_verdict_table_and_the_report_agree() -> None:
     """
     table = ROOT / "src" / "adcp" / "types" / "verdicts.tsv"
     lines = [line for line in table.read_text().splitlines() if not line.startswith("#")]
-    assert len(lines) - 1 == _report()["graded"], (
-        f"verdicts.tsv holds {len(lines) - 1} rows and verify.json says {_report()['graded']}"
-    )
+    assert (
+        len(lines) - 1 == _report()["graded"]
+    ), f"verdicts.tsv holds {len(lines) - 1} rows and verify.json says {_report()['graded']}"
