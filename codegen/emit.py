@@ -244,6 +244,7 @@ def _declaring_module(
     return module_path(abroad[symbol]) if symbol in abroad else None
 
 
+@functools.cache
 def module_path(document: str) -> str:
     """D1: the module is the document path with hyphens as underscores.
 
@@ -252,6 +253,26 @@ def module_path(document: str) -> str:
     (:func:`module_file`), but a package's ``__init__`` IS the package, so the name
     Python imports it under is this and nothing is appended to it.  The two readings
     are :func:`module_name` and :func:`module_file` and there are no others.
+
+    **CACHED, AND THE KEY SPACE IS THE BUNDLE'S OWN DOCUMENT SET** (measured 2026-11-20,
+    ``adcp-client-python-wckn``).  Over ``core/format.json``'s 92-document closure this
+    ran **1,146,456 times for 1,059 distinct arguments** -- about 160 calls per call of
+    :func:`domain`, which is its one derived reader, and 670 per
+    :func:`decidable`.  The answer is a function of the STRING alone: ``Path(document)``, a
+    parts join and a hyphen replace, reading nothing of the filesystem and nothing
+    mutable.  So this is the walk's defect one layer down -- a pure derivation repeated per
+    call with nothing held between calls -- with a key space the bundle bounds at 1,020
+    documents rather than one a run could grow.
+
+    **Why it hid.** Each call is a few microseconds, so a sampling profile over a compile
+    that would not finish showed **no frame above 2 hits of 30**: there was no hot spot to
+    find, only two million cheap ones, and ``pathlib._parse_path`` underneath was all the
+    samples could see.  A WORK COUNT finds it and a duration does not, which is the same
+    lesson the DAG memo above taught one layer up.
+
+    ``functools.cache`` and not an instance memo because there is no run state here to key
+    on: two runs over two bundles asking this of one path must get one answer, since the
+    answer is about the path's spelling and not about any bundle's content.
     """
     p = Path(document)
     return "/".join([*p.parent.parts, p.stem]).replace("-", "_")
