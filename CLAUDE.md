@@ -390,6 +390,22 @@ When multiple agents work in the same checkout simultaneously, they clobber each
 branches — there is no error, the work is silently lost. Use `git worktree` to give each
 agent an isolated checkout.
 
+**A WORKTREE DOES NOT ISOLATE `git stash`. THE STASH STACK IS ONE PER REPOSITORY.**
+Every worktree pushes onto and pops off the same stack, so `git stash pop` in one lane
+hands that lane whatever another lane pushed last. Measured on 2026-11-20 with five lanes
+running: one lane's `pop` returned four files belonging to another lane
+(`test_rc6_adoption.py`, `test_trusted_match_validation.py`,
+`test_reporting_reconciliation.py`, `test_reporting_status_capabilities.py`), it reported
+"a process pushed a stash over mine", and it had to commit with explicit paths to avoid
+capturing work that was not its own. Nothing was lost that time — the four were
+byte-identical to what had already merged — and that was luck, not isolation.
+
+So in a shared-repository worktree: **do not use `git stash`.** To put changes aside, copy
+the file (`cp x.py /tmp/keep-x.py`) or commit on a scratch branch; both are lane-local. If
+you must stash, `git stash push -- <explicit paths>` and `git stash apply stash@{N}` naming
+the entry you pushed, never bare `pop` — but prefer not to, because the stack is still
+shared and another lane's bare `pop` can still take yours.
+
 > **Note:** Conductor worktrees handle this automatically via `.conductor.json`
 > (runs `setup_conductor_env.py` + `pre-commit install` on create). Use the
 > manual steps below only for raw `git worktree` outside of Conductor.
