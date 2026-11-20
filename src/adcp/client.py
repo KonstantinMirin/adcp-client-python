@@ -2417,9 +2417,23 @@ class ADCPClient:
         creative["format_id"] = refs[0]
 
     def _prepare_creative_params(
-        self, request: BaseModel, *, task_name: str | None = None
+        self,
+        request: BaseModel,
+        *,
+        task_name: str | None = None,
+        dialect: CreativeDialect | None = None,
     ) -> dict[str, Any]:
-        """Serialize canonical input and deterministically adapt legacy peers."""
+        """Serialize canonical input and deterministically adapt legacy peers.
+
+        **``dialect`` IS THE CALLER'S ALREADY-RESOLVED ANSWER, and passing it is what keeps
+        ONE resolution per call.** Every lifecycle method resolves the dialect for its
+        request before calling this, with ``legacy_projection_available=True`` -- they have
+        a legacy projection route. Resolving it a second time here, with the default
+        ``False``, asked a weaker question about the same request: on a 3.1 peer that
+        advertises no capabilities and sends no format evidence, the caller's resolution
+        returns ``LEGACY`` and this one raised ``CreativeDialectError``. The two answers
+        were never meant to differ, so there is now one.
+        """
 
         params = request.model_dump(mode="json", exclude_none=True)
         if task_name is not None:
@@ -2442,7 +2456,9 @@ class ADCPClient:
         # them, and the screen's whole subject -- a primary/legacy split of the model layer
         # -- is gone with the hand-written canonical-creative module, which this
         # release deletes (see :mod:`adcp.canonical_formats.dialect`).
-        if self._creative_dialect(request) is CreativeDialect.CANONICAL:
+        if dialect is None:
+            dialect = self._creative_dialect(request)
+        if dialect is CreativeDialect.CANONICAL:
             return params
         for collection in ("packages", "new_packages"):
             for index, package in enumerate(params.get(collection) or []):
@@ -3247,9 +3263,9 @@ class ADCPClient:
         Returns:
             TaskResult containing SyncCreativesResponse
         """
-        self._creative_dialect(request, legacy_projection_available=True)
+        dialect = self._creative_dialect(request, legacy_projection_available=True)
         operation_id = self._task_operation_id()
-        params = self._prepare_creative_params(request, task_name="sync_creatives")
+        params = self._prepare_creative_params(request, task_name="sync_creatives", dialect=dialect)
 
         self._emit_activity(
             Activity(
@@ -3652,9 +3668,11 @@ class ADCPClient:
             >>> if result.success:
             ...     media_buy_id = result.data.media_buy_id
         """
-        self._creative_dialect(request, legacy_projection_available=True)
+        dialect = self._creative_dialect(request, legacy_projection_available=True)
         operation_id = self._task_operation_id()
-        params = self._prepare_creative_params(request, task_name="create_media_buy")
+        params = self._prepare_creative_params(
+            request, task_name="create_media_buy", dialect=dialect
+        )
 
         self._emit_activity(
             Activity(
@@ -3733,9 +3751,11 @@ class ADCPClient:
             >>> if result.success:
             ...     updated_packages = result.data.packages
         """
-        self._creative_dialect(request, legacy_projection_available=True)
+        dialect = self._creative_dialect(request, legacy_projection_available=True)
         operation_id = self._task_operation_id()
-        params = self._prepare_creative_params(request, task_name="update_media_buy")
+        params = self._prepare_creative_params(
+            request, task_name="update_media_buy", dialect=dialect
+        )
 
         self._emit_activity(
             Activity(
