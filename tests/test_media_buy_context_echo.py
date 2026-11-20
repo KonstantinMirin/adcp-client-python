@@ -95,7 +95,8 @@ class Seller(DecisioningPlatform):
             media_buy_id=media_buy_id,
             confirmed_at="2026-05-01T00:00:00Z",
             revision=1,
-            status="active",
+            status="completed",
+            media_buy_status="active",
             packages=[Package(package_id=pid, product_id=prod) for pid, prod in ordered],
         )
 

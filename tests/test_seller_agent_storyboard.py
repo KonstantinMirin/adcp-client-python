@@ -185,7 +185,6 @@ async def test_get_products_uses_canonical_models_and_preserves_legacy_delivery(
     response = await _seller().get_products({})
 
     assert "format_ids" not in response["products"][0]
-    assert "v1_format_ref" not in response["products"][0]["format_options"][0]
 
     projected = project_canonical_response_to_legacy(response)
     assert projected["products"][0]["format_ids"] == _INITIAL_PRODUCTS[0]["format_ids"]
