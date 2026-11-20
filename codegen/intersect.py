@@ -67,7 +67,7 @@ def constraining(node: Mapping[str, Any]) -> dict[str, Any]:
     return declaring(node, Position.PROP)
 
 
-#: The annotations a FIELD renders, so the two a restatement can differ about in a way
+#: The annotations a FIELD renders, so the ones a restatement can differ about in a way
 #: a READER sees.  :func:`fields` reads exactly these off the declaration --
 #: ``description`` into ``Field(description=...)``, ``default`` into the field's
 #: default, ``deprecated`` into ``Field(deprecated=True)`` -- and the rest of the keys
@@ -75,22 +75,32 @@ def constraining(node: Mapping[str, Any]) -> dict[str, Any]:
 #: ``$schema``) reach nothing on a field, so a restatement differing only in one of
 #: those renders the same field and states nothing to anyone.
 #:
-#: **``deprecated`` WAS MISSING AND IT IS THE ONE RENDERED ANNOTATION THE GAP-FILL DID NOT
-#: CARRY** (2026-11-16, ``adcp-client-python-p5of``'s residue).  ``render.py`` has written
-#: it since the keyword landed -- ``if decided.deprecated: extras["deprecated"] = True`` --
-#: so this tuple disagreed with its OWN definition, "the annotations a FIELD renders".
-#: The effect is at the gap-fill below: a child that restates a property and is silent
-#: about ``deprecated`` dropped the base's, where §6 clause 3 says silence INHERITS.
-#:
-#: Measured before the fix: **21 fields on 11 classes** lost a base's ``deprecated``.
-#: ``PositivePostalAreaSupport``'s 11 postal flags lost ``PostalAreaSupport``'s, and ten
-#: request roots -- ``ListProductsRequest``, ``BuyProductsRequest``,
-#: ``AcceptProposalRequest`` and seven more -- lost ``AdCPVersionEnvelope``'s on
+#: **IT WAS A LITERAL AND ``deprecated`` WAS MISSING FROM IT** (2026-11-16, fixed at
+#: ``79965885f``; the EXPOSURE is ``adcp-client-python-ahbe``).  ``render.py`` has written
+#: the keyword since it landed -- ``if decided.deprecated: extras["deprecated"] = True`` --
+#: so the tuple disagreed with its OWN definition, "the annotations a FIELD renders", and
+#: **21 fields on 11 classes** lost a base's ``deprecated``: ``PositivePostalAreaSupport``'s
+#: 11 postal flags, and ten request roots -- ``ListProductsRequest``,
+#: ``BuyProductsRequest``, ``AcceptProposalRequest`` and seven more -- on
 #: ``adcp_major_version``, which ``core/version-envelope.json`` states as
-#: ``{"deprecated": true, "x-removed-in": "4.0.0"}``.  That second family is the
-#: consumer-visible one: a buyer reading ``ListProductsRequest``'s field metadata, or a
-#: JSON schema generated from it, was not told the field is removed in 4.0.
-RENDERED = ("default", "description", "deprecated")
+#: ``{"deprecated": true, "x-removed-in": "4.0.0"}``.  That family is the consumer-visible
+#: one: a buyer reading ``ListProductsRequest``'s field metadata, or a JSON schema
+#: generated from it, was not told the field is removed in 4.0.
+#:
+#: **SO IT IS NO LONGER A LITERAL.**  A tuple beside the rule can disagree with the table
+#: and nothing counts the difference -- an ``ANNOTATION`` states no fact about acceptance,
+#: so there is no rung to report and ``./check``'s ``approximated`` counter cannot move --
+#: and ``survey.arch_audit.keyword_collections``, the one instrument that reads keyword
+#: literals outside the table, could not see this one: two of its three entries were
+#: draft-07 keywords and its ``FLOOR`` is three.  §3's monopoly is the rule it broke
+#: ("nothing else under ``codegen/`` names a keyword in a set literal") and
+#: :func:`keywords.rendered_annotations_at` is the reading that replaces it, pinned
+#: against ``render._field`` by ``tests_emit/test_the_rule_tables_agree.py``.
+#:
+#: Sorted, so the value is a function of the table and not of a declaration order; every
+#: reader asks it for MEMBERSHIP (:func:`annotates_differently` and the gap-fill below),
+#: so no reader sees the order.
+RENDERED = tuple(sorted(keywords.rendered_annotations_at(Position.PROP)))
 
 
 def annotates_differently(child: dict, base: dict) -> bool:

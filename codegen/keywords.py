@@ -2136,6 +2136,40 @@ def rendered_at(position: Position) -> frozenset[str]:
     return frozenset(k for k in TABLE if (c := cell(k, position)) is not None and c.rendered)
 
 
+def rendered_annotations_at(position: Position) -> frozenset[str]:
+    """Of :func:`rendered_at`, the ones that ANNOTATE rather than constrain.
+
+    **``intersect.RENDERED`` is this set at PROP, and it was a literal of two entries
+    until 2026-11-16** (``adcp-client-python-ahbe``).  ``deprecated``'s cell at PROP has
+    been ``ANNOTATION``, ``rendered=True`` since the keyword landed and ``render._field``
+    has written ``Field(deprecated=True)`` for just as long, and the literal listed
+    ``("default", "description")`` -- so a child restating a property while silent about
+    ``deprecated`` dropped the base's, where §6 clause 3 says silence INHERITS.  Measured
+    before the repair: **21 fields on 11 classes**, ten of them ``adcp_major_version`` on
+    a request root, where ``core/version-envelope.json`` states
+    ``{"deprecated": true, "x-removed-in": "4.0.0"}``.  Nothing moved: an ``ANNOTATION``
+    states no fact about acceptance (:func:`states_a_fact`), so there was no rung to
+    report and no counter to move.  A derivation cannot drift the way that literal did,
+    which is the whole reason this is a reader and not a tuple beside the rule;
+    ``tests_emit/test_the_rule_tables_agree.py`` pins the predicate against
+    ``render._field`` itself, so a keyword entering this set without the renderer
+    carrying it is a named failure rather than a second silent drop.
+
+    **The DIFFERENCE from :func:`rendered_at` is stated and deliberate.**  The keywords
+    this subtracts are the ones whose cell LOWERS (:data:`LOWERED` -- a TYPE or a RULE):
+    ``type``, ``format``, ``enum``, ``const``, ``required``, the bounds and
+    ``uniqueItems``.  Those render as facts too, and a restatement differing in one of
+    them is caught where it belongs -- ``intersect.at_least_as_tight`` compares what two
+    declarations say about the INSTANCE -- so a rule asking "would these two render a
+    different FIELD" must not ask about them: it would report a narrowing as an
+    annotation difference and merge the two as though neither constrained anything.
+    Measured on this table at PROP: 20 rendered keywords, 3 of them annotations.
+    """
+    return frozenset(
+        k for k in rendered_at(position) if (c := cell(k, position)) is not None and not lowers(c)
+    )
+
+
 def descends_at(position: Position) -> Mapping[str, Position]:
     """The structural keywords at this position and the position each one's
     subschema(s) occupy -- the ONE descent table, where today there are three.

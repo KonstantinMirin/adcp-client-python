@@ -315,10 +315,10 @@
   }
  },
  "provenance": {
-  "bundle": "/srv/ws/.adcp-cache/patched-bundle/3e10ba555894e8a2fc32c2932f3479c945ba6252112cb88f7f218eca69dca269",
-  "head": "6dd46870e+dirty",
+  "bundle": "/srv/ws/.adcp-cache/patched-bundle/94a7899f5f5e154b0f5ce16d7d655a95bd9f433c15d9143962239d540d59884a",
+  "head": "b493e78fb+dirty",
   "tree": "src/adcp/types/_schemas"
  },
- "seconds": 527.0,
- "seconds_per_pair": 0.2051
+ "seconds": 906.7,
+ "seconds_per_pair": 0.3529
 }
