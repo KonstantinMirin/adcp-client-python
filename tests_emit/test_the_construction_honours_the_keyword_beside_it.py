@@ -162,3 +162,59 @@ def test_a_conjunction_that_admits_nothing_is_declined_and_not_answered(
         not built.held
     ), f"{why}: the construction answered {built.value!r} for a node that admits nothing"
     assert built.reason, f"{why}: declined with no reason, so no reader can act on it"
+
+
+def test_a_url_parsing_refusal_is_the_host_narrowing_and_never_the_accepted_cap() -> None:
+    """``url_parsing`` at a ``format: uri`` node is NOT ``AdCPUrl``'s 2,083-character cap.
+
+    **THIS CLAUSE EXISTS BECAUSE GETTING IT BACKWARDS IS THE MOST EXPENSIVE MISTAKE IN THIS
+    PROJECT'S HISTORY** -- 1,239 false defect reports, 218 of them against exactly that cap,
+    which ``docs/plan/rebuild-plan.md`` §2's decision index records as **ACCEPTED** in bold
+    capitals. The two remaining ``fail:unproved_widening`` rows carry a ``url_parsing``
+    sentence in their note, so this is the reading written down at the place the value comes
+    from rather than left to be re-derived from a note.
+
+    The two refusals are different keywords and different error types, measured at the type:
+
+    ======================================  ==============  ==================================
+    refusal                                 pydantic type   what it is
+    ======================================  ==============  ==================================
+    ``HostedUrl`` on ``urn:ietf:rfc:3986``  ``url_parsing`` §2's ``host_required``: "the
+                                                            non-hierarchical URIs are refused"
+    ``AdCPUrl`` on a 2,100-character URL    ``url_too_long`` the ACCEPTED cap, which "renders
+                                                            as ``maxLength: 2083``"
+    ======================================  ==============  ==================================
+
+    So a ``url_parsing`` note can only be the host narrowing -- which §2 declares
+    ("``HostedUrl`` refuses only non-hierarchical URIs, which no document states") and whose
+    witness is :data:`codegen.verify.witness.FORMAT_CASES`'s own third ``uri`` case. Neither
+    is a defect, and §2 says so in one sentence: "**NEITHER TYPE NEEDS A NARROWING
+    ADMITTED**, because neither refuses more than its document does."
+    """
+    from pydantic import TypeAdapter, ValidationError
+
+    from adcp.types.constraints import AdCPUrl, HostedUrl
+    from codegen.verify.witness import FORMAT_CASES
+
+    #: The case the note's "uri case 2" names, read off the table rather than written here.
+    non_hierarchical = [case for case in FORMAT_CASES["uri"] if "//" not in case]
+    assert non_hierarchical, (
+        "no uri case states a non-hierarchical URI, so the host narrowing has no witness "
+        "and this clause is reading a table that has moved"
+    )
+
+    def refusal(annotation: Any, value: str) -> str:
+        try:
+            TypeAdapter(annotation).validate_python(value)
+        except ValidationError as refused:
+            return str(refused.errors()[0]["type"])
+        return "accepted"
+
+    host = refusal(HostedUrl, non_hierarchical[0])
+    cap = refusal(AdCPUrl, "https://example.com/" + "a" * 2090)
+    assert host == "url_parsing", (
+        f"the host narrowing now reports {host!r}; this clause's whole subject is that it is "
+        f"url_parsing and the cap is not"
+    )
+    assert cap == "url_too_long", f"the accepted cap now reports {cap!r}, not a length refusal"
+    assert host != cap, "the two refusals must stay distinguishable by error type alone"
